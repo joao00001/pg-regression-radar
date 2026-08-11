@@ -14,11 +14,14 @@
 //	  --slack-url https://hooks.slack.com/... \
 //	  --window-minutes 30 \
 //	  --min-executions 10 \
-//	  --latency-threshold 0.20
+//	  --latency-threshold 0.20 \
+//	  --state-backend postgres \
+//	  --state-dsn "host:5432/dbname?sslmode=disable"
 package main
 
 import (
 	"context"
+	"database/sql"
 	"flag"
 	"log/slog"
 	"net/http"
@@ -31,6 +34,8 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/storage"
+	"github.com/joao00001/pg-regression-radar/internal/storage/postgres"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -48,6 +53,18 @@ func main() {
 	windowMinutes := flag.Int("window-minutes", 30, "Analysis window (minutes before/after deploy)")
 	minExecutions := flag.Int64("min-executions", 10, "Minimum query executions per window")
 	latencyThreshold := flag.Float64("latency-threshold", 0.20, "Minimum relative latency increase to flag")
+	// ---- Persistence (see internal/storage) ----
+	// "memory" preserves today's behaviour exactly: samples/events live only
+	// in the Collector/Ingester in-process maps and are lost on restart.
+	// "postgres" additionally persists them so history survives pod restarts
+	// and can be shared across replicas (NOT by itself safe for multiple
+	// *active* replicas — see internal/storage's package doc on leader
+	// election). Kept additive and defaulted to "memory" so the documented
+	// quick-start keeps working unchanged.
+	stateBackend := flag.String("state-backend", "memory", "State persistence backend: memory (default) or postgres")
+	stateDSN := flag.String("state-dsn", "", "Postgres DSN for the state backend (default: reuse --dsn, i.e. store state in the same monitored Postgres; set this to point state at a separate Postgres instance instead)")
+	stateRetention := flag.Duration("state-retention", 7*24*time.Hour, "How long to retain samples/events in the postgres state backend before pruning")
+	statePruneInterval := flag.Duration("state-prune-interval", 15*time.Minute, "How often to sweep the postgres state backend for records older than --state-retention")
 	flag.Parse()
 
 	if *dsn == "" {
@@ -94,6 +111,53 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	// ---- State persistence backend ----
+	// sampleStore/eventStore stay nil for the "memory" default: the Collector
+	// and Ingester already keep equivalent state in process memory, so there
+	// is nothing extra to wire up and zero behaviour change from before this
+	// flag existed. They're only populated for "postgres", in which case a
+	// couple of small bridge goroutines below copy freshly observed
+	// samples/events into the durable store (Collector/Ingester themselves
+	// are out of scope for this change — see internal/storage's package doc).
+	var (
+		sampleStore storage.SampleStore
+		eventStore  storage.EventStore
+		stateDB     *sql.DB
+	)
+	switch *stateBackend {
+	case "", "memory":
+		// Nothing to do — see comment above.
+	case "postgres":
+		stateConnDSN := *stateDSN
+		if stateConnDSN == "" {
+			stateConnDSN = *dsn // reuse the monitored Postgres DSN by default
+		}
+		db, err := postgres.Open(ctx, stateConnDSN)
+		if err != nil {
+			logger.Error("failed to initialise postgres state backend", "err", err)
+			os.Exit(1)
+		}
+		stateDB = db
+		pgSamples := postgres.NewSampleStore(db)
+		pgEvents := postgres.NewEventStore(db)
+		sampleStore, eventStore = pgSamples, pgEvents
+
+		go storage.RunPruneLoop(ctx, "query_samples", pgSamples, *statePruneInterval, *stateRetention, logger)
+		go storage.RunPruneLoop(ctx, "deploy_events", pgEvents, *statePruneInterval, *stateRetention, logger)
+
+		logger.Info("operator: postgres state backend enabled",
+			"schema", postgres.SchemaName,
+			"retention", *stateRetention,
+			"prune_interval", *statePruneInterval,
+			"separate_state_dsn", *stateDSN != "")
+	default:
+		logger.Error("unknown --state-backend (want memory or postgres)", "value", *stateBackend)
+		os.Exit(1)
+	}
+	if stateDB != nil {
+		defer stateDB.Close()
+	}
+
 	// ---- HTTP servers ----
 	webhookMux := http.NewServeMux()
 	webhookMux.Handle("/webhook", webhookHandler)
@@ -117,6 +181,36 @@ func main() {
 		}
 	}()
 
+	// If a durable SampleStore is configured, mirror newly scraped samples
+	// into it. The Collector keeps scraping/serving the correlation engine
+	// out of its own in-memory map exactly as before; this just gives those
+	// same observations a copy that survives a restart. Only exported
+	// Collector methods are used here, so this needs no changes to
+	// internal/collector.
+	if sampleStore != nil {
+		go func() {
+			lastSync := time.Now().UTC()
+			ticker := time.NewTicker(*scrapeInterval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					now := time.Now().UTC()
+					for _, qid := range col.AllQueryIDs() {
+						for _, s := range col.SamplesInRange(qid, lastSync, now) {
+							if err := sampleStore.Append(ctx, s); err != nil {
+								logger.Error("operator: persist sample failed", "err", err, "query_id", qid)
+							}
+						}
+					}
+					lastSync = now
+				}
+			}
+		}()
+	}
+
 	// Poll the ingester store every 5 s; a channel-based push would require
 	// locking changes across packages, so polling keeps the coupling minimal.
 	go func() {
@@ -133,6 +227,13 @@ func main() {
 						continue
 					}
 					seen[ev.ID] = struct{}{}
+					// Mirror into the durable EventStore, if configured (see
+					// the SampleStore bridge above for the same rationale).
+					if eventStore != nil {
+						if err := eventStore.Add(ctx, ev); err != nil {
+							logger.Error("operator: persist event failed", "err", err, "event_id", ev.ID)
+						}
+					}
 					results := engine.Analyse(ev)
 					for _, r := range results {
 						if r.Status == v1alpha1.StatusDetected {

@@ -144,6 +144,115 @@ curl -X POST http://localhost:8080/webhook \
 | `--window-minutes` | `30` | Analysis window (minutes before/after deploy) |
 | `--min-executions` | `10` | Min query executions per window |
 | `--latency-threshold` | `0.20` | Min relative latency increase to flag (e.g. 0.20 = 20 %) |
+| `--state-backend` | `memory` | State persistence backend: `memory` or `postgres` — see [Persistence](#persistence) |
+| `--state-dsn` | `` | Postgres DSN for the state backend when `--state-backend=postgres` (defaults to `--dsn`) |
+| `--state-retention` | `168h` (7 days) | How long samples/events are kept in the postgres state backend |
+| `--state-prune-interval` | `15m` | How often the retention sweep runs against the postgres state backend |
+
+---
+
+## Persistence
+
+By default (`--state-backend=memory`, unchanged from earlier releases) all
+state lives only in process memory:
+
+- The **Collector** keeps its per-`queryid` `pg_stat_statements` samples in an
+  in-memory map (`internal/collector.Collector`).
+- The **Ingester** keeps deploy events in an in-memory slice
+  (`internal/ingester.Store`).
+
+That means a pod restart loses all history, and running multiple replicas
+gives each one an inconsistent, independent view of the world. Setting
+`--state-backend=postgres` additionally persists both to Postgres, so history
+survives restarts and can be inspected/shared across replicas.
+
+### Configuring it
+
+```bash
+operator   --dsn "host:5432/monitored_db?sslmode=disable"   --state-backend postgres
+  # --state-dsn defaults to --dsn above: state lives in the SAME Postgres
+  # cluster being monitored. To isolate it, point at a separate instance:
+  # --state-dsn "host:5432/pgrr_state?sslmode=disable"
+```
+
+- **Same Postgres as the monitored cluster** (default, `--state-dsn` empty):
+  simplest to operate — one connection string, one cluster. Trade-off: the
+  tool's own write traffic shows up in the very `pg_stat_statements` it
+  watches, and an outage of the monitored cluster also takes down the
+  history.
+- **Separate Postgres instance** (`--state-dsn` set): isolates storage load
+  and availability from the cluster under observation, at the cost of running
+  a second Postgres.
+
+### Schema
+
+Everything lives in its own schema so it never collides with application
+tables and can be dropped cleanly:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS pg_regression_radar;
+
+CREATE TABLE pg_regression_radar.query_samples (
+    id                  BIGSERIAL PRIMARY KEY,
+    query_id            BIGINT NOT NULL,
+    query_text          TEXT NOT NULL,
+    calls               BIGINT NOT NULL,
+    total_exec_time_ms  DOUBLE PRECISION NOT NULL,
+    mean_exec_time_ms   DOUBLE PRECISION NOT NULL,
+    recorded_at         TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX idx_query_samples_queryid_recorded_at ON pg_regression_radar.query_samples (query_id, recorded_at);
+CREATE INDEX idx_query_samples_recorded_at         ON pg_regression_radar.query_samples (recorded_at);
+
+CREATE TABLE pg_regression_radar.deploy_events (
+    id               TEXT PRIMARY KEY,
+    source           TEXT NOT NULL DEFAULT '',
+    app              TEXT NOT NULL DEFAULT '',
+    cluster          TEXT NOT NULL DEFAULT '',
+    namespace        TEXT NOT NULL DEFAULT '',
+    revision         TEXT NOT NULL DEFAULT '',
+    image_tag        TEXT NOT NULL DEFAULT '',
+    event_timestamp  TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX idx_deploy_events_event_timestamp ON pg_regression_radar.deploy_events (event_timestamp);
+```
+
+The schema is applied automatically on startup (`internal/storage/postgres`)
+using hand-rolled, idempotent DDL (`CREATE ... IF NOT EXISTS`) rather than a
+migration framework like `golang-migrate`/`goose` — both tables are
+append-mostly, derived/observational data that evolves purely additively, so
+the extra machinery of a versioned migration runner isn't earning its keep
+yet. If the schema ever needs a genuinely breaking change (rename, backfill,
+tightened constraint), that's the point to introduce one.
+
+### Retention
+
+Old rows are pruned periodically (`--state-prune-interval`, default 15 min)
+using a `DELETE ... WHERE recorded_at < now() - retention` sweep, where
+retention defaults to 7 days (`--state-retention`).
+
+### Trade-offs and limitations
+
+- **Not a replacement for leader election.** Pointing multiple operator
+  replicas at the same state backend makes the *data* consistent and durable,
+  but each replica still independently scrapes `pg_stat_statements` and runs
+  the correlation engine — so you'd get duplicate scrapes and duplicate
+  alerts. Preventing that requires only one replica being active at a time
+  (leader election), which is being addressed separately via a
+  controller-runtime manager's built-in leader election, not by this
+  package. Don't run N unattended replicas against a shared backend until
+  that lands.
+- **History doesn't yet pre-load the live Collector/Ingester.** Persisted
+  samples/events are a durable *copy* of what the Collector/Ingester observed
+  while running; on restart, the in-memory hot path (and therefore the
+  correlation engine's view) starts empty again even though the Postgres
+  history is intact. Backfilling the in-memory state from the store on
+  startup is a natural next step once the Collector/Ingester accept a
+  pluggable storage backend directly.
+- **Extra write load.** Every scrape/webhook now also does a write to
+  Postgres. The connection pool used for this is intentionally small (see
+  `internal/storage/postgres.Open`) to keep the footprint low, especially
+  when reusing the monitored cluster's own Postgres.
 
 ---
 
@@ -225,7 +334,8 @@ two-stage design prioritises **precision over recall** to avoid alert fatigue.
 │   ├── collector/    # pg_stat_statements scraper + Prometheus metrics
 │   ├── correlation/  # E-divisive + Welch t-test engine
 │   ├── ingester/     # webhook handler + in-memory event store
-│   └── alerting/     # Slack / generic webhook notifier
+│   ├── alerting/     # Slack / generic webhook notifier
+│   └── storage/      # SampleStore/EventStore interfaces + memory & postgres backends (see Persistence)
 ├── pkg/apis/v1alpha1/ # CRD type definitions
 └── deploy/helm/deploylens/  # Helm chart
 ```
