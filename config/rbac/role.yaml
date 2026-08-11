@@ -1,0 +1,44 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - radar.pgregressionradar.io
+  resources:
+  - deploysources
+  - postgreswatches
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - radar.pgregressionradar.io
+  resources:
+  - deploysources/status
+  - performanceregressions/status
+  - postgreswatches/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - radar.pgregressionradar.io
+  resources:
+  - performanceregressions
+  verbs:
+  - create
+  - get
+  - list
+  - patch
+  - update
+  - watch

@@ -1,0 +1,24 @@
+# Namespace-scoped Role granting only what leader election needs
+# (coordination.k8s.io Leases in the manager's own namespace). Kept
+# separate from manager-role (a ClusterRole) deliberately: the manager
+# needs cluster-wide read/write access to the pg-regression-radar CRDs
+# (which can live in any namespace) but only ever needs to manage a single
+# Lease object in its own namespace, so that permission is scoped down to
+# a Role + RoleBinding instead of being folded into the ClusterRole.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: manager-leader-election-role
+rules:
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
