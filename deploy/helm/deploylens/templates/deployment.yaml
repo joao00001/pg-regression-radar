@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "deploylens.fullname" . }}
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "deploylens.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "deploylens.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "deploylens.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: operator
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --dsn=$(POSTGRES_DSN)
+            - --cluster-name={{ .Values.postgres.clusterName }}
+            - --namespace={{ .Values.postgres.namespace }}
+            - --scrape-interval={{ .Values.postgres.scrapeInterval }}
+            - --webhook-listen=:{{ .Values.service.webhookPort }}
+            - --metrics-listen=:{{ .Values.service.metricsPort }}
+            - --slack-url=$(SLACK_WEBHOOK_URL)
+            - --source-type={{ .Values.ingester.sourceType }}
+            - --window-minutes={{ .Values.analysis.windowMinutes }}
+            - --min-executions={{ .Values.analysis.minExecutions }}
+            - --latency-threshold={{ .Values.analysis.latencyThreshold }}
+          env:
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: dsn
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: slackWebhookUrl
+                  optional: true
+          ports:
+            - name: webhook
+              containerPort: {{ .Values.service.webhookPort }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.service.metricsPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: webhook
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: webhook
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

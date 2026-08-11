@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "deploylens.fullname" . }}
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.webhookPort }}
+      targetPort: webhook
+      protocol: TCP
+      name: webhook
+    - port: {{ .Values.service.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+  selector:
+    {{- include "deploylens.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,15 @@
+# Binaries
+/bin/
+dist/
+
+# Go build cache
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
