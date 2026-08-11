@@ -34,6 +34,19 @@ postgres:
   # above 2 * analysis.windowMinutes if you raise that value.
   retentionMinutes: 180
 
+# State persistence backend (query samples + deploy events). See the
+# "Persistence" section of the README for schema/trade-off details.
+# backend: "memory" (default, unchanged behaviour, no extra Postgres writes)
+#          "postgres" (persists to Postgres; survives restarts, shareable across replicas)
+# dsn: Postgres DSN for the state backend. Leave empty to reuse postgres.dsn
+#      above (store state in the same monitored cluster). Set it to point
+#      state at a separate Postgres instance instead.
+state:
+  backend: "memory"
+  dsn: ""
+  retention: "168h"
+  pruneInterval: "15m"
+
 # Correlation engine settings.
 analysis:
   windowMinutes: 30

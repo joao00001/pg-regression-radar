@@ -44,6 +44,10 @@ spec:
             - --min-executions={{ .Values.analysis.minExecutions }}
             - --latency-threshold={{ .Values.analysis.latencyThreshold }}
             - --retention-minutes={{ .Values.postgres.retentionMinutes }}
+            - --state-backend={{ .Values.state.backend }}
+            - --state-dsn=$(STATE_DSN)
+            - --state-retention={{ .Values.state.retention }}
+            - --state-prune-interval={{ .Values.state.pruneInterval }}
           env:
             - name: POSTGRES_DSN
               valueFrom:
@@ -55,6 +59,12 @@ spec:
                 secretKeyRef:
                   name: {{ include "deploylens.fullname" . }}-secret
                   key: slackWebhookUrl
+                  optional: true
+            - name: STATE_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: stateDsn
                   optional: true
           ports:
             - name: webhook
