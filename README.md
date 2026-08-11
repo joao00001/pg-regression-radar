@@ -246,6 +246,7 @@ two-stage design prioritises **precision over recall** to avoid alert fatigue.
 ## Contributing
 
 Pull requests are welcome. Please open an issue first for significant changes.
+Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) in all project spaces.
 
 ```bash
 go test ./...       # run all tests
