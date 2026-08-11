@@ -73,8 +73,9 @@ func main() {
 	// ---- Ingester ----
 	store := &ingester.Store{}
 	source := v1alpha1.DeploySource{
-		Name:       "operator-default",
-		SourceType: *sourceType,
+		Name:        "operator-default",
+		SourceType:  *sourceType,
+		ClusterName: *clusterName,
 	}
 	webhookHandler := ingester.NewHandler(store, source, logger)
 
