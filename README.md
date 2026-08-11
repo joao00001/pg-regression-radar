@@ -77,6 +77,49 @@ pg-regression-radar does.
 
 ---
 
+## Two ways to run pg-regression-radar
+
+pg-regression-radar ships two entrypoints that wire up the *same* engine
+packages (`internal/collector`, `internal/correlation`, `internal/ingester`,
+`internal/alerting`) in two different ways:
+
+| | `cmd/operator` (**standalone**) | `cmd/manager` (**CRD-driven**) |
+|---|---|---|
+| Configuration | CLI flags | `PostgresWatch` / `DeploySource` Kubernetes CRs |
+| Postgres clusters watched | exactly one | any number, added/removed at runtime |
+| Kubernetes API access needed | none | yes (CRDs + a Secret read) |
+| High availability | run 1 replica | run N replicas with **leader election**; only the leader works, a standby takes over automatically on failure |
+| Regression history | Slack/webhook alert only | Slack/webhook alert **and** a `PerformanceRegression` CR (`kubectl get performanceregressions -A`) |
+| Recommended for | quick trials, single-cluster setups, environments without CRD install rights | production |
+
+Both binaries are built from this one module and neither modifies the
+other's code path — `cmd/manager`'s reconcilers
+(`internal/controller/postgreswatch_controller.go`,
+`internal/controller/deploysource_controller.go`) call the exact same
+`collector.New` / `correlation.New` / `alerting.NewWebhookNotifier`
+constructors `cmd/operator/main.go` calls directly, just with one instance
+per `PostgresWatch` CR instead of one instance total, orchestrated by
+[controller-runtime](https://github.com/kubernetes-sigs/controller-runtime)
+instead of `main()`.
+
+> **Note:** `pkg/apis/v1alpha1` holds plain Go DTO structs used internally
+> between packages — they are **not** Kubernetes objects. The real CRDs
+> (`metav1.TypeMeta`/`ObjectMeta`, `runtime.Object`, OpenAPI schemas) live in
+> `api/v1alpha1` and are only used by `cmd/manager` and
+> `internal/controller`. This split lets the detection engine stay
+> Kubernetes-agnostic while still getting a first-class CRD experience.
+
+### When to use which
+
+- Use **`cmd/operator`** if you have one Postgres cluster, don't need HA,
+  and would rather not grant the process any Kubernetes RBAC at all — it
+  never talks to the Kubernetes API.
+- Use **`cmd/manager`** (the Helm chart's `mode: manager`) if you want to
+  watch multiple Postgres clusters from one deployment, want
+  `kubectl get postgreswatch,deploysource,performanceregression` visibility,
+  or need HA (multiple replicas with automatic failover via a
+  `coordination.k8s.io` Lease — see `--leader-elect` below).
+
 ## Quick Start
 
 ### Prerequisites
@@ -101,6 +144,55 @@ go run ./cmd/operator \
   --latency-threshold 0.20
 ```
 
+### Run the manager (CRD-driven, HA)
+
+```bash
+# 1. Install the CRDs (also done automatically by the Helm chart below).
+kubectl apply -f config/crd/bases/
+
+# 2. Create a Secret holding the DSN, a PostgresWatch, and a DeploySource.
+kubectl create secret generic my-cluster-dsn \
+  --from-literal=dsn="******cnpg-cluster-rw.production:5432/mydb?sslmode=disable"
+
+cat <<'EOF' | kubectl apply -f -
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: PostgresWatch
+metadata:
+  name: my-cluster
+  namespace: production
+spec:
+  clusterName: cnpg-cluster
+  dsnSecretRef:
+    name: my-cluster-dsn
+    key: dsn
+  windowMinutes: 30
+  minExecutions: 10
+  latencyChangeThreshold: "0.20"
+  slackWebhookUrl: "https://hooks.slack.com/services/XXX/YYY/ZZZ"
+---
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: DeploySource
+metadata:
+  name: my-cluster-argocd
+  namespace: production
+spec:
+  postgresWatchRef: my-cluster
+  sourceType: argocd
+EOF
+
+# 3. Run the manager (in-cluster it reads a ServiceAccount token
+#    automatically; --kubeconfig is only for out-of-cluster/local runs).
+go run ./cmd/manager \
+  --leader-elect=true \
+  --leader-election-namespace=production \
+  --webhook-bind-address=:8080 \
+  --pg-metrics-bind-address=:9090
+
+# 4. Watch it come up and, later, watch regressions land as CRs.
+kubectl get postgreswatch,deploysource -n production
+kubectl get performanceregressions -A
+```
+
 ### Deploy on Kubernetes via Helm
 
 ```bash
@@ -110,6 +202,31 @@ helm install pg-regression-radar ./deploy/helm/deploylens \
   --set postgres.namespace=production \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```
+
+The chart's `mode` value picks the entrypoint (`operator`, the default
+above, or `manager`). In `manager` mode it also installs the CRDs
+(`deploy/helm/deploylens/crds/`), the RBAC the manager needs
+(`templates/manager-rbac.yaml`), and — unless
+`manager.createDefaultWatch=false` — a `PostgresWatch` + `DeploySource`
+pair from the same `postgres.*` / `analysis.*` / `alerting.*` values, so the
+two modes are drop-in equivalents for a single-cluster setup:
+
+```bash
+helm install pg-regression-radar ./deploy/helm/deploylens \
+  --set mode=manager \
+  --set manager.replicaCount=2 \
+  --set postgres.dsn="******cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
+  --set postgres.clusterName=cnpg-cluster \
+  --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
+```
+
+> Helm only installs charts' `crds/` directory on `helm install`, never on
+> `helm upgrade` (this is a deliberate Helm safety behaviour, not a bug in
+> this chart) — see the
+> [Helm docs on CRDs](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/).
+> To pick up CRD schema changes after upgrading the chart, apply
+> `deploy/helm/deploylens/crds/*.yaml` (or `config/crd/bases/*.yaml`, the
+> same files) with `kubectl apply -f` directly.
 
 ### Simulate a deploy event (for testing)
 
@@ -144,6 +261,39 @@ curl -X POST http://localhost:8080/webhook \
 | `--window-minutes` | `30` | Analysis window (minutes before/after deploy) |
 | `--min-executions` | `10` | Min query executions per window |
 | `--latency-threshold` | `0.20` | Min relative latency increase to flag (e.g. 0.20 = 20 %) |
+
+### Manager flags
+
+| Flag | Default | Description |
+|---|---|---|
+| `--leader-elect` | `true` | Enable leader election (multi-replica HA) |
+| `--leader-election-namespace` | *(auto)* | Namespace the `coordination.k8s.io` Lease is created in |
+| `--metrics-bind-address` | `0` (disabled) | controller-runtime's own reconcile/workqueue metrics |
+| `--pg-metrics-bind-address` | `:9090` | Aggregated `pg_stat_statements`-derived metrics (leader only) |
+| `--webhook-bind-address` | `:8080` | Deploy-event webhooks, one route per `DeploySource` CR (leader only) |
+| `--health-probe-bind-address` | `:8081` | `/healthz` and `/readyz` |
+
+### PostgresWatch spec fields
+
+| Field | Default | Description |
+|---|---|---|
+| `clusterName` | *(required)* | Label added to metrics and to `PerformanceRegression` CRs |
+| `dsn` / `dsnSecretRef` | *(one required)* | Postgres DSN, inline or via a Secret key (preferred) |
+| `scrapeIntervalSeconds` | `60` | How often to read `pg_stat_statements` |
+| `windowMinutes` | `30` | Analysis window (minutes before/after deploy) |
+| `minExecutions` | `10` | Min query executions per window |
+| `latencyChangeThreshold` | `"0.20"` | Min relative latency increase to flag (e.g. `"0.20"` = 20 %) |
+| `pValueThreshold` | `"0.05"` | Welch's t-test significance cutoff |
+| `criticalQueryIDs` | `[]` | Queries that bypass `minExecutions` |
+| `slackWebhookUrl` | `""` | Slack incoming-webhook URL for this watch |
+
+### DeploySource spec fields
+
+| Field | Default | Description |
+|---|---|---|
+| `postgresWatchRef` | *(required)* | Name of the `PostgresWatch` (same namespace) to correlate against |
+| `sourceType` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic` |
+| `appName` | `""` (all apps) | Narrow correlation to a single application |
 
 ---
 
@@ -217,17 +367,26 @@ two-stage design prioritises **precision over recall** to avoid alert fatigue.
 
 ```
 .
+├── api/v1alpha1/       # real CRDs (PostgresWatch, DeploySource,
+│                       # PerformanceRegression) + generated deepcopy code
 ├── cmd/
-│   ├── collector/    # standalone scraper binary
-│   ├── ingester/     # standalone webhook receiver binary
-│   └── operator/     # all-in-one operator binary
+│   ├── collector/      # standalone scraper binary
+│   ├── ingester/       # standalone webhook receiver binary
+│   ├── operator/       # all-in-one, CLI-flag-configured binary
+│   └── manager/        # CRD-driven, controller-runtime binary (HA)
 ├── internal/
-│   ├── collector/    # pg_stat_statements scraper + Prometheus metrics
-│   ├── correlation/  # E-divisive + Welch t-test engine
-│   ├── ingester/     # webhook handler + in-memory event store
-│   └── alerting/     # Slack / generic webhook notifier
-├── pkg/apis/v1alpha1/ # CRD type definitions
-└── deploy/helm/deploylens/  # Helm chart
+│   ├── collector/      # pg_stat_statements scraper + Prometheus metrics
+│   ├── correlation/    # E-divisive + Welch t-test engine
+│   ├── ingester/       # webhook handler + in-memory event store
+│   ├── alerting/       # Slack / generic webhook notifier
+│   └── controller/     # PostgresWatchReconciler + DeploySourceReconciler:
+│                       # turn CRs into running Collector/Engine instances
+├── pkg/apis/v1alpha1/  # internal DTOs shared by the packages above
+│                       # (NOT Kubernetes objects — see "Two ways to run")
+├── config/
+│   ├── crd/bases/      # generated CRD manifests (kubectl apply -f)
+│   └── rbac/           # reference ClusterRole/Role for cmd/manager
+└── deploy/helm/deploylens/  # Helm chart (installs CRDs + RBAC too)
 ```
 
 ---
@@ -236,8 +395,9 @@ two-stage design prioritises **precision over recall** to avoid alert fatigue.
 
 - **MVP (now):** Collector + Ingester + Correlation Engine + Slack alerting + Helm chart
 - **v0.2:** Argo Rollouts and Flux source types; `auto_explain` plan diff
-- **v0.3:** Kubebuilder CRDs (`PostgresWatch`, `DeploySource`, `PerformanceRegression`)
-  surfaced as Kubernetes resources
+- **v0.3 (done):** Real CRDs (`PostgresWatch`, `DeploySource`, `PerformanceRegression`)
+  reconciled by `cmd/manager` via controller-runtime, with leader-election HA —
+  see "Two ways to run pg-regression-radar" above
 - **v0.4:** GitHub/GitLab PR comment on detected regression; Grafana annotation
 - **v1.0:** OLM bundle for OperatorHub.io; multi-cluster support
 
