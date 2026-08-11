@@ -1,0 +1,27 @@
+{{- if eq .Values.mode "manager" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "deploylens.fullname" . }}-manager
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+    app.kubernetes.io/component: manager
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.manager.ports.webhook }}
+      targetPort: webhook
+      protocol: TCP
+      name: webhook
+    - port: {{ .Values.manager.ports.pgMetrics }}
+      targetPort: pg-metrics
+      protocol: TCP
+      name: pg-metrics
+    - port: {{ .Values.manager.ports.ctrlMetrics }}
+      targetPort: ctrl-metrics
+      protocol: TCP
+      name: ctrl-metrics
+  selector:
+    {{- include "deploylens.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: manager
+{{- end }}

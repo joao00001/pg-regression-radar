@@ -1,0 +1,73 @@
+{{- if eq .Values.mode "manager" }}
+# Cluster-wide: PostgresWatch/DeploySource/PerformanceRegression are
+# namespaced CRDs, but the manager is meant to reconcile them regardless of
+# which namespace they're created in (the same shape as CloudNativePG's or
+# Prometheus Operator's cluster-wide operator RBAC), so this is a
+# ClusterRole/ClusterRoleBinding rather than a per-namespace Role.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "deploylens.fullname" . }}-manager-role
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["radar.pgregressionradar.io"]
+    resources: ["postgreswatches", "deploysources"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["radar.pgregressionradar.io"]
+    resources: ["postgreswatches/status", "deploysources/status", "performanceregressions/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["radar.pgregressionradar.io"]
+    resources: ["performanceregressions"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Read-only: resolves PostgresWatch.spec.dsnSecretRef.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "deploylens.fullname" . }}-manager-rolebinding
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "deploylens.fullname" . }}-manager-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "deploylens.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+---
+# Namespace-scoped on purpose: leader election only ever needs to
+# create/update one Lease object in the manager's own namespace, so it is
+# kept out of the cluster-wide ClusterRole above (least privilege).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "deploylens.fullname" . }}-leader-election-role
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "deploylens.fullname" . }}-leader-election-rolebinding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "deploylens.fullname" . }}-leader-election-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "deploylens.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

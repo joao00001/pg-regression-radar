@@ -1,0 +1,18 @@
+# Binds manager-role (CRD get/list/watch/update/patch/create + Secret
+# read) cluster-wide to the manager's ServiceAccount. Cluster-wide because
+# PostgresWatch/DeploySource/PerformanceRegression are intentionally
+# namespaced but the manager is meant to watch all of them regardless of
+# which namespace they're created in (mirroring how CloudNativePG,
+# Prometheus Operator, etc. run a single cluster-wide operator).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pg-regression-radar-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: manager-role
+subjects:
+  - kind: ServiceAccount
+    name: pg-regression-radar-manager
+    namespace: default
