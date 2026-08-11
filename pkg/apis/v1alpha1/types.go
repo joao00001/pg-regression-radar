@@ -34,6 +34,12 @@ type DeploySource struct {
 	SourceType string `json:"sourceType"`
 	// AppName narrows correlation to a single application; empty means all apps.
 	AppName string `json:"appName,omitempty"`
+	// ClusterName identifies the Kubernetes cluster this ingester instance is
+	// running against, as configured by the operator running it. It is used as
+	// the DeployEvent.Cluster fallback when the webhook payload itself doesn't
+	// carry destination-cluster identity (e.g. Argo Rollouts, or Flux without
+	// eventMetadata configured).
+	ClusterName string `json:"clusterName,omitempty"`
 }
 
 // DeployEvent is a normalised deploy event ingested from any supported source.

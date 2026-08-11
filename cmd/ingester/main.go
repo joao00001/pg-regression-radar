@@ -9,7 +9,8 @@
 //	  --source-type argocd \
 //	  --source-name prod-argocd \
 //	  --postgres-watch-ref prod-watch \
-//	  --app-name my-app
+//	  --app-name my-app \
+//	  --cluster-name prod-cluster-1
 package main
 
 import (
@@ -32,6 +33,7 @@ func main() {
 	sourceName := flag.String("source-name", "default", "Unique name for this DeploySource")
 	postgresWatchRef := flag.String("postgres-watch-ref", "", "PostgresWatch to associate events with")
 	appName := flag.String("app-name", "", "Filter events to a specific application name (empty = all)")
+	clusterName := flag.String("cluster-name", "", "Kubernetes cluster identity to stamp on DeployEvents when the webhook payload doesn't carry one (e.g. Argo Rollouts, Flux without eventMetadata)")
 	flag.Parse()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -42,6 +44,7 @@ func main() {
 		SourceType:       *sourceType,
 		PostgresWatchRef: *postgresWatchRef,
 		AppName:          *appName,
+		ClusterName:      *clusterName,
 	}
 
 	handler := ingester.NewHandler(store, source, logger)
