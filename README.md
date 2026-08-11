@@ -742,6 +742,7 @@ shift happens to overlap the analysis window (see `DetectedChangeAt` on the
 ## Contributing
 
 Pull requests are welcome. Please open an issue first for significant changes.
+Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) in all project spaces.
 
 ```bash
 go test ./...       # run all tests
