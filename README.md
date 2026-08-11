@@ -1,9 +1,9 @@
-# DeployLens — Postgres Performance Regression Detector
+# pg-regression-radar — Postgres Performance Regression Detector
 
 [![CI](https://github.com/joao00001/pg-regression-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/joao00001/pg-regression-radar/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-> **DeployLens** observes every query on your Postgres cluster and tells you, with
+> **pg-regression-radar** observes every query on your Postgres cluster and tells you, with
 > statistical evidence, which specific Kubernetes deployment degraded performance —
 > before it becomes an incident.
 
@@ -21,7 +21,7 @@ Today that question is answered manually: open Grafana, look at
 `pg_stat_statements`, try to recall when the last deploy happened, cross-reference
 timestamps by eye. No open-source tool closes that loop automatically.
 
-DeployLens does.
+pg-regression-radar does.
 
 ---
 
@@ -104,7 +104,7 @@ go run ./cmd/operator \
 ### Deploy on Kubernetes via Helm
 
 ```bash
-helm install deploylens ./deploy/helm/deploylens \
+helm install pg-regression-radar ./deploy/helm/deploylens \
   --set postgres.dsn="******cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
   --set postgres.clusterName=cnpg-cluster \
   --set postgres.namespace=production \
@@ -198,7 +198,7 @@ curl -X POST http://localhost:8080/webhook \
 
 ## Detection Algorithm
 
-DeployLens uses a two-stage approach (inspired by
+pg-regression-radar uses a two-stage approach (inspired by
 [Hunter — DataStax Labs](https://github.com/datastax-labs/hunter)):
 
 1. **E-divisive means** — energy-statistic based change-point detection that

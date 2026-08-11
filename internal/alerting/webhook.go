@@ -1,6 +1,6 @@
-// Package alerting sends notifications when a PerformanceRegression is detected.
-// The initial implementation supports a generic webhook (compatible with Slack's
-// incoming-webhook format).
+// Package alerting fires notifications when a PerformanceRegression is detected.
+// The initial implementation targets Slack's incoming-webhook format because
+// it is the lowest-friction integration for on-call workflows.
 package alerting
 
 import (
@@ -17,11 +17,9 @@ import (
 
 // WebhookConfig holds configuration for the generic/Slack webhook notifier.
 type WebhookConfig struct {
-	// URL is the destination webhook URL (e.g. a Slack incoming-webhook URL).
-	URL string
-	// Timeout is the HTTP client timeout (default: 10s).
-	Timeout time.Duration
-	// ClusterName is included in the notification for context.
+	URL         string
+	// Timeout guards against Slack outages blocking the operator goroutine.
+	Timeout     time.Duration
 	ClusterName string
 }
 
@@ -76,7 +74,7 @@ func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegr
 	}
 
 	payload := slackPayload{
-		Text: fmt.Sprintf(":rotating_light: *DeployLens* — performance regression detected on cluster *%s*", n.cfg.ClusterName),
+		Text: fmt.Sprintf(":rotating_light: *pg-regression-radar* — performance regression detected on cluster *%s*", n.cfg.ClusterName),
 		Attachments: []slackAttachment{
 			{
 				Color: "danger",

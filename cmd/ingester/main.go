@@ -1,4 +1,4 @@
-// ingester is the DeployLens deploy-event webhook receiver binary.
+// ingester is the pg-regression-radar deploy-event webhook receiver binary.
 // It accepts webhook payloads from ArgoCD, Argo Rollouts, and Flux and stores
 // normalised DeployEvents which the Correlation Engine can query.
 //

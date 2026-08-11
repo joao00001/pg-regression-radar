@@ -1,4 +1,4 @@
-// operator is the DeployLens operator binary.
+// operator is the pg-regression-radar all-in-one binary.
 // It wires together the Collector, Deploy Event Ingester, Correlation Engine,
 // and Alerting components into a single process suitable for running in
 // Kubernetes as a Deployment.
@@ -117,8 +117,8 @@ func main() {
 		}
 	}()
 
-	// ---- Deploy event processor ----
-	// Poll the ingester store for new events and run correlation analysis.
+	// Poll the ingester store every 5 s; a channel-based push would require
+	// locking changes across packages, so polling keeps the coupling minimal.
 	go func() {
 		seen := map[string]struct{}{}
 		ticker := time.NewTicker(5 * time.Second)

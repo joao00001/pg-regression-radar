@@ -1,6 +1,5 @@
-// Package collector scrapes pg_stat_statements from a Postgres cluster and
-// exposes the data as Prometheus metrics and an in-memory time-series store
-// used by the Correlation Engine.
+// Package collector scrapes pg_stat_statements and maintains a per-queryid
+// in-memory time-series consumed by the correlation engine.
 package collector
 
 import (
@@ -11,39 +10,30 @@ import (
 	"sync"
 	"time"
 
-	// Register the postgres driver.
+	// pq registers the "postgres" driver used by database/sql.
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// QuerySample holds a single observation of a query's runtime statistics as
-// reported by pg_stat_statements.
+// QuerySample is one observation of a query's runtime statistics from pg_stat_statements.
 type QuerySample struct {
-	// QueryID is the pg_stat_statements queryid (hash of the normalised query).
-	QueryID int64
-	// QueryText is a truncated version of the normalised query string.
-	QueryText string
-	// Calls is the cumulative call count since the last pg_stat_statements reset.
-	Calls int64
-	// TotalExecTimeMs is the cumulative execution time in milliseconds.
+	QueryID         int64
+	QueryText       string
+	Calls           int64
 	TotalExecTimeMs float64
-	// MeanExecTimeMs is the mean execution time in milliseconds for this scrape.
-	MeanExecTimeMs float64
-	// RecordedAt is the wall-clock time at which this sample was taken.
-	RecordedAt time.Time
+	MeanExecTimeMs  float64
+	RecordedAt      time.Time
 }
 
 // Config holds all configuration for the Collector.
 type Config struct {
-	// DSN is the Postgres connection string.
-	DSN string
-	// ScrapeInterval controls how often pg_stat_statements is scraped.
+	DSN            string
 	ScrapeInterval time.Duration
-	// ClusterName is used as a label on every metric / sample.
-	ClusterName string
-	// Namespace is used as a label on every metric / sample.
-	Namespace string
-	// MaxQueryTextLen limits how many bytes of query text are stored (default 200).
+	// ClusterName and Namespace are attached as Prometheus label values so
+	// multiple clusters can share the same metrics endpoint.
+	ClusterName     string
+	Namespace       string
+	// MaxQueryTextLen caps storage; long queries add no diagnostic value.
 	MaxQueryTextLen int
 }
 
@@ -66,7 +56,6 @@ type Collector struct {
 	mu      sync.RWMutex
 	samples map[int64][]QuerySample // keyed by queryid
 
-	// Prometheus metrics
 	scrapeTotal   prometheus.Counter
 	scrapeErrors  prometheus.Counter
 	meanExecTime  *prometheus.GaugeVec
@@ -96,22 +85,22 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 	}
 
 	scrapeTotal := prometheus.NewCounter(prometheus.CounterOpts{
-		Name:        "deploylens_collector_scrapes_total",
+		Name:        "pg_regression_radar_collector_scrapes_total",
 		Help:        "Total number of pg_stat_statements scrapes performed.",
 		ConstLabels: labels,
 	})
 	scrapeErrors := prometheus.NewCounter(prometheus.CounterOpts{
-		Name:        "deploylens_collector_scrape_errors_total",
+		Name:        "pg_regression_radar_collector_scrape_errors_total",
 		Help:        "Total number of scrape errors.",
 		ConstLabels: labels,
 	})
 	meanExecTime := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "deploylens_query_mean_exec_time_ms",
+		Name:        "pg_regression_radar_query_mean_exec_time_ms",
 		Help:        "Mean query execution time in milliseconds (last scrape).",
 		ConstLabels: labels,
 	}, []string{"queryid"})
 	callsTotal := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "deploylens_query_calls_total",
+		Name:        "pg_regression_radar_query_calls_total",
 		Help:        "Cumulative call count from pg_stat_statements.",
 		ConstLabels: labels,
 	}, []string{"queryid"})
@@ -209,7 +198,7 @@ func (c *Collector) scrape(ctx context.Context) error {
 			return fmt.Errorf("scan row: %w", err)
 		}
 
-		// Truncate query text for storage efficiency.
+		// Truncate to stay within the configured budget; tail bytes are diagnostically redundant.
 		if len(queryText) > c.cfg.MaxQueryTextLen {
 			queryText = queryText[:c.cfg.MaxQueryTextLen] + "…"
 		}

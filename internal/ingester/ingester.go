@@ -1,5 +1,6 @@
-// Package ingester receives deploy-event webhooks from ArgoCD, Argo Rollouts,
-// and Flux and normalises them into DeployEvent values.
+// Package ingester normalises deploy-event webhooks from ArgoCD, Argo Rollouts,
+// and Flux into a unified DeployEvent so the correlation engine has a single
+// source of truth regardless of GitOps tool.
 package ingester
 
 import (
@@ -97,7 +98,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ev.Source = h.source.Name
 
-	// Apply app-name filter if configured.
+	// Skip events that don't belong to the configured app so unrelated deploys
+	// never pollute the correlation window.
 	if h.source.AppName != "" && ev.App != h.source.AppName {
 		w.WriteHeader(http.StatusNoContent)
 		return

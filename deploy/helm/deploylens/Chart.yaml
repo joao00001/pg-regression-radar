@@ -1,6 +1,6 @@
 apiVersion: v2
-name: deploylens
-description: DeployLens — Postgres query performance regression detector correlated with Kubernetes deploys
+name: pg-regression-radar
+description: pg-regression-radar — Postgres query performance regression detector correlated with Kubernetes deploys
 type: application
 version: 0.1.0
 appVersion: "0.1.0"

@@ -1,4 +1,4 @@
-// collector is the DeployLens metric scraper binary.
+// collector is the pg-regression-radar metric scraper binary.
 // It scrapes pg_stat_statements from a Postgres cluster and exposes the data as
 // Prometheus metrics.
 //

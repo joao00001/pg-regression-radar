@@ -1,4 +1,4 @@
-# Default values for deploylens.
+# Default values for pg-regression-radar.
 # Override in your own values.yaml or via --set.
 
 replicaCount: 1
