@@ -744,7 +744,12 @@ shift happens to overlap the analysis window (see `DetectedChangeAt` on the
 Pull requests are welcome. Please open an issue first for significant changes.
 Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) in all project spaces.
 
+This repository tracks dependencies in two lock flows:
+- Go runtime/build dependencies via `go.mod` + `go.sum`
+- Python tooling dependencies via `pyproject.toml` + `uv.lock`
+
 ```bash
+uv lock --check      # validate uv.lock is up to date
 go test ./...       # run all tests
 go vet ./...        # static analysis
 go build ./...      # build all binaries
