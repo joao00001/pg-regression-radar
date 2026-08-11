@@ -1,0 +1,11 @@
+{{- if and (eq .Values.mode "manager") .Values.manager.createDefaultWatch }}
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: DeploySource
+metadata:
+  name: {{ include "deploylens.fullname" . }}-default
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+spec:
+  postgresWatchRef: {{ include "deploylens.fullname" . }}-default
+  sourceType: {{ .Values.ingester.sourceType | quote }}
+{{- end }}

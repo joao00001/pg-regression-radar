@@ -1,0 +1,22 @@
+{{- if and (eq .Values.mode "manager") .Values.manager.createDefaultWatch }}
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: PostgresWatch
+metadata:
+  name: {{ include "deploylens.fullname" . }}-default
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+spec:
+  clusterName: {{ .Values.postgres.clusterName | quote }}
+  # Reuses the same Secret the operator mode's Deployment reads the DSN
+  # from (templates/secret.yaml), rather than a plaintext spec.dsn field,
+  # so the credential doesn't end up in `kubectl get postgreswatch -o yaml`.
+  dsnSecretRef:
+    name: {{ include "deploylens.fullname" . }}-secret
+    key: dsn
+  scrapeIntervalSeconds: {{ .Values.postgres.scrapeIntervalSeconds }}
+  windowMinutes: {{ .Values.analysis.windowMinutes }}
+  minExecutions: {{ .Values.analysis.minExecutions }}
+  latencyChangeThreshold: {{ .Values.analysis.latencyThreshold | quote }}
+  pValueThreshold: {{ .Values.analysis.pValueThreshold | quote }}
+  slackWebhookUrl: {{ .Values.alerting.slackWebhookUrl | quote }}
+{{- end }}

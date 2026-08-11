@@ -1,6 +1,19 @@
 # Default values for pg-regression-radar.
 # Override in your own values.yaml or via --set.
 
+# mode selects which binary the chart deploys:
+#   "operator" (default) — cmd/operator/main.go: a single CLI-flag-configured
+#     process watching exactly one Postgres DSN, no Kubernetes API access,
+#     no CRDs required. Simplest to run; no HA.
+#   "manager" — cmd/manager/main.go: a controller-runtime manager that
+#     reconciles PostgresWatch/DeploySource/PerformanceRegression CRDs,
+#     supports many watches at once, and runs multiple replicas with
+#     leader election for HA (only the elected leader does work; a standby
+#     takes over automatically on failure via a coordination.k8s.io Lease).
+#     Recommended for production. See README.md, "Two ways to run
+#     pg-regression-radar", for the full comparison.
+mode: operator
+
 replicaCount: 1
 
 image:
@@ -27,13 +40,22 @@ postgres:
   dsn: ""
   clusterName: "default"
   namespace: "default"
+  # Used by mode: operator (cmd/operator's --scrape-interval flag, a Go
+  # duration string).
   scrapeInterval: "60s"
+  # Used by mode: manager's default PostgresWatch CR (scrapeIntervalSeconds
+  # is an int on the CRD, so it's a separate value from scrapeInterval
+  # above rather than something the chart parses out of a duration string).
+  scrapeIntervalSeconds: 60
 
-# Correlation engine settings.
+# Correlation engine settings. Used by both modes: operator passes these as
+# CLI flags; manager's default PostgresWatch CR (see manager.createDefaultWatch)
+# sets the equivalent spec fields.
 analysis:
   windowMinutes: 30
   minExecutions: 10
   latencyThreshold: "0.20"
+  pValueThreshold: "0.05"
 
 # Webhook ingester settings.
 ingester:
@@ -55,6 +77,45 @@ resources:
   requests:
     cpu: 50m
     memory: 64Mi
+
+# manager-specific settings; only relevant when mode: manager.
+manager:
+  replicaCount: 2
+
+  image:
+    repository: ghcr.io/joao00001/pg-regression-radar/manager
+    pullPolicy: IfNotPresent
+    tag: ""  # defaults to Chart.appVersion
+
+  # Leader election is what makes replicaCount > 1 safe: exactly one
+  # replica reconciles CRs and serves the webhook/pg-metrics listeners at
+  # any time. Disable only for single-replica local development, where the
+  # coordination.k8s.io Lease round-trip just adds startup latency.
+  leaderElection:
+    enabled: true
+
+  ports:
+    webhook: 8080     # deploy-event webhooks, one route per DeploySource CR
+    pgMetrics: 9090    # aggregated pg_stat_statements-derived metrics
+    ctrlMetrics: 8443  # controller-runtime's own reconcile/workqueue metrics
+    healthProbe: 8081  # /healthz and /readyz
+
+  # When true, the chart also renders one PostgresWatch and one
+  # DeploySource CR from the postgres/analysis/ingester/alerting values
+  # above, so switching `mode` from "operator" to "manager" reproduces the
+  # same single-cluster behaviour without hand-writing CRs first. Turn
+  # this off once you manage PostgresWatch/DeploySource CRs directly
+  # (e.g. to watch more than one Postgres cluster from one manager
+  # Deployment).
+  createDefaultWatch: true
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
 
 nodeSelector: {}
 tolerations: []
