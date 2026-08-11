@@ -86,6 +86,7 @@ func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegr
 					{Title: "Latency After", Value: fmt.Sprintf("%.2f ms", r.MeanLatencyAfter), Short: true},
 					{Title: "Change Factor", Value: fmt.Sprintf("%.2fx", r.LatencyChangeFactor), Short: true},
 					{Title: "Confidence", Value: fmt.Sprintf("%.0f%%", r.ConfidenceScore*100), Short: true},
+					{Title: "Change Point", Value: r.DetectedChangeAt.Format(time.RFC3339), Short: true},
 				},
 			},
 		},

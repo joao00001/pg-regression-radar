@@ -14,7 +14,8 @@
 //	  --slack-url https://hooks.slack.com/... \
 //	  --window-minutes 30 \
 //	  --min-executions 10 \
-//	  --latency-threshold 0.20
+//	  --latency-threshold 0.20 \
+//	  --changepoint-tolerance 6m
 package main
 
 import (
@@ -48,6 +49,7 @@ func main() {
 	windowMinutes := flag.Int("window-minutes", 30, "Analysis window (minutes before/after deploy)")
 	minExecutions := flag.Int64("min-executions", 10, "Minimum query executions per window")
 	latencyThreshold := flag.Float64("latency-threshold", 0.20, "Minimum relative latency increase to flag")
+	changePointTolerance := flag.Duration("changepoint-tolerance", 0, "Max distance between the E-divisive change point and the deploy timestamp still attributed to that deploy (0 = auto: 20% of window, floor 2m)")
 	flag.Parse()
 
 	if *dsn == "" {
@@ -83,6 +85,7 @@ func main() {
 		WindowMinutes:          *windowMinutes,
 		MinExecutions:          *minExecutions,
 		LatencyChangeThreshold: *latencyThreshold,
+		ChangePointTolerance:   *changePointTolerance,
 	}, col, logger)
 
 	// ---- Alerting ----

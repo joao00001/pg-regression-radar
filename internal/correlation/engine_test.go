@@ -2,6 +2,7 @@ package correlation_test
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -278,4 +279,173 @@ func makeSamplesFromLatencies(qid int64, pre, post []float64, deployAt time.Time
 		})
 	}
 	return all
+}
+
+// ----- two-stage detection tests (E-divisive locates, Welch confirms) -----
+
+// TestAnalyse_TwoStage_ToleratesDelayedRollout verifies that a regression
+// which only becomes observable a few minutes after the deploy timestamp
+// (as expected from a rolling update that takes time to replace every pod)
+// is still attributed to the deploy, because the real change point found by
+// E-divisive falls within ChangePointTolerance.
+func TestAnalyse_TwoStage_ToleratesDelayedRollout(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now().UTC()
+	deployAt := now
+	step := time.Minute
+
+	preSamples := buildSamples(66, "SELECT 1", deployAt.Add(-15*step), step, 15, 10.0) // t=-15..-1, fast
+	postFast := buildSamples(66, "SELECT 1", deployAt.Add(1*step), step, 2, 10.0)      // t=1,2: rollout still in progress
+	postSlow := buildSamples(66, "SELECT 1", deployAt.Add(3*step), step, 13, 50.0)     // t=3..15: regressed
+
+	postSamples := append(postFast, postSlow...)
+
+	src := &fakeSampleSource{
+		data: map[int64][]collector.QuerySample{
+			66: append(append([]collector.QuerySample{}, preSamples...), postSamples...),
+		},
+	}
+
+	engine := correlation.New(correlation.Config{
+		WindowMinutes:          30,
+		MinExecutions:          10,
+		LatencyChangeThreshold: 0.20,
+		PValueThreshold:        0.05,
+	}, src, nil)
+
+	results := engine.Analyse(v1alpha1.DeployEvent{ID: "deploy-delayed", Timestamp: deployAt})
+
+	var found *v1alpha1.PerformanceRegression
+	for i := range results {
+		if results[i].QueryID == 66 {
+			found = &results[i]
+		}
+	}
+	if found == nil {
+		t.Fatal("no result for query 66")
+	}
+	if found.Status != v1alpha1.StatusDetected {
+		t.Fatalf("expected Detected (change point 3m after deploy is within default tolerance), got %s", found.Status)
+	}
+	if found.DetectedChangeAt.IsZero() {
+		t.Fatal("expected DetectedChangeAt to be populated for a Detected regression")
+	}
+	gotOffset := found.DetectedChangeAt.Sub(deployAt)
+	if gotOffset < 2*time.Minute || gotOffset > 4*time.Minute {
+		t.Errorf("expected DetectedChangeAt ~3m after deploy, got offset %s", gotOffset)
+	}
+}
+
+// TestAnalyse_TwoStage_RejectsDistantChangePoint proves the core value of the
+// two-stage pipeline: a naive pre/post-deploy mean comparison would flag this
+// as a regression, but the REAL shift in the data happened 10 minutes before
+// the deploy (i.e. unrelated to it). Because the E-divisive change point
+// falls outside ChangePointTolerance, the engine must reject it.
+func TestAnalyse_TwoStage_RejectsDistantChangePoint(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now().UTC()
+	deployAt := now
+	step := time.Minute
+
+	segA := buildSamples(88, "SELECT 1", deployAt.Add(-30*step), step, 20, 10.0) // t=-30..-11, fast (old regime)
+	segB := buildSamples(88, "SELECT 1", deployAt.Add(-10*step), step, 10, 50.0) // t=-10..-1, slow (real shift, unrelated to the deploy)
+	segPost := buildSamples(88, "SELECT 1", deployAt, step, 30, 50.0)            // t=0..29, slow (steady state)
+
+	preSamples := append(segA, segB...)
+	postSamples := segPost
+
+	src := &fakeSampleSource{
+		data: map[int64][]collector.QuerySample{
+			88: append(append([]collector.QuerySample{}, preSamples...), postSamples...),
+		},
+	}
+
+	engine := correlation.New(correlation.Config{
+		WindowMinutes:          30,
+		MinExecutions:          10,
+		LatencyChangeThreshold: 0.20,
+		PValueThreshold:        0.05,
+		// ChangePointTolerance left at 0 => defaults to 20% of the 30m
+		// window (6m), which is well short of the real 10m offset.
+	}, src, nil)
+
+	results := engine.Analyse(v1alpha1.DeployEvent{ID: "deploy-distant", Timestamp: deployAt})
+
+	var found *v1alpha1.PerformanceRegression
+	for i := range results {
+		if results[i].QueryID == 88 {
+			found = &results[i]
+		}
+	}
+	if found == nil {
+		t.Fatal("no result for query 88")
+	}
+
+	// Sanity check on the test's own premise: the naive mean comparison
+	// alone really would look like a regression here.
+	if found.LatencyChangeFactor < 1.2 {
+		t.Fatalf("test setup invalid: naive change factor too small (%.2f) to exercise the naive-vs-real-changepoint distinction", found.LatencyChangeFactor)
+	}
+
+	if found.Status != v1alpha1.StatusNoRegression {
+		t.Errorf("expected NoRegression (real change point is 10m before the deploy, outside tolerance), got %s (change_at=%s)",
+			found.Status, found.DetectedChangeAt)
+	}
+}
+
+// TestAnalyse_TwoStage_NoiseRejected verifies that pure noise around a
+// constant mean — with NO genuine regime shift anywhere in the window — is
+// rejected even when sampling variance happens to push the naive pre/post
+// means apart. LatencyChangeThreshold is set near zero so the cheap
+// pre-filter can't hide the point of the test: rejection must come from
+// E-divisive finding no real change point (or, failing that, from Welch's
+// t-test on whatever segments it does find).
+func TestAnalyse_TwoStage_NoiseRejected(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now().UTC()
+	step := time.Minute
+	n := 30
+
+	rng := rand.New(rand.NewSource(42))
+	noise := func(qid int64, t0 time.Time, n int) []collector.QuerySample {
+		samples := make([]collector.QuerySample, n)
+		for i := range samples {
+			samples[i] = collector.QuerySample{
+				QueryID:        qid,
+				QueryText:      "SELECT * FROM noisy",
+				Calls:          int64(i + 1),
+				MeanExecTimeMs: 20 + rng.NormFloat64()*6, // same distribution across the whole window
+				RecordedAt:     t0.Add(step * time.Duration(i)),
+			}
+		}
+		return samples
+	}
+
+	preSamples := noise(55, now.Add(-time.Duration(n)*step), n)
+	postSamples := noise(55, now.Add(step), n)
+
+	src := &fakeSampleSource{
+		data: map[int64][]collector.QuerySample{
+			55: append(append([]collector.QuerySample{}, preSamples...), postSamples...),
+		},
+	}
+
+	engine := correlation.New(correlation.Config{
+		WindowMinutes:          20,
+		MinExecutions:          10,
+		LatencyChangeThreshold: 0.0001,
+		PValueThreshold:        0.05,
+	}, src, nil)
+
+	results := engine.Analyse(v1alpha1.DeployEvent{ID: "deploy-noise", Timestamp: now})
+
+	for _, r := range results {
+		if r.QueryID == 55 && r.Status == v1alpha1.StatusDetected {
+			t.Errorf("false positive on pure noise: got Detected (change_factor=%.2f, detected_change_at=%s)",
+				r.LatencyChangeFactor, r.DetectedChangeAt)
+		}
+	}
 }
