@@ -28,25 +28,25 @@ pg-regression-radar does.
 ## How It Works
 
 ```
-┌─────────────────────┐      ┌──────────────────────┐
+┌──────────────────────┐      ┌───────────────────────┐
 │  Postgres (CNPG)     │      │  ArgoCD / Argo        │
 │  pg_stat_statements  │      │  Rollouts / Flux      │
 │  pg_stat_monitor     │      │  (deploy events)      │
 └──────────┬───────────┘      └──────────┬────────────┘
            │ scrape (30–60 s)            │ webhook
            ▼                             ▼
-   ┌───────────────┐            ┌──────────────────┐
+   ┌────────────────┐            ┌───────────────────┐
    │  Collector     │            │  Deploy Event     │
    │  (Go)          │            │  Ingester (Go)    │
    └───────┬────────┘            └─────────┬─────────┘
            │                               │
            ▼                               ▼
-   ┌────────────────────────────────────────────┐
+   ┌─────────────────────────────────────────────┐
    │   In-memory time-series store               │
    │   (Prometheus metrics exposed on /metrics)  │
-   └───────────────────┬──────────────────────────┘
+   └───────────────────┬─────────────────────────┘
                         ▼
-              ┌───────────────────┐
+              ┌────────────────────┐
               │  Correlation       │
               │  Engine (Go)       │
               │  • E-divisive      │
@@ -54,11 +54,11 @@ pg-regression-radar does.
               │  • Welch's t-test  │
               └─────────┬──────────┘
                         ▼
-              ┌───────────────────┐
+              ┌────────────────────┐
               │  Alerting          │
               │  • Slack / webhook │
               │  • CRD status      │
-              └───────────────────┘
+              └────────────────────┘
 ```
 
 1. **Collector** — scrapes `pg_stat_statements` every 60 s and keeps an
