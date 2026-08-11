@@ -9,7 +9,8 @@
 //	  --scrape-interval 60s \
 //	  --cluster-name my-cluster \
 //	  --namespace production \
-//	  --listen :9090
+//	  --listen :9090 \
+//	  --retention-minutes 180
 package main
 
 import (
@@ -33,6 +34,7 @@ func main() {
 	clusterName := flag.String("cluster-name", "default", "CloudNativePG cluster name")
 	namespace := flag.String("namespace", "default", "Kubernetes namespace")
 	listen := flag.String("listen", ":9090", "Prometheus metrics listen address")
+	retentionMinutes := flag.Int("retention-minutes", 180, "How long (minutes) to retain in-memory query samples before pruning them; should stay well above the correlation window(s) analysed against this data")
 	flag.Parse()
 
 	if *dsn == "" {
@@ -44,10 +46,11 @@ func main() {
 	reg := prometheus.NewRegistry()
 
 	col, err := collector.New(collector.Config{
-		DSN:            *dsn,
-		ScrapeInterval: *scrapeInterval,
-		ClusterName:    *clusterName,
-		Namespace:      *namespace,
+		DSN:               *dsn,
+		ScrapeInterval:    *scrapeInterval,
+		ClusterName:       *clusterName,
+		Namespace:         *namespace,
+		RetentionDuration: time.Duration(*retentionMinutes) * time.Minute,
 	}, logger, reg)
 	if err != nil {
 		logger.Error("failed to create collector", "err", err)

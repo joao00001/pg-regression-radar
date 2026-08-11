@@ -15,7 +15,8 @@
 //	  --window-minutes 30 \
 //	  --min-executions 10 \
 //	  --latency-threshold 0.20 \
-//	  --changepoint-tolerance 6m
+//	  --changepoint-tolerance 6m \
+//	  --retention-minutes 180
 package main
 
 import (
@@ -50,6 +51,7 @@ func main() {
 	minExecutions := flag.Int64("min-executions", 10, "Minimum query executions per window")
 	latencyThreshold := flag.Float64("latency-threshold", 0.20, "Minimum relative latency increase to flag")
 	changePointTolerance := flag.Duration("changepoint-tolerance", 0, "Max distance between the E-divisive change point and the deploy timestamp still attributed to that deploy (0 = auto: 20% of window, floor 2m)")
+	retentionMinutes := flag.Int("retention-minutes", 180, "How long (minutes) the collector retains in-memory query samples before pruning them; should stay well above 2x --window-minutes")
 	flag.Parse()
 
 	if *dsn == "" {
@@ -62,10 +64,11 @@ func main() {
 
 	// ---- Collector ----
 	col, err := collector.New(collector.Config{
-		DSN:            *dsn,
-		ScrapeInterval: *scrapeInterval,
-		ClusterName:    *clusterName,
-		Namespace:      *namespace,
+		DSN:               *dsn,
+		ScrapeInterval:    *scrapeInterval,
+		ClusterName:       *clusterName,
+		Namespace:         *namespace,
+		RetentionDuration: time.Duration(*retentionMinutes) * time.Minute,
 	}, logger, reg)
 	if err != nil {
 		logger.Error("failed to create collector", "err", err)
