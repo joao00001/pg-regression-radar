@@ -35,3 +35,87 @@ jobs:
 
       - name: Test
         run: go test -race -count=1 ./...
+
+  # Runs the tests behind the "integration" build tag against a real
+  # PostgreSQL server (internal/storage/postgres, internal/collector),
+  # instead of the fakes/mocks the default build-and-test job uses. See each
+  # test file's doc comment for how to run it the same way locally.
+  integration-postgres:
+    name: Integration tests (real PostgreSQL)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Start PostgreSQL with pg_stat_statements preloaded
+        # pg_stat_statements can only be activated via shared_preload_libraries
+        # at server start (ALTER SYSTEM + reload is not enough for this
+        # extension), so Postgres is started directly with `docker run`
+        # rather than as a "services:" container, which offers no way to
+        # override the entrypoint's command-line arguments.
+        run: |
+          docker run -d --name pgrr-test \
+            -e POSTGRES_PASSWORD=test \
+            -p 5432:5432 \
+            postgres:16 \
+            postgres -c shared_preload_libraries=pg_stat_statements
+
+          echo "Waiting for PostgreSQL to accept connections..."
+          for i in $(seq 1 30); do
+            if docker exec pgrr-test pg_isready -U postgres >/dev/null 2>&1; then
+              echo "PostgreSQL is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "PostgreSQL did not become ready in time." >&2
+          docker logs pgrr-test || true
+          exit 1
+
+      - name: Run integration tests
+        env:
+          PGRR_TEST_DSN: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
+        run: go test -tags=integration -race -count=1 ./internal/storage/... ./internal/collector/...
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker rm -f pgrr-test || true
+
+  # Runs internal/controller's TestEnvtest_* suite against a real, locally
+  # provisioned kube-apiserver + etcd (via controller-runtime's envtest),
+  # instead of the fake client the default build-and-test job exercises. See
+  # internal/controller/suite_test.go's doc comment for how to run it the
+  # same way locally.
+  envtest:
+    name: Controller tests (real kube-apiserver)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install setup-envtest
+        run: go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+      - name: Provision envtest binaries (etcd + kube-apiserver)
+        # Version chosen to match the k8s.io/* dependency line in go.mod;
+        # bump it alongside those dependencies if they're upgraded together.
+        run: echo "KUBEBUILDER_ASSETS=$($(go env GOPATH)/bin/setup-envtest use 1.31.0 -p path)" >> "$GITHUB_ENV"
+
+      - name: Run envtest-backed controller tests
+        run: go test ./internal/controller/... -run TestEnvtest -v

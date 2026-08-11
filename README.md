@@ -744,9 +744,25 @@ shift happens to overlap the analysis window (see `DetectedChangeAt` on the
 Pull requests are welcome. Please open an issue first for significant changes.
 
 ```bash
-go test ./...       # run all tests
+go test ./...       # run all tests (fakes/mocks only, no external services needed)
 go vet ./...        # static analysis
 go build ./...      # build all binaries
+```
+
+CI also runs two extra suites against real infrastructure on every push/PR
+(see `.github/workflows/ci.yml`), which you can reproduce locally:
+
+```bash
+# Real PostgreSQL (internal/storage/postgres, internal/collector):
+docker run -d --name pgrr-test -e POSTGRES_PASSWORD=test -p 5432:5432 \
+  postgres:16 postgres -c shared_preload_libraries=pg_stat_statements
+export PGRR_TEST_DSN="postgres://postgres:test@localhost:5432/postgres?sslmode=disable"
+go test -tags=integration ./internal/storage/... ./internal/collector/...
+
+# Real kube-apiserver + etcd (internal/controller):
+go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+export KUBEBUILDER_ASSETS="$(setup-envtest use 1.31.0 -p path)"
+go test ./internal/controller/... -run TestEnvtest -v
 ```
 
 ---
