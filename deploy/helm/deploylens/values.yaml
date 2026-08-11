@@ -1,0 +1,61 @@
+# Default values for deploylens.
+# Override in your own values.yaml or via --set.
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/joao00001/pg-regression-radar/operator
+  pullPolicy: IfNotPresent
+  tag: ""  # defaults to Chart.appVersion
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+
+# Postgres connection string for the collector.
+# Override this with a secret reference in production.
+postgres:
+  dsn: ""
+  clusterName: "default"
+  namespace: "default"
+  scrapeInterval: "60s"
+
+# Correlation engine settings.
+analysis:
+  windowMinutes: 30
+  minExecutions: 10
+  latencyThreshold: "0.20"
+
+# Webhook ingester settings.
+ingester:
+  sourceType: "argocd"
+
+# Alerting settings.
+alerting:
+  slackWebhookUrl: ""
+
+service:
+  type: ClusterIP
+  webhookPort: 8080
+  metricsPort: 9090
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

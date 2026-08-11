@@ -1,0 +1,17 @@
+apiVersion: v2
+name: deploylens
+description: DeployLens — Postgres query performance regression detector correlated with Kubernetes deploys
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - postgres
+  - kubernetes
+  - performance
+  - monitoring
+  - gitops
+home: https://github.com/joao00001/pg-regression-radar
+sources:
+  - https://github.com/joao00001/pg-regression-radar
+maintainers:
+  - name: Joao (EDB)
