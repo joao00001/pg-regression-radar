@@ -130,9 +130,9 @@ func TestHandler_FluxWebhook(t *testing.T) {
 			"namespace": "flux-system",
 			"kind":      "Kustomization",
 		},
-		"severity": "info",
-		"message":  "Reconciliation finished",
-		"metadata": map[string]string{"revision": "main@sha1:abc123"},
+		"severity":  "info",
+		"message":   "Reconciliation finished",
+		"metadata":  map[string]string{"revision": "main@sha1:abc123"},
 		"timestamp": now.Format(time.RFC3339),
 	}
 
@@ -169,7 +169,6 @@ func TestHandler_MethodNotAllowed(t *testing.T) {
 		t.Errorf("expected 405, got %d", rr.Code)
 	}
 }
-
 
 // --- Cluster attribution tests ---
 //

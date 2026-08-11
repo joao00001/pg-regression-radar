@@ -17,7 +17,7 @@ import (
 
 // WebhookConfig holds configuration for the generic/Slack webhook notifier.
 type WebhookConfig struct {
-	URL         string
+	URL string
 	// Timeout guards against Slack outages blocking the operator goroutine.
 	Timeout     time.Duration
 	ClusterName string

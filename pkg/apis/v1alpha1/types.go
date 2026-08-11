@@ -44,14 +44,14 @@ type DeploySource struct {
 
 // DeployEvent is a normalised deploy event ingested from any supported source.
 type DeployEvent struct {
-	ID        string `json:"id"`
+	ID string `json:"id"`
 	// Source links back to the DeploySource for multi-source deployments.
-	Source    string `json:"source"`
-	App       string `json:"app"`
-	Cluster   string `json:"cluster"`
-	Namespace string `json:"namespace"`
-	Revision  string `json:"revision"`
-	ImageTag  string `json:"imageTag,omitempty"`
+	Source    string    `json:"source"`
+	App       string    `json:"app"`
+	Cluster   string    `json:"cluster"`
+	Namespace string    `json:"namespace"`
+	Revision  string    `json:"revision"`
+	ImageTag  string    `json:"imageTag,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
@@ -66,16 +66,16 @@ const (
 
 // PerformanceRegression is created by the Correlation Engine when it analyses a deploy.
 type PerformanceRegression struct {
-	Name          string `json:"name"`
-	Namespace     string `json:"namespace"`
-	DeployEventID string `json:"deployEventId"`
-	QueryID       int64  `json:"queryId"`
-	QueryText     string `json:"queryText"`
-	Status        PerformanceRegressionStatus `json:"status"`
-	ConfidenceScore     float64 `json:"confidenceScore"`
-	MeanLatencyBefore   float64 `json:"meanLatencyBefore"`
-	MeanLatencyAfter    float64 `json:"meanLatencyAfter"`
-	LatencyChangeFactor float64 `json:"latencyChangeFactor"`
+	Name                string                      `json:"name"`
+	Namespace           string                      `json:"namespace"`
+	DeployEventID       string                      `json:"deployEventId"`
+	QueryID             int64                       `json:"queryId"`
+	QueryText           string                      `json:"queryText"`
+	Status              PerformanceRegressionStatus `json:"status"`
+	ConfidenceScore     float64                     `json:"confidenceScore"`
+	MeanLatencyBefore   float64                     `json:"meanLatencyBefore"`
+	MeanLatencyAfter    float64                     `json:"meanLatencyAfter"`
+	LatencyChangeFactor float64                     `json:"latencyChangeFactor"`
 	// ExternalCauseSuspected hints that CPU/IO also shifted, so the deploy may not be the sole cause.
 	ExternalCauseSuspected bool `json:"externalCauseSuspected,omitempty"`
 	// DetectedChangeAt is the timestamp of the change point the E-divisive
@@ -85,5 +85,5 @@ type PerformanceRegression struct {
 	// lag delay the observable effect of a deploy. Zero unless Status is
 	// Detected.
 	DetectedChangeAt time.Time `json:"detectedChangeAt,omitempty"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt        time.Time `json:"createdAt"`
 }

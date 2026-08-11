@@ -254,10 +254,10 @@ type fluxPayload struct {
 		Namespace string `json:"namespace"`
 		Kind      string `json:"kind"`
 	} `json:"involvedObject"`
-	Message  string    `json:"message"`
-	Severity string    `json:"severity"`
-	Metadata map[string]string `json:"metadata"`
-	Timestamp time.Time `json:"timestamp"`
+	Message   string            `json:"message"`
+	Severity  string            `json:"severity"`
+	Metadata  map[string]string `json:"metadata"`
+	Timestamp time.Time         `json:"timestamp"`
 }
 
 func (h *Handler) parseFluxPayload(r *http.Request) (v1alpha1.DeployEvent, error) {
