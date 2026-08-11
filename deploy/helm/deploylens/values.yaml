@@ -28,6 +28,11 @@ postgres:
   clusterName: "default"
   namespace: "default"
   scrapeInterval: "60s"
+  # How long (minutes) the collector retains in-memory pg_stat_statements
+  # samples before pruning them. Default is 3x the default 30-minute
+  # analysis window's full before+after span (2*30=60 min); keep this well
+  # above 2 * analysis.windowMinutes if you raise that value.
+  retentionMinutes: 180
 
 # Correlation engine settings.
 analysis:

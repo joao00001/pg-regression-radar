@@ -43,6 +43,7 @@ spec:
             - --window-minutes={{ .Values.analysis.windowMinutes }}
             - --min-executions={{ .Values.analysis.minExecutions }}
             - --latency-threshold={{ .Values.analysis.latencyThreshold }}
+            - --retention-minutes={{ .Values.postgres.retentionMinutes }}
           env:
             - name: POSTGRES_DSN
               valueFrom:
