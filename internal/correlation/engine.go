@@ -24,6 +24,22 @@ type Config struct {
 	LatencyChangeThreshold float64
 	// PValueThreshold — lower values increase specificity at the cost of sensitivity.
 	PValueThreshold float64
+	// ChangePointTolerance bounds how far the change point located by
+	// E-divisive (stage 1) may sit from the deploy timestamp and still be
+	// attributed to that deploy. Rolling deploys take time to roll out across
+	// replicas, connections drain gradually, and the collector itself has
+	// scrape-interval granularity — so the real regime shift in the query
+	// latency series rarely lands exactly on ev.Timestamp. If the change
+	// point E-divisive finds is farther than this from the deploy, the shift
+	// is treated as unrelated background noise, not a regression caused by
+	// this deploy.
+	//
+	// Zero means "auto": 20% of the analysis window, floored at 2 minutes.
+	// The percentage (rather than a fixed duration) keeps the same relative
+	// slack whether operators configure a tight 10-minute window or a loose
+	// 60-minute one; the floor keeps short windows from getting an
+	// unreasonably tiny allowance.
+	ChangePointTolerance time.Duration
 }
 
 func (c *Config) defaults() {
@@ -38,6 +54,12 @@ func (c *Config) defaults() {
 	}
 	if c.PValueThreshold == 0 {
 		c.PValueThreshold = 0.05
+	}
+	if c.ChangePointTolerance == 0 {
+		c.ChangePointTolerance = time.Duration(c.WindowMinutes) * time.Minute / 5
+		if c.ChangePointTolerance < 2*time.Minute {
+			c.ChangePointTolerance = 2 * time.Minute
+		}
 	}
 }
 
@@ -89,8 +111,29 @@ func (e *Engine) Analyse(ev v1alpha1.DeployEvent) []v1alpha1.PerformanceRegressi
 	return results
 }
 
-// evaluateQuery runs the detection for a single query and returns a
+// evaluateQuery runs the two-stage detection for a single query and returns a
 // PerformanceRegression describing the outcome.
+//
+// Stage 0 (cheap pre-filter): reject outright if the naive pre/post means —
+// computed over the whole pre-deploy and post-deploy windows — don't differ
+// by at least LatencyChangeThreshold. This avoids running the O(n^2)
+// E-divisive scan on queries that obviously didn't regress.
+//
+// Stage 1 (E-divisive): for queries that pass the pre-filter, build the
+// combined, chronologically-ordered series covering the whole window and
+// locate the single most significant change point in it. This does NOT
+// assume the shift happens exactly at ev.Timestamp — rolling deploys,
+// connection draining and scrape lag all delay the observable effect.
+//
+// Stage 2 (Welch's t-test): confirm that the two segments defined by the
+// change point E-divisive actually found (not the naive deploy-timestamp
+// split) are statistically different.
+//
+// A PerformanceRegression is only marked Detected when the change point
+// exists, lies within ChangePointTolerance of the deploy timestamp, AND the
+// t-test on the real segments is significant. Any one of those failing —
+// including a naive mean shift with no corresponding change point, or a
+// genuine change point that's unrelated to this deploy — yields NoRegression.
 func (e *Engine) evaluateQuery(
 	ev v1alpha1.DeployEvent,
 	queryID int64,
@@ -130,6 +173,9 @@ func (e *Engine) evaluateQuery(
 		changeFactor = meanPost / meanPre
 	}
 
+	// These are always reported relative to the deploy timestamp (not the
+	// change point) because that's the comparison operators actually care
+	// about: "what did latency look like before/after this deploy".
 	base.MeanLatencyBefore = meanPre
 	base.MeanLatencyAfter = meanPost
 	base.LatencyChangeFactor = changeFactor
@@ -140,14 +186,72 @@ func (e *Engine) evaluateQuery(
 		return base
 	}
 
-	// Run Welch's t-test to confirm the mean shift is not attributable to chance.
-	tStat, pValue := welchTTest(preLatencies, postLatencies)
+	// ---- Stage 1: locate the real change point (E-divisive) ----
+	allSamples := make([]collector.QuerySample, 0, len(preSamples)+len(postSamples))
+	allSamples = append(allSamples, preSamples...)
+	allSamples = append(allSamples, postSamples...)
+	sort.Slice(allSamples, func(i, j int) bool {
+		return allSamples[i].RecordedAt.Before(allSamples[j].RecordedAt)
+	})
+	series := extractLatencies(allSamples)
+
+	minSegLen := changePointMinSegLen(len(series))
+	cps := EDivisive(series, minSegLen, 1)
+	if len(cps) == 0 {
+		// EDivisive itself only ever returns candidates with a positive
+		// E-statistic (see its break condition), so "no candidates" already
+		// means "no statistically relevant regime shift anywhere in the
+		// window". We deliberately do NOT add a second, separate minimum
+		// E-statistic threshold here: the energy statistic's magnitude is in
+		// raw latency units and isn't comparable across queries with
+		// different latency scales, whereas the p-value computed in stage 2
+		// already is a normalised, comparable significance measure. Rejecting
+		// on "no change point found" here, and on p-value in stage 2, avoids
+		// a second, redundant, harder-to-tune knob.
+		e.logger.Debug("correlation: no change point found, rejecting naive mean shift",
+			"query_id", queryID,
+			"change_factor", changeFactor)
+		base.Status = v1alpha1.StatusNoRegression
+		return base
+	}
+	cp := cps[0]
+	// cp.Index is the boundary sample: series[:cp.Index] is the segment
+	// E-divisive considers "before", series[cp.Index:] is "after". We
+	// attribute the change to the timestamp of the first "after" sample.
+	changeAt := allSamples[cp.Index].RecordedAt
+
+	// The change point must fall close to the deploy to be attributable to
+	// it — otherwise we'd be alerting on some unrelated shift that merely
+	// happens to overlap the analysis window.
+	distance := changeAt.Sub(ev.Timestamp)
+	if distance < 0 {
+		distance = -distance
+	}
+	if distance > e.cfg.ChangePointTolerance {
+		e.logger.Debug("correlation: change point too far from deploy, rejecting",
+			"query_id", queryID,
+			"change_at", changeAt,
+			"deploy_at", ev.Timestamp,
+			"distance", distance,
+			"tolerance", e.cfg.ChangePointTolerance)
+		base.Status = v1alpha1.StatusNoRegression
+		return base
+	}
+
+	// ---- Stage 2: confirm significance (Welch's t-test) on the REAL segments ----
+	// Deliberately NOT preLatencies/postLatencies (the naive deploy-timestamp
+	// split): we test the two segments E-divisive actually found, which may
+	// be offset from ev.Timestamp by up to ChangePointTolerance.
+	preSeg := series[:cp.Index]
+	postSeg := series[cp.Index:]
+	tStat, pValue := welchTTest(preSeg, postSeg)
 	_ = tStat
 
 	e.logger.Debug("correlation: t-test result",
 		"query_id", queryID,
 		"p_value", pValue,
-		"change_factor", changeFactor)
+		"change_factor", changeFactor,
+		"change_at", changeAt)
 
 	if pValue > e.cfg.PValueThreshold {
 		base.Status = v1alpha1.StatusNoRegression
@@ -163,13 +267,28 @@ func (e *Engine) evaluateQuery(
 
 	base.Status = v1alpha1.StatusDetected
 	base.ConfidenceScore = confidence
+	base.DetectedChangeAt = changeAt
 
 	e.logger.Info("correlation: regression detected",
 		"query_id", queryID,
 		"change_factor", changeFactor,
-		"confidence", confidence)
+		"confidence", confidence,
+		"change_at", changeAt)
 
 	return base
+}
+
+// changePointMinSegLen picks E-divisive's minimum segment length as a
+// function of the combined series length: large enough that the energy
+// statistic isn't swayed by a couple of noisy points, small enough that a
+// change point near either edge of the window (e.g. right after the deploy,
+// with few post-deploy samples collected yet) is still reachable.
+func changePointMinSegLen(n int) int {
+	minSegLen := n / 10
+	if minSegLen < 3 {
+		minSegLen = 3
+	}
+	return minSegLen
 }
 
 // ----- statistical helpers -----
@@ -346,7 +465,7 @@ func logBeta(a, b float64) float64 {
 
 // ChangePoint represents a detected change point in a time series.
 type ChangePoint struct {
-	Index      int
+	Index int
 	// EStatistic is higher for more pronounced regime shifts.
 	EStatistic float64
 }

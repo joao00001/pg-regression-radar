@@ -72,5 +72,12 @@ type PerformanceRegression struct {
 	LatencyChangeFactor float64 `json:"latencyChangeFactor"`
 	// ExternalCauseSuspected hints that CPU/IO also shifted, so the deploy may not be the sole cause.
 	ExternalCauseSuspected bool `json:"externalCauseSuspected,omitempty"`
+	// DetectedChangeAt is the timestamp of the change point the E-divisive
+	// stage actually located in the query latency series. It may differ
+	// slightly from DeployEventID's deploy timestamp (within the engine's
+	// configured tolerance) since rollouts, connection draining and scrape
+	// lag delay the observable effect of a deploy. Zero unless Status is
+	// Detected.
+	DetectedChangeAt time.Time `json:"detectedChangeAt,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 }
