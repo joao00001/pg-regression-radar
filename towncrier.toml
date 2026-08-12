@@ -1,0 +1,73 @@
+# Configuration for `towncrier` (https://towncrier.readthedocs.io/), which
+# builds CHANGELOG.md from the per-PR news fragments in changelog.d/.
+#
+# This is a standalone `towncrier.toml` (not `[tool.towncrier]` inside a
+# `pyproject.toml`) because this repo is a Go project with no Python
+# package of its own — towncrier is only a CI-time/release-time tool here
+# (this repo's docs site already depends on Python/mkdocs, so a second
+# small Python dependency for release tooling isn't a new burden). A
+# standalone `towncrier.toml` takes precedence over `pyproject.toml` if
+# both existed, and still uses the same `[tool.towncrier]` namespace as
+# `pyproject.toml` would — see
+# https://towncrier.readthedocs.io/en/stable/configuration.html.
+#
+# Local usage:
+#   pip install towncrier
+#   towncrier build --draft --version v0.5.0   # preview only, writes nothing
+#   towncrier build --version v0.5.0 --yes     # rewrites CHANGELOG.md and
+#                                               # `git rm`s the consumed
+#                                               # fragments; commit the result
+#                                               # yourself, then tag it.
+#
+# See CONTRIBUTING.md's "Release notes / changeset fragments" section for
+# the full fragment format (enforced in CI by
+# .github/workflows/changelog-fragment-check.yml and
+# scripts/check_changelog_fragment.py) and docs/ci-cd.md for how
+# .github/workflows/release.yml consumes the resulting CHANGELOG.md.
+[tool.towncrier]
+name = "pg-regression-radar"
+directory = "changelog.d"
+filename = "CHANGELOG.md"
+# The bundled Markdown template — picked automatically since `filename`
+# ends in `.md`, named explicitly here so the choice isn't implicit.
+template = "towncrier:default.md"
+# Render fragment issue numbers as "(#123)" rather than towncrier's default
+# bare "(123)", matching how this repo already references PRs/issues
+# elsewhere (see CONTRIBUTING.md's commit message examples).
+issue_format = "#{issue}"
+# "## v0.5.0 - 2026-08-12" — a level-2 Markdown heading per release,
+# `{version}` carrying this project's own "v"-prefixed tag naming
+# (release.yml resolves VERSION straight from `github.ref_name`, e.g.
+# "v0.5.0", and towncrier build --version is expected to be called with the
+# same string — see CONTRIBUTING.md).
+title_format = "## {version} - {project_date}"
+
+# Only these three types are valid — deliberately not towncrier's own
+# defaults ("feature"/"bugfix"/"misc"/"doc"/"removal"). This vocabulary
+# must stay exactly in sync with:
+#   - the Conventional Commits `types:` list enforced by
+#     .github/workflows/pr-title.yml and documented in CONTRIBUTING.md
+#     (this is a deliberate subset of that list: only the three types that
+#     describe a user-facing change need a fragment at all — see
+#     .github/workflows/changelog-fragment-check.yml)
+#   - the `^<PR-number>\.(feat|fix|perf)\.md$` filename pattern that
+#     changelog-fragment-check.yml enforces on every PR's fragment
+#
+# Defined as a TOML array (`[[tool.towncrier.type]]`) rather than the
+# alphabetically-sorted `[tool.towncrier.fragment.<type>]` table form, so
+# the rendered section order below (Features, then Fixes, then
+# Performance) is guaranteed rather than incidental.
+[[tool.towncrier.type]]
+directory = "feat"
+name = "Features"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "fix"
+name = "Fixes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "perf"
+name = "Performance"
+showcontent = true
