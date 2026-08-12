@@ -88,6 +88,7 @@ All four binaries share two flags:
 |---|---|---|
 | `clusterName` | *(required)* | Label added to metrics and to `PerformanceRegression` CRs |
 | `dsn` / `dsnSecretRef` | *(one required)* | Postgres DSN, inline or via a Secret key (preferred) |
+| `remoteClusterSecretRef` | *(none)* | Secret (in the hub cluster) holding a kubeconfig for a remote cluster to resolve `dsnSecretRef` against instead of the hub — see [Multi-Cluster (Fleet) Mode](multi-cluster.md) |
 | `scrapeIntervalSeconds` | `60` | How often to read `pg_stat_statements` |
 | `windowMinutes` | `30` | Analysis window (minutes before/after deploy) |
 | `minExecutions` | `10` | Min query executions per window |
@@ -110,3 +111,4 @@ All four binaries share two flags:
 - [Detection Algorithm](detection-algorithm.md) — what `--window-minutes`, `--min-executions`, `--latency-threshold`, and `--changepoint-tolerance` actually control.
 - [Persistence](persistence.md) — the `--state-*` flags in depth.
 - [Deploy Sources & Webhooks](webhooks.md) — `--source-type` and `sourceType` per webhook source.
+- [Multi-Cluster (Fleet) Mode](multi-cluster.md) — `remoteClusterSecretRef` in depth, including the hub-spoke RBAC split.

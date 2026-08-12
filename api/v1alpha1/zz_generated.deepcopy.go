@@ -286,6 +286,11 @@ func (in *PostgresWatchSpec) DeepCopyInto(out *PostgresWatchSpec) {
 		*out = new(SecretKeySelector)
 		**out = **in
 	}
+	if in.RemoteClusterSecretRef != nil {
+		in, out := &in.RemoteClusterSecretRef, &out.RemoteClusterSecretRef
+		*out = new(SecretKeySelector)
+		**out = **in
+	}
 	if in.CriticalQueryIDs != nil {
 		in, out := &in.CriticalQueryIDs, &out.CriticalQueryIDs
 		*out = make([]int64, len(*in))

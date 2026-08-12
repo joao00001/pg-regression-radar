@@ -20,7 +20,11 @@ rules:
   - apiGroups: ["radar.pgregressionradar.io"]
     resources: ["performanceregressions"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
-  # Read-only: resolves PostgresWatch.spec.dsnSecretRef.
+  # Read-only, hub cluster only: resolves PostgresWatch.spec.dsnSecretRef
+  # directly, and/or the spec.remoteClusterSecretRef kubeconfig Secret used
+  # to resolve dsnSecretRef against a remote ("spoke") cluster instead —
+  # see docs/multi-cluster.md. Grants no access to any remote cluster
+  # itself; that comes entirely from the kubeconfig's own embedded RBAC.
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch"]

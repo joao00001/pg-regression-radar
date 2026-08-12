@@ -24,6 +24,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -61,6 +62,14 @@ const pollInterval = 5 * time.Second
 // +kubebuilder:rbac:groups=radar.pgregressionradar.io,resources=postgreswatches/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=radar.pgregressionradar.io,resources=performanceregressions,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=radar.pgregressionradar.io,resources=performanceregressions/status,verbs=get;update;patch
+//
+// This Secret RBAC covers both spec.dsnSecretRef (read directly, hub
+// cluster) and spec.remoteClusterSecretRef (the kubeconfig Secret used to
+// reach a remote cluster's DSN Secret instead — see dsnSecretClient below
+// and docs/multi-cluster.md). It does NOT grant any access to remote
+// clusters themselves: that access comes entirely from whatever RBAC is
+// embedded in the kubeconfig a remoteClusterSecretRef Secret points at,
+// which is operator-managed and out of this manager's control by design.
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 
 // PostgresWatchReconciler reconciles a PostgresWatch object: it ensures a
@@ -91,6 +100,25 @@ type PostgresWatchReconciler struct {
 	// convention; Logger is only for the background workers this
 	// reconciler starts.
 	Logger *slog.Logger
+
+	// remoteClients caches controller-runtime clients built from
+	// remoteClusterSecretRef kubeconfigs, keyed by kubeconfig content (see
+	// remote_client.go). It is initialised lazily via remoteClientsOnce so
+	// PostgresWatchReconciler{} zero-value construction (as used throughout
+	// postgreswatch_controller_test.go) keeps working without callers
+	// having to know about it.
+	remoteClientsOnce sync.Once
+	remoteClients     *remoteClientCache
+}
+
+// getRemoteClients returns the reconciler's remote client cache,
+// initialising it on first use. Safe for concurrent use across Reconcile
+// invocations.
+func (r *PostgresWatchReconciler) getRemoteClients() *remoteClientCache {
+	r.remoteClientsOnce.Do(func() {
+		r.remoteClients = newRemoteClientCache()
+	})
+	return r.remoteClients
 }
 
 // Reconcile implements the controller-runtime Reconciler interface.
@@ -188,7 +216,10 @@ func (r *PostgresWatchReconciler) refreshStatus(ctx context.Context, watch *rada
 
 // resolveDSN returns the Postgres DSN to use: spec.dsn takes precedence,
 // otherwise the key named by spec.dsnSecretRef is read from a Secret in the
-// watch's namespace.
+// watch's namespace — in the hub cluster (this manager's own API server) by
+// default, or in a remote ("spoke") cluster when spec.remoteClusterSecretRef
+// names a kubeconfig Secret. See dsnSecretClient for how that routing
+// decision is made, and docs/multi-cluster.md for the hub-spoke model.
 func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (string, error) {
 	if watch.Spec.DSN != "" {
 		return watch.Spec.DSN, nil
@@ -197,9 +228,14 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 		return "", fmt.Errorf("postgreswatch %s/%s: neither spec.dsn nor spec.dsnSecretRef is set", watch.Namespace, watch.Name)
 	}
 
+	secretClient, err := r.dsnSecretClient(ctx, watch)
+	if err != nil {
+		return "", err
+	}
+
 	var secret corev1.Secret
 	key := types.NamespacedName{Namespace: watch.Namespace, Name: watch.Spec.DSNSecretRef.Name}
-	if err := r.Get(ctx, key, &secret); err != nil {
+	if err := secretClient.Get(ctx, key, &secret); err != nil {
 		return "", fmt.Errorf("fetch dsn secret %s: %w", key, err)
 	}
 	val, ok := secret.Data[watch.Spec.DSNSecretRef.Key]
@@ -207,6 +243,42 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 		return "", fmt.Errorf("secret %s has no key %q", key, watch.Spec.DSNSecretRef.Key)
 	}
 	return string(val), nil
+}
+
+// dsnSecretClient returns the client.Client to use when reading
+// watch.Spec.DSNSecretRef: the reconciler's own (hub) client by default, or
+// a client built from a remote cluster's kubeconfig when
+// watch.Spec.RemoteClusterSecretRef is set.
+//
+// The kubeconfig Secret itself is always read via the hub client — it must
+// live in the hub cluster, in the watch's namespace, precisely so the
+// manager's existing "get;list;watch Secrets" RBAC (see the kubebuilder
+// marker above Reconcile) is sufficient to reach it. The DSN Secret it then
+// unlocks access to is looked up by the *same* namespace name on the remote
+// cluster, mirroring the convention CloudNativePG itself uses for
+// generated-credential Secrets; there is deliberately no separate
+// remote-namespace field to keep this feature's surface area small (see
+// docs/multi-cluster.md for the trade-off).
+func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, error) {
+	if watch.Spec.RemoteClusterSecretRef == nil {
+		return r.Client, nil
+	}
+
+	var kubeconfigSecret corev1.Secret
+	key := types.NamespacedName{Namespace: watch.Namespace, Name: watch.Spec.RemoteClusterSecretRef.Name}
+	if err := r.Get(ctx, key, &kubeconfigSecret); err != nil {
+		return nil, fmt.Errorf("fetch remote cluster kubeconfig secret %s: %w", key, err)
+	}
+	kubeconfig, ok := kubeconfigSecret.Data[watch.Spec.RemoteClusterSecretRef.Key]
+	if !ok {
+		return nil, fmt.Errorf("secret %s has no key %q", key, watch.Spec.RemoteClusterSecretRef.Key)
+	}
+
+	remoteClient, err := r.getRemoteClients().get(kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("build client for remote cluster from secret %s: %w", key, err)
+	}
+	return remoteClient, nil
 }
 
 // startWatch builds a fresh WatchRuntime and starts its background
@@ -414,6 +486,7 @@ func (r *PostgresWatchReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func hashPostgresWatchSpec(spec radarv1alpha1.PostgresWatchSpec, resolvedDSN string) string {
 	spec.DSN = resolvedDSN
 	spec.DSNSecretRef = nil
+	spec.RemoteClusterSecretRef = nil
 	b, _ := json.Marshal(spec)
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])

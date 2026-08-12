@@ -36,6 +36,15 @@ Both binaries are built from this one module and neither modifies the other's co
 - Use **`cmd/operator`** if you have one Postgres cluster, don't need HA, and would rather not grant the process any Kubernetes RBAC at all — it never talks to the Kubernetes API.
 - Use **`cmd/manager`** (the Helm chart's `mode: manager`) if you want to watch multiple Postgres clusters from one deployment, want `kubectl get postgreswatch,deploysource,performanceregression` visibility, or need HA (multiple replicas with automatic failover via a `coordination.k8s.io` Lease).
 
+## Multi-cluster: two independent axes
+
+"Multiple Postgres clusters" and "Postgres clusters living in a different Kubernetes cluster than the manager" are two separate capabilities, easy to conflate:
+
+- **Many `PostgresWatch` CRs, one Kubernetes cluster.** `cmd/manager` has always supported this: `internal/controller/registry.go`'s `Registry` tracks one independent `Collector`/`Engine`/`Notifier`/`ingester.Store` per reconciled `PostgresWatch`, however many DSNs (reachable over the network from wherever the manager pods run) that adds up to.
+- **A `PostgresWatch`'s DSN Secret living in a *different* Kubernetes cluster.** This is what `spec.remoteClusterSecretRef` adds: a hub-spoke model, matching the pattern Cluster API / Argo CD / Open Cluster Management use, where a kubeconfig Secret in the manager's own (hub) cluster lets `PostgresWatchReconciler` build a `client.Client` for a remote ("spoke") cluster and read that cluster's CloudNativePG-generated DSN Secret through it, instead of requiring an operator to manually copy the Secret into the hub. See [Multi-Cluster (Fleet) Mode](multi-cluster.md) for the full model, the RBAC split between "read a Secret in the hub" and "whatever the kubeconfig itself is allowed to do in the spoke," and the gaps deliberately left out of this first pass (kubeconfig rotation, remote client cache eviction, a fixed remote-namespace override).
+
+`DeploySource`/the webhook Ingester need neither of the above: a `DeploySource`'s whole job is registering an HTTP route that a remote system (ArgoCD, Argo Rollouts, Flux, or a custom CI job) pushes a webhook *to* — the connection is always initiated by the remote side, never by the manager reaching out, so there is nothing for a Kubernetes client (local or remote) to do here regardless of which cluster the deploy tooling runs in. See [Deploy Sources & Webhooks](webhooks.md).
+
 ## Project layout
 
 ```
@@ -73,3 +82,4 @@ Both binaries are built from this one module and neither modifies the other's co
 - [Collector Internals](collector-internals.md) — retention, `queryid` rotation, PostgreSQL version handling.
 - [Configuration Reference](configuration.md) — every flag and CRD field for both entrypoints.
 - [Getting Started](getting-started.md) — runnable commands for both entrypoints and the Helm chart.
+- [Multi-Cluster (Fleet) Mode](multi-cluster.md) — the hub-spoke model behind `remoteClusterSecretRef`.
