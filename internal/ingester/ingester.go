@@ -79,6 +79,22 @@ func (s *Store) All() []v1alpha1.DeployEvent {
 	return out
 }
 
+// Since returns events added after the given cursor position, along with the
+// updated cursor to pass on the next call. Because the store is append-only,
+// callers can track a cursor index instead of a seen-ID map to avoid copying
+// the entire slice on every poll tick. The returned slice contains only the
+// newly appended events and is safe to use after the lock is released.
+func (s *Store) Since(cursor int) ([]v1alpha1.DeployEvent, int) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if cursor >= len(s.events) {
+		return nil, cursor
+	}
+	out := make([]v1alpha1.DeployEvent, len(s.events)-cursor)
+	copy(out, s.events[cursor:])
+	return out, len(s.events)
+}
+
 // Handler is an HTTP handler that accepts webhook payloads from ArgoCD,
 // Argo Rollouts, and Flux and stores normalised DeployEvents.
 type Handler struct {

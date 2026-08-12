@@ -47,6 +47,53 @@ func TestStore_AddAndRange(t *testing.T) {
 	}
 }
 
+func TestStore_Since(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+
+	// Empty store: Since(0) should return nothing and keep cursor at 0.
+	events, cursor := store.Since(0)
+	if len(events) != 0 || cursor != 0 {
+		t.Fatalf("expected empty result from empty store, got %d events, cursor %d", len(events), cursor)
+	}
+
+	now := time.Now().UTC()
+	store.Add(v1alpha1.DeployEvent{ID: "a", Timestamp: now})
+	store.Add(v1alpha1.DeployEvent{ID: "b", Timestamp: now})
+
+	// First poll: should return both events and advance cursor.
+	events, cursor = store.Since(0)
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events on first poll, got %d", len(events))
+	}
+	if cursor != 2 {
+		t.Fatalf("expected cursor=2, got %d", cursor)
+	}
+
+	// Second poll with same cursor: no new events yet.
+	events, cursor = store.Since(cursor)
+	if len(events) != 0 {
+		t.Fatalf("expected 0 new events on second poll, got %d", len(events))
+	}
+	if cursor != 2 {
+		t.Fatalf("expected cursor=2 unchanged, got %d", cursor)
+	}
+
+	// Add a new event and poll again: only the new event should be returned.
+	store.Add(v1alpha1.DeployEvent{ID: "c", Timestamp: now})
+	events, cursor = store.Since(cursor)
+	if len(events) != 1 {
+		t.Fatalf("expected 1 new event, got %d", len(events))
+	}
+	if events[0].ID != "c" {
+		t.Errorf("expected event ID 'c', got %q", events[0].ID)
+	}
+	if cursor != 3 {
+		t.Fatalf("expected cursor=3, got %d", cursor)
+	}
+}
+
 func TestHandler_ArgoCDWebhook(t *testing.T) {
 	t.Parallel()
 

@@ -290,7 +290,7 @@ func (r *PostgresWatchReconciler) stopWatch(key types.NamespacedName) {
 // `kubectl get performanceregressions` reflects reality. It mirrors the
 // polling loop in cmd/operator/main.go.
 func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.NamespacedName, rt *WatchRuntime) {
-	seen := map[string]struct{}{}
+	var cursor int
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 
@@ -299,11 +299,9 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			for _, ev := range rt.Store.All() {
-				if _, ok := seen[ev.ID]; ok {
-					continue
-				}
-				seen[ev.ID] = struct{}{}
+			events, newCursor := rt.Store.Since(cursor)
+			cursor = newCursor
+			for _, ev := range events {
 
 				results := rt.Engine.Analyse(ev)
 				for _, res := range results {

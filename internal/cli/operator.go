@@ -280,7 +280,7 @@ func RunOperator(args []string) {
 	// Poll the ingester store every 5 s; a channel-based push would require
 	// locking changes across packages, so polling keeps the coupling minimal.
 	go func() {
-		seen := map[string]struct{}{}
+		var cursor int
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 		for {
@@ -288,11 +288,9 @@ func RunOperator(args []string) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				for _, ev := range store.All() {
-					if _, ok := seen[ev.ID]; ok {
-						continue
-					}
-					seen[ev.ID] = struct{}{}
+				events, newCursor := store.Since(cursor)
+				cursor = newCursor
+				for _, ev := range events {
 					// Mirror into the durable EventStore, if configured (see
 					// the SampleStore bridge above for the same rationale).
 					if eventStore != nil {
