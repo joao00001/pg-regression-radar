@@ -471,6 +471,16 @@ func applyRegressionStatus(obj *radarv1alpha1.PerformanceRegression, res dto.Per
 
 // SetupWithManager wires this reconciler into mgr.
 func (r *PostgresWatchReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Registers the remote client cache's periodic eviction sweep (see
+	// remote_client.go's Start) as a manager-owned background task, with
+	// the same start/stop lifecycle and leader-election gating every other
+	// piece of this reconciler's work already has. Calling getRemoteClients
+	// here (rather than waiting for the first remoteClusterSecretRef use)
+	// means the eviction loop is always running, regardless of whether any
+	// PostgresWatch ever actually uses a remote cluster.
+	if err := mgr.Add(r.getRemoteClients()); err != nil {
+		return fmt.Errorf("register remote client cache eviction loop: %w", err)
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&radarv1alpha1.PostgresWatch{}).
 		Named("postgreswatch").
