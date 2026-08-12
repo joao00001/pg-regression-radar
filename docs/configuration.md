@@ -10,7 +10,7 @@ This page is the single reference for configuring pg-regression-radar, regardles
 
 | Flag | Default | Description |
 |---|---|---|
-| `--dsn` | *(required)* | Postgres connection string |
+| `--dsn` | *(required)* | Postgres connection string. **Use a least-privilege role** (e.g. `pg_monitor`) — see [Installation: least-privilege role](installation.md#creating-a-least-privilege-postgres-role). |
 | `--cluster-name` | `default` | Label added to all metrics |
 | `--namespace` | `default` | Kubernetes namespace label |
 | `--scrape-interval` | `60s` | How often to read `pg_stat_statements` |
@@ -37,7 +37,7 @@ The `collector` binary exposes the scraper on its own, without the correlation/a
 
 | Flag | Default | Description |
 |---|---|---|
-| `--dsn` | *(required)* | Postgres connection string |
+| `--dsn` | *(required)* | Postgres connection string. **Use a least-privilege role** (e.g. `pg_monitor`) — see [Installation: least-privilege role](installation.md#creating-a-least-privilege-postgres-role). |
 | `--scrape-interval` | `60s` | How often to read `pg_stat_statements` |
 | `--cluster-name` | `default` | Label added to all metrics |
 | `--namespace` | `default` | Kubernetes namespace label |
@@ -88,7 +88,7 @@ All four binaries share two flags:
 | Field | Default | Description |
 |---|---|---|
 | `clusterName` | *(required)* | Label added to metrics and to `PerformanceRegression` CRs |
-| `dsn` / `dsnSecretRef` | *(one required)* | Postgres DSN, inline or via a Secret key (preferred) |
+| `dsn` / `dsnSecretRef` | *(one required)* | Postgres DSN, inline or via a Secret key (preferred). **Use a least-privilege role** (e.g. `pg_monitor`) — see [Installation: least-privilege role](installation.md#creating-a-least-privilege-postgres-role). |
 | `remoteClusterSecretRef` | *(none)* | Secret (in the hub cluster) holding a kubeconfig for a remote cluster to resolve `dsnSecretRef` against instead of the hub — see [Multi-Cluster (Fleet) Mode](multi-cluster.md) |
 | `scrapeIntervalSeconds` | `60` | How often to read `pg_stat_statements` |
 | `windowMinutes` | `30` | Analysis window (minutes before/after deploy) |

@@ -13,6 +13,33 @@ There is no `apt`/`brew` package, no container image on a public registry, and n
 - A Postgres cluster with `pg_stat_statements` enabled — see [Support Matrix](support-matrix.md) for officially supported PostgreSQL versions (16, 17, 18) and distributions (community, CloudNativePG, EDB Postgres Advanced/Extended Server)
 - `kubectl` and/or `helm` (only for the Kubernetes-deployed paths)
 
+## Creating a least-privilege Postgres role
+
+pg-regression-radar only needs to read `pg_stat_statements` and a handful of catalog views — it never writes to user data. **Do not use a superuser or a role with broad privileges for `--dsn`.** If the connection string is ever leaked (e.g. via a misrouted Secret), the blast radius should be limited to read-only statistics access.
+
+Create a dedicated role before installing pg-regression-radar:
+
+```sql
+-- Create the role with login but no superuser privileges.
+CREATE ROLE pgrr_monitor WITH LOGIN PASSWORD 'change-me';
+
+-- Built-in role that grants read access to pg_stat_statements, pg_stat_*
+-- views, and other monitoring functions — exactly what pg-regression-radar needs.
+GRANT pg_monitor TO pgrr_monitor;
+
+-- If pg_stat_statements is installed in a non-public schema, also grant USAGE.
+-- GRANT USAGE ON SCHEMA extensions TO pgrr_monitor;
+```
+
+Then use that role in your DSN:
+
+```
+******host:5432/mydb?sslmode=require
+```
+
+!!! warning
+    Never pass a superuser or application-owner connection string. A leaked DSN with superuser access gives an attacker full control of the database; a `pg_monitor` DSN limits exposure to read-only statistics.
+
 ## Option 1: Go install — one command, one binary (recommended)
 
 The simplest way to get pg-regression-radar: a single unified CLI, `pg-regression-radar`, with each run mode as a subcommand. No clone needed — `go install` resolves the tagged release directly from the repository's tags via the Go module proxy:

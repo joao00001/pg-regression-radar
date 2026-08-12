@@ -12,6 +12,7 @@ The commands below use `go run ./cmd/operator`/`go run ./cmd/manager`, which ass
 
 - Go 1.22+ (only needed to build from source; the [Dockerfile](https://github.com/joao00001/pg-regression-radar/blob/main/Dockerfile) needs no local Go install)
 - A Postgres cluster with `pg_stat_statements` enabled — see [Support Matrix](support-matrix.md) for officially supported versions/distributions
+- A **least-privilege** Postgres role for `--dsn` — see the [Creating a least-privilege Postgres role](installation.md#creating-a-least-privilege-postgres-role) section in the Installation guide. Never use a superuser or application-owner DSN.
 - (Optional) ArgoCD, Argo Rollouts, or Flux for real deploy-event webhooks — see [Deploy Sources & Webhooks](webhooks.md)
 
 ## Run the all-in-one operator
