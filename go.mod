@@ -3,7 +3,7 @@ module github.com/joao00001/pg-regression-radar
 go 1.26.0
 
 require (
-	github.com/lib/pq v1.10.9
+	github.com/lib/pq v1.12.3
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.2
 	k8s.io/api v0.36.3
