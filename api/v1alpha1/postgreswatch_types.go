@@ -110,6 +110,18 @@ type PostgresWatchSpec struct {
 	// used by internal/alerting to notify on detected regressions.
 	// +optional
 	SlackWebhookURL string `json:"slackWebhookUrl,omitempty"`
+
+	// capturePlans enables plan-diff correlation for this watch: around a
+	// detected regression, the Collector captures the query's execution
+	// plan from pg_store_plans (if installed) or falls back to
+	// EXPLAIN (FORMAT JSON, GENERIC_PLAN) (PostgreSQL 16+), and a short
+	// diff is attached to the resulting PerformanceRegression's
+	// status.planDiffSummary. See internal/planner and
+	// docs/detection-algorithm.md#plan-diff-correlation-optional. Mirrors
+	// the standalone `operator` CLI's --capture-plans flag; disabled by
+	// default because it adds a per-scrape-cycle EXPLAIN/lookup cost.
+	// +optional
+	CapturePlans bool `json:"capturePlans,omitempty"`
 }
 
 // SecretKeySelector selects a key of a Secret in the same namespace as the

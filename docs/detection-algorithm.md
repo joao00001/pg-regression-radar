@@ -30,7 +30,7 @@ The change point's own timestamp is preserved on the result as `DetectedChangeAt
 
 ## Plan-diff correlation (optional)
 
-A `PerformanceRegression` says *that* a query got slower and roughly *when*, but not *why* on its own. `--capture-plans` (opt-in, default off) adds a short plan-diff hint by periodically capturing an execution plan for each tracked queryid and diffing the snapshot from just before the detected change point against the most recent one (`internal/planner.Diff`).
+A `PerformanceRegression` says *that* a query got slower and roughly *when*, but not *why* on its own. Opt-in, default off, adds a short plan-diff hint by periodically capturing an execution plan for each tracked queryid and diffing the snapshot from just before the detected change point against the most recent one (`internal/planner.Diff`) — `--capture-plans` on the standalone `operator` CLI, or `spec.capturePlans: true` on a `PostgresWatch` in the CRD-driven (`cmd/manager`) mode. Both paths call the same `internal/planner`/`Collector.PlansAround` machinery and land the result in the same place: the standalone CLI's Slack notification gets a "Plan Diff" field, and a `PostgresWatch`'s resulting `PerformanceRegression` custom resource gets `status.planDiffSummary`.
 
 ### Two sources, in order of preference
 

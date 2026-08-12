@@ -43,6 +43,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/planner"
 	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -297,6 +298,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		ScrapeInterval: scrapeInterval,
 		ClusterName:    watch.Spec.ClusterName,
 		Namespace:      watch.Namespace,
+		CapturePlans:   watch.Spec.CapturePlans,
 	}, r.Logger, promReg)
 	if err != nil {
 		return nil, fmt.Errorf("create collector: %w", err)
@@ -335,6 +337,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		PromRegistry: promReg,
 		SpecHash:     specHash,
 		ClusterName:  watch.Spec.ClusterName,
+		CapturePlans: watch.Spec.CapturePlans,
 		Cancel:       cancel,
 	}
 
@@ -379,6 +382,19 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 				for _, res := range results {
 					if res.Status != dto.StatusDetected {
 						continue
+					}
+
+					// Attach a plan-diff summary before notifying/persisting,
+					// mirroring internal/cli/operator.go's poll loop, so the
+					// CRD-driven (cmd/manager) and standalone CLI paths give
+					// the same plan-diff-correlation behavior when enabled.
+					// PlansAround is nil-safe and returns (nil, nil) when
+					// CapturePlans was never enabled on the Collector, so this
+					// gate is an optimization (skip the lookup entirely), not
+					// a correctness requirement.
+					if rt.CapturePlans {
+						before, after := rt.Collector.PlansAround(res.QueryID, res.DetectedChangeAt)
+						res.PlanDiffSummary = planner.Diff(before, after)
 					}
 
 					notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -458,6 +474,7 @@ func applyRegressionStatus(obj *radarv1alpha1.PerformanceRegression, res dto.Per
 		MeanLatencyAfterMs:     strconv.FormatFloat(res.MeanLatencyAfter, 'f', 4, 64),
 		LatencyChangeFactor:    strconv.FormatFloat(res.LatencyChangeFactor, 'f', 4, 64),
 		ExternalCauseSuspected: res.ExternalCauseSuspected,
+		PlanDiffSummary:        res.PlanDiffSummary,
 		DetectedAt:             &now,
 		Conditions:             obj.Status.Conditions,
 	}
