@@ -8,23 +8,27 @@ rather than Keep a Changelog's stricter Added/Changed/Fixed vocabulary,
 since a flat categorization loses the thematic grouping that makes these
 notes readable.
 
-**How this file is maintained:** `.github/workflows/release.yml`'s
-`release-notes` job uses [git-cliff](https://git-cliff.org) (config:
-`cliff.toml`) to generate a GitHub Release body automatically for every new
-tag, straight from Conventional Commits on `git log`. This file's own
-**[Unreleased]** section below was produced the same way — `git-cliff
---config cliff.toml v0.1.0..main` — and then hand-reorganized into the
-thematic sections below (raw tool output is one flat list per commit type,
-not grouped by subsystem the way a reader actually wants). Every commit
-between `v0.1.0` and the current tip of `main` is accounted for below; see
-this repository's own git history (`git log v0.1.0..main`) to check. Once
-the next tag is cut, this section becomes that release's dated entry and a
-fresh `[Unreleased]` section starts above it — either by hand, or by
-re-running `git-cliff` and re-applying the same manual grouping pass.
+**How this file is maintained:** every PR that ships a user-facing `feat`,
+`fix`, or `perf` change adds its own newsfragment under `changelog.d/`
+(format documented in [CONTRIBUTING.md](CONTRIBUTING.md#release-notes-changeset-fragments),
+enforced by `.github/workflows/changelog-fragment-check.yml`). Before
+cutting a release tag, the maintainer runs `towncrier build --version
+vX.Y.Z --yes`, which compiles every fragment currently in `changelog.d/`
+into a new dated section here and deletes the consumed fragments —
+`.github/workflows/release.yml`'s `release-notes` job then extracts that
+section verbatim as the GitHub Release body. See `towncrier.toml` for the
+category configuration.
 
-**Scope note:** this covers everything merged to `main` through `v0.1.0..main`
-(47 commits), plus `ci/release-publishing` and this changelog-automation
-work once those two branches merge (in that order).
+**Scope note on the section below:** the **[Unreleased]** section was a
+one-time historical backfill — generated with
+[git-cliff](https://git-cliff.org) from `git log v0.1.0..main` (47 commits)
+and hand-reorganized into the thematic sections below — covering everything
+that shipped before the newsfragment process above existed. `git-cliff` and
+`cliff.toml` are not part of the ongoing process; going forward, every new
+entry in this file comes from `changelog.d/` fragments via `towncrier
+build` as described above. This section keeps the **[Unreleased]** heading
+until the maintainer picks a version number and runs `towncrier build` for
+the first time, at which point it becomes that release's dated entry.
 
 ## [Unreleased]
 
