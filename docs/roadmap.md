@@ -43,3 +43,4 @@ This page tracks both feature roadmap and known operational/robustness gaps, so 
 
 - [CI/CD](ci-cd.md) — the workflows referenced by the operational follow-ups above.
 - [Persistence](persistence.md) and [Collector Internals](collector-internals.md) — the two pages with the most detail on the robustness gaps above.
+- [Support Matrix](support-matrix.md) — officially supported PostgreSQL versions and distributions, including the CloudNativePG validation gap and the not-yet-implemented `pg_store_plans` follow-up referenced above.

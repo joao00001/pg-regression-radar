@@ -81,6 +81,7 @@ nav:
       - API Reference: api-reference.md
       - Persistence: persistence.md
       - Deploy Sources & Webhooks: webhooks.md
+      - Support Matrix: support-matrix.md
   - Contributing:
       - Testing: testing.md
       - CI/CD: ci-cd.md

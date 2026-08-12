@@ -45,6 +45,7 @@ See **[Installation](https://joao00001.github.io/pg-regression-radar/installatio
 | [Configuration Reference](https://joao00001.github.io/pg-regression-radar/configuration/) | Every flag and CRD field, with defaults. |
 | [Persistence](https://joao00001.github.io/pg-regression-radar/persistence/) | The optional Postgres-backed state store. |
 | [Deploy Sources & Webhooks](https://joao00001.github.io/pg-regression-radar/webhooks/) | Wiring up ArgoCD, Argo Rollouts, Flux, or a custom system. |
+| [Support Matrix](https://joao00001.github.io/pg-regression-radar/support-matrix/) | Officially supported PostgreSQL versions (16, 17, 18) and distributions (community, CloudNativePG, EDB Postgres Advanced/Extended Server). |
 | [Testing](https://joao00001.github.io/pg-regression-radar/testing/) | Unit, integration, envtest, and the containerized manual e2e workflow. |
 | [CI/CD](https://joao00001.github.io/pg-regression-radar/ci-cd/) | Every workflow in this repo, what it checks, and when. |
 | [Roadmap](https://joao00001.github.io/pg-regression-radar/roadmap/) | Version plan and known gaps. |
