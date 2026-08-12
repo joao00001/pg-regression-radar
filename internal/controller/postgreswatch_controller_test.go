@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
 // testScheme builds a runtime.Scheme with our CRD types registered, as
@@ -414,5 +415,94 @@ func TestReconcile_RemoteClusterUnreachableMarksFailed(t *testing.T) {
 	}
 	if _, ok := r.Registry.Get(req.NamespacedName); ok {
 		t.Fatal("expected no worker to be registered when the remote cluster is unreachable")
+	}
+}
+
+// TestReconcile_CapturePlansPropagatesToRuntime verifies that
+// spec.capturePlans reaches both the Collector's Config (so it actually
+// captures plan snapshots) and the WatchRuntime itself (so pollLoop knows to
+// call PlansAround for a detected regression), the same way ClusterName and
+// every other spec-derived setting is threaded through startWatch.
+func TestReconcile_CapturePlansPropagatesToRuntime(t *testing.T) {
+	watch := samplePostgresWatch("watch-h", "default")
+	watch.Spec.CapturePlans = true
+	r, _ := newTestReconciler(t, watch)
+
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "watch-h", Namespace: "default"}}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	rt, ok := r.Registry.Get(req.NamespacedName)
+	if !ok {
+		t.Fatal("expected a WatchRuntime to be registered after create")
+	}
+	defer rt.Cancel()
+
+	if !rt.CapturePlans {
+		t.Fatal("expected WatchRuntime.CapturePlans to be true when spec.capturePlans is true")
+	}
+}
+
+// TestReconcile_CapturePlansDefaultsFalse is the inverse of the above:
+// leaving spec.capturePlans unset must not silently enable plan capture,
+// since it adds a per-scrape-cycle EXPLAIN/lookup cost that should stay
+// opt-in.
+func TestReconcile_CapturePlansDefaultsFalse(t *testing.T) {
+	watch := samplePostgresWatch("watch-i", "default")
+	r, _ := newTestReconciler(t, watch)
+
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "watch-i", Namespace: "default"}}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	rt, ok := r.Registry.Get(req.NamespacedName)
+	if !ok {
+		t.Fatal("expected a WatchRuntime to be registered after create")
+	}
+	defer rt.Cancel()
+
+	if rt.CapturePlans {
+		t.Fatal("expected WatchRuntime.CapturePlans to default to false")
+	}
+}
+
+// TestApplyRegressionStatus_IncludesPlanDiffSummary verifies the internal
+// DTO's PlanDiffSummary (set by pollLoop when CapturePlans is enabled) is
+// copied onto the CRD's status, exactly like every other analysis field —
+// this is the one field the manager path previously dropped on the floor,
+// even when a caller had already computed a plan diff.
+func TestApplyRegressionStatus_IncludesPlanDiffSummary(t *testing.T) {
+	obj := &radarv1alpha1.PerformanceRegression{}
+	res := dto.PerformanceRegression{
+		Status:          dto.StatusDetected,
+		QueryID:         42,
+		PlanDiffSummary: "root node changed from Index Scan to Seq Scan",
+		CreatedAt:       time.Now(),
+	}
+
+	applyRegressionStatus(obj, res)
+
+	if obj.Status.PlanDiffSummary != res.PlanDiffSummary {
+		t.Fatalf("expected status.planDiffSummary %q, got %q", res.PlanDiffSummary, obj.Status.PlanDiffSummary)
+	}
+}
+
+// TestApplyRegressionStatus_OmitsPlanDiffSummaryWhenEmpty guards the common
+// case (CapturePlans disabled): applyRegressionStatus must not invent a
+// plan-diff summary out of thin air.
+func TestApplyRegressionStatus_OmitsPlanDiffSummaryWhenEmpty(t *testing.T) {
+	obj := &radarv1alpha1.PerformanceRegression{}
+	res := dto.PerformanceRegression{
+		Status:    dto.StatusDetected,
+		QueryID:   42,
+		CreatedAt: time.Now(),
+	}
+
+	applyRegressionStatus(obj, res)
+
+	if obj.Status.PlanDiffSummary != "" {
+		t.Fatalf("expected empty status.planDiffSummary, got %q", obj.Status.PlanDiffSummary)
 	}
 }
