@@ -388,9 +388,12 @@ func welchTTest(a, b []float64) (tStat, pValue float64) {
 
 	tStat = (m1 - m2) / se
 
-	// Welch–Satterthwaite degrees of freedom.
-	num := math.Pow(v1/n1+v2/n2, 2)
-	denom := math.Pow(v1/n1, 2)/(n1-1) + math.Pow(v2/n2, 2)/(n2-1)
+	// Welch–Satterthwaite degrees of freedom. Named w1/w2 (not a/b) to avoid
+	// shadowing this function's own a/b []float64 parameters.
+	w1 := v1 / n1
+	w2 := v2 / n2
+	num := (w1 + w2) * (w1 + w2)
+	denom := w1*w1/(n1-1) + w2*w2/(n2-1)
 	df := num / denom
 
 	pValue = tDistPValue(math.Abs(tStat), df)
@@ -641,51 +644,4 @@ func bestChangePoint(series []float64, minSegLen int) ChangePoint {
 	}
 
 	return best
-}
-
-// energyStatistic computes the E-statistic between two samples a and b:
-//
-//	E = (2·n_a·n_b / (n_a+n_b)) · (mean|a_i - b_j| - mean|a_i - a_j|/2 - mean|b_i - b_j|/2)
-func energyStatistic(a, b []float64) float64 {
-	na := float64(len(a))
-	nb := float64(len(b))
-
-	ab := meanAbsDiff(a, b)
-	aa := meanAbsDiffSelf(a)
-	bb := meanAbsDiffSelf(b)
-
-	return (2 * na * nb / (na + nb)) * (ab - aa/2 - bb/2)
-}
-
-// meanAbsDiff returns the mean |a[i] - b[j]| over all pairs.
-func meanAbsDiff(a, b []float64) float64 {
-	if len(a) == 0 || len(b) == 0 {
-		return 0
-	}
-	sum := 0.0
-	for _, x := range a {
-		for _, y := range b {
-			sum += math.Abs(x - y)
-		}
-	}
-	return sum / (float64(len(a)) * float64(len(b)))
-}
-
-// meanAbsDiffSelf returns the mean |a[i] - a[j]| over all pairs i≠j.
-// Only the upper triangle (j > i) is evaluated and the result doubled,
-// halving the number of math.Abs calls relative to the full i≠j iteration.
-func meanAbsDiffSelf(a []float64) float64 {
-	n := float64(len(a))
-	if n < 2 {
-		return 0
-	}
-	sum := 0.0
-	for i := 0; i < len(a); i++ {
-		for j := i + 1; j < len(a); j++ {
-			sum += math.Abs(a[i] - a[j])
-		}
-	}
-	// sum covers the upper triangle; multiply by 2 to get the full i≠j sum,
-	// then divide by n*(n-1) (the count of ordered pairs).
-	return 2 * sum / (n * (n - 1))
 }
