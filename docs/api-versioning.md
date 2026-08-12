@@ -20,12 +20,12 @@ This is intentional and not a quality judgment — the CRD surface is still bein
 
 | Guarantee | Status |
 |---|---|
-| Kubernetes API server accepts the CRDs | ✅ guaranteed |
-| `spec` fields documented in [Configuration Reference](configuration.md#postgreswatch-spec-fields) exist and behave as documented | ✅ guaranteed within a release |
-| Fields and their types are stable across minor or patch releases | ❌ **not** guaranteed at `v1alpha1` |
-| Stored resources survive an in-place upgrade without manual action | ❌ **not** guaranteed at `v1alpha1` |
-| A conversion webhook exists to migrate old stored versions | ❌ not implemented at `v1alpha1` |
-| Schema changes are announced in release notes | ✅ best-effort — breaking changes will be called out in the release note; check before upgrading |
+| Kubernetes API server accepts the CRDs | ✓ guaranteed |
+| `spec` fields documented in [Configuration Reference](configuration.md#postgreswatch-spec-fields) exist and behave as documented | ✓ guaranteed within a release |
+| Fields and their types are stable across minor or patch releases | ✗ **not** guaranteed at `v1alpha1` |
+| Stored resources survive an in-place upgrade without manual action | ✗ **not** guaranteed at `v1alpha1` |
+| A conversion webhook exists to migrate old stored versions | ✗ not implemented at `v1alpha1` |
+| Schema changes are announced in release notes | ✓ best-effort — breaking changes will be called out in the release note; check before upgrading |
 
 ## Practical guidance for users
 
