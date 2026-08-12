@@ -16,9 +16,10 @@ This page tracks both feature roadmap and known operational/robustness gaps, so 
 
 ## Known robustness gaps
 
-- **`auto_explain` plan-diff correlation** is not yet implemented — a detected latency regression currently doesn't come with an accompanying query-plan diff explaining *why* it got slower.
+- **Real-plan correlation still isn't implemented.** `--capture-plans` now adds `EXPLAIN (GENERIC_PLAN)`-based hints (see [Detection Algorithm](detection-algorithm.md#plan-diff-correlation-optional)), but ingestion of real `auto_explain` output and true per-execution plan capture remain future work.
 - **No dedup of findings across a `queryid` rotation.** As documented in [Collector Internals](collector-internals.md), a query whose `queryid` rotates mid-window may be analyzed once per queryid, each pulling in the same fingerprint-merged data, producing duplicate `PerformanceRegression` results for what is really one regression.
 - **Full kind + CloudNativePG + ArgoCD cluster validation hasn't been done.** The [manual e2e workflow](testing.md#manual-e2e-real-container) validates the built container artifact via plain Docker (a real image, a real Postgres container, a real webhook) rather than a full Kubernetes cluster with CloudNativePG and ArgoCD actually installed — a deliberate scope choice to get a real, reliable smoke test shipped first.
+- **`pg_store_plans` integration is a natural follow-up to plan-diff correlation.** `--capture-plans` (see [Detection Algorithm](detection-algorithm.md#plan-diff-correlation-optional)) uses `EXPLAIN (GENERIC_PLAN)`, which reflects the planner's default, parameter-independent cost estimate — not the real plan Postgres would choose for the actual (possibly skewed) parameter values a regression involved. The `pg_store_plans` extension records real, per-execution plans with real parameter values and has no PostgreSQL 16 requirement, but needs an extra extension most clusters won't already have installed. Real `auto_explain` log ingestion is a second, heavier alternative (a full log-shipping pipeline) with the same real-plan benefit. Both are deliberately out of scope for the `EXPLAIN (GENERIC_PLAN)` work above.
 
 ## Operational follow-ups
 

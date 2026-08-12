@@ -19,6 +19,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -29,7 +30,18 @@ import (
 	// pq registers the "postgres" driver used by database/sql.
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/joao00001/pg-regression-radar/internal/planner"
 )
+
+// planHistorySize bounds how many plan snapshots are retained per queryid
+// when CapturePlans is enabled (see Config.CapturePlans and PlansAround).
+// Plans change far less often than latency samples do, so this doesn't need
+// RetentionDuration's time-based mechanism — a small fixed-size ring per
+// queryid is enough to diff "the plan right before a detected change point"
+// against "the most recent plan", which is the only comparison
+// internal/planner.Diff is ever asked to make.
+const planHistorySize = 5
 
 // QuerySample is one observation of a query's runtime statistics from pg_stat_statements.
 type QuerySample struct {
@@ -105,6 +117,18 @@ type Config struct {
 	// revisited, so their slices would otherwise never shrink. Defaults to
 	// defaultRetentionDuration; see its doc comment for the sizing rationale.
 	RetentionDuration time.Duration
+	// CapturePlans enables periodic EXPLAIN (GENERIC_PLAN) plan-snapshot
+	// capture for every query this scrape cycle already reads from
+	// pg_stat_statements (see internal/planner), so a detected regression can
+	// come with a short plan-diff hint (see PlansAround). Opt-in and
+	// defaulted to false for two reasons: it adds one extra planner
+	// invocation per tracked query per scrape cycle, overhead an operator
+	// should choose to pay rather than have imposed on them; and it requires
+	// PostgreSQL 16+ (see planner.ErrUnsupportedVersion) — CloudNativePG
+	// supports PostgreSQL 14+, so this feature is simply unavailable on some
+	// clusters. When the server is <16, this is logged once at Info level and
+	// otherwise has no effect; every other Collector behaviour is unchanged.
+	CapturePlans bool
 }
 
 func (c *Config) defaults() {
@@ -144,6 +168,19 @@ type Collector struct {
 	// column-name detection described on queryStatStatementsFor.
 	versionOnce         sync.Once
 	legacyTimingColumns bool
+
+	// planMu guards planHistory. It is separate from mu (which guards
+	// samples/queryFingerprint/fingerprintIndex) because plan capture runs
+	// its own batch of EXPLAIN queries against c.db — much slower than the
+	// simple map writes mu protects — and there's no reason for that to
+	// block SamplesInRange/AllQueryIDs readers or vice versa.
+	planMu      sync.RWMutex
+	planHistory map[int64][]planner.PlanSnapshot
+	// planVersionWarnOnce logs the "plan capture unavailable below PG16"
+	// message exactly once per Collector, instead of once per scrape cycle
+	// (which would otherwise spam the log every ScrapeInterval for the
+	// entire process lifetime on an unsupported server).
+	planVersionWarnOnce sync.Once
 
 	scrapeTotal     prometheus.Counter
 	scrapeErrors    prometheus.Counter
@@ -224,6 +261,7 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 		samples:          make(map[int64][]QuerySample),
 		queryFingerprint: make(map[int64]string),
 		fingerprintIndex: make(map[string]map[int64]struct{}),
+		planHistory:      make(map[int64][]planner.PlanSnapshot),
 		scrapeTotal:      scrapeTotal,
 		scrapeErrors:     scrapeErrors,
 		meanExecTime:     meanExecTime,
@@ -452,6 +490,12 @@ func (c *Collector) scrape(ctx context.Context) error {
 	now := time.Now().UTC()
 	c.scrapeTotal.Inc()
 
+	// tracked accumulates this cycle's (queryid, query text) pairs so that,
+	// if CapturePlans is enabled, plan capture runs once per scrape cycle
+	// over the same top-500 query universe this scrape already read — not as
+	// a separate, unbounded pass over some other query set.
+	var tracked []trackedQuery
+
 	for rows.Next() {
 		var qid int64
 		var queryText string
@@ -463,6 +507,9 @@ func (c *Collector) scrape(ctx context.Context) error {
 		}
 
 		c.ingestSample(now, qid, queryText, calls, totalExecTime, meanExecTime)
+		if c.cfg.CapturePlans {
+			tracked = append(tracked, trackedQuery{queryID: qid, queryText: queryText})
+		}
 	}
 
 	if err := rows.Err(); err != nil {
@@ -471,7 +518,106 @@ func (c *Collector) scrape(ctx context.Context) error {
 
 	c.lastScrapeTime.Store(now)
 	c.pruneAndUpdateMetrics(now)
+
+	if c.cfg.CapturePlans {
+		c.capturePlans(ctx, tracked)
+	}
+
 	return nil
+}
+
+// trackedQuery is one (queryid, query text) pair captured during a scrape
+// cycle, passed to capturePlans when CapturePlans is enabled.
+type trackedQuery struct {
+	queryID   int64
+	queryText string
+}
+
+// capturePlans runs internal/planner.CapturePlan for every query tracked
+// this scrape cycle and appends successful snapshots to their queryid's
+// bounded plan history. A single query's capture failing (a query
+// GENERIC_PLAN genuinely can't handle — see CapturePlan's doc comment for
+// documented cases) is logged at Debug and skipped; it never fails the
+// scrape cycle as a whole. If the server is below PostgreSQL 16,
+// planner.ErrUnsupportedVersion is logged once at Info level (not per query,
+// not per scrape cycle) and capture is skipped for the rest of this cycle
+// and all future ones, since the server's major version cannot change at
+// runtime.
+func (c *Collector) capturePlans(ctx context.Context, tracked []trackedQuery) {
+	for _, q := range tracked {
+		snap, err := planner.CapturePlan(ctx, c.db, q.queryID, q.queryText)
+		if err != nil {
+			if errors.Is(err, planner.ErrUnsupportedVersion) {
+				c.planVersionWarnOnce.Do(func() {
+					c.logger.Info("collector: plan-diff capture unavailable (requires PostgreSQL 16+ for EXPLAIN GENERIC_PLAN); continuing without it", "err", err)
+				})
+				return
+			}
+			c.logger.Debug("collector: plan capture failed for query, skipping", "query_id", q.queryID, "err", err)
+			continue
+		}
+		c.appendPlanSnapshot(*snap)
+	}
+}
+
+// appendPlanSnapshot appends snap to its queryid's bounded plan-history ring,
+// dropping the oldest entry once planHistorySize is reached. Unlike this
+// file's *Locked-suffixed helpers (pruneLocked, indexFingerprintLocked — see
+// their doc comments), this method acquires planMu itself rather than
+// requiring the caller to hold it: it's only ever called from capturePlans,
+// one snapshot at a time, so there's no batching benefit to hoisting the
+// lock up to the caller.
+func (c *Collector) appendPlanSnapshot(snap planner.PlanSnapshot) {
+	c.planMu.Lock()
+	defer c.planMu.Unlock()
+
+	hist := c.planHistory[snap.QueryID]
+	if len(hist) >= planHistorySize {
+		// Drop the oldest entry. A plain copy is fine at this size (at most
+		// planHistorySize elements) — no need for a circular index — and it
+		// keeps the slice's capacity from growing without bound the way
+		// repeated append+reslice would.
+		copy(hist, hist[1:])
+		hist[len(hist)-1] = snap
+	} else {
+		hist = append(hist, snap)
+	}
+	c.planHistory[snap.QueryID] = hist
+}
+
+// PlansAround returns, from queryID's bounded plan-capture history, the
+// closest snapshot at-or-before at (before) and the closest snapshot
+// strictly after at (after). If no snapshot exists after at — the common
+// case, since at is typically a change point detected in the recent past and
+// capture keeps running afterward — after instead falls back to the single
+// most recent snapshot in history overall, so callers reliably get "the
+// latest known plan" rather than nil. Either return value is nil if history
+// has nothing to offer on that side (e.g. CapturePlans is disabled, the
+// server is below PostgreSQL 16, or capture hasn't run yet for this
+// queryid).
+func (c *Collector) PlansAround(queryID int64, at time.Time) (before, after *planner.PlanSnapshot) {
+	c.planMu.RLock()
+	hist := append([]planner.PlanSnapshot(nil), c.planHistory[queryID]...)
+	c.planMu.RUnlock()
+
+	var mostRecent *planner.PlanSnapshot
+	for i := range hist {
+		s := hist[i]
+		if mostRecent == nil || s.RecordedAt.After(mostRecent.RecordedAt) {
+			mostRecent = &hist[i]
+		}
+		if !s.RecordedAt.After(at) {
+			if before == nil || s.RecordedAt.After(before.RecordedAt) {
+				before = &hist[i]
+			}
+		} else if after == nil || s.RecordedAt.Before(after.RecordedAt) {
+			after = &hist[i]
+		}
+	}
+	if after == nil {
+		after = mostRecent
+	}
+	return before, after
 }
 
 // ingestSample records one observation for qid at time now. It is factored

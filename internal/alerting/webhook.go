@@ -112,6 +112,15 @@ func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegr
 			slackField{Title: "⚠️ Note", Value: "External cause suspected (CPU/IO also changed).", Short: false})
 	}
 
+	// PlanDiffSummary is only populated when --capture-plans is enabled and
+	// the server is PostgreSQL 16+ (see internal/planner and
+	// docs/detection-algorithm.md); most deployments won't have it, so it's
+	// appended as its own field rather than reserving space for it above.
+	if r.PlanDiffSummary != "" {
+		payload.Attachments[0].Fields = append(payload.Attachments[0].Fields,
+			slackField{Title: "Plan Diff", Value: r.PlanDiffSummary, Short: false})
+	}
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("alerting: marshal payload: %w", err)
