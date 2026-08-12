@@ -185,7 +185,11 @@ jobs:
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4
+        # sigstore/cosign-installer does not publish a floating major-version
+        # tag (unlike actions/checkout@v7, docker/*-action@v4/v7, etc. above)
+        # — only full semver release tags exist, so this must be pinned to a
+        # complete version per the action's own README, not a "v4" shorthand.
+        uses: sigstore/cosign-installer@v4.1.0
 
       - name: Sign the published image (keyless)
         # No KMS key, no cosign.key, no COSIGN_PASSWORD secret: `--yes`
