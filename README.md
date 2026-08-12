@@ -754,11 +754,14 @@ CI also runs two extra suites against real infrastructure on every push/PR
 (see `.github/workflows/ci.yml`), which you can reproduce locally:
 
 ```bash
-# Real PostgreSQL (internal/storage/postgres, internal/collector):
+# Real PostgreSQL (internal/storage/postgres, internal/collector, and
+# internal/e2e — the last one runs the full Collector -> correlation.Engine
+# -> alerting pipeline against real pg_stat_statements data, the closest
+# thing to a proof that regressions are actually detected end to end):
 docker run -d --name pgrr-test -e POSTGRES_PASSWORD=test -p 5432:5432 \
   postgres:16 postgres -c shared_preload_libraries=pg_stat_statements
 export PGRR_TEST_DSN="postgres://postgres:test@localhost:5432/postgres?sslmode=disable"
-go test -tags=integration ./internal/storage/... ./internal/collector/...
+go test -tags=integration ./internal/storage/... ./internal/collector/... ./internal/e2e/...
 
 # Real kube-apiserver + etcd (internal/controller):
 go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest

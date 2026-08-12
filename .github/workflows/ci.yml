@@ -83,7 +83,12 @@ jobs:
       - name: Run integration tests
         env:
           PGRR_TEST_DSN: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
-        run: go test -tags=integration -race -count=1 ./internal/storage/... ./internal/collector/...
+        # internal/e2e is the full pipeline (Collector -> correlation.Engine
+        # -> alerting) against this same real Postgres — the closest thing
+        # this suite has to proving the tool actually detects a regression,
+        # as opposed to internal/storage and internal/collector's narrower
+        # integration tests, which check one layer in isolation.
+        run: go test -tags=integration -race -count=1 ./internal/storage/... ./internal/collector/... ./internal/e2e/...
 
       - name: Stop PostgreSQL
         if: always()

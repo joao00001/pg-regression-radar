@@ -213,6 +213,24 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 	}, nil
 }
 
+// Scrape performs a single, synchronous pg_stat_statements read-and-ingest
+// cycle — the same logic Run drives on a ticker, exposed for callers that
+// need one deterministic collection pass outside of Run's loop. The
+// motivating case is integration/e2e tests that must control exactly when a
+// scrape happens relative to test setup (e.g. internal/e2e's full-pipeline
+// test), rather than racing a background ticker; an on-demand "collect now"
+// admin/debug action is an equally reasonable use.
+func (c *Collector) Scrape(ctx context.Context) error {
+	return c.scrape(ctx)
+}
+
+// Close releases the Collector's database connection. Run already closes it
+// when ctx is cancelled, so this is only needed by callers — tests, tools —
+// that construct a Collector and drive Scrape directly without calling Run.
+func (c *Collector) Close() error {
+	return c.db.Close()
+}
+
 // Run starts the scrape loop and blocks until ctx is cancelled.
 func (c *Collector) Run(ctx context.Context) error {
 	ticker := time.NewTicker(c.cfg.ScrapeInterval)
