@@ -3,3 +3,11 @@
 # .github/workflows/docs.yml). Never imported by, or shipped with, the Go
 # binaries this project builds.
 mkdocs-material>=9.5,<10
+
+# Publishes/versions the built site (one permanent, browsable copy per
+# release tag, plus a "latest" alias) straight to the gh-pages branch —
+# see .github/workflows/docs.yml's `deploy` job and
+# https://github.com/jimporter/mike. Only actually invoked (via `mike
+# deploy`/`mike set-default`) by that job; `mkdocs build` itself works
+# fine without mike ever running (used by the `check` job on every PR).
+mike>=2.0,<3

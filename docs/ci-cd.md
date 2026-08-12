@@ -71,21 +71,26 @@ Publishes a release: builds, scans, signs, and pushes every artifact this repo s
 
 **Not yet proven green in CI:** like `e2e-kind.yml` before its first real `workflow_dispatch` run, this workflow's commands were checked against current upstream `docker/build-push-action`, `docker/login-action`, `aquasecurity/trivy-action`, `anchore/sbom-action`, `sigstore/cosign-installer`, and `softprops/action-gh-release` documentation, and the YAML is syntax- and `actionlint`-clean, but the environment this was authored in had no Docker daemon at all (not even a local `docker build` of the five targets could be exercised) and obviously no real tag push against the real `ghcr.io` registry or a real GitHub Release creation. Treat the first real release as part of reviewing the change that introduced this workflow — see [Roadmap](roadmap.md#operational-follow-ups).
 
-## `docs.yml` — on pushing a `v*` tag, on push to `main` touching docs, or manual
+## `docs.yml` — two independent jobs: `check` (every PR/push) and `deploy` (only on a release tag)
 
-Builds this documentation site with MkDocs Material (`mkdocs build --strict` — a broken nav entry or internal link fails the build) and publishes it to GitHub Pages at <https://joao00001.github.io/pg-regression-radar/> via GitHub's native Pages deployment (`actions/upload-pages-artifact` + `actions/deploy-pages`), not a `gh-pages` branch.
+Builds this documentation site with MkDocs Material and publishes a **permanently versioned** copy of it to GitHub Pages at <https://joao00001.github.io/pg-regression-radar/> using [mike](https://github.com/jimporter/mike) — every tag gets its own browsable, never-overwritten copy of the site, a version selector renders in the header (Material's native mike integration, see `mkdocs.yml`'s `extra.version` block), and a `latest` alias always points at the newest *stable* release.
 
-Three ways to trigger it:
+This used to be one job that redeployed the live site on every push to `main` touching `docs/**`. That meant the public site could describe a `feat` that had merged but not shipped in any tagged image yet — nothing enforced "the docs you're reading match something you can actually install." It's now split into two jobs specifically to close that gap:
 
-| Trigger | Why |
-|---|---|
-| Push to `main` touching `docs/**`, `mkdocs.yml`, `requirements-docs.txt`, or this workflow file itself | The common case — most doc changes land through a normal PR merge, so the site stays current as content lands. |
-| Push of a `v*` tag | Runs unconditionally, with no path filter, so cutting a release always redeploys the site — even when the release-prep commit itself (e.g. the direct-to-main `chore(release): prepare vX.Y.Z` commit — see [CONTRIBUTING.md](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md#release-notes--changeset-fragments)) doesn't happen to touch anything under `docs/`. Without this, "the docs are in sync with the release" would only be true by coincidence. |
-| `workflow_dispatch` | Manual re-deploy, e.g. after a GitHub Pages settings change. |
+| Job | Trigger | Publishes? |
+|---|---|---|
+| `check` | Push or PR to `main` (PRs path-filtered to `docs/**`/`mkdocs.yml`/`hooks.py`/`requirements-docs.txt`; plain pushes to `main` unconditionally, matching `ci.yml`'s own pattern) | No — `mkdocs build --strict` only, same broken-link/nav gate as before, just never publishes anything. |
+| `deploy` | Push of a `v*` tag, or `workflow_dispatch` with an explicit `tag` input (for re-running a failed deploy — it checks out that exact tag, never whatever ref the workflow happens to run from) | Yes — via `mike deploy`/`mike set-default`, straight to the `gh-pages` branch. |
 
-**One-time manual prerequisite:** Settings → Pages → Source must be set to "GitHub Actions" — this workflow's `deploy` job has nothing to deploy to until that's set, and it can't be set from workflow YAML.
+`deploy` runs unconditionally on every tag push, with no path filter (mirroring `release.yml`'s own tag-triggered, always-runs behavior) — a release always gets a matching docs deploy, even when that specific tag's commit didn't touch anything under `docs/`.
 
-**What this does *not* do:** it doesn't inject the release version into any page, and no page on the site currently displays "current version" — `docs/installation.md`'s image-tag examples are illustrative placeholders (e.g. `:v0.3.0`) with an explicit "substitute the actual latest tag" note, deliberately not kept in lockstep, to avoid a second place that goes stale between releases. `CHANGELOG.md` itself is linked from the docs site (see [Roadmap](roadmap.md#see-also)) but lives at the repo root, not under `docs/` — `mkdocs build --strict` can't resolve a relative link to a file outside the `docs/` tree, so it's referenced via an absolute GitHub blob URL instead of being rendered as a page of its own.
+**Stable vs. pre-release tags:** a tag containing a `-` (this repo's existing release-candidate convention, e.g. `v1.0.0-rc1`) is deployed as its own permanent, linkable version but never becomes the `latest` alias — only a tag with no `-` (a real `vX.Y.Z` release) moves `latest`, and with it, what a visitor sees by default at the site's root.
+
+**One-time manual prerequisite:** Settings → Pages → Source must be "Deploy from a branch", branch `gh-pages`, folder `/ (root)` — **not** "GitHub Actions". mike commits the built site directly to the `gh-pages` branch itself (see [mike's own "How It Works"](https://github.com/jimporter/mike#how-it-works)); there's no artifact-upload step here for the old "GitHub Actions" Pages source to serve.
+
+**Changelog, on the site itself:** `docs/changelog.md` isn't a real file in the repo — `hooks.py`'s `on_pre_build` hook copies the root `CHANGELOG.md` into it at build time (rewriting the two relative links that would otherwise break a directory level deeper: `CONTRIBUTING.md` → an absolute GitHub blob URL, `docs/roadmap.md` → `roadmap.md`) and it's listed in `mkdocs.yml`'s `nav` as a top-level "Changelog" page. Because it's built fresh per version, each mike-deployed version of the site shows `CHANGELOG.md` exactly as it existed at that tag — a real per-release changelog, not just a link out to GitHub.
+
+**Version indicator:** `docs/installation.md`'s image-tag examples remain illustrative placeholders (e.g. `:v0.3.0`) with an explicit "substitute the actual latest tag" note — deliberately not kept in lockstep with the mike version selector, to avoid a second place that goes stale. The version a visitor is actually looking at is shown by Material's version selector itself (top of every page), sourced from mike's `versions.json`, not hand-maintained anywhere.
 
 ## Dependabot (`.github/dependabot.yml`)
 

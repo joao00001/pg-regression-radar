@@ -34,8 +34,54 @@ built JS, once, at build time.
 
 import json
 import os
+import re
 
 _nav = None
+
+
+def on_pre_build(config, **kwargs):
+    """Copy the repo-root CHANGELOG.md into docs/changelog.md so it's a
+    real page in the nav (see mkdocs.yml) instead of only being reachable
+    via an absolute GitHub blob URL.
+
+    Why a hook instead of just putting CHANGELOG.md under docs/ directly:
+    it needs to stay at the repo root (GitHub renders a root CHANGELOG.md
+    specially, and CONTRIBUTING.md / release.yml / towncrier.toml all
+    reference it there) — see docs/ci-cd.md's docs.yml section. Runs in
+    `on_pre_build`, before MkDocs scans `docs_dir` for files, so the
+    generated copy is picked up as an ordinary page like any other.
+
+    Two of CHANGELOG.md's relative links break once copied a directory
+    level deeper into docs/ and need rewriting; everything else in the
+    file (commit/PR links) is already an absolute github.com URL and is
+    left untouched:
+
+    - `CONTRIBUTING.md#...` (repo root) has no equivalent under docs/ at
+      all, so it's rewritten to an absolute GitHub blob URL.
+    - `docs/roadmap.md#...` needs the now-redundant `docs/` prefix
+      stripped, since changelog.md itself now lives inside docs/.
+    """
+    repo_root = os.path.dirname(os.path.abspath(config["config_file_path"]))
+    src = os.path.join(repo_root, "CHANGELOG.md")
+    if not os.path.exists(src):
+        return
+
+    with open(src, encoding="utf-8") as f:
+        content = f.read()
+
+    content = re.sub(
+        r"\]\(CONTRIBUTING\.md(#[^)]*)?\)",
+        lambda m: "](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md"
+        + (m.group(1) or "")
+        + ")",
+        content,
+    )
+    content = content.replace("](docs/roadmap.md", "](roadmap.md")
+
+    dest_dir = os.path.join(repo_root, config["docs_dir"])
+    os.makedirs(dest_dir, exist_ok=True)
+    with open(os.path.join(dest_dir, "changelog.md"), "w", encoding="utf-8") as f:
+        f.write(content)
 
 
 def _serialize(items):
