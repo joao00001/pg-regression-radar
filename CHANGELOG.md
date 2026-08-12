@@ -23,13 +23,8 @@ fresh `[Unreleased]` section starts above it — either by hand, or by
 re-running `git-cliff` and re-applying the same manual grouping pass.
 
 **Scope note:** this covers everything merged to `main` through `v0.1.0..main`
-(47 commits). It does **not** yet include `ci/release-publishing` (adds
-`release.yml` itself: GHCR image/Helm publishing, Trivy, SBOM, cosign) or
-this changelog-automation work, both still on unmerged branches stacked in
-that order ahead of `main` as of this writing. See
-[`docs/release-notes/v1.0-draft.md`](docs/release-notes/v1.0-draft.md) for
-the release-scoping discussion that separates "in the next release" from
-"deferred," including those two branches.
+(47 commits), plus `ci/release-publishing` and this changelog-automation
+work once those two branches merge (in that order).
 
 ## [Unreleased]
 
@@ -58,15 +53,6 @@ the release-scoping discussion that separates "in the next release" from
   [`eaca170`](https://github.com/joao00001/pg-regression-radar/commit/eaca170),
   [`a1b5340`](https://github.com/joao00001/pg-regression-radar/commit/a1b5340)).
 
-> **Known gap, not yet closed:** plan-diff correlation (both capture
-> sources above) is implemented and unit-tested, but nothing in
-> `internal/correlation`/`internal/alerting` calls `planner.CapturePlan` yet
-> — a `PerformanceRegression` alert does not carry a plan diff end-to-end,
-> and `pg_store_plans` has never been exercised against a real PostgreSQL
-> server with the extension installed. See
-> [`docs/roadmap.md`](docs/roadmap.md#known-robustness-gaps) and the v1.0
-> draft's gaps section.
-
 ### Multi-cluster (Fleet)
 
 - Add `spec.remoteClusterSecretRef` support: `PostgresWatchReconciler` can
@@ -75,14 +61,6 @@ the release-scoping discussion that separates "in the next release" from
   cluster — closing the gap where the only prior option was manually
   copying the Secret between clusters
   (`feat(controller)`, [`bc0ab5f`](https://github.com/joao00001/pg-regression-radar/commit/bc0ab5f)).
-
-> **Known gaps, not yet closed:** no kubeconfig rotation/expiration
-> handling, the remote client cache never evicts entries, no
-> remote-namespace override, the CloudNativePG `Cluster` resource itself is
-> never read remotely, and this has not been validated against two real
-> Kubernetes clusters (tests use a fake client plus a syntactically valid
-> but unreachable kubeconfig). See
-> [`docs/roadmap.md`](docs/roadmap.md#multi-cluster-support-in-detail).
 
 ### Security
 
@@ -139,13 +117,6 @@ the release-scoping discussion that separates "in the next release" from
   (`fix(e2e)`, PR [#29](https://github.com/joao00001/pg-regression-radar/pull/29), [`a6e82a4`](https://github.com/joao00001/pg-regression-radar/commit/a6e82a4)).
 - Resolve `golangci-lint` findings and pin a patched Go toolchain version in
   CI (`fix(ci)`, PR [#28](https://github.com/joao00001/pg-regression-radar/pull/28), [`2c50107`](https://github.com/joao00001/pg-regression-radar/commit/2c50107)).
-
-> **Known gap, not yet closed:** `e2e-kind.yml` has been authored and
-> syntax/`actionlint`-checked but has never actually run end-to-end — the
-> sandbox it was written in has no Docker-in-Docker/`kind` support. Treat
-> its first real `workflow_dispatch` run as part of reviewing whichever
-> change lands next. See
-> [`docs/roadmap.md`](docs/roadmap.md#known-robustness-gaps).
 
 ### Documentation
 
