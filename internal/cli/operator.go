@@ -74,6 +74,7 @@ func RunOperator(args []string) {
 	metricsListen := fs.String("metrics-listen", ":9090", "HTTP listen address for Prometheus metrics")
 	slackURL := fs.String("slack-url", "", "Slack incoming-webhook URL for notifications")
 	sourceType := fs.String("source-type", "generic", "Deploy source type: argocd, argo-rollouts, flux, generic")
+	webhookSecret := fs.String("webhook-secret", "", "Shared secret for webhook authentication; when set, every POST to /webhook must include this value in the X-Webhook-Token header (401 otherwise). Recommended for internet-facing deployments. Prefer passing this via an environment variable reference rather than a CLI flag to avoid exposure in process listings.")
 	windowMinutes := fs.Int("window-minutes", 30, "Analysis window (minutes before/after deploy)")
 	minExecutions := fs.Int64("min-executions", 10, "Minimum query executions per window")
 	latencyThreshold := fs.Float64("latency-threshold", 0.20, "Minimum relative latency increase to flag")
@@ -157,9 +158,10 @@ func RunOperator(args []string) {
 	// ---- Ingester ----
 	store := &ingester.Store{}
 	source := v1alpha1.DeploySource{
-		Name:        "operator-default",
-		SourceType:  *sourceType,
-		ClusterName: *clusterName,
+		Name:          "operator-default",
+		SourceType:    *sourceType,
+		ClusterName:   *clusterName,
+		WebhookSecret: *webhookSecret,
 	}
 	webhookHandler := ingester.NewHandler(store, source, logger)
 

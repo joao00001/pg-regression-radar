@@ -78,6 +78,11 @@ analysis:
 # Webhook ingester settings.
 ingester:
   sourceType: "argocd"
+  # webhookSecret is the shared secret for authenticating incoming webhook
+  # requests. When non-empty, every POST to /webhook must include this value
+  # in the X-Webhook-Token header; requests without it are rejected with 401.
+  # Strongly recommended for any deployment reachable from outside the cluster.
+  webhookSecret: ""
 
 # Alerting settings.
 alerting:
