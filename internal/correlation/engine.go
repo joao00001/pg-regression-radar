@@ -115,10 +115,10 @@ func (e *Engine) Analyse(ev v1alpha1.DeployEvent) []v1alpha1.PerformanceRegressi
 	var results []v1alpha1.PerformanceRegression
 
 	for _, qid := range queryIDs {
-		preBefore := e.src.SamplesInRange(qid, before, ev.Timestamp)
-		postBefore := e.src.SamplesInRange(qid, ev.Timestamp, after)
+		allSamples := e.src.SamplesInRange(qid, before, after)
+		preSamples, postSamples := partitionAtDeployTime(allSamples, ev.Timestamp)
 
-		r := e.evaluateQuery(ev, qid, preBefore, postBefore)
+		r := e.evaluateQuery(ev, qid, preSamples, postSamples)
 		results = append(results, r)
 	}
 
@@ -303,6 +303,23 @@ func changePointMinSegLen(n int) int {
 		minSegLen = 3
 	}
 	return minSegLen
+}
+
+// partitionAtDeployTime splits samples into pre- and post-deploy slices.
+// Pre contains samples with RecordedAt ≤ deployAt; post contains samples with
+// RecordedAt ≥ deployAt. A sample recorded exactly at deployAt appears in both
+// slices, matching the inclusive-boundary semantics of two separate
+// SamplesInRange([before, deployAt]) and SamplesInRange([deployAt, after]) calls.
+func partitionAtDeployTime(samples []collector.QuerySample, deployAt time.Time) (pre, post []collector.QuerySample) {
+	for _, s := range samples {
+		if !s.RecordedAt.After(deployAt) {
+			pre = append(pre, s)
+		}
+		if !s.RecordedAt.Before(deployAt) {
+			post = append(post, s)
+		}
+	}
+	return pre, post
 }
 
 // ----- statistical helpers -----
