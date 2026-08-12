@@ -69,13 +69,20 @@ func TestIntegration_Scrape_RealPostgres(t *testing.T) {
 
 	// A query pg_stat_statements will never have seen before in this
 	// container, with a deliberate, measurable latency floor (~40ms) and a
-	// distinctive literal so we can find it by substring after scraping.
-	// pg_stat_statements normalizes the numeric literal away, so N
-	// executions collapse into a single queryid with Calls == N.
+	// distinctive marker so we can find it by substring after scraping.
+	//
+	// The marker MUST be a SQL comment, not a string literal:
+	// pg_stat_statements normalizes every constant (numeric AND string) to
+	// a $N placeholder in the query text it stores, so a literal marker
+	// would be invisible by the time it reaches Collector.SamplesInRange.
+	// Comments, unlike literals, survive normalization verbatim — the same
+	// property tools like sqlcommenter/marginalia rely on to tag queries
+	// for pg_stat_statements. N identical executions (comment and all)
+	// collapse into a single queryid with Calls == N.
 	const marker = "pgrr_collector_integration_probe"
 	const execCount = 5
 	for i := 0; i < execCount; i++ {
-		if _, err := setup.ExecContext(ctx, fmt.Sprintf(`SELECT pg_sleep(0.04), '%s'`, marker)); err != nil {
+		if _, err := setup.ExecContext(ctx, fmt.Sprintf(`SELECT pg_sleep(0.04) /* %s */`, marker)); err != nil {
 			t.Fatalf("generate probe query #%d: %v", i, err)
 		}
 	}

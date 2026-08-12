@@ -379,9 +379,9 @@ Everything lives in its own schema so it never collides with application
 tables and can be dropped cleanly:
 
 ```sql
-CREATE SCHEMA IF NOT EXISTS pg_regression_radar;
+CREATE SCHEMA IF NOT EXISTS regression_radar;
 
-CREATE TABLE pg_regression_radar.query_samples (
+CREATE TABLE regression_radar.query_samples (
     id                  BIGSERIAL PRIMARY KEY,
     query_id            BIGINT NOT NULL,
     query_text          TEXT NOT NULL,
@@ -390,10 +390,10 @@ CREATE TABLE pg_regression_radar.query_samples (
     mean_exec_time_ms   DOUBLE PRECISION NOT NULL,
     recorded_at         TIMESTAMPTZ NOT NULL
 );
-CREATE INDEX idx_query_samples_queryid_recorded_at ON pg_regression_radar.query_samples (query_id, recorded_at);
-CREATE INDEX idx_query_samples_recorded_at         ON pg_regression_radar.query_samples (recorded_at);
+CREATE INDEX idx_query_samples_queryid_recorded_at ON regression_radar.query_samples (query_id, recorded_at);
+CREATE INDEX idx_query_samples_recorded_at         ON regression_radar.query_samples (recorded_at);
 
-CREATE TABLE pg_regression_radar.deploy_events (
+CREATE TABLE regression_radar.deploy_events (
     id               TEXT PRIMARY KEY,
     source           TEXT NOT NULL DEFAULT '',
     app              TEXT NOT NULL DEFAULT '',
@@ -403,7 +403,7 @@ CREATE TABLE pg_regression_radar.deploy_events (
     image_tag        TEXT NOT NULL DEFAULT '',
     event_timestamp  TIMESTAMPTZ NOT NULL
 );
-CREATE INDEX idx_deploy_events_event_timestamp ON pg_regression_radar.deploy_events (event_timestamp);
+CREATE INDEX idx_deploy_events_event_timestamp ON regression_radar.deploy_events (event_timestamp);
 ```
 
 The schema is applied automatically on startup (`internal/storage/postgres`)

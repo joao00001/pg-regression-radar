@@ -18,7 +18,7 @@
 //
 // # Schema management
 //
-// Everything lives in its own schema (pg_regression_radar) so it never
+// Everything lives in its own schema (regression_radar) so it never
 // collides with application tables, and every DDL statement is
 // CREATE ... IF NOT EXISTS. See the comment on Migrate for why this project
 // hand-rolls idempotent DDL instead of pulling in a migration framework.
@@ -37,9 +37,15 @@ import (
 )
 
 // SchemaName is the dedicated Postgres schema all pg-regression-radar state
-// lives under, so it's trivial to find ("\dn+ pg_regression_radar") and
+// lives under, so it's trivial to find ("\dn+ regression_radar") and
 // trivial to drop entirely if the tool is uninstalled.
-const SchemaName = "pg_regression_radar"
+//
+// Deliberately NOT prefixed "pg_": PostgreSQL reserves that literal prefix
+// for its own system schemas and CREATE SCHEMA rejects it outright with
+// "unacceptable schema name" (see the CREATE SCHEMA documentation) —
+// discovered the hard way via a real-Postgres integration test failure,
+// which is exactly the class of bug those tests exist to catch.
+const SchemaName = "regression_radar"
 
 // migrationStatements is applied, in order, every time Open (or Migrate) is
 // called — including on every process restart, and even if multiple
