@@ -67,7 +67,7 @@ func RunIngester(args []string) {
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	store := &ingester.Store{}
+	store := ingester.NewStore()
 	source := v1alpha1.DeploySource{
 		Name:             *sourceName,
 		SourceType:       *sourceType,

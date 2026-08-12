@@ -57,7 +57,11 @@ func NewSampleStore() *SampleStore {
 func (s *SampleStore) Append(_ context.Context, sample collector.QuerySample) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.samples[sample.QueryID] = append(s.samples[sample.QueryID], sample)
+	sl := s.samples[sample.QueryID]
+	if sl == nil {
+		sl = make([]collector.QuerySample, 0, 32)
+	}
+	s.samples[sample.QueryID] = append(sl, sample)
 	return nil
 }
 
@@ -66,8 +70,9 @@ func (s *SampleStore) SamplesInRange(_ context.Context, queryID int64, from, to 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var out []collector.QuerySample
-	for _, sample := range s.samples[queryID] {
+	all := s.samples[queryID]
+	out := make([]collector.QuerySample, 0, len(all))
+	for _, sample := range all {
 		if !sample.RecordedAt.Before(from) && !sample.RecordedAt.After(to) {
 			out = append(out, sample)
 		}
@@ -121,7 +126,7 @@ type EventStore struct {
 
 // NewEventStore returns an empty EventStore.
 func NewEventStore() *EventStore {
-	return &EventStore{events: make(map[string]v1alpha1.DeployEvent)}
+	return &EventStore{events: make(map[string]v1alpha1.DeployEvent), order: make([]string, 0, 64)}
 }
 
 // Add implements storage.EventStore. Re-adding the same ID overwrites in
@@ -142,7 +147,7 @@ func (s *EventStore) EventsInRange(_ context.Context, from, to time.Time) ([]v1a
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var out []v1alpha1.DeployEvent
+	out := make([]v1alpha1.DeployEvent, 0, len(s.order))
 	for _, id := range s.order {
 		ev := s.events[id]
 		if !ev.Timestamp.Before(from) && !ev.Timestamp.After(to) {

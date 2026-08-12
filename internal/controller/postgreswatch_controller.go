@@ -179,7 +179,7 @@ func (r *PostgresWatchReconciler) refreshStatus(ctx context.Context, watch *rada
 	watch.Status.Phase = radarv1alpha1.PostgresWatchPhaseRunning
 	watch.Status.ObservedGeneration = watch.Generation
 	watch.Status.TrackedQueryIDs = int64(len(ids))
-	if last := latestSampleTime(rt.Collector, ids); !last.IsZero() {
+	if last := rt.Collector.LastScrapeTime(); !last.IsZero() {
 		mt := metav1.NewTime(last)
 		watch.Status.LastScrapeTime = &mt
 	}
@@ -299,7 +299,7 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			events, newCursor := rt.Store.Since(cursor)
+			events, newCursor := rt.Store.DrainSince(cursor)
 			cursor = newCursor
 			for _, ev := range events {
 
@@ -428,23 +428,6 @@ func parseFloatOr(s string, fallback float64) float64 {
 		return fallback
 	}
 	return v
-}
-
-// latestSampleTime scans ids for the most recent QuerySample.RecordedAt.
-// collector.Collector does not expose a "last scrape time" field directly,
-// so this derives it from the samples it does expose rather than modifying
-// that package.
-func latestSampleTime(col *collector.Collector, ids []int64) time.Time {
-	var latest time.Time
-	now := time.Now().UTC()
-	for _, id := range ids {
-		for _, s := range col.SamplesInRange(id, time.Unix(0, 0), now) {
-			if s.RecordedAt.After(latest) {
-				latest = s.RecordedAt
-			}
-		}
-	}
-	return latest
 }
 
 var invalidNameChars = regexp.MustCompile(`[^a-z0-9-]+`)

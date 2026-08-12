@@ -115,10 +115,10 @@ func (e *Engine) Analyse(ev v1alpha1.DeployEvent) []v1alpha1.PerformanceRegressi
 	var results []v1alpha1.PerformanceRegression
 
 	for _, qid := range queryIDs {
-		preBefore := e.src.SamplesInRange(qid, before, ev.Timestamp)
-		postBefore := e.src.SamplesInRange(qid, ev.Timestamp, after)
+		allSamples := e.src.SamplesInRange(qid, before, after)
+		preSamples, postSamples := partitionAtDeployTime(allSamples, ev.Timestamp)
 
-		r := e.evaluateQuery(ev, qid, preBefore, postBefore)
+		r := e.evaluateQuery(ev, qid, preSamples, postSamples)
 		results = append(results, r)
 	}
 
@@ -303,6 +303,23 @@ func changePointMinSegLen(n int) int {
 		minSegLen = 3
 	}
 	return minSegLen
+}
+
+// partitionAtDeployTime splits samples into pre- and post-deploy slices.
+// Pre contains samples with RecordedAt ≤ deployAt; post contains samples with
+// RecordedAt ≥ deployAt. A sample recorded exactly at deployAt appears in both
+// slices, matching the inclusive-boundary semantics of two separate
+// SamplesInRange([before, deployAt]) and SamplesInRange([deployAt, after]) calls.
+func partitionAtDeployTime(samples []collector.QuerySample, deployAt time.Time) (pre, post []collector.QuerySample) {
+	for _, s := range samples {
+		if !s.RecordedAt.After(deployAt) {
+			pre = append(pre, s)
+		}
+		if !s.RecordedAt.Before(deployAt) {
+			post = append(post, s)
+		}
+	}
+	return pre, post
 }
 
 // ----- statistical helpers -----
@@ -539,24 +556,96 @@ func EDivisive(series []float64, minSegLen int, maxPoints int) []ChangePoint {
 
 // bestChangePoint finds the index within series that maximises the energy
 // statistic (i.e. the most likely single change point).
+//
+// The implementation uses an incremental update strategy so that the overall
+// complexity is O(n²) rather than O(n³):
+//
+//   - sumAB tracks Σ|a[i]-b[j]| and is updated in O(n) per step by adding the
+//     contributions of the element that moves from b into a.
+//   - sumAA and sumBB (the within-segment sums) are updated similarly in O(n).
 func bestChangePoint(series []float64, minSegLen int) ChangePoint {
 	n := len(series)
 	best := ChangePoint{EStatistic: -1}
 
-	for k := minSegLen; k <= n-minSegLen; k++ {
-		e := energyStatistic(series[:k], series[k:])
+	// Seed with the initial split at k = minSegLen.
+	// a = series[:minSegLen], b = series[minSegLen:]
+	sumAB := 0.0
+	for i := 0; i < minSegLen; i++ {
+		for j := minSegLen; j < n; j++ {
+			sumAB += math.Abs(series[i] - series[j])
+		}
+	}
+
+	sumAA := 0.0
+	for i := 0; i < minSegLen; i++ {
+		for j := i + 1; j < minSegLen; j++ {
+			sumAA += math.Abs(series[i] - series[j])
+		}
+	}
+
+	sumBB := 0.0
+	for i := minSegLen; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			sumBB += math.Abs(series[i] - series[j])
+		}
+	}
+
+	evalAndUpdate := func(k int) {
+		na := float64(k)
+		nb := float64(n - k)
+		// meanAbsDiff between a and b
+		ab := sumAB / (na * nb)
+		// meanAbsDiffSelf for a: sum over upper triangle → multiply by 2 for
+		// the n*(n-1) denominator used in the original formula.
+		aa := (2 * sumAA) / (na * (na - 1))
+		bb := (2 * sumBB) / (nb * (nb - 1))
+		if na < 2 {
+			aa = 0
+		}
+		if nb < 2 {
+			bb = 0
+		}
+		e := (2 * na * nb / (na + nb)) * (ab - aa/2 - bb/2)
 		if e > best.EStatistic {
 			best = ChangePoint{Index: k, EStatistic: e}
 		}
 	}
+
+	evalAndUpdate(minSegLen)
+
+	// Slide the split point from minSegLen to n-minSegLen, updating the running
+	// sums incrementally each time series[k-1] moves from b into a.
+	for k := minSegLen + 1; k <= n-minSegLen; k++ {
+		moved := series[k-1] // element transitioning: b → a
+
+		// sumAB: the pairs (i, k-1) for i<k-1 that were cross-pairs are gone;
+		// the new cross-pairs (k-1, j) for j>=k are added.
+		for i := 0; i < k-1; i++ {
+			sumAB -= math.Abs(series[i] - moved)
+		}
+		for j := k; j < n; j++ {
+			sumAB += math.Abs(moved - series[j])
+		}
+
+		// sumBB: remove pairs that included the moved element (it's now in a).
+		for j := k; j < n; j++ {
+			sumBB -= math.Abs(moved - series[j])
+		}
+
+		// sumAA: add pairs between the moved element and all existing a members.
+		for i := 0; i < k-1; i++ {
+			sumAA += math.Abs(series[i] - moved)
+		}
+
+		evalAndUpdate(k)
+	}
+
 	return best
 }
 
 // energyStatistic computes the E-statistic between two samples a and b:
 //
 //	E = (2·n_a·n_b / (n_a+n_b)) · (mean|a_i - b_j| - mean|a_i - a_j|/2 - mean|b_i - b_j|/2)
-//
-// O(n²) is acceptable because windows are small (≤ 60 points).
 func energyStatistic(a, b []float64) float64 {
 	na := float64(len(a))
 	nb := float64(len(b))
@@ -583,18 +672,20 @@ func meanAbsDiff(a, b []float64) float64 {
 }
 
 // meanAbsDiffSelf returns the mean |a[i] - a[j]| over all pairs i≠j.
+// Only the upper triangle (j > i) is evaluated and the result doubled,
+// halving the number of math.Abs calls relative to the full i≠j iteration.
 func meanAbsDiffSelf(a []float64) float64 {
 	n := float64(len(a))
 	if n < 2 {
 		return 0
 	}
 	sum := 0.0
-	for i, x := range a {
-		for j, y := range a {
-			if i != j {
-				sum += math.Abs(x - y)
-			}
+	for i := 0; i < len(a); i++ {
+		for j := i + 1; j < len(a); j++ {
+			sum += math.Abs(a[i] - a[j])
 		}
 	}
-	return sum / (n * (n - 1))
+	// sum covers the upper triangle; multiply by 2 to get the full i≠j sum,
+	// then divide by n*(n-1) (the count of ordered pairs).
+	return 2 * sum / (n * (n - 1))
 }

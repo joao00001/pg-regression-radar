@@ -47,53 +47,6 @@ func TestStore_AddAndRange(t *testing.T) {
 	}
 }
 
-func TestStore_Since(t *testing.T) {
-	t.Parallel()
-
-	store := &ingester.Store{}
-
-	// Empty store: Since(0) should return nothing and keep cursor at 0.
-	events, cursor := store.Since(0)
-	if len(events) != 0 || cursor != 0 {
-		t.Fatalf("expected empty result from empty store, got %d events, cursor %d", len(events), cursor)
-	}
-
-	now := time.Now().UTC()
-	store.Add(v1alpha1.DeployEvent{ID: "a", Timestamp: now})
-	store.Add(v1alpha1.DeployEvent{ID: "b", Timestamp: now})
-
-	// First poll: should return both events and advance cursor.
-	events, cursor = store.Since(0)
-	if len(events) != 2 {
-		t.Fatalf("expected 2 events on first poll, got %d", len(events))
-	}
-	if cursor != 2 {
-		t.Fatalf("expected cursor=2, got %d", cursor)
-	}
-
-	// Second poll with same cursor: no new events yet.
-	events, cursor = store.Since(cursor)
-	if len(events) != 0 {
-		t.Fatalf("expected 0 new events on second poll, got %d", len(events))
-	}
-	if cursor != 2 {
-		t.Fatalf("expected cursor=2 unchanged, got %d", cursor)
-	}
-
-	// Add a new event and poll again: only the new event should be returned.
-	store.Add(v1alpha1.DeployEvent{ID: "c", Timestamp: now})
-	events, cursor = store.Since(cursor)
-	if len(events) != 1 {
-		t.Fatalf("expected 1 new event, got %d", len(events))
-	}
-	if events[0].ID != "c" {
-		t.Errorf("expected event ID 'c', got %q", events[0].ID)
-	}
-	if cursor != 3 {
-		t.Fatalf("expected cursor=3, got %d", cursor)
-	}
-}
-
 func TestHandler_ArgoCDWebhook(t *testing.T) {
 	t.Parallel()
 
@@ -509,5 +462,69 @@ func TestHandler_GenericWebhook_ClusterFromPayloadNotOverridden(t *testing.T) {
 	}
 	if events[0].Cluster != "explicit-cluster" {
 		t.Errorf("expected cluster=explicit-cluster, got %q", events[0].Cluster)
+	}
+}
+
+func TestStore_DrainSince(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	now := time.Now().UTC()
+
+	// Empty store: cursor stays at zero, no events returned.
+	evs, cursor := store.DrainSince(0)
+	if len(evs) != 0 || cursor != 0 {
+		t.Fatalf("expected empty drain on empty store, got %d events cursor=%d", len(evs), cursor)
+	}
+
+	store.Add(v1alpha1.DeployEvent{ID: "a", Timestamp: now})
+	store.Add(v1alpha1.DeployEvent{ID: "b", Timestamp: now.Add(time.Second)})
+
+	// First drain should return both events and advance cursor to 2.
+	evs, cursor = store.DrainSince(0)
+	if len(evs) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(evs))
+	}
+	if cursor != 2 {
+		t.Fatalf("expected cursor=2, got %d", cursor)
+	}
+
+	// Second drain with updated cursor should return nothing new.
+	evs, cursor = store.DrainSince(cursor)
+	if len(evs) != 0 {
+		t.Fatalf("expected 0 new events, got %d", len(evs))
+	}
+
+	// Add one more and drain only the new event.
+	store.Add(v1alpha1.DeployEvent{ID: "c", Timestamp: now.Add(2 * time.Second)})
+	evs, cursor = store.DrainSince(cursor)
+	if len(evs) != 1 {
+		t.Fatalf("expected 1 new event, got %d", len(evs))
+	}
+	if evs[0].ID != "c" {
+		t.Errorf("expected event ID=c, got %s", evs[0].ID)
+	}
+	if cursor != 3 {
+		t.Fatalf("expected cursor=3, got %d", cursor)
+	}
+}
+
+func TestStore_EventsInRange_OutOfOrder(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	now := time.Now().UTC()
+
+	// Add events out of timestamp order to verify the sorted index is correct.
+	store.Add(v1alpha1.DeployEvent{ID: "late", Timestamp: now.Add(10 * time.Minute)})
+	store.Add(v1alpha1.DeployEvent{ID: "early", Timestamp: now.Add(-10 * time.Minute)})
+	store.Add(v1alpha1.DeployEvent{ID: "mid", Timestamp: now})
+
+	inRange := store.EventsInRange(now.Add(-5*time.Minute), now.Add(5*time.Minute))
+	if len(inRange) != 1 {
+		t.Fatalf("expected 1 event in range, got %d", len(inRange))
+	}
+	if inRange[0].ID != "mid" {
+		t.Errorf("expected event ID=mid, got %s", inRange[0].ID)
 	}
 }

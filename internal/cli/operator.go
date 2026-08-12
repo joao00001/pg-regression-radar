@@ -279,6 +279,9 @@ func RunOperator(args []string) {
 
 	// Poll the ingester store every 5 s; a channel-based push would require
 	// locking changes across packages, so polling keeps the coupling minimal.
+	// DrainSince uses a cursor (the count of already-processed events) so
+	// each tick copies only newly arrived events and releases the lock
+	// immediately, avoiding repeated full-slice copies and lock contention.
 	go func() {
 		var cursor int
 		ticker := time.NewTicker(5 * time.Second)
@@ -288,9 +291,9 @@ func RunOperator(args []string) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				events, newCursor := store.Since(cursor)
-				cursor = newCursor
-				for _, ev := range events {
+			var evs []v1alpha1.DeployEvent
+				evs, cursor = store.DrainSince(cursor)
+				for _, ev := range evs {
 					// Mirror into the durable EventStore, if configured (see
 					// the SampleStore bridge above for the same rationale).
 					if eventStore != nil {

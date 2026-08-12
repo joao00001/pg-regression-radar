@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 
@@ -47,6 +48,15 @@ var ValidSourceTypes = map[string]bool{
 type Store struct {
 	mu     sync.RWMutex
 	events []v1alpha1.DeployEvent
+	// byTime mirrors events sorted by Timestamp, maintained on every Add so
+	// that EventsInRange can binary-search instead of doing a full O(n) scan.
+	byTime []v1alpha1.DeployEvent
+}
+
+// NewStore returns an empty Store with a small pre-allocated backing slice to
+// reduce early-growth reallocations.
+func NewStore() *Store {
+	return &Store{events: make([]v1alpha1.DeployEvent, 0, 64)}
 }
 
 // Add appends a new event to the store.
@@ -54,20 +64,48 @@ func (s *Store) Add(ev v1alpha1.DeployEvent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.events = append(s.events, ev)
+	// Insert ev into byTime at the position that keeps it sorted by Timestamp.
+	pos := sort.Search(len(s.byTime), func(i int) bool {
+		return s.byTime[i].Timestamp.After(ev.Timestamp)
+	})
+	s.byTime = append(s.byTime, v1alpha1.DeployEvent{})
+	copy(s.byTime[pos+1:], s.byTime[pos:])
+	s.byTime[pos] = ev
 }
 
 // EventsInRange returns all events whose Timestamp falls within [from, to].
+// It uses binary search on the timestamp-sorted index, so it runs in
+// O(log n + k) rather than O(n), where k is the number of matching events.
 func (s *Store) EventsInRange(from, to time.Time) []v1alpha1.DeployEvent {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	lo := sort.Search(len(s.byTime), func(i int) bool {
+		return !s.byTime[i].Timestamp.Before(from)
+	})
 	var result []v1alpha1.DeployEvent
-	for _, ev := range s.events {
-		if !ev.Timestamp.Before(from) && !ev.Timestamp.After(to) {
-			result = append(result, ev)
+	for _, ev := range s.byTime[lo:] {
+		if ev.Timestamp.After(to) {
+			break
 		}
+		result = append(result, ev)
 	}
 	return result
+}
+
+// DrainSince returns events appended after the given cursor position and the
+// new cursor to pass on the next call. cursor must be the value returned by
+// a previous call (or zero on the first call). The lock is held only long
+// enough to copy the new tail, so the caller never observes the full slice.
+func (s *Store) DrainSince(cursor int) ([]v1alpha1.DeployEvent, int) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if cursor >= len(s.events) {
+		return nil, cursor
+	}
+	batch := make([]v1alpha1.DeployEvent, len(s.events)-cursor)
+	copy(batch, s.events[cursor:])
+	return batch, len(s.events)
 }
 
 // All returns a snapshot of all stored events.
@@ -77,22 +115,6 @@ func (s *Store) All() []v1alpha1.DeployEvent {
 	out := make([]v1alpha1.DeployEvent, len(s.events))
 	copy(out, s.events)
 	return out
-}
-
-// Since returns events added after the given cursor position, along with the
-// updated cursor to pass on the next call. Because the store is append-only,
-// callers can track a cursor index instead of a seen-ID map to avoid copying
-// the entire slice on every poll tick. The returned slice contains only the
-// newly appended events and is safe to use after the lock is released.
-func (s *Store) Since(cursor int) ([]v1alpha1.DeployEvent, int) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if cursor >= len(s.events) {
-		return nil, cursor
-	}
-	out := make([]v1alpha1.DeployEvent, len(s.events)-cursor)
-	copy(out, s.events[cursor:])
-	return out, len(s.events)
 }
 
 // Handler is an HTTP handler that accepts webhook payloads from ArgoCD,
