@@ -19,6 +19,15 @@ name: Manual E2E (real container)
 # HTTP request lands on a mock receiver — with the operator treated as an
 # opaque black box the same way it would run in Kubernetes.
 #
+# Split into two jobs (build-image, e2e) rather than one, even though a
+# single job could do all of this on one runner: the Actions UI reports
+# status and logs per job, so "did the image even build" and "did the
+# running container detect the regression" show up as two distinct,
+# independently-inspectable results instead of one undifferentiated wall of
+# steps. The image crosses the job boundary via upload-artifact/
+# download-artifact (docker save/load to a tarball) since each job gets its
+# own fresh runner with no shared filesystem or Docker daemon state.
+#
 # Not wired to push/pull_request: this spins up multiple long-lived
 # containers and sleeps through real wall-clock windows (tens of seconds), so
 # it's deliberately opt-in via workflow_dispatch rather than adding minutes to
@@ -34,14 +43,15 @@ env:
   PG_CONTAINER: pgrr-manual-e2e-postgres
   OPERATOR_CONTAINER: pgrr-manual-e2e-operator
   OPERATOR_IMAGE: pgrr-operator:manual-e2e
+  IMAGE_ARTIFACT_NAME: pgrr-operator-image
   # A unique-per-run id, so an assertion against the mock webhook's received
   # payload can't accidentally pass because of a stale file left over from a
   # previous run of this same workflow on a reused runner.
   DEPLOY_EVENT_ID: manual-e2e-${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
-  e2e:
-    name: Build image, run it, verify a real regression is detected and alerted
+  build-image:
+    name: Build the operator image
     runs-on: ubuntu-latest
 
     steps:
@@ -50,6 +60,36 @@ jobs:
 
       - name: Build the operator image
         run: docker build --target operator -t "${OPERATOR_IMAGE}" .
+
+      - name: Save the image to a tarball
+        # docker save/load, not push/pull to a registry: this image only
+        # needs to survive the handoff to the next job on the same
+        # workflow run, not be published anywhere.
+        run: docker save "${OPERATOR_IMAGE}" -o /tmp/pgrr-operator-image.tar
+
+      - name: Upload the image as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.IMAGE_ARTIFACT_NAME }}
+          path: /tmp/pgrr-operator-image.tar
+          # Only ever consumed by the very next job in this same run; no
+          # reason to keep it around after that.
+          retention-days: 1
+
+  e2e:
+    name: Run it, verify a real regression is detected and alerted
+    runs-on: ubuntu-latest
+    needs: build-image
+
+    steps:
+      - name: Download the operator image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.IMAGE_ARTIFACT_NAME }}
+          path: /tmp
+
+      - name: Load the operator image
+        run: docker load -i /tmp/pgrr-operator-image.tar
 
       - name: Create an isolated Docker network
         run: docker network create "${NETWORK}"
