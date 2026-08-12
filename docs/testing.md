@@ -24,7 +24,13 @@ Gated behind the `integration` build tag so `go test ./...` stays safe with no d
 # Real PostgreSQL (internal/storage/postgres, internal/collector, and
 # internal/e2e — the last one runs the full Collector -> correlation.Engine
 # -> alerting pipeline against real pg_stat_statements data, the closest
-# thing to a proof that regressions are actually detected end to end):
+# thing to a proof that regressions are actually detected end to end).
+# CI runs this same command against postgres:16, postgres:17, and
+# postgres:18 (see the integration-postgres matrix in ci.yml) — pick
+# whichever tag locally, they're all officially supported; see the
+# support matrix doc for the full version/distribution matrix, including
+# the separate, secret-gated job that also runs this suite against EDB
+# Postgres Advanced Server and EDB Postgres Extended Server.
 docker run -d --name pgrr-test -e POSTGRES_PASSWORD=test -p 5432:5432 \
   postgres:16 postgres -c shared_preload_libraries=pg_stat_statements
 export PGRR_TEST_DSN="postgres://postgres:test@localhost:5432/postgres?sslmode=disable"
@@ -66,5 +72,6 @@ It deliberately uses `--source-type=generic` with an explicit, already-elapsed d
 ## See also
 
 - [CI/CD](ci-cd.md) — which of these run automatically, and on what trigger.
+- [Support Matrix](support-matrix.md) — the PostgreSQL versions and distributions the integration suite above is (and isn't) run against automatically.
 - [Detection Algorithm](detection-algorithm.md) — what `internal/e2e` and the manual e2e workflow are both ultimately proving.
 - [Contributing](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md) — what's expected of tests in a PR.

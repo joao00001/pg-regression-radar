@@ -40,10 +40,26 @@ jobs:
   # PostgreSQL server (internal/storage/postgres, internal/collector),
   # instead of the fakes/mocks the default build-and-test job uses. See each
   # test file's doc comment for how to run it the same way locally.
+  #
+  # Matrixed across every PostgreSQL major version in the officially
+  # supported version matrix - 16 is the floor (required by the
+  # EXPLAIN GENERIC_PLAN-based plan-diff capture; see
+  # docs/support-matrix.md#officially-supported-postgresql-versions), 17 and
+  # 18 are the two newer officially supported majors. All three tags are
+  # official, publicly pullable Docker Official Images
+  # (https://hub.docker.com/_/postgres) - no registry credentials needed.
+  # EDB Postgres Advanced Server / Extended Server are NOT covered here (see
+  # the separate, secret-gated integration-edb-postgres job below); community
+  # PostgreSQL is the only distribution with unconditional, every-PR coverage
+  # - see docs/support-matrix.md#supported-distributions.
   integration-postgres:
-    name: Integration tests (real PostgreSQL)
+    name: "Integration tests (real PostgreSQL): postgres:${{ matrix.postgres-version }}"
     runs-on: ubuntu-latest
     needs: build-and-test
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres-version: [16, 17, 18]
 
     steps:
       - name: Checkout
@@ -65,7 +81,7 @@ jobs:
           docker run -d --name pgrr-test \
             -e POSTGRES_PASSWORD=test \
             -p 5432:5432 \
-            postgres:16 \
+            postgres:${{ matrix.postgres-version }} \
             postgres -c shared_preload_libraries=pg_stat_statements
 
           echo "Waiting for PostgreSQL to accept connections..."
@@ -106,6 +122,131 @@ jobs:
       - name: Stop PostgreSQL
         if: always()
         run: docker rm -f pgrr-test || true
+
+  # ---------------------------------------------------------------------
+  # EDB Postgres Advanced Server (EPAS) / EDB Postgres Extended Server (PGE)
+  # ---------------------------------------------------------------------
+  # Both are officially supported distributions (see
+  # docs/support-matrix.md#supported-distributions), but their images are
+  # NOT publicly pullable: they live behind the private, authenticated
+  # docker.enterprisedb.com registry, which requires an EDB subscription
+  # token (see
+  # https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/private_edb_registries/).
+  # GitHub Actions never exposes repository secrets to pull_request runs
+  # triggered from a fork, so most external contributors' PRs have no way to
+  # authenticate here regardless of repo configuration.
+  #
+  # To keep this coverage honest without ever breaking CI for a contributor
+  # or maintainer who doesn't have an EDB subscription configured:
+  #
+  #   1. check-edb-subscription (below) resolves whether the
+  #      EDB_SUBSCRIPTION_TOKEN repository secret is set, and exposes that as
+  #      a job *output*. This indirection is required because GitHub Actions
+  #      does not allow referencing the `secrets` context directly inside a
+  #      job-level `if:` condition (only `github`, `needs`, `vars`, and
+  #      `inputs` are permitted there - see
+  #      https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability
+  #      and https://github.com/actions/runner/issues/520).
+  #   2. integration-edb-postgres then gates its entire `if:` on that output,
+  #      so the job is skipped outright (shows as "skipped" in the Actions
+  #      UI, not "failed", and never blocks merging) whenever the secret
+  #      isn't configured - which includes every fork PR, by design.
+  #   3. Even when it does run, `continue-on-error: true` means a real test
+  #      failure here - including one caused by this workflow's `docker run`
+  #      invocation not exactly matching the real EDB images' entrypoint
+  #      conventions, which this environment could not verify against the
+  #      actual credential-gated images - can never turn an otherwise-green
+  #      PR red.
+  #
+  # Maintainers with an EDB subscription: add EDB_SUBSCRIPTION_TOKEN under
+  # this repository's Settings -> Secrets and variables -> Actions to enable
+  # this job's coverage. See docs/support-matrix.md#ci-coverage-for-edb-distributions
+  # for the full rationale and current status.
+  check-edb-subscription:
+    name: Check for EDB subscription token
+    runs-on: ubuntu-latest
+    outputs:
+      has-token: ${{ steps.check.outputs.has-token }}
+
+    steps:
+      - name: Check whether EDB_SUBSCRIPTION_TOKEN is configured
+        id: check
+        env:
+          EDB_SUBSCRIPTION_TOKEN: ${{ secrets.EDB_SUBSCRIPTION_TOKEN }}
+        run: |
+          if [ -n "$EDB_SUBSCRIPTION_TOKEN" ]; then
+            echo "has-token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-token=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  integration-edb-postgres:
+    name: "Integration tests (EDB Postgres): ${{ matrix.display-name }}"
+    runs-on: ubuntu-latest
+    needs: [build-and-test, check-edb-subscription]
+    if: needs.check-edb-subscription.outputs.has-token == 'true'
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - display-name: EDB Postgres Advanced Server (EPAS)
+            image: docker.enterprisedb.com/k8s/edb-postgres-advanced:16-standard-ubi9
+          - display-name: EDB Postgres Extended Server (PGE)
+            image: docker.enterprisedb.com/k8s/edb-postgres-extended:16-standard-ubi9
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Log in to the EDB private registry
+        run: |
+          echo "${{ secrets.EDB_SUBSCRIPTION_TOKEN }}" | docker login docker.enterprisedb.com \
+            --username k8s \
+            --password-stdin
+
+      - name: Start EDB Postgres with pg_stat_statements preloaded
+        # Same shared_preload_libraries constraint as integration-postgres
+        # above. The EPAS/PGE images are built as CloudNativePG operand
+        # images first and foremost, so this repo cannot guarantee their
+        # standalone `docker run` entrypoint behaves identically to the
+        # community postgres image (e.g. POSTGRES_PASSWORD-driven init) -
+        # this environment has no EDB subscription to verify it against the
+        # real image. That uncertainty is exactly why this job carries
+        # continue-on-error: true above.
+        run: |
+          docker run -d --name pgrr-test-edb \
+            -e POSTGRES_PASSWORD=test \
+            -p 5432:5432 \
+            ${{ matrix.image }} \
+            postgres -c shared_preload_libraries=pg_stat_statements
+
+          echo "Waiting for EDB Postgres to accept connections..."
+          for i in $(seq 1 30); do
+            if docker exec pgrr-test-edb pg_isready -U postgres >/dev/null 2>&1; then
+              echo "EDB Postgres is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "EDB Postgres did not become ready in time." >&2
+          docker logs pgrr-test-edb || true
+          exit 1
+
+      - name: Run integration tests
+        env:
+          PGRR_TEST_DSN: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
+        run: go test -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/...
+
+      - name: Stop EDB Postgres
+        if: always()
+        run: docker rm -f pgrr-test-edb || true
 
   # Runs internal/controller's TestEnvtest_* suite against a real, locally
   # provisioned kube-apiserver + etcd (via controller-runtime's envtest),

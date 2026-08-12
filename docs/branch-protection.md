@@ -34,12 +34,18 @@ These are the exact check names as they appear in the Checks tab (each is a job'
 | Check name | Workflow | Runs on |
 |---|---|---|
 | `Build & Test` | `.github/workflows/ci.yml` | push + PR to `main` |
-| `Integration tests (real PostgreSQL)` | `.github/workflows/ci.yml` | push + PR to `main` |
+| `Integration tests (real PostgreSQL): postgres:16` | `.github/workflows/ci.yml` | push + PR to `main` |
+| `Integration tests (real PostgreSQL): postgres:17` | `.github/workflows/ci.yml` | push + PR to `main` |
+| `Integration tests (real PostgreSQL): postgres:18` | `.github/workflows/ci.yml` | push + PR to `main` |
 | `Controller tests (real kube-apiserver)` | `.github/workflows/ci.yml` | push + PR to `main` |
 | `golangci-lint` | `.github/workflows/go-quality.yml` | push + PR to `main` |
 | `gofmt` | `.github/workflows/go-quality.yml` | push + PR to `main` |
 | `Enforce Conventional Commits title` | `.github/workflows/pr-title.yml` | PR to `main` |
 | `Check sign-off (DCO)` | `.github/workflows/dco.yml` | PR to `main` |
+
+`Integration tests (real PostgreSQL)` is now a `postgres-version: [16, 17, 18]` matrix (see [Support Matrix](support-matrix.md#officially-supported-postgresql-versions)), so it shows up as three separate checks above instead of one — require all three, not just one, or a regression against 17/18 only could still merge.
+
+`Integration tests (EDB Postgres): EDB Postgres Advanced Server (EPAS)` / `... Extended Server (PGE)` (also in `ci.yml`) are deliberately **not** in this list: that job is entirely skipped unless the `EDB_SUBSCRIPTION_TOKEN` repository secret is configured (see [Support Matrix](support-matrix.md#ci-coverage-for-edb-distributions)) and runs with `continue-on-error: true` even when it does run, so making it a required check would either block every fork PR (secret never present there) or silently pass on real failures — neither is what "required" should mean.
 
 `Manual E2E (real container)` (`e2e-manual.yml`) is deliberately **not** in this list — it's `workflow_dispatch`-only, so it never runs against a PR and can't be a required check.
 
