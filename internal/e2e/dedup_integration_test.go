@@ -42,19 +42,32 @@ import (
 // How a real rotation is forced: PostgreSQL's pg_stat_statements queryid is
 // computed from the post-parse-analysis query tree (see
 // internal/collector/fingerprint.go's doc comment for the full citation
-// trail), which embeds the OIDs of every referenced catalog object. Dropping
-// and recreating a table referenced by an otherwise byte-identical query
-// therefore produces a brand new queryid for that query, even though its
-// displayed text — and internal/collector.FingerprintQuery's normalized
-// hash of that text — never changes. This was verified directly against a
-// real PostgreSQL 16 instance before writing this test (repeatedly executing
-// the same query text before and after a DROP+CREATE TABLE of the table it
-// references reliably produces two distinct rows in pg_stat_statements for
-// identical query text); this test additionally asserts on it explicitly
-// (see the "confirmed real queryid rotation" check below) so a future
-// PostgreSQL version that stops exhibiting this behaviour fails loudly
-// here, rather than this test silently degrading into "there was only ever
-// one queryid, so of course only one PerformanceRegression came out".
+// trail), which embeds the OIDs of every referenced catalog object. The
+// pg_stat_statements documentation is explicit that only some kinds of
+// referenced objects are reliable for this: "pg_stat_statements will
+// consider two apparently-identical queries to be distinct if they
+// reference a function that was dropped and recreated between executions,
+// but conversely, if a table is dropped and recreated between executions,
+// two apparently-identical queries may be considered the same"
+// (https://www.postgresql.org/docs/current/pgstatstatements.html, queryid
+// stability section). This test therefore forces rotation via a referenced
+// FUNCTION, not a table — an earlier version of this test used a table
+// drop+recreate and passed against a sandboxed PostgreSQL 16, but that was
+// coincidental, undocumented behaviour: it failed for real in CI against
+// PostgreSQL 18, where the table drop+recreate happened not to rotate the
+// queryid, invalidating the test's premise. Function drop+recreate has been
+// verified directly (empirically, not just by reading the docs) against
+// real PostgreSQL 16, 17, and 18 instances before writing this version of
+// the test: repeatedly executing the same query text before and after a
+// DROP+CREATE FUNCTION of a function it calls — with a byte-identical
+// function body, so only the function's OID changes, never its observable
+// behaviour — reliably produces two distinct rows in pg_stat_statements for
+// identical query text, on all three versions. This test additionally
+// asserts on it explicitly (see the "confirmed real queryid rotation" check
+// below) so a future PostgreSQL version that stops exhibiting this
+// documented behaviour fails loudly here, rather than this test silently
+// degrading into "there was only ever one queryid, so of course only one
+// PerformanceRegression came out".
 //
 // Without engine.go's fingerprint dedup, this test's two-queryid rotation
 // would make AllQueryIDs() enumerate the query twice and evaluateQuery run
@@ -91,27 +104,34 @@ func TestIntegration_FullPipeline_DedupsQueryIDRotationAcrossDeploy(t *testing.T
 		t.Fatalf("pg_stat_statements_reset: %v", err)
 	}
 
-	const tableName = "pgrr_e2e_dedup_probe_tbl"
-	recreateProbeTable := func() {
+	const fnName = "pgrr_e2e_dedup_probe_fn"
+	recreateProbeFn := func() {
 		t.Helper()
 		for _, stmt := range []string{
-			`DROP TABLE IF EXISTS ` + tableName,
-			`CREATE TABLE ` + tableName + ` (id int)`,
-			// Exactly one row: pg_sleep(%f) sits in the SELECT list, so it is
-			// only evaluated once per output row. Zero rows would make the
-			// probe query return instantly (no sleep ever runs) without
-			// actually failing, silently breaking the latency-change
-			// assertions further down.
-			`INSERT INTO ` + tableName + ` (id) VALUES (1)`,
+			`DROP FUNCTION IF EXISTS ` + fnName + `()`,
+			// A trivial, byte-identical-every-time SQL function returning
+			// exactly one row: pg_sleep(%f) sits in the SELECT list, so it is
+			// only evaluated once per output row, same as the table this
+			// replaced. Zero rows would make the probe query return
+			// instantly (no sleep ever runs) without actually failing,
+			// silently breaking the latency-change assertions further down.
+			// IMMUTABLE + a constant body means the function's *observable*
+			// behavior never changes across a drop+recreate — only its
+			// catalog OID does, which is exactly what's needed to isolate
+			// "did the queryid rotate because of the OID change" from "did
+			// the queryid rotate because the query started doing something
+			// different" (the latter is exercised separately, and
+			// deliberately, by the sleepSeconds argument to runProbe below).
+			`CREATE FUNCTION ` + fnName + `() RETURNS SETOF int AS $$ SELECT 1 $$ LANGUAGE sql IMMUTABLE`,
 		} {
 			if _, err := setup.ExecContext(ctx, stmt); err != nil {
-				t.Fatalf("probe table setup (%s): %v", stmt, err)
+				t.Fatalf("probe function setup (%s): %v", stmt, err)
 			}
 		}
 	}
-	recreateProbeTable()
+	recreateProbeFn()
 	t.Cleanup(func() {
-		_, _ = setup.ExecContext(context.Background(), `DROP TABLE IF EXISTS `+tableName)
+		_, _ = setup.ExecContext(context.Background(), `DROP FUNCTION IF EXISTS `+fnName+`()`)
 	})
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
@@ -131,7 +151,7 @@ func TestIntegration_FullPipeline_DedupsQueryIDRotationAcrossDeploy(t *testing.T
 		// samples on its own and the fingerprint-merge fallback actually
 		// engages for both the old and new queryid — exactly the
 		// "queryid rotated partway through the window" case that fallback
-        // exists for. Using >=5 per phase (e.g. this package's other
+		// exists for. Using >=5 per phase (e.g. this package's other
 		// pipeline test's samplesPerPhase=8) would make each queryid's
 		// direct bucket self-sufficient, the fallback would never trigger,
 		// and neither queryid's evaluation would ever see the other side of
@@ -140,12 +160,15 @@ func TestIntegration_FullPipeline_DedupsQueryIDRotationAcrossDeploy(t *testing.T
 		samplesPerPhase = 4
 	)
 	// A single shared template: the whole point of this test is that the
-	// SAME query text produces a different queryid purely because the table
-	// it references was dropped and recreated, not because the text itself
-	// changed (contrast with pipeline_integration_test.go's runProbe doc
-	// comment, where two DIFFERENT templates are required to avoid
-	// pg_stat_statements collapsing them together).
-	queryTemplate := `SELECT pg_sleep(%f) FROM ` + tableName + ` /* ` + marker + ` */ LIMIT 1`
+	// SAME query text produces a different queryid purely because the
+	// function it references was dropped and recreated, not because the
+	// text itself changed (contrast with pipeline_integration_test.go's
+	// runProbe doc comment, where two DIFFERENT templates are required to
+	// avoid pg_stat_statements collapsing them together). The sleepSeconds
+	// argument passed to runProbe below is the thing that actually varies
+	// between phases (0.01 -> 0.08), completely independently of the
+	// function drop+recreate.
+	queryTemplate := `SELECT pg_sleep(%f) FROM ` + fnName + `() /* ` + marker + ` */ LIMIT 1`
 
 	// --- Pre-deploy phase: fast baseline, under the pre-rotation queryid. ---
 	runProbe(t, ctx, setup, col, queryTemplate, 0.01, samplesPerPhase)
@@ -161,12 +184,15 @@ func TestIntegration_FullPipeline_DedupsQueryIDRotationAcrossDeploy(t *testing.T
 	time.Sleep(50 * time.Millisecond)
 
 	// --- The "deploy": a schema migration that drops and recreates the
-	// referenced table, forcing a real queryid rotation for byte-identical
-	// query text. ---
-	recreateProbeTable()
+	// referenced function (byte-identical body — see recreateProbeFn above),
+	// forcing a real queryid rotation for byte-identical query text via the
+	// documented, reliable mechanism (function OID change), not the
+	// undocumented, unreliable one (table OID change) this test used to
+	// rely on. ---
+	recreateProbeFn()
 
 	// pg_stat_statements does NOT drop a queryid's row just because the
-	// table it referenced is gone: that row is otherwise immortal (barring
+	// function it referenced is gone: that row is otherwise immortal (barring
 	// LRU eviction under pg_stat_statements.max) and keeps reporting its
 	// last known (now frozen) mean/calls forever. Collector.scrape()
 	// unconditionally re-ingests every row it reads on every cycle — not
@@ -202,7 +228,7 @@ func TestIntegration_FullPipeline_DedupsQueryIDRotationAcrossDeploy(t *testing.T
 	// that stopped keying queryid off relation OIDs) — for the wrong
 	// reason. ---
 	if oldQueryID == newQueryID {
-		t.Fatalf("expected the table drop+recreate to produce a different pg_stat_statements queryid for identical query text, got the same queryid=%d both times — rotation did not occur as expected, this test's premise is invalid", oldQueryID)
+		t.Fatalf("expected the function drop+recreate to produce a different pg_stat_statements queryid for identical query text, got the same queryid=%d both times — rotation did not occur as expected, this test's premise is invalid", oldQueryID)
 	}
 	t.Logf("confirmed real queryid rotation at the pg_stat_statements level: old=%d new=%d", oldQueryID, newQueryID)
 
@@ -220,7 +246,7 @@ func TestIntegration_FullPipeline_DedupsQueryIDRotationAcrossDeploy(t *testing.T
 		t.Errorf("expected the Collector's post-deploy sample to carry the new queryid %d, got %d", newQueryID, after.QueryID)
 	}
 	if before.QueryID == after.QueryID {
-		t.Fatalf("expected the probe query's queryid to differ across the table drop+recreate as observed by the Collector; both sides report queryid=%d — rotation did not occur as expected", before.QueryID)
+		t.Fatalf("expected the probe query's queryid to differ across the function drop+recreate as observed by the Collector; both sides report queryid=%d — rotation did not occur as expected", before.QueryID)
 	}
 	t.Logf("confirmed real queryid rotation: pre-deploy queryid=%d (mean %.1fms), post-deploy queryid=%d (mean %.1fms)",
 		before.QueryID, before.MeanExecTimeMs, after.QueryID, after.MeanExecTimeMs)
