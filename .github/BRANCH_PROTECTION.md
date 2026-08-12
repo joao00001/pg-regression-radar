@@ -19,13 +19,19 @@ remote: - Changes must be made through a pull request.
 That message means a **ruleset** (GitHub's newer rule mechanism, distinct
 from classic branch protection) already exists on `main` requiring PRs, but
 the account pushing had bypass permission, so it didn't actually block
-anything. Two separate things need to be true for the checks below to have
-real effect:
+anything.
 
-1. The ruleset/branch protection rule requires each check by name.
-2. Nobody — including repo admins — has bypass permission on it (or bypass
-   is at least deliberately scoped, not a default nobody remembered to turn
-   off).
+For a solo-maintainer repo (this one), bypass for repo admins is correct,
+not a gap to close: without it, the maintainer couldn't merge their own PR
+(GitHub won't count a self-review as a required approval) or push a hotfix
+when there's nobody else to review it. Removing bypass entirely would lock
+the one person who can approve changes out of approving them. The actual
+gap is narrower than "bypass exists": the checks below need to be
+**required** on the ruleset so they still run and show pass/fail on every
+push and PR, even though the maintainer retains the ability to override
+them when they judge it necessary. Bypass being available for deliberate
+use is fine; the checks silently not being wired up as required at all is
+the thing worth fixing.
 
 ## Where to configure it
 
@@ -63,12 +69,14 @@ can't be a required check.
   bypass message above; just confirm it's on and scoped to `main`.
 - **Require branches to be up to date before merging** — otherwise a status
   check can pass against a stale base and still land a broken merge.
-- **Restrict who can bypass this rule** — set to nobody (or a very small,
-  deliberate list), so the bypass seen above is a conscious exception, not a
-  default. Solo-maintainer repos still benefit: it stops an accidental
-  `git push origin main` from skipping every check above.
+- **Keep bypass scoped to repo admins only** (not "everyone", not a public
+  team) — as the sole maintainer today, that's just you, which is the
+  correct and necessary setup. Revisit this list if/when co-maintainers
+  join, so bypass doesn't quietly stay wider than "people who genuinely
+  need to override CI".
 - **Do not allow force pushes / Do not allow deletions** — protects the
   commit history CI has already validated.
-- **Require approvals** — optional for a solo-maintainer repo today; worth
-  turning on (1 approval) once there's a second maintainer or regular
-  external contributors, per `CONTRIBUTING.md`'s squash-merge policy.
+- **Require approvals** — leave off for a solo-maintainer repo (GitHub
+  doesn't let you approve your own PR, so this would just block merges);
+  turn on (1 approval) once there's a second maintainer or regular external
+  contributors, per `CONTRIBUTING.md`'s squash-merge policy.
