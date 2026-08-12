@@ -42,6 +42,7 @@ func RunIngester(args []string) {
 	postgresWatchRef := fs.String("postgres-watch-ref", "", "PostgresWatch to associate events with")
 	appName := fs.String("app-name", "", "Filter events to a specific application name (empty = all)")
 	clusterName := fs.String("cluster-name", "", "Kubernetes cluster identity to stamp on DeployEvents when the webhook payload doesn't carry one (e.g. Argo Rollouts, Flux without eventMetadata)")
+	webhookSecret := fs.String("webhook-secret", "", "Shared secret for webhook authentication; when set, every POST to /webhook must include this value in the X-Webhook-Token header (401 otherwise). Recommended for internet-facing deployments. Prefer passing this via an environment variable reference rather than a CLI flag to avoid exposure in process listings.")
 	versionFlag := fs.Bool("version", false, "Print version information and exit")
 	dryRun := fs.Bool("dry-run", false, "Validate configuration, then exit without starting the webhook server")
 	_ = fs.Parse(args)
@@ -74,6 +75,7 @@ func RunIngester(args []string) {
 		PostgresWatchRef: *postgresWatchRef,
 		AppName:          *appName,
 		ClusterName:      *clusterName,
+		WebhookSecret:    *webhookSecret,
 	}
 
 	handler := ingester.NewHandler(store, source, logger)

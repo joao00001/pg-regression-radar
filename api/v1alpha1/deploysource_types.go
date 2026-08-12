@@ -38,6 +38,15 @@ type DeploySourceSpec struct {
 	// apps reported by this source are considered.
 	// +optional
 	AppName string `json:"appName,omitempty"`
+
+	// webhookSecret is the shared secret used to authenticate incoming webhook
+	// requests via the X-Webhook-Token header. When non-empty, every POST to
+	// this source's webhook path must include this value in the X-Webhook-Token
+	// header; requests without it or with a wrong value are rejected with 401.
+	// Store this value in a Kubernetes Secret and reference it with
+	// valueFrom.secretKeyRef rather than inlining it here.
+	// +optional
+	WebhookSecret string `json:"webhookSecret,omitempty"`
 }
 
 // DeploySourcePhase summarises whether the webhook route backing this

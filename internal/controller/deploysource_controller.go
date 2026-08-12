@@ -121,6 +121,7 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		PostgresWatchRef: src.Spec.PostgresWatchRef,
 		SourceType:       sourceType,
 		AppName:          src.Spec.AppName,
+		WebhookSecret:    src.Spec.WebhookSecret,
 	}, r.Logger)
 
 	path := webhookPath(req.NamespacedName)

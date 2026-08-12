@@ -618,3 +618,102 @@ func TestStore_EventsInRange_OutOfOrder(t *testing.T) {
 		t.Errorf("expected event ID=mid, got %s", inRange[0].ID)
 	}
 }
+
+// ----- Webhook authentication -----
+
+func TestHandler_WebhookSecret_RejectsRequestWithoutToken(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	src := v1alpha1.DeploySource{
+		Name:          "secure-src",
+		SourceType:    "generic",
+		WebhookSecret: "supersecret",
+	}
+	h := ingester.NewHandler(store, src, nil)
+
+	payload, _ := json.Marshal(v1alpha1.DeployEvent{App: "my-app", Timestamp: time.Now()})
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(payload))
+	// No X-Webhook-Token header set.
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 for missing token, got %d", rr.Code)
+	}
+	if len(store.All()) != 0 {
+		t.Error("expected no event to be stored when token is missing")
+	}
+}
+
+func TestHandler_WebhookSecret_RejectsRequestWithWrongToken(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	src := v1alpha1.DeploySource{
+		Name:          "secure-src",
+		SourceType:    "generic",
+		WebhookSecret: "supersecret",
+	}
+	h := ingester.NewHandler(store, src, nil)
+
+	payload, _ := json.Marshal(v1alpha1.DeployEvent{App: "my-app", Timestamp: time.Now()})
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(payload))
+	req.Header.Set("X-Webhook-Token", "wrongtoken")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 for wrong token, got %d", rr.Code)
+	}
+	if len(store.All()) != 0 {
+		t.Error("expected no event to be stored when token is wrong")
+	}
+}
+
+func TestHandler_WebhookSecret_AcceptsRequestWithCorrectToken(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	src := v1alpha1.DeploySource{
+		Name:          "secure-src",
+		SourceType:    "generic",
+		WebhookSecret: "supersecret",
+	}
+	h := ingester.NewHandler(store, src, nil)
+
+	payload, _ := json.Marshal(v1alpha1.DeployEvent{App: "my-app", Timestamp: time.Now()})
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(payload))
+	req.Header.Set("X-Webhook-Token", "supersecret")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Errorf("expected 204 for correct token, got %d", rr.Code)
+	}
+	if len(store.All()) != 1 {
+		t.Errorf("expected 1 stored event, got %d", len(store.All()))
+	}
+}
+
+func TestHandler_WebhookSecret_EmptySecretAllowsAll(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	// WebhookSecret intentionally left empty — no auth enforced.
+	src := v1alpha1.DeploySource{Name: "open-src", SourceType: "generic"}
+	h := ingester.NewHandler(store, src, nil)
+
+	payload, _ := json.Marshal(v1alpha1.DeployEvent{App: "my-app", Timestamp: time.Now()})
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(payload))
+	// No token header — should still succeed because no secret is configured.
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Errorf("expected 204 when no secret configured, got %d", rr.Code)
+	}
+	if len(store.All()) != 1 {
+		t.Errorf("expected 1 stored event, got %d", len(store.All()))
+	}
+}

@@ -41,6 +41,9 @@ spec:
             - --metrics-listen=:{{ .Values.service.metricsPort }}
             - --slack-url=$(SLACK_WEBHOOK_URL)
             - --source-type={{ .Values.ingester.sourceType }}
+            {{- if .Values.ingester.webhookSecret }}
+            - --webhook-secret=$(WEBHOOK_SECRET)
+            {{- end }}
             - --window-minutes={{ .Values.analysis.windowMinutes }}
             - --min-executions={{ .Values.analysis.minExecutions }}
             - --latency-threshold={{ .Values.analysis.latencyThreshold }}
@@ -67,6 +70,13 @@ spec:
                   name: {{ include "deploylens.fullname" . }}-secret
                   key: stateDsn
                   optional: true
+            {{- if .Values.ingester.webhookSecret }}
+            - name: WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: webhookSecret
+            {{- end }}
           ports:
             - name: webhook
               containerPort: {{ .Values.service.webhookPort }}
