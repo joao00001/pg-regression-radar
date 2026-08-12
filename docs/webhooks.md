@@ -188,11 +188,12 @@ metadata:
 spec:
   type: generic
   address: http://pg-regression-radar:8080/webhook
-  secretRef:
-    name: pg-regression-radar-token   # Secret with key `token`
+  headers:
+    - name: X-Webhook-Token
+      value: your-secret-here   # replace with your actual secret
 ```
 
-The Flux generic provider sends the secret value from the referenced Secret's `token` key as the `Authorization: token <value>` header by default, but you can also use a `headers` field on the Provider if you prefer `X-Webhook-Token` (available in Flux ≥ 2.4).
+Flux ≥ 2.4 supports the `headers` field on the generic `Provider`, which lets you send a custom header verbatim. For earlier versions that only support `secretRef` (which sends `Authorization: token <value>` instead), use the `generic-hmac` provider type or upgrade Flux.
 
 ### Verifying the token with curl
 
