@@ -291,7 +291,7 @@ func RunOperator(args []string) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				var evs []v1alpha1.DeployEvent
+			var evs []v1alpha1.DeployEvent
 				evs, cursor = store.DrainSince(cursor)
 				for _, ev := range evs {
 					// Mirror into the durable EventStore, if configured (see
