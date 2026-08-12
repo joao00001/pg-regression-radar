@@ -17,6 +17,16 @@ on:
       - "mkdocs.yml"
       - "requirements-docs.txt"
       - ".github/workflows/docs.yml"
+    # Every `vX.Y.Z` tag also redeploys the site unconditionally (no path
+    # filter), independent of whether that exact release-prep commit
+    # happened to touch docs/**. Path-filtered pushes to main already keep
+    # the site current as docs land throughout normal development; this
+    # second trigger exists so cutting a release is never silently out of
+    # sync with what's live at https://joao00001.github.io/pg-regression-radar/
+    # — e.g. a direct-to-main release-ritual commit (see
+    # CONTRIBUTING.md#release-notes--changeset-fragments) that only touches
+    # CHANGELOG.md still forces a fresh, guaranteed-current deploy.
+    tags: ["v*"]
   workflow_dispatch: {}
 
 permissions:

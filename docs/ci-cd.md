@@ -4,7 +4,7 @@
 
 ## Overview
 
-pg-regression-radar runs eight workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, and [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`.
+pg-regression-radar runs nine workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, and [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`.
 
 ## `ci.yml` — on every push/PR to `main`
 
@@ -70,6 +70,22 @@ Publishes a release: builds, scans, signs, and pushes every artifact this repo s
 **Chart versioning:** `deploy/helm/deploylens/Chart.yaml`'s checked-in `version`/`appVersion` are development-time placeholders only — `helm package --version --app-version` overrides both unconditionally from the pushed git tag at release time, so they never need editing in lockstep with a release. See [Roadmap](roadmap.md#operational-follow-ups) for the trade-off this implies.
 
 **Not yet proven green in CI:** like `e2e-kind.yml` before its first real `workflow_dispatch` run, this workflow's commands were checked against current upstream `docker/build-push-action`, `docker/login-action`, `aquasecurity/trivy-action`, `anchore/sbom-action`, `sigstore/cosign-installer`, and `softprops/action-gh-release` documentation, and the YAML is syntax- and `actionlint`-clean, but the environment this was authored in had no Docker daemon at all (not even a local `docker build` of the five targets could be exercised) and obviously no real tag push against the real `ghcr.io` registry or a real GitHub Release creation. Treat the first real release as part of reviewing the change that introduced this workflow — see [Roadmap](roadmap.md#operational-follow-ups).
+
+## `docs.yml` — on pushing a `v*` tag, on push to `main` touching docs, or manual
+
+Builds this documentation site with MkDocs Material (`mkdocs build --strict` — a broken nav entry or internal link fails the build) and publishes it to GitHub Pages at <https://joao00001.github.io/pg-regression-radar/> via GitHub's native Pages deployment (`actions/upload-pages-artifact` + `actions/deploy-pages`), not a `gh-pages` branch.
+
+Three ways to trigger it:
+
+| Trigger | Why |
+|---|---|
+| Push to `main` touching `docs/**`, `mkdocs.yml`, `requirements-docs.txt`, or this workflow file itself | The common case — most doc changes land through a normal PR merge, so the site stays current as content lands. |
+| Push of a `v*` tag | Runs unconditionally, with no path filter, so cutting a release always redeploys the site — even when the release-prep commit itself (e.g. the direct-to-main `chore(release): prepare vX.Y.Z` commit — see [CONTRIBUTING.md](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md#release-notes--changeset-fragments)) doesn't happen to touch anything under `docs/`. Without this, "the docs are in sync with the release" would only be true by coincidence. |
+| `workflow_dispatch` | Manual re-deploy, e.g. after a GitHub Pages settings change. |
+
+**One-time manual prerequisite:** Settings → Pages → Source must be set to "GitHub Actions" — this workflow's `deploy` job has nothing to deploy to until that's set, and it can't be set from workflow YAML.
+
+**What this does *not* do:** it doesn't inject the release version into any page, and no page on the site currently displays "current version" — `docs/installation.md`'s image-tag examples are illustrative placeholders (e.g. `:v0.3.0`) with an explicit "substitute the actual latest tag" note, deliberately not kept in lockstep, to avoid a second place that goes stale between releases. `CHANGELOG.md` itself is linked from the docs site (see [Roadmap](roadmap.md#see-also)) but lives at the repo root, not under `docs/` — `mkdocs build --strict` can't resolve a relative link to a file outside the `docs/` tree, so it's referenced via an absolute GitHub blob URL instead of being rendered as a page of its own.
 
 ## Dependabot (`.github/dependabot.yml`)
 
