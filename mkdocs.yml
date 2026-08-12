@@ -35,11 +35,15 @@ theme:
     - search.suggest
     - search.highlight
 
+hooks:
+  - hooks.py
+
 extra_css:
   - stylesheets/extra.css
 
 extra_javascript:
-  - javascripts/nav-overflow.js
+  - javascripts/nav-data.js
+  - javascripts/nav-flyout.js
 
 markdown_extensions:
   - admonition
@@ -53,21 +57,33 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
+# Grouped into a handful of umbrella top-level tabs on purpose: this repo
+# started with 14 flat top-level entries, more than fit in the tabs bar at
+# any viewport width, forcing a hidden horizontal scroll. Related pages are
+# grouped under a shared parent instead (mirroring how e.g. apple.com's top
+# nav works: hovering "Get Started"/"Reference"/"Contributing" expands the
+# header downward to reveal its pages — see docs/javascripts/nav-flyout.js
+# and hooks.py, which feeds it the tree below). "Home" has nothing that
+# needs grouping, so it stays a standalone entry per the "pages that don't
+# need it can stay on their own" rule.
 nav:
   - Home: index.md
-  - Installation: installation.md
-  - Getting Started: getting-started.md
+  - Get Started:
+      - Installation: installation.md
+      - Getting Started: getting-started.md
   - Architecture:
       - architecture.md
       - Detection Algorithm: detection-algorithm.md
       - Collector Internals: collector-internals.md
-  - Configuration Reference: configuration.md
-  - Persistence: persistence.md
-  - Deploy Sources & Webhooks: webhooks.md
-  - API Reference: api-reference.md
-  - Testing: testing.md
-  - CI/CD: ci-cd.md
-  - Branch Protection: branch-protection.md
-  - Roadmap: roadmap.md
-  - Page Template: TEMPLATE.md
-  - Contributing: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
+  - Reference:
+      - Configuration Reference: configuration.md
+      - API Reference: api-reference.md
+      - Persistence: persistence.md
+      - Deploy Sources & Webhooks: webhooks.md
+  - Contributing:
+      - Testing: testing.md
+      - CI/CD: ci-cd.md
+      - Branch Protection: branch-protection.md
+      - Roadmap: roadmap.md
+      - Page Template: TEMPLATE.md
+      - Contributing Guide: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md

@@ -16,3 +16,7 @@ dist/
 
 # MkDocs build output (docs/workflows/docs.yml builds this in CI; never committed)
 /site/
+
+# Python (hooks.py, used by mkdocs)
+__pycache__/
+*.pyc
