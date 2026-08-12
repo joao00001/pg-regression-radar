@@ -118,6 +118,38 @@ spec:
                   pValueThreshold is the Welch's t-test significance cutoff. Lower
                   values increase specificity at the cost of sensitivity.
                 type: string
+              remoteClusterSecretRef:
+                description: |-
+                  remoteClusterSecretRef points at a Secret, in the hub cluster and in
+                  this PostgresWatch's namespace, whose key holds a kubeconfig (raw
+                  YAML or JSON, the same format `kubectl config view --raw` produces)
+                  for a remote ("spoke") Kubernetes cluster. When set, dsnSecretRef is
+                  resolved against that remote cluster instead of the hub — the
+                  pattern fleet tools like Cluster API, Argo CD, and Open Cluster
+                  Management use to let a central controller reach resources living in
+                  a different cluster. See docs/multi-cluster.md for the full model,
+                  including the least-privilege expectation on the kubeconfig itself:
+                  it should grant nothing beyond reading the one Secret dsnSecretRef
+                  names, in the remote cluster.
+
+
+                  Leave unset (the default) when the Postgres cluster being watched is
+                  reachable over the network from the manager and its DSN Secret lives
+                  in this same (hub) cluster — the common case when CloudNativePG runs
+                  alongside the manager. This field only changes *where the DSN Secret
+                  is read from*; it has no effect when dsn is set directly instead of
+                  dsnSecretRef.
+                properties:
+                  key:
+                    description: key within the Secret's Data.
+                    type: string
+                  name:
+                    description: name of the referenced Secret.
+                    type: string
+                required:
+                - key
+                - name
+                type: object
               scrapeIntervalSeconds:
                 default: 60
                 description: |-

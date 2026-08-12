@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,6 +39,13 @@ func testScheme(t *testing.T) *runtime.Scheme {
 	s := runtime.NewScheme()
 	if err := radarv1alpha1.AddToScheme(s); err != nil {
 		t.Fatalf("add scheme: %v", err)
+	}
+	// corev1 is needed by any test that creates a Secret object directly
+	// (dsnSecretRef / remoteClusterSecretRef tests); PostgresWatchReconciler
+	// itself already depends on it transitively via r.Get(ctx, key,
+	// &corev1.Secret{}) in resolveDSN/dsnSecretClient.
+	if err := corev1.AddToScheme(s); err != nil {
+		t.Fatalf("add corev1 scheme: %v", err)
 	}
 	return s
 }
@@ -210,5 +218,201 @@ func TestReconcile_MissingDSNMarksFailed(t *testing.T) {
 	}
 	if _, ok := r.Registry.Get(req.NamespacedName); ok {
 		t.Fatal("expected no worker to be registered when DSN resolution fails")
+	}
+}
+
+// validTestKubeconfig is a syntactically valid kubeconfig pointing at a
+// loopback address nothing is listening on. It is enough for
+// clientcmd.RESTConfigFromKubeConfig / client.New to succeed (neither does
+// network I/O), while any actual request made with the resulting client
+// fails fast with "connection refused" rather than hanging — useful for
+// exercising the "remote cluster unreachable" path without a real second
+// cluster.
+const validTestKubeconfig = `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://127.0.0.1:6443
+    insecure-skip-tls-verify: true
+  name: remote
+contexts:
+- context:
+    cluster: remote
+    user: remote
+  name: remote
+current-context: remote
+users:
+- name: remote
+  user:
+    token: fake-token-for-tests
+`
+
+func kubeconfigSecret(name, namespace, key, kubeconfig string) *corev1.Secret {
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		Data:       map[string][]byte{key: []byte(kubeconfig)},
+	}
+}
+
+// TestDSNSecretClient_DefaultsToHubClient verifies that a PostgresWatch
+// without remoteClusterSecretRef resolves its DSN Secret via the
+// reconciler's own (hub) client — the 100%-backward-compatible default
+// path, unchanged from before remoteClusterSecretRef existed.
+func TestDSNSecretClient_DefaultsToHubClient(t *testing.T) {
+	watch := samplePostgresWatch("watch-hub", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	r, _ := newTestReconciler(t, watch)
+
+	cl, err := r.dsnSecretClient(context.Background(), watch)
+	if err != nil {
+		t.Fatalf("dsnSecretClient: %v", err)
+	}
+	if cl != r.Client {
+		t.Fatal("expected the hub client when remoteClusterSecretRef is unset")
+	}
+}
+
+// TestDSNSecretClient_RemoteValidKubeconfig_ReturnsDistinctCachedClient
+// verifies that a valid remoteClusterSecretRef produces a client.Client
+// distinct from the hub client, and that the remoteClientCache reuses that
+// same instance on a second call rather than rebuilding it.
+func TestDSNSecretClient_RemoteValidKubeconfig_ReturnsDistinctCachedClient(t *testing.T) {
+	watch := samplePostgresWatch("watch-remote", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+
+	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", validTestKubeconfig)
+	r, _ := newTestReconciler(t, watch, secret)
+
+	cl1, err := r.dsnSecretClient(context.Background(), watch)
+	if err != nil {
+		t.Fatalf("dsnSecretClient (1st call): %v", err)
+	}
+	if cl1 == r.Client {
+		t.Fatal("expected a remote client distinct from the hub client")
+	}
+
+	cl2, err := r.dsnSecretClient(context.Background(), watch)
+	if err != nil {
+		t.Fatalf("dsnSecretClient (2nd call): %v", err)
+	}
+	if cl1 != cl2 {
+		t.Fatal("expected the cached remote client to be reused across calls")
+	}
+}
+
+// TestDSNSecretClient_RemoteMissingSecret_ReturnsError verifies that a
+// remoteClusterSecretRef naming a Secret that doesn't exist in the hub
+// cluster surfaces a clear error instead of a nil-client panic.
+func TestDSNSecretClient_RemoteMissingSecret_ReturnsError(t *testing.T) {
+	watch := samplePostgresWatch("watch-remote-missing", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "does-not-exist", Key: "kubeconfig"}
+	r, _ := newTestReconciler(t, watch)
+
+	if _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
+		t.Fatal("expected an error when the kubeconfig secret does not exist")
+	}
+}
+
+// TestDSNSecretClient_RemoteMissingKey_ReturnsError verifies that a
+// kubeconfig Secret existing but lacking the named key is a clear error.
+func TestDSNSecretClient_RemoteMissingKey_ReturnsError(t *testing.T) {
+	watch := samplePostgresWatch("watch-remote-badkey", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+
+	secret := kubeconfigSecret("remote-kubeconfig", "default", "wrong-key", validTestKubeconfig)
+	r, _ := newTestReconciler(t, watch, secret)
+
+	if _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
+		t.Fatal("expected an error when the kubeconfig secret lacks the named key")
+	}
+}
+
+// TestDSNSecretClient_RemoteInvalidKubeconfig_ReturnsError verifies that
+// malformed kubeconfig content is rejected with an error rather than
+// panicking or silently producing an unusable client.
+func TestDSNSecretClient_RemoteInvalidKubeconfig_ReturnsError(t *testing.T) {
+	watch := samplePostgresWatch("watch-remote-invalid", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+
+	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", "this is not a valid kubeconfig")
+	r, _ := newTestReconciler(t, watch, secret)
+
+	if _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
+		t.Fatal("expected an error for malformed kubeconfig content")
+	}
+}
+
+// TestReconcile_RemoteClusterInvalidKubeconfigMarksFailed exercises the
+// full Reconcile path (not just dsnSecretClient) to verify that a bad
+// remoteClusterSecretRef surfaces the same Failed-phase-with-backoff
+// behaviour as any other DSN resolution error (see
+// TestReconcile_MissingDSNMarksFailed), rather than a special case.
+func TestReconcile_RemoteClusterInvalidKubeconfigMarksFailed(t *testing.T) {
+	watch := samplePostgresWatch("watch-f", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+
+	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", "not: [valid, kubeconfig")
+	r, c := newTestReconciler(t, watch, secret)
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "watch-f", Namespace: "default"}}
+
+	if _, err := r.Reconcile(context.Background(), req); err == nil {
+		t.Fatal("expected an error result when the remote kubeconfig is invalid")
+	}
+
+	var got radarv1alpha1.PostgresWatch
+	if err := c.Get(context.Background(), req.NamespacedName, &got); err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Status.Phase != radarv1alpha1.PostgresWatchPhaseFailed {
+		t.Fatalf("expected phase Failed, got %q", got.Status.Phase)
+	}
+	if _, ok := r.Registry.Get(req.NamespacedName); ok {
+		t.Fatal("expected no worker to be registered when the remote kubeconfig is invalid")
+	}
+}
+
+// TestReconcile_RemoteClusterUnreachableMarksFailed exercises a valid
+// kubeconfig pointing at an address nothing is listening on, standing in
+// for a genuinely unreachable remote cluster: the DSN Secret fetch should
+// fail (connection refused, not a hang) and Reconcile should mark the
+// PostgresWatch Failed with backoff, exactly as it does for a bad DSN.
+func TestReconcile_RemoteClusterUnreachableMarksFailed(t *testing.T) {
+	watch := samplePostgresWatch("watch-g", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+
+	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", validTestKubeconfig)
+	r, c := newTestReconciler(t, watch, secret)
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "watch-g", Namespace: "default"}}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if _, err := r.Reconcile(ctx, req); err == nil {
+		t.Fatal("expected an error result when the remote cluster is unreachable")
+	}
+
+	var got radarv1alpha1.PostgresWatch
+	if err := c.Get(context.Background(), req.NamespacedName, &got); err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if got.Status.Phase != radarv1alpha1.PostgresWatchPhaseFailed {
+		t.Fatalf("expected phase Failed, got %q (message=%q)", got.Status.Phase, got.Status.Message)
+	}
+	if _, ok := r.Registry.Get(req.NamespacedName); ok {
+		t.Fatal("expected no worker to be registered when the remote cluster is unreachable")
 	}
 }

@@ -39,8 +39,32 @@ type PostgresWatchSpec struct {
 
 	// dsnSecretRef points at a Secret key holding the Postgres DSN, keeping
 	// credentials out of the CR spec (and out of `kubectl get -o yaml`).
+	// By default this Secret is read from the same Kubernetes cluster the
+	// manager runs in (the "hub"). Set remoteClusterSecretRef to read it
+	// from a different ("spoke") cluster instead.
 	// +optional
 	DSNSecretRef *SecretKeySelector `json:"dsnSecretRef,omitempty"`
+
+	// remoteClusterSecretRef points at a Secret, in the hub cluster and in
+	// this PostgresWatch's namespace, whose key holds a kubeconfig (raw
+	// YAML or JSON, the same format `kubectl config view --raw` produces)
+	// for a remote ("spoke") Kubernetes cluster. When set, dsnSecretRef is
+	// resolved against that remote cluster instead of the hub — the
+	// pattern fleet tools like Cluster API, Argo CD, and Open Cluster
+	// Management use to let a central controller reach resources living in
+	// a different cluster. See docs/multi-cluster.md for the full model,
+	// including the least-privilege expectation on the kubeconfig itself:
+	// it should grant nothing beyond reading the one Secret dsnSecretRef
+	// names, in the remote cluster.
+	//
+	// Leave unset (the default) when the Postgres cluster being watched is
+	// reachable over the network from the manager and its DSN Secret lives
+	// in this same (hub) cluster — the common case when CloudNativePG runs
+	// alongside the manager. This field only changes *where the DSN Secret
+	// is read from*; it has no effect when dsn is set directly instead of
+	// dsnSecretRef.
+	// +optional
+	RemoteClusterSecretRef *SecretKeySelector `json:"remoteClusterSecretRef,omitempty"`
 
 	// scrapeIntervalSeconds controls how often pg_stat_statements is
 	// scraped. Lower values increase detection granularity at the cost of

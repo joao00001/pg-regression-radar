@@ -75,6 +75,7 @@ nav:
       - architecture.md
       - Detection Algorithm: detection-algorithm.md
       - Collector Internals: collector-internals.md
+      - Multi-Cluster (Fleet) Mode: multi-cluster.md
   - Reference:
       - Configuration Reference: configuration.md
       - API Reference: api-reference.md

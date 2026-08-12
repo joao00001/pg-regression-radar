@@ -4,6 +4,13 @@ kind: ClusterRole
 metadata:
   name: manager-role
 rules:
+# Secrets in THIS (hub) cluster only. Covers both spec.dsnSecretRef (read
+# directly) and spec.remoteClusterSecretRef (a kubeconfig Secret used to
+# reach a DSN Secret in a different, remote/"spoke" cluster instead — see
+# docs/multi-cluster.md). This rule grants no access whatsoever to any
+# remote cluster: that access comes entirely from whatever RBAC is baked
+# into the kubeconfig a remoteClusterSecretRef Secret points at, which is
+# the responsibility of whoever creates that Secret, not this ClusterRole.
 - apiGroups:
   - ""
   resources:
