@@ -26,12 +26,17 @@ theme:
         name: Switch to light mode
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.top
-    - navigation.instant
+    - navigation.sections
+    - navigation.indexes
     - content.code.copy
     - content.action.edit
     - search.suggest
     - search.highlight
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
@@ -49,7 +54,7 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Architecture:
-      - Overview: architecture.md
+      - architecture.md
       - Detection Algorithm: detection-algorithm.md
       - Collector Internals: collector-internals.md
   - Configuration Reference: configuration.md
@@ -60,6 +65,5 @@ nav:
   - CI/CD: ci-cd.md
   - Branch Protection: branch-protection.md
   - Roadmap: roadmap.md
+  - Page Template: TEMPLATE.md
   - Contributing: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
-  - Meta:
-      - Page Template: TEMPLATE.md

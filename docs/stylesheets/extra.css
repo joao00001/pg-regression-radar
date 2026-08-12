@@ -1,0 +1,109 @@
+/*
+ * Custom palette for pg-regression-radar's docs site.
+ *
+ * Material's default themes are a soft off-white (light) and a dark gray,
+ * not black (slate). This overrides both to a true monochrome pair --
+ * pure black / white-gray text in dark mode, pure white / black-gray text
+ * in light mode -- and adds a frosted-glass backdrop blur to the sticky
+ * header and tabs bar so content is still legible as it scrolls underneath
+ * them, instead of a flat opaque bar.
+ *
+ * Written against Material for MkDocs' documented CSS custom properties
+ * (https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#custom-colors),
+ * not by fighting its compiled CSS with !important overrides.
+ */
+
+/* ---- Dark mode: true black ---- */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #000000;
+  --md-default-bg-color--light: #000000;
+  --md-default-bg-color--lighter: #000000;
+  --md-default-bg-color--lightest: #0a0a0a;
+
+  --md-default-fg-color: #e8e8e8;
+  --md-default-fg-color--light: #c2c2c2;
+  --md-default-fg-color--lighter: #8a8a8a;
+  --md-default-fg-color--lightest: #4d4d4d;
+
+  --md-typeset-color: #e8e8e8;
+  --md-typeset-a-color: #8ab4ff;
+
+  --md-code-bg-color: #0d0d0d;
+  --md-code-fg-color: #d8d8d8;
+
+  --md-footer-bg-color: #000000;
+  --md-footer-bg-color--dark: #000000;
+  --md-footer-fg-color: #e8e8e8;
+  --md-footer-fg-color--light: #b0b0b0;
+
+  --md-header-bg-color: rgba(0, 0, 0, 0.72);
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) {
+  background-color: #050505;
+}
+
+[data-md-color-scheme="slate"] .md-typeset code {
+  background-color: #111111;
+}
+
+/* ---- Light mode: true white ---- */
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #ffffff;
+  --md-default-bg-color--light: #ffffff;
+  --md-default-bg-color--lighter: #ffffff;
+  --md-default-bg-color--lightest: #fafafa;
+
+  --md-default-fg-color: #1a1a1a;
+  --md-default-fg-color--light: #3d3d3d;
+  --md-default-fg-color--lighter: #6b6b6b;
+  --md-default-fg-color--lightest: #cfcfcf;
+
+  --md-typeset-color: #1a1a1a;
+  --md-typeset-a-color: #2451c9;
+
+  --md-code-bg-color: #f5f5f5;
+  --md-code-fg-color: #262626;
+
+  --md-footer-bg-color: #111111;
+  --md-footer-bg-color--dark: #0a0a0a;
+
+  --md-header-bg-color: rgba(255, 255, 255, 0.72);
+}
+
+/* ---- Frosted-glass sticky header and tabs bar (both schemes) ---- */
+.md-header {
+  background-color: var(--md-header-bg-color);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  box-shadow: none;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-tabs {
+  background-color: var(--md-header-bg-color);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* Material colors the header/tabs text from --md-primary-bg-color, which
+   assumes an opaque, saturated header background. Against a translucent
+   blur, pin header/tabs text to the scheme's own foreground colors instead
+   so it stays readable at every scroll position. */
+.md-header,
+.md-header__title,
+.md-header__button,
+.md-tabs__link {
+  color: var(--md-default-fg-color);
+}
+
+.md-tabs__link--active {
+  color: var(--md-typeset-a-color);
+}
+
+/* Search dialog gets the same treatment when open. */
+.md-search__overlay {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
