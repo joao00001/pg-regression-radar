@@ -15,6 +15,7 @@
 package collector
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -310,5 +311,25 @@ func TestConfig_RetentionDurationOverride(t *testing.T) {
 
 	if cfg.RetentionDuration != 5*time.Minute {
 		t.Fatalf("expected explicit RetentionDuration to be preserved, got %v", cfg.RetentionDuration)
+	}
+}
+
+// ----- Ping -----
+
+// TestPing_UnreachableHost_ReturnsError exercises the failure path without
+// a real Postgres server: port 1 on localhost refuses the connection
+// immediately (nothing can bind to it unprivileged), so this fails fast
+// instead of needing the "integration" build tag's real database. The
+// success path (a real Ping against a real Postgres with pg_stat_statements
+// actually installed) is internal/collector's integration test's job — see
+// collector_integration_test.go's TestIntegration_Ping_RealPostgres.
+func TestPing_UnreachableHost_ReturnsError(t *testing.T) {
+	col := newTestCollector(t, Config{DSN: "postgres://user:pass@127.0.0.1:1/nonexistent?sslmode=disable"})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := col.Ping(ctx); err == nil {
+		t.Fatal("expected Ping to fail against an unreachable host, got nil")
 	}
 }

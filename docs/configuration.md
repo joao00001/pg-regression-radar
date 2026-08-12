@@ -27,6 +27,8 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--state-dsn` | `` | Postgres DSN for the state backend when `--state-backend=postgres` (defaults to `--dsn`) |
 | `--state-retention` | `168h` (7 days) | How long samples/events are kept in the postgres state backend |
 | `--state-prune-interval` | `15m` | How often the retention sweep runs against the postgres state backend |
+| `--version` | `false` | Print version, commit, and build date, then exit — see [Versioning & dry-run](#versioning-dry-run) |
+| `--dry-run` | `false` | Validate `--source-type`, Postgres connectivity, and (if `--state-backend=postgres`) the state DSN, then exit without starting any server — see [Versioning & dry-run](#versioning-dry-run) |
 
 ## Standalone collector flags (`cmd/collector`)
 
@@ -40,6 +42,25 @@ The `collector` binary exposes the scraper on its own, without the correlation/a
 | `--namespace` | `default` | Kubernetes namespace label |
 | `--listen` | `:9090` | Prometheus metrics listen address |
 | `--retention-minutes` | `180` | How long to keep in-memory query samples before pruning them |
+| `--version` | `false` | Print version, commit, and build date, then exit |
+| `--dry-run` | `false` | Validate Postgres connectivity (dial + `pg_stat_statements` installed), then exit without scraping |
+
+## Ingester flags (`cmd/ingester`)
+
+The `ingester` binary runs the deploy-event webhook receiver on its own, without the collector/correlation/alerting pieces — useful when the Correlation Engine polls it separately or when running the operator/manager mode with an external ingester:
+
+| Flag | Default | Description |
+|---|---|---|
+| `--listen` | `:8080` | HTTP listen address for the webhook endpoint |
+| `--source-type` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic` |
+| `--source-name` | `default` | Unique name for this `DeploySource` |
+| `--postgres-watch-ref` | `` | `PostgresWatch` to associate events with |
+| `--app-name` | `` (all apps) | Filter events to a specific application name |
+| `--cluster-name` | `` | Cluster identity stamped on `DeployEvent`s when the webhook payload doesn't carry one (e.g. Argo Rollouts, Flux without `eventMetadata`) |
+| `--version` | `false` | Print version, commit, and build date, then exit |
+| `--dry-run` | `false` | Validate `--source-type` and that `--listen` is a resolvable address, then exit without starting the webhook server |
+
+Exposed routes once running: `POST /webhook` (receives deploy events), `GET /events` (lists everything ingested so far, as JSON), `GET /healthz`.
 
 ## Manager flags (`cmd/manager`)
 
@@ -51,6 +72,15 @@ The `collector` binary exposes the scraper on its own, without the correlation/a
 | `--pg-metrics-bind-address` | `:9090` | Aggregated `pg_stat_statements`-derived metrics (leader only) |
 | `--webhook-bind-address` | `:8080` | Deploy-event webhooks, one route per `DeploySource` CR (leader only) |
 | `--health-probe-bind-address` | `:8081` | `/healthz` and `/readyz` |
+| `--version` | `false` | Print version, commit, and build date, then exit |
+| `--dry-run` | `false` | Validate that a Kubernetes API server config can be resolved (in-cluster or via kubeconfig), then exit without starting the manager |
+
+## Versioning & dry-run {#versioning-dry-run}
+
+All four binaries share two flags:
+
+- **`--version`** prints a one-line `<binary> <version> (commit <sha>, built <date>)` string and exits immediately, before any other flag is validated. A build made without the Dockerfile's `--build-arg VERSION/COMMIT/DATE` (e.g. a local `go build`) reports `dev`/`none`/`unknown` rather than a misleading guess.
+- **`--dry-run`** validates configuration and (where applicable) live connectivity — Postgres reachability and the `pg_stat_statements` extension for `operator`/`collector`, source-type/address validity for `ingester`, Kubernetes API config resolution for `manager` — then exits with status `0` on success or `1` (with a logged error) on failure, without starting any server. Useful in CI or an init container to fail fast on a bad DSN or typo'd `--source-type` before the real process starts.
 
 ## `PostgresWatch` spec fields
 

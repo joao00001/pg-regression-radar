@@ -33,6 +33,21 @@
 FROM golang:1.24-bookworm AS build
 WORKDIR /src
 
+# Build metadata for internal/buildinfo, surfaced by every binary's
+# --version flag. All three default to buildinfo's own honest "unbuilt"
+# defaults when left unset (e.g. a bare `docker build .` with no
+# --build-arg), so omitting them is safe — see internal/buildinfo's doc
+# comment for the rationale. Example release build:
+#
+#   docker build \
+#     --build-arg VERSION=v0.1.0 \
+#     --build-arg COMMIT=$(git rev-parse HEAD) \
+#     --build-arg DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+#     --target operator -t pg-regression-radar/operator .
+ARG VERSION=dev
+ARG COMMIT=none
+ARG DATE=unknown
+
 # go.mod declares `go 1.26.0`, newer than this base image's bootstrap `go`
 # (1.24.x). Go's toolchain-switching feature (see https://go.dev/doc/toolchain)
 # would normally fetch the exact 1.26.0 toolchain automatically on demand —
@@ -54,10 +69,14 @@ COPY . .
 # CGO_ENABLED=0 for fully static binaries that run unmodified on the
 # distroless runtime image below (no libc dependency to satisfy).
 ENV CGO_ENABLED=0 GOOS=linux
-RUN go build -trimpath -ldflags="-s -w" -o /out/operator  ./cmd/operator  && \
-    go build -trimpath -ldflags="-s -w" -o /out/manager   ./cmd/manager   && \
-    go build -trimpath -ldflags="-s -w" -o /out/collector ./cmd/collector && \
-    go build -trimpath -ldflags="-s -w" -o /out/ingester  ./cmd/ingester
+RUN LDFLAGS="-s -w \
+      -X github.com/joao00001/pg-regression-radar/internal/buildinfo.Version=${VERSION} \
+      -X github.com/joao00001/pg-regression-radar/internal/buildinfo.Commit=${COMMIT} \
+      -X github.com/joao00001/pg-regression-radar/internal/buildinfo.Date=${DATE}" && \
+    go build -trimpath -ldflags="${LDFLAGS}" -o /out/operator  ./cmd/operator  && \
+    go build -trimpath -ldflags="${LDFLAGS}" -o /out/manager   ./cmd/manager   && \
+    go build -trimpath -ldflags="${LDFLAGS}" -o /out/collector ./cmd/collector && \
+    go build -trimpath -ldflags="${LDFLAGS}" -o /out/ingester  ./cmd/ingester
 
 # ---- operator ----
 FROM gcr.io/distroless/static-debian12:nonroot AS operator

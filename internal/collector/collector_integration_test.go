@@ -151,3 +151,40 @@ func TestIntegration_Scrape_RealPostgres(t *testing.T) {
 		t.Error("expected a non-empty Fingerprint on the scraped sample")
 	}
 }
+
+// TestIntegration_Ping_RealPostgres proves Ping's two real checks (network
+// reachability and the pg_stat_statements extension actually being
+// installed) against a live server, complementing
+// TestPing_UnreachableHost_ReturnsError's fast, database-free failure case
+// in collector_test.go. This is exactly the check cmd/operator's and
+// cmd/collector's --dry-run flag runs before starting anything for real.
+func TestIntegration_Ping_RealPostgres(t *testing.T) {
+	dsn := os.Getenv("PGRR_TEST_DSN")
+	if dsn == "" {
+		t.Skip("PGRR_TEST_DSN not set; skipping Collector integration test")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	setup, err := sql.Open("postgres", dsn)
+	if err != nil {
+		t.Fatalf("open setup connection: %v", err)
+	}
+	defer setup.Close()
+	if _, err := setup.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS pg_stat_statements`); err != nil {
+		t.Fatalf("CREATE EXTENSION pg_stat_statements: %v", err)
+	}
+
+	reg := prometheus.NewRegistry()
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	c, err := New(Config{DSN: dsn, ClusterName: "collector-ping-test", Namespace: "default"}, logger, reg)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	t.Cleanup(func() { _ = c.db.Close() })
+
+	if err := c.Ping(ctx); err != nil {
+		t.Errorf("Ping against a real, correctly configured Postgres should succeed, got: %v", err)
+	}
+}

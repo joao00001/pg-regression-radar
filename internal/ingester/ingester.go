@@ -28,6 +28,21 @@ import (
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
+// ValidSourceTypes lists every source type Handler.ServeHTTP recognises
+// explicitly. ServeHTTP's switch already treats any unrecognised value as
+// "generic" via its default case (a deliberate lenient-fallback design, so
+// a webhook never gets rejected outright), which has the side effect of
+// silently masking a typo'd --source-type: "arogcd" just quietly parses as
+// generic instead of erroring anywhere. ValidSourceTypes lets a caller that
+// wants to catch that check explicitly instead -- cmd/operator's and
+// cmd/ingester's --dry-run both do.
+var ValidSourceTypes = map[string]bool{
+	"argocd":        true,
+	"argo-rollouts": true,
+	"flux":          true,
+	"generic":       true,
+}
+
 // Store keeps an in-memory ordered list of deploy events.
 type Store struct {
 	mu     sync.RWMutex

@@ -39,6 +39,7 @@ import (
 	"context"
 	"database/sql"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -47,6 +48,7 @@ import (
 	"time"
 
 	"github.com/joao00001/pg-regression-radar/internal/alerting"
+	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
@@ -83,7 +85,14 @@ func main() {
 	stateDSN := flag.String("state-dsn", "", "Postgres DSN for the state backend (default: reuse --dsn, i.e. store state in the same monitored Postgres; set this to point state at a separate Postgres instance instead)")
 	stateRetention := flag.Duration("state-retention", 7*24*time.Hour, "How long to retain samples/events in the postgres state backend before pruning")
 	statePruneInterval := flag.Duration("state-prune-interval", 15*time.Minute, "How often to sweep the postgres state backend for records older than --state-retention")
+	versionFlag := flag.Bool("version", false, "Print version information and exit")
+	dryRun := flag.Bool("dry-run", false, "Validate configuration and Postgres connectivity, then exit without starting any servers")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(buildinfo.String("operator"))
+		return
+	}
 
 	if *dsn == "" {
 		slog.Error("--dsn is required")
@@ -104,6 +113,37 @@ func main() {
 	if err != nil {
 		logger.Error("failed to create collector", "err", err)
 		os.Exit(1)
+	}
+
+	if *dryRun {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if !ingester.ValidSourceTypes[*sourceType] {
+			logger.Error("--dry-run: unknown --source-type", "value", *sourceType)
+			os.Exit(1)
+		}
+		if err := col.Ping(ctx); err != nil {
+			logger.Error("--dry-run: collector ping failed", "err", err)
+			os.Exit(1)
+		}
+		if *stateBackend == "postgres" {
+			stateConnDSN := *stateDSN
+			if stateConnDSN == "" {
+				stateConnDSN = *dsn
+			}
+			stateDB, err := postgres.Open(ctx, stateConnDSN)
+			if err != nil {
+				logger.Error("--dry-run: postgres state backend connection failed", "err", err)
+				os.Exit(1)
+			}
+			stateDB.Close()
+		} else if *stateBackend != "" && *stateBackend != "memory" {
+			logger.Error("--dry-run: unknown --state-backend (want memory or postgres)", "value", *stateBackend)
+			os.Exit(1)
+		}
+		logger.Info("--dry-run: configuration and connectivity OK", "version", buildinfo.String("operator"))
+		return
 	}
 
 	// ---- Ingester ----

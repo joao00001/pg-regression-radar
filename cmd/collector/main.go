@@ -30,6 +30,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -37,6 +38,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -49,7 +51,14 @@ func main() {
 	namespace := flag.String("namespace", "default", "Kubernetes namespace")
 	listen := flag.String("listen", ":9090", "Prometheus metrics listen address")
 	retentionMinutes := flag.Int("retention-minutes", 180, "How long (minutes) to retain in-memory query samples before pruning them; should stay well above the correlation window(s) analysed against this data")
+	versionFlag := flag.Bool("version", false, "Print version information and exit")
+	dryRun := flag.Bool("dry-run", false, "Validate configuration and Postgres connectivity, then exit without starting any servers")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(buildinfo.String("collector"))
+		return
+	}
 
 	if *dsn == "" {
 		slog.Error("--dsn is required")
@@ -69,6 +78,17 @@ func main() {
 	if err != nil {
 		logger.Error("failed to create collector", "err", err)
 		os.Exit(1)
+	}
+
+	if *dryRun {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := col.Ping(ctx); err != nil {
+			logger.Error("--dry-run: collector ping failed", "err", err)
+			os.Exit(1)
+		}
+		logger.Info("--dry-run: configuration and connectivity OK", "version", buildinfo.String("collector"))
+		return
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

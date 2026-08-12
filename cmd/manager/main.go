@@ -58,6 +58,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/controller"
 )
 
@@ -81,6 +82,8 @@ func main() {
 	var webhookAddr string
 	var enableLeaderElection bool
 	var leaderElectionNamespace string
+	var versionFlag bool
+	var dryRun bool
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0",
 		"Address the controller-runtime metrics endpoint binds to (reconcile/workqueue metrics). "+
@@ -100,14 +103,34 @@ func main() {
 	flag.StringVar(&leaderElectionNamespace, "leader-election-namespace", "",
 		"Namespace the leader election Lease is created in. Defaults to the manager's own "+
 			"namespace when running in-cluster (via the downward API / in-cluster config).")
+	flag.BoolVar(&versionFlag, "version", false, "Print version information and exit")
+	flag.BoolVar(&dryRun, "dry-run", false,
+		"Validate that a Kubernetes API server config can be resolved (in-cluster or via "+
+			"kubeconfig), then exit without starting the manager.")
 	opts := zap.Options{Development: true}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	if versionFlag {
+		fmt.Println(buildinfo.String("manager"))
+		return
+	}
+
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	cfg, err := ctrl.GetConfig()
+	if err != nil {
+		setupLog.Error(err, "unable to resolve Kubernetes API server config")
+		os.Exit(1)
+	}
+
+	if dryRun {
+		logger.Info("--dry-run: configuration OK", "version", buildinfo.String("manager"), "apiServerHost", cfg.Host)
+		return
+	}
+
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
 			BindAddress: metricsAddr,

@@ -245,6 +245,35 @@ func (c *Collector) Close() error {
 	return c.db.Close()
 }
 
+// Ping verifies the Collector can actually reach Postgres and that
+// pg_stat_statements is installed in the target database, without
+// performing a scrape or touching any in-memory state.
+//
+// This exists because sql.Open (used in New) never dials the network --
+// it only validates the DSN's syntax -- so a Collector can construct
+// successfully against a completely unreachable host, or a real but
+// misconfigured database that simply never had `CREATE EXTENSION
+// pg_stat_statements` run against it, and neither problem surfaces until
+// the first scheduled scrape fails. Ping is what cmd/operator's and
+// cmd/collector's --dry-run flag calls to catch both cases immediately,
+// but it's equally usable as a startup or readiness check by any caller
+// that wants one.
+func (c *Collector) Ping(ctx context.Context) error {
+	if err := c.db.PingContext(ctx); err != nil {
+		return fmt.Errorf("collector: ping: %w", err)
+	}
+
+	var installed bool
+	const q = `SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_stat_statements')`
+	if err := c.db.QueryRowContext(ctx, q).Scan(&installed); err != nil {
+		return fmt.Errorf("collector: check pg_stat_statements extension: %w", err)
+	}
+	if !installed {
+		return fmt.Errorf("collector: pg_stat_statements extension is not installed in this database (run: CREATE EXTENSION pg_stat_statements)")
+	}
+	return nil
+}
+
 // Run starts the scrape loop and blocks until ctx is cancelled.
 func (c *Collector) Run(ctx context.Context) error {
 	ticker := time.NewTicker(c.cfg.ScrapeInterval)

@@ -31,12 +31,15 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
@@ -48,7 +51,28 @@ func main() {
 	postgresWatchRef := flag.String("postgres-watch-ref", "", "PostgresWatch to associate events with")
 	appName := flag.String("app-name", "", "Filter events to a specific application name (empty = all)")
 	clusterName := flag.String("cluster-name", "", "Kubernetes cluster identity to stamp on DeployEvents when the webhook payload doesn't carry one (e.g. Argo Rollouts, Flux without eventMetadata)")
+	versionFlag := flag.Bool("version", false, "Print version information and exit")
+	dryRun := flag.Bool("dry-run", false, "Validate configuration, then exit without starting the webhook server")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(buildinfo.String("ingester"))
+		return
+	}
+
+	if *dryRun {
+		if !ingester.ValidSourceTypes[*sourceType] {
+			slog.Error("--dry-run: unknown --source-type", "value", *sourceType)
+			os.Exit(1)
+		}
+		addr, err := net.ResolveTCPAddr("tcp", *listen)
+		if err != nil {
+			slog.Error("--dry-run: invalid --listen address", "value", *listen, "err", err)
+			os.Exit(1)
+		}
+		slog.Info("--dry-run: configuration OK", "version", buildinfo.String("ingester"), "listen", addr.String())
+		return
+	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
