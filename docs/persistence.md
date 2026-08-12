@@ -62,11 +62,19 @@ Old rows are pruned periodically (`--state-prune-interval`, default 15 min) usin
 ## Trade-offs and limitations
 
 - **Not a replacement for leader election.** Pointing multiple operator replicas at the same state backend makes the *data* consistent and durable, but each replica still independently scrapes `pg_stat_statements` and runs the correlation engine — so you'd get duplicate scrapes and duplicate alerts. Preventing that requires only one replica being active at a time (leader election), which `cmd/manager` provides via controller-runtime's built-in leader election, not this package. Don't run N unattended `cmd/operator` replicas against a shared backend.
-- **History doesn't yet pre-load the live Collector/Ingester.** Persisted samples/events are a durable *copy* of what the Collector/Ingester observed while running; on restart, the in-memory hot path (and therefore the correlation engine's view) starts empty again even though the Postgres history is intact. Backfilling the in-memory state from the store on startup is a natural next step — see [Roadmap](roadmap.md).
 - **Extra write load.** Every scrape/webhook now also does a write to Postgres. The connection pool used for this is intentionally small (see `internal/storage/postgres.Open`) to keep the footprint low, especially when reusing the monitored cluster's own Postgres.
+
+## Backfill on startup
+
+When `--state-backend=postgres`, `RunOperator` loads recent history from the store and seeds the live in-memory Collector/Ingester with it *before* the webhook/metrics servers or the deploy-event poll loop start:
+
+- `collector.Collector.Backfill` seeds the per-`queryid` sample history (covering the last `--retention-minutes`), so the correlation engine's view isn't empty for the first `--window-minutes` after a restart. It does **not** touch the live Prometheus gauges (`pg_regression_radar_query_mean_exec_time_ms`/`..._calls_total`) — those reflect the most recent *live* scrape, and overwriting them with historical values would misrepresent current server state to anything scraping `/metrics` before the first real scrape completes.
+- `ingester.Store.Backfill` seeds deploy-event history the same way, and returns the resulting event count, which becomes the poll loop's initial `DrainSince` cursor. This matters for correctness, not just completeness: `DrainSince` treats anything past its cursor as newly-arrived work to analyse and potentially alert on. Backfilling events without also advancing the cursor past them would make every historical deploy event look brand new on restart, re-running correlation and potentially re-sending duplicate Slack alerts for regressions already reported in a previous process lifetime.
+
+Both backfills are best-effort: a failure to load either kind of history is logged at `Warn` and the process starts with a cold in-memory view for that piece, exactly like before this existed, rather than failing startup outright.
 
 ## See also
 
 - [Configuration Reference](configuration.md) — the full `--state-*` flag list.
 - [Collector Internals](collector-internals.md) — the in-memory samples this store durably copies.
-- [Roadmap](roadmap.md) — backfill-on-restart and other known gaps.
+- [Roadmap](roadmap.md) — other known gaps.

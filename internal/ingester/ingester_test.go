@@ -509,6 +509,96 @@ func TestStore_DrainSince(t *testing.T) {
 	}
 }
 
+// ----- Backfill -----
+
+func TestStore_Backfill_SeedsHistoryAndDedupsByID(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	now := time.Now().UTC()
+
+	n := store.Backfill([]v1alpha1.DeployEvent{
+		{ID: "a", Timestamp: now.Add(-10 * time.Minute)},
+		{ID: "b", Timestamp: now},
+	})
+	if n != 2 {
+		t.Fatalf("expected Backfill to report 2 events, got %d", n)
+	}
+
+	// Re-backfilling an event with an ID already present must not duplicate
+	// it (matches EventStore.Add's upsert-by-ID semantics) — first write wins.
+	n = store.Backfill([]v1alpha1.DeployEvent{
+		{ID: "a", Timestamp: now.Add(-10 * time.Minute), App: "should-be-ignored"},
+		{ID: "c", Timestamp: now.Add(10 * time.Minute)},
+	})
+	if n != 3 {
+		t.Fatalf("expected 3 total events after a partially-overlapping backfill, got %d", n)
+	}
+
+	all := store.All()
+	if len(all) != 3 {
+		t.Fatalf("expected 3 stored events, got %d", len(all))
+	}
+	for _, ev := range all {
+		if ev.ID == "a" && ev.App == "should-be-ignored" {
+			t.Fatalf("expected the original event 'a' to be left in place, got its App overwritten")
+		}
+	}
+
+	// EventsInRange must reflect the backfilled data too (byTime kept in sync).
+	inRange := store.EventsInRange(now.Add(-15*time.Minute), now.Add(15*time.Minute))
+	if len(inRange) != 3 {
+		t.Fatalf("expected 3 events in range after backfill, got %d", len(inRange))
+	}
+}
+
+// TestStore_Backfill_CursorPreventsReplay proves the core correctness
+// requirement of Backfill: DrainSince(returnedCursor) on a store that was
+// JUST backfilled (i.e. no new events have arrived since) must return an
+// EMPTY batch. If it didn't, the operator's poll loop would treat every
+// backfilled deploy event as brand new on restart and could re-run
+// correlation / re-send alerts for regressions already reported before the
+// restart — see internal/cli.RunOperator's poll loop and Backfill's doc
+// comment.
+func TestStore_Backfill_CursorPreventsReplay(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	now := time.Now().UTC()
+
+	cursor := store.Backfill([]v1alpha1.DeployEvent{
+		{ID: "old-1", Timestamp: now.Add(-2 * time.Hour)},
+		{ID: "old-2", Timestamp: now.Add(-time.Hour)},
+	})
+
+	evs, newCursor := store.DrainSince(cursor)
+	if len(evs) != 0 {
+		t.Fatalf("expected DrainSince(backfillCursor) to return no events (replay bug), got %d: %+v", len(evs), evs)
+	}
+	if newCursor != cursor {
+		t.Fatalf("expected cursor to stay at %d with no new events, got %d", cursor, newCursor)
+	}
+
+	// A genuinely new event arriving after the backfill must still show up.
+	store.Add(v1alpha1.DeployEvent{ID: "new-1", Timestamp: now})
+	evs, _ = store.DrainSince(cursor)
+	if len(evs) != 1 || evs[0].ID != "new-1" {
+		t.Fatalf("expected exactly the new event to drain after backfill, got %+v", evs)
+	}
+}
+
+func TestStore_Backfill_EmptyReturnsCurrentLength(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	store.Add(v1alpha1.DeployEvent{ID: "a", Timestamp: time.Now()})
+
+	n := store.Backfill(nil)
+	if n != 1 {
+		t.Fatalf("expected Backfill(nil) to report the current event count (1), got %d", n)
+	}
+}
+
 func TestStore_EventsInRange_OutOfOrder(t *testing.T) {
 	t.Parallel()
 

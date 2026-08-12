@@ -342,6 +342,44 @@ func (c *Collector) Run(ctx context.Context) error {
 	}
 }
 
+// Backfill seeds the collector's in-memory sample history from previously
+// persisted data (see internal/storage/postgres), so a freshly restarted
+// process doesn't start with a cold in-memory view even though its durable
+// history is intact — see docs/persistence.md. Call this once, after New and
+// before Run, with samples loaded from the configured SampleStore covering
+// at least the last RetentionDuration.
+//
+// Unlike scrape's ingestSample, Backfill does NOT update the live Prometheus
+// gauges (meanExecTime/callsTotal): those reflect the most recent LIVE
+// scrape, and overwriting them with historical values here would misrepresent
+// current server state to anything scraping /metrics before the first real
+// scrape completes.
+func (c *Collector) Backfill(samples []QuerySample) {
+	if len(samples) == 0 {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, s := range samples {
+		if s.Fingerprint == "" {
+			s.Fingerprint = FingerprintQuery(s.QueryText)
+		}
+		c.samples[s.QueryID] = append(c.samples[s.QueryID], s)
+		c.indexFingerprintLocked(s.QueryID, s.Fingerprint)
+	}
+	// Loaded data may not arrive pre-sorted per queryid (storage.SampleStore
+	// makes no such promise across a bulk load built by iterating several
+	// queryids and concatenating); pruneLocked's binary search and
+	// SamplesInRange's merge both assume chronological order per queryid.
+	for qid := range c.samples {
+		s := c.samples[qid]
+		sort.Slice(s, func(i, j int) bool { return s[i].RecordedAt.Before(s[j].RecordedAt) })
+	}
+	now := time.Now().UTC()
+	c.pruneLocked(now)
+	c.updateRetentionMetricsLocked()
+}
+
 // SamplesInRange returns QuerySamples for queryID whose RecordedAt falls
 // within [from, to].
 //
