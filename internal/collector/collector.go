@@ -23,6 +23,7 @@ import (
 	"log/slog"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	// pq registers the "postgres" driver used by database/sql.
@@ -150,6 +151,11 @@ type Collector struct {
 	callsTotal      *prometheus.GaugeVec
 	trackedQueries  prometheus.Gauge
 	retainedSamples prometheus.Gauge
+
+	// lastScrapeTime holds the UTC time of the most recent successful scrape
+	// as an atomic.Value (stores time.Time) so that LastScrapeTime() can
+	// read it without acquiring any mutex.
+	lastScrapeTime atomic.Value
 }
 
 // New creates a new Collector and registers its Prometheus metrics with reg.
@@ -385,6 +391,16 @@ func (c *Collector) AllQueryIDs() []int64 {
 	return ids
 }
 
+// LastScrapeTime returns the UTC timestamp of the most recent successful
+// scrape, or the zero time.Time if no scrape has completed yet. It reads
+// an atomically stored value and incurs no lock contention or allocation.
+func (c *Collector) LastScrapeTime() time.Time {
+	if v := c.lastScrapeTime.Load(); v != nil {
+		return v.(time.Time)
+	}
+	return time.Time{}
+}
+
 // scrape reads pg_stat_statements and stores a QuerySample for each row.
 func (c *Collector) scrape(ctx context.Context) error {
 	c.resolveColumns(ctx)
@@ -415,6 +431,7 @@ func (c *Collector) scrape(ctx context.Context) error {
 		return err
 	}
 
+	c.lastScrapeTime.Store(now)
 	c.pruneAndUpdateMetrics(now)
 	return nil
 }
