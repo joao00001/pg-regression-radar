@@ -4,7 +4,9 @@
 
 ## Overview
 
-pg-regression-radar ships two runnable entrypoints (`cmd/operator` and `cmd/manager`) plus a Helm chart that wraps both. This page assumes you already have the binaries, the container image, or a clone of the repo — see [Installation](installation.md) if you don't yet. It covers the minimal command to get each form running; see [Architecture Overview](architecture.md) for which one to pick, and [Configuration Reference](configuration.md) for every flag and CRD field used below.
+pg-regression-radar ships two runnable entrypoints (`operator` and `manager`) plus a Helm chart that wraps both. This page assumes you already have the binaries, the container image, or a clone of the repo — see [Installation](installation.md) if you don't yet. It covers the minimal command to get each form running; see [Architecture Overview](architecture.md) for which one to pick, and [Configuration Reference](configuration.md) for every flag and CRD field used below.
+
+The commands below use `go run ./cmd/operator`/`go run ./cmd/manager`, which assume a clone of the repo. If you installed the unified CLI instead (see [Installation, option 1](installation.md#option-1-go-install-one-command-one-binary-recommended)), replace `go run ./cmd/operator` with `pg-regression-radar operator` and `go run ./cmd/manager` with `pg-regression-radar manager` — every flag below is identical either way.
 
 ## Prerequisites
 

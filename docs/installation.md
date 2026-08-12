@@ -13,23 +13,46 @@ There is no `apt`/`brew` package, no container image on a public registry, and n
 - A Postgres cluster with `pg_stat_statements` enabled
 - `kubectl` and/or `helm` (only for the Kubernetes-deployed paths)
 
-## Option 1: Go install (fastest, no clone needed)
+## Option 1: Go install — one command, one binary (recommended)
 
-Every tagged release is a real, fetchable Go module version — `go install` resolves it directly from the repository's tags via the Go module proxy, no separate binary release needed:
+The simplest way to get pg-regression-radar: a single unified CLI, `pg-regression-radar`, with each run mode as a subcommand. No clone needed — `go install` resolves the tagged release directly from the repository's tags via the Go module proxy:
 
 ```bash
-go install github.com/joao00001/pg-regression-radar/cmd/operator@v0.1.0
-go install github.com/joao00001/pg-regression-radar/cmd/manager@v0.1.0
-# or @latest for the newest tagged release
+go install github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@latest
+# or pin a release: @v0.1.0
 ```
 
-This places `operator`/`manager` in `$(go env GOPATH)/bin`.
+This places a single `pg-regression-radar` binary in `$(go env GOPATH)/bin`. From there:
+
+```bash
+pg-regression-radar operator --dsn "postgres://user:pass@host:5432/dbname?sslmode=disable"
+pg-regression-radar manager --leader-elect=true
+pg-regression-radar collector --dsn "..."
+pg-regression-radar ingester --source-type argocd
+pg-regression-radar version
+pg-regression-radar help
+```
+
+Every subcommand accepts its own `--help`, `--version`, and (except `manager`) `--dry-run` — see [Configuration Reference](configuration.md#versioning-dry-run).
+
+If you'd rather have four separate binaries (e.g. to match the container images described in Option 3), the same code is also available as four standalone commands:
+
+```bash
+go install github.com/joao00001/pg-regression-radar/cmd/operator@latest
+go install github.com/joao00001/pg-regression-radar/cmd/manager@latest
+go install github.com/joao00001/pg-regression-radar/cmd/collector@latest
+go install github.com/joao00001/pg-regression-radar/cmd/ingester@latest
+```
+
+Both forms run identical code (`internal/cli`) — `pg-regression-radar operator ...` and the standalone `operator ...` behave the same way.
 
 ## Option 2: Build from source
 
 ```bash
 git clone https://github.com/joao00001/pg-regression-radar.git
 cd pg-regression-radar
+go build -o bin/pg-regression-radar ./cmd/pg-regression-radar
+# or the four standalone binaries individually:
 go build -o bin/operator  ./cmd/operator
 go build -o bin/manager   ./cmd/manager
 go build -o bin/collector ./cmd/collector
@@ -47,7 +70,7 @@ docker build --target operator -t pg-regression-radar/operator .
 docker build --target manager  -t pg-regression-radar/manager  .
 ```
 
-See the [Dockerfile](https://github.com/joao00001/pg-regression-radar/blob/main/Dockerfile) for the other two `--target` values (`collector`, `ingester`). No image is published to a registry yet, so building locally is the only option today.
+See the [Dockerfile](https://github.com/joao00001/pg-regression-radar/blob/main/Dockerfile) for the other `--target` values (`collector`, `ingester`, and `cli` for an image running the unified `pg-regression-radar` binary, e.g. `docker run pg-regression-radar/cli operator --dsn ...`). No image is published to a registry yet, so building locally is the only option today.
 
 ## Option 4: Install the Helm chart
 

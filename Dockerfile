@@ -19,13 +19,15 @@
 # see each package's doc comment and README's "Two ways to run" section), and
 # deploy/helm/deploylens already references separate image paths for the
 # operator and manager modes. Rather than four near-identical Dockerfiles,
-# this is one `build` stage that compiles all four, followed by one minimal
-# runtime stage per binary. Pick which one you want with --target:
+# this is one `build` stage that compiles all four (plus the unified
+# cmd/pg-regression-radar CLI — see its doc comment), followed by one
+# minimal runtime stage per binary. Pick which one you want with --target:
 #
 #   docker build --target operator -t pg-regression-radar/operator .
 #   docker build --target manager  -t pg-regression-radar/manager  .
 #   docker build --target collector -t pg-regression-radar/collector .
 #   docker build --target ingester  -t pg-regression-radar/ingester .
+#   docker build --target cli       -t pg-regression-radar/cli      .
 #
 # With no --target, the last stage in the file wins (operator), matching the
 # Helm chart's default `mode: operator`.
@@ -76,14 +78,15 @@ RUN LDFLAGS="-s -w \
     go build -trimpath -ldflags="${LDFLAGS}" -o /out/operator  ./cmd/operator  && \
     go build -trimpath -ldflags="${LDFLAGS}" -o /out/manager   ./cmd/manager   && \
     go build -trimpath -ldflags="${LDFLAGS}" -o /out/collector ./cmd/collector && \
-    go build -trimpath -ldflags="${LDFLAGS}" -o /out/ingester  ./cmd/ingester
+    go build -trimpath -ldflags="${LDFLAGS}" -o /out/ingester  ./cmd/ingester && \
+    go build -trimpath -ldflags="${LDFLAGS}" -o /out/pg-regression-radar ./cmd/pg-regression-radar
 
-# ---- operator ----
-FROM gcr.io/distroless/static-debian12:nonroot AS operator
-COPY --from=build /out/operator /usr/local/bin/operator
+# ---- cli (unified pg-regression-radar binary, all four modes as subcommands) ----
+FROM gcr.io/distroless/static-debian12:nonroot AS cli
+COPY --from=build /out/pg-regression-radar /usr/local/bin/pg-regression-radar
 USER nonroot:nonroot
 EXPOSE 8080 9090
-ENTRYPOINT ["/usr/local/bin/operator"]
+ENTRYPOINT ["/usr/local/bin/pg-regression-radar"]
 
 # ---- manager (controller-runtime, for the CRD-based deployment mode) ----
 FROM gcr.io/distroless/static-debian12:nonroot AS manager
@@ -105,3 +108,10 @@ COPY --from=build /out/ingester /usr/local/bin/ingester
 USER nonroot:nonroot
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/ingester"]
+
+# ---- operator ----
+FROM gcr.io/distroless/static-debian12:nonroot AS operator
+COPY --from=build /out/operator /usr/local/bin/operator
+USER nonroot:nonroot
+EXPOSE 8080 9090
+ENTRYPOINT ["/usr/local/bin/operator"]

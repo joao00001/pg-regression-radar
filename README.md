@@ -18,15 +18,21 @@ Teams running Postgres on Kubernetes (CloudNativePG, Zalando, Crunchy, Perconaâ€
 
 ## Quick start
 
+Install the single unified CLI (no clone needed):
+
 ```bash
-go run ./cmd/operator \
+go install github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@latest
+
+pg-regression-radar operator \
   --dsn "postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
   --cluster-name my-cluster \
   --slack-url https://hooks.slack.com/services/XXX/YYY/ZZZ \
   --source-type argocd
 ```
 
-See **[Getting Started](https://joao00001.github.io/pg-regression-radar/getting-started/)** for the CRD-driven (`cmd/manager`, HA) and Helm-based install paths, and **[Configuration Reference](https://joao00001.github.io/pg-regression-radar/configuration/)** for every flag.
+Or, from a clone: `go run ./cmd/operator --dsn ... --cluster-name ... --source-type argocd`.
+
+See **[Installation](https://joao00001.github.io/pg-regression-radar/installation/)** for every install option (Go install, source, Docker, Helm), **[Getting Started](https://joao00001.github.io/pg-regression-radar/getting-started/)** for the CRD-driven (`manager`, HA) and Helm-based paths, and **[Configuration Reference](https://joao00001.github.io/pg-regression-radar/configuration/)** for every flag.
 
 ## Documentation
 
