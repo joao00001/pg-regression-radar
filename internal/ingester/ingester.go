@@ -49,6 +49,12 @@ type Store struct {
 	events []v1alpha1.DeployEvent
 }
 
+// NewStore returns an empty Store with a small pre-allocated backing slice to
+// reduce early-growth reallocations.
+func NewStore() *Store {
+	return &Store{events: make([]v1alpha1.DeployEvent, 0, 64)}
+}
+
 // Add appends a new event to the store.
 func (s *Store) Add(ev v1alpha1.DeployEvent) {
 	s.mu.Lock()
