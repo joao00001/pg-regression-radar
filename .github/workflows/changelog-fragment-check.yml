@@ -1,0 +1,107 @@
+name: Changelog fragment check
+
+# Enforces that every user-facing PR (title type feat/fix/perf — the same
+# Conventional Commits vocabulary pr-title.yml already validates) adds
+# exactly one towncrier news fragment under changelog.d/, and that its
+# content follows the strict format documented in CONTRIBUTING.md's
+# "Release notes / changeset fragments" section. PRs of any other type
+# (docs, test, refactor, chore, ci) are exempt — they don't describe a
+# change an end user of this project would care about in release notes.
+#
+# Deliberately its own workflow rather than a job bolted onto pr-title.yml:
+# pr-title.yml runs on `pull_request_target` (so it can post a check on
+# forked PRs without exposing secrets), while this workflow only needs to
+# read the PR's own diff, so plain `pull_request` (safer default, runs with
+# the PR head's own permissions) is enough.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check-fragment:
+    name: Verify changelog.d/ fragment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        # Full history (not just the PR's head commit) so the diff-based
+        # "did this PR add a new changelog.d/ file" check below can compare
+        # against the actual merge base rather than just the tip commit.
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Determine PR type from title
+        id: type
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # Same type vocabulary as the `types:` list in
+          # .github/workflows/pr-title.yml (amannn/action-semantic-pull-request) —
+          # keep both lists in sync if a Conventional Commits type is ever
+          # added or removed. pr-title.yml already rejects any title that
+          # doesn't match one of these types before this workflow's checks
+          # can meaningfully run.
+          if [[ "$PR_TITLE" =~ ^(feat|fix|docs|test|refactor|perf|chore|ci)(\([a-zA-Z0-9_.-]+\))?\!?:[[:space:]] ]]; then
+            echo "type=${BASH_REMATCH[1]}" | tee -a "$GITHUB_OUTPUT"
+          else
+            echo "::error::PR title '$PR_TITLE' does not start with a recognized Conventional Commits type (feat/fix/docs/test/refactor/perf/chore/ci). pr-title.yml should already enforce this — if it passed, the type list above has drifted out of sync with pr-title.yml's; otherwise this PR's title itself needs fixing first."
+            exit 1
+          fi
+
+      - name: Decide whether a fragment is required
+        id: gate
+        run: |
+          case "${{ steps.type.outputs.type }}" in
+            feat|fix|perf) echo "required=true" | tee -a "$GITHUB_OUTPUT" ;;
+            *) echo "required=false" | tee -a "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Skip (not a user-facing PR type)
+        if: steps.gate.outputs.required == 'false'
+        run: echo "PR type '${{ steps.type.outputs.type }}' has no user-visible behavior to release-note; no changelog.d/ fragment required."
+
+      - name: Find the fragment this PR added
+        if: steps.gate.outputs.required == 'true'
+        id: fragment
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TYPE: ${{ steps.type.outputs.type }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          mapfile -t ADDED < <(git diff --name-only --diff-filter=A "${BASE_SHA}...${HEAD_SHA}" -- changelog.d/)
+
+          FORMAT_HINT="Expected exactly one new file named '${PR_NUMBER}.${PR_TYPE}.md' under changelog.d/, containing a single plain-prose paragraph. See CONTRIBUTING.md#release-notes--changeset-fragments (and changelog.d/README.md for a worked example)."
+
+          if [ "${#ADDED[@]}" -eq 0 ]; then
+            echo "::error::This PR's title is type '${PR_TYPE}', which requires a changelog fragment, but no new file was added under changelog.d/. ${FORMAT_HINT}"
+            exit 1
+          fi
+
+          if [ "${#ADDED[@]}" -gt 1 ]; then
+            echo "::error::Found ${#ADDED[@]} new files under changelog.d/ (${ADDED[*]}), expected exactly one. ${FORMAT_HINT}"
+            exit 1
+          fi
+
+          FILE="${ADDED[0]}"
+          EXPECTED="changelog.d/${PR_NUMBER}.${PR_TYPE}.md"
+          if [ "$FILE" != "$EXPECTED" ]; then
+            echo "::error::New file '$FILE' does not match the required name '$EXPECTED' (PR number ${PR_NUMBER}, title type '${PR_TYPE}'). ${FORMAT_HINT}"
+            exit 1
+          fi
+
+          echo "path=$FILE" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Validate fragment content
+        if: steps.gate.outputs.required == 'true'
+        run: python3 scripts/check_changelog_fragment.py "${{ steps.fragment.outputs.path }}"

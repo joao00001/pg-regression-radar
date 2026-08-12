@@ -4,10 +4,11 @@ name: Release
 # builds (cli, operator, manager, collector, ingester — see the Dockerfile's
 # own top comment for why one Dockerfile builds all five) to GHCR, plus the
 # Helm chart (deploy/helm/deploylens) as an OCI artifact to the same
-# registry, plus a GitHub Release on the pushed tag itself with auto-
-# generated notes (see the `release-notes` job at the bottom — git-cliff
-# parses Conventional Commits out of `git log` between the previous tag and
-# this one; config lives in cliff.toml at the repo root). Every other
+# registry, plus a GitHub Release on the pushed tag itself with notes (see
+# the `release-notes` job at the bottom — it extracts the tag's own section
+# from CHANGELOG.md, which the repo owner generates from per-PR fragments
+# in changelog.d/ via `towncrier build` before pushing the tag; see
+# CONTRIBUTING.md's "Release notes / changeset fragments" section). Every other
 # Docker-related workflow in this repo (e2e-manual.yml, e2e-kind.yml) only
 # ever builds images locally for its own use within a single job — this is
 # the only workflow that publishes anything anywhere.
@@ -259,71 +260,73 @@ jobs:
         run: helm push "/tmp/helm-out/pg-regression-radar-${CHART_VERSION}.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
 
   release-notes:
-    name: GitHub Release
+    name: Publish GitHub Release notes
     runs-on: ubuntu-latest
-    # Waits on both publish jobs so a GitHub Release only ever appears once
-    # every image and the Helm chart it describes actually made it to GHCR —
-    # never a release page advertising artifacts that failed to publish.
     needs: [images, helm-chart]
+    # Waits on both other jobs so a GitHub Release is never published
+    # pointing at images/chart that failed to build, scan, sign, or push.
     permissions:
-      contents: write # create the GitHub Release on this tag
+      contents: write # softprops/action-gh-release creates/updates the Release
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          # git-cliff needs the full history (and every tag) to diff the
-          # pushed tag against the one before it — the default shallow
-          # checkout (fetch-depth: 1) only has this one commit and no tags,
-          # which makes git-cliff either error out or emit an empty/wrong
-          # changelog. See https://git-cliff.org and the git-cliff-action
-          # README's own "IMPORTANT" note on this.
-          fetch-depth: 0
 
-      # git-cliff (https://git-cliff.org): a single-binary Rust changelog
-      # generator that parses `git log` directly against Conventional
-      # Commits (see cliff.toml at the repo root, which mirrors
-      # CONTRIBUTING.md's type/scope tables). Chosen over release-please or
-      # semantic-release because this repo already has a manual, human-
-      # decided tagging flow (`git tag vX.Y.Z && git push`) — git-cliff
-      # slots underneath that flow to produce notes for a tag that already
-      # exists, rather than replacing it with a bot-owned "release PR" that
-      # picks the next version and has to be merged first. orhun/git-cliff-
-      # action is the tool author's own maintained action: it downloads the
-      # matching git-cliff binary for the runner and exposes the rendered
-      # changelog as a step output, so no separate "install a Rust binary"
-      # step is needed here.
-      - name: Generate release notes (git-cliff)
-        id: git-cliff
-        uses: orhun/git-cliff-action@v4.8.0
-        with:
-          config: cliff.toml
-          # --latest: only the commits between the tag before HEAD and HEAD
-          # itself (i.e. exactly this release), not the full project
-          # history. --strip header: omit cliff.toml's `[changelog].header`
-          # (the "# Changelog" title + preamble, appropriate for the
-          # standalone CHANGELOG.md file but redundant on a GitHub Release
-          # page, which already shows the tag/release name above the body).
-          args: --config cliff.toml --latest --strip header
+      # Release notes come from CHANGELOG.md, not a changelog-generation
+      # tool run in this job. This repo's changelog is built by
+      # `towncrier` (see towncrier.toml and CONTRIBUTING.md's "Release
+      # notes / changeset fragments" section) from per-PR fragments in
+      # changelog.d/: the repo owner runs `towncrier build --version
+      # ${TAG} --yes` locally, which rewrites CHANGELOG.md with a new
+      # "## ${TAG} - <date>" section and removes the consumed fragments,
+      # commits that, and only then pushes the `v*` tag that triggers this
+      # workflow — so by the time this job runs, the section for the
+      # exact tag being released is already sitting at/near the top of
+      # CHANGELOG.md on the tagged commit. This job's only work is
+      # extracting that one section and handing it to
+      # softprops/action-gh-release as the Release body.
+      #
+      # (Earlier drafts of this workflow used `git-cliff` to generate
+      # release notes from commit messages directly, with a checked-in
+      # `cliff.toml`. That approach never actually landed on `main` and is
+      # superseded by the towncrier-based flow above before it did: a
+      # generated-from-commit-messages changelog and a
+      # generated-from-user-facing-fragments changelog are redundant, and
+      # the fragment-based one is enforced in CI per-PR (see
+      # .github/workflows/changelog-fragment-check.yml) while commit
+      # messages are not. There is deliberately no `git-cliff`
+      # usage or `cliff.toml` in this repo to remove as part of this
+      # change — this is the first time a release-notes job has been
+      # added to this workflow.)
+      - name: Extract this tag's section from CHANGELOG.md
+        id: notes
         env:
-          OUTPUT: release-notes.md
-          GITHUB_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "::error::CHANGELOG.md not found at tag ${TAG}. Run 'towncrier build --version ${TAG} --yes' and commit the result (the same commit you then tag) before pushing a release tag — see CONTRIBUTING.md#release-notes--changeset-fragments."
+            exit 1
+          fi
 
-      - name: Publish the GitHub Release
-        # softprops/action-gh-release over the `gh release create` CLI: it
-        # reads the same `${{ steps.git-cliff.outputs.content }}` step
-        # output directly as the release body with no intermediate
-        # `gh auth login`/token-as-env-var plumbing, is the de facto
-        # standard Action for this in the wider GitHub Actions ecosystem,
-        # and (unlike shelling out to `gh`) fails the step with a clear
-        # error on a malformed input instead of a raw CLI exit code.
-        uses: softprops/action-gh-release@v3.0.2
+          # From the line "## ${TAG} ..." (towncrier's title_format renders
+          # exactly this, e.g. "## v0.5.0 - 2026-08-12") up to, but not
+          # including, the next "## " heading (the previous release's
+          # section) or end of file.
+          awk -v tag="$TAG" '
+            $0 ~ "^## " tag "([[:space:]]|$)" { found=1; print; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > /tmp/release-notes.md
+
+          if [ ! -s /tmp/release-notes.md ]; then
+            echo "::error::No '## ${TAG} ...' section found in CHANGELOG.md. 'towncrier build --version ${TAG} --yes' must be run and committed as (or before) the tagged commit — see CONTRIBUTING.md#release-notes--changeset-fragments."
+            exit 1
+          fi
+
+          echo "Extracted release notes for ${TAG}:"
+          cat /tmp/release-notes.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
-          body: ${{ steps.git-cliff.outputs.content }}
-          # This job only runs for a real `vX.Y.Z` tag (the whole workflow
-          # is gated on `push: tags: v*`), so it's never a draft/prerelease
-          # and always becomes the repo's "Latest release" badge on GitHub.
-          draft: false
-          prerelease: false
-          make_latest: "true"
+          body_path: /tmp/release-notes.md

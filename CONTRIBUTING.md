@@ -123,6 +123,112 @@ to a given component.
   [`docs/TEMPLATE.md`](docs/TEMPLATE.md) for the structure every page
   follows), plus `README.md` if it affects the quick-start commands there.
 
+## Release notes / changeset fragments
+
+If your PR changes anything a user of this project would notice — a new
+feature, a bug fix, a performance improvement — it must also add a **news
+fragment**: a small file describing that change in plain, user-facing
+language, separate from your commit message (which is technical, aimed at
+someone reading `git log`, not release notes). This project uses
+[`towncrier`](https://towncrier.readthedocs.io/) to compile these fragments
+into `CHANGELOG.md` at release time — the same pattern pytest, Twisted, and
+the changesets tooling in the JS ecosystem use, and for the same reason: a
+changelog entry written by the person making the change, in the same PR, is
+far more accurate than one reconstructed later from commit messages or
+squash-merge titles.
+
+### When it's required
+
+Exactly the PR types that describe user-facing behavior:
+
+| PR title type | Fragment required? |
+|---|---|
+| `feat` | Yes |
+| `fix` | Yes |
+| `perf` | Yes |
+| `docs`, `test`, `refactor`, `chore`, `ci` | No |
+
+This is enforced in CI by `.github/workflows/changelog-fragment-check.yml`,
+which reads your PR title's Conventional Commits type (the same type
+`pr-title.yml` already validates) to decide whether a fragment is required,
+then checks the fragment itself if so.
+
+### How to add one
+
+Add exactly one file to `changelog.d/`, named:
+
+```
+<PR-number>.<type>.md
+```
+
+where `<type>` is `feat`, `fix`, or `perf` — matching your PR title's type
+exactly. For example, PR #123 titled `feat(collector): add per-database
+sample retention override` adds `changelog.d/123.feat.md`. You won't know
+your PR number until you open the PR (or you can guess it — GitHub issue and
+PR numbers share one counter, so the next PR number is usually easy to
+predict from the most recent one); the CI check runs on every push to the
+PR, so you can add the file first and rename it once you know the real
+number if you guessed wrong.
+
+The file's content must be:
+
+1. **Exactly one paragraph** — a single continuous block of text, no blank
+   line in the middle.
+2. **Start with a capital letter.**
+3. **End with `.`, `!`, or `?`.**
+4. **No markdown heading** (no line starting with `#`).
+5. **No code block** (no `` ``` `` fence, no 4-space/tab-indented block).
+6. **Not start by repeating the type** — don't write "Fixed:" or
+   "feat(collector):" at the start; the changelog section your fragment
+   lands in already says that.
+7. **20-400 characters** — a release-note sentence, not an essay. Put extra
+   detail in the PR description instead.
+
+A minimal valid example:
+
+```
+Added a per-database override for sample retention, so a single noisy
+database no longer forces a shorter retention window for the rest of the
+fleet.
+```
+
+See [`changelog.d/README.md`](changelog.d/README.md) for a second worked
+example. `.github/workflows/changelog-fragment-check.yml` fails your PR with
+a specific rule number (e.g. `[3-ends-with-punctuation]`) if any of the
+above isn't met — it's meant to be self-explanatory from the CI error alone.
+
+### Testing your fragment locally
+
+```bash
+pip install towncrier
+towncrier build --draft --version v0.0.0-preview
+```
+
+`--draft` only prints what the compiled `CHANGELOG.md` section would look
+like; it writes nothing and doesn't touch your fragment files.
+
+### How releases consume fragments (repo owner only)
+
+This repo's tags are pushed manually, not cut by a release bot. Before
+tagging a release:
+
+```bash
+towncrier build --version vX.Y.Z --yes
+git add CHANGELOG.md changelog.d/
+git commit -s -m "docs(changelog): release vX.Y.Z"
+git tag vX.Y.Z
+git push origin main vX.Y.Z
+```
+
+`towncrier build` rewrites `CHANGELOG.md` with a new `## vX.Y.Z - <date>`
+section compiled from every fragment currently in `changelog.d/` (grouped
+under "Features"/"Fixes"/"Performance"), and removes the fragments it just
+consumed via `git rm`. Commit that change, *then* tag it — `release.yml`'s
+`release-notes` job extracts the section matching the pushed tag straight
+out of the committed `CHANGELOG.md` and uses it as the GitHub Release body,
+so the section must already exist on the tagged commit. See
+[CI/CD](docs/ci-cd.md#changelog-fragment-checkyml-on-pr-openeditsync) for the full pipeline.
+
 ## Code style
 
 Run `gofmt -l $(git ls-files '*.go')` before pushing — a `gofmt` job in CI
