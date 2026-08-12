@@ -1,0 +1,64 @@
+site_name: pg-regression-radar
+site_description: >-
+  Detects PostgreSQL query performance regressions and pinpoints which
+  Kubernetes deployment caused them.
+site_url: https://joao00001.github.io/pg-regression-radar/
+repo_url: https://github.com/joao00001/pg-regression-radar
+repo_name: joao00001/pg-regression-radar
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.instant
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Architecture:
+      - Overview: architecture.md
+      - Detection Algorithm: detection-algorithm.md
+      - Collector Internals: collector-internals.md
+  - Configuration Reference: configuration.md
+  - Persistence: persistence.md
+  - Deploy Sources & Webhooks: webhooks.md
+  - API Reference: api-reference.md
+  - Testing: testing.md
+  - CI/CD: ci-cd.md
+  - Roadmap: roadmap.md
+  - Contributing: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
+  - Meta:
+      - Page Template: TEMPLATE.md

@@ -1,0 +1,5 @@
+# Build-time only: renders docs/ into the static site published at
+# https://joao00001.github.io/pg-regression-radar/ (see mkdocs.yml and
+# .github/workflows/docs.yml). Never imported by, or shipped with, the Go
+# binaries this project builds.
+mkdocs-material>=9.5,<10

@@ -1,0 +1,69 @@
+name: Deploy Docs
+
+# Builds docs/ with MkDocs Material and publishes it to GitHub Pages at
+# https://joao00001.github.io/pg-regression-radar/. Uses GitHub's native
+# Pages deployment (upload-pages-artifact + deploy-pages), not a gh-pages
+# branch: it needs no separate branch to keep in sync and no PAT beyond the
+# job's own OIDC token.
+#
+# NOTE: this only takes effect once Pages is switched to "GitHub Actions" as
+# its source under Settings -> Pages -- a one-time repo setting change this
+# workflow file can't make on its own.
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time; a newer push should win over an
+# in-flight older one rather than queuing behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - name: Install MkDocs Material
+        run: pip install -r requirements-docs.txt
+
+      - name: Build (strict — broken nav/links fail the build)
+        run: mkdocs build --strict
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

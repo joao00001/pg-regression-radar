@@ -23,8 +23,9 @@ go test ./...        # unit tests (fakes/mocks only, no external services needed
 Some suites need real infrastructure (a live PostgreSQL, or a real
 kube-apiserver) and are gated behind a build tag / `-run` filter so they
 don't run by default. They mirror the two extra jobs CI runs on every PR —
-see the [README's testing section](README.md#contributing) for the exact
-commands. You don't need to run these locally for a small change; CI will
+see [Testing](https://joao00001.github.io/pg-regression-radar/testing/) in
+the docs site for the exact commands. You don't need to run these locally
+for a small change; CI will
 run them on your PR either way, but if you're touching `internal/collector`,
 `internal/storage`, `internal/controller`, or `internal/e2e`, running the
 relevant one locally before pushing will save you a slow CI feedback loop.
@@ -118,14 +119,17 @@ to a given component.
   ./...` must pass — CI will run this plus the real-infrastructure suites
   automatically.
 - **Docs.** If you change a flag, a CRD field, or user-facing behavior,
-  update the relevant section of `README.md` in the same PR.
+  update the relevant page under [`docs/`](docs/) in the same PR (see
+  [`docs/TEMPLATE.md`](docs/TEMPLATE.md) for the structure every page
+  follows), plus `README.md` if it affects the quick-start commands there.
 
 ## Code style
 
-Run `gofmt -l .` before pushing — CI doesn't currently fail on formatting,
-but a clean `gofmt` is expected. There's no separate style guide beyond
-that: match the conventions already used in the file/package you're
-editing (this codebase leans on doc comments that explain *why*, not just
+Run `gofmt -l $(git ls-files '*.go')` before pushing — a `gofmt` job in CI
+(`go-quality.yml`) fails the build on any unformatted file. There's no
+separate style guide beyond that: match the conventions already used in the
+file/package you're editing (this codebase leans on doc comments that
+explain *why*, not just
 what — see any file under `internal/` for the tone to match).
 
 ## Questions
