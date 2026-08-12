@@ -187,6 +187,104 @@ func TestAnalyse_InsufficientData(t *testing.T) {
 	}
 }
 
+// rotatedFingerprintSource implements correlation.SampleSource the way
+// collector.Collector's SamplesInRange behaves once its fingerprint-merge
+// fallback has kicked in for a rotated queryid (see collector.go's doc
+// comment on SamplesInRange): regardless of which queryid is asked for, it
+// returns the full merged set of samples sharing a query's fingerprint, in
+// range. This lets the test reproduce, at the correlation-engine boundary,
+// exactly what AllQueryIDs()+SamplesInRange() hand the engine in production
+// when a queryid rotates mid-window — without needing a real Collector.
+type rotatedFingerprintSource struct {
+	queryIDs []int64
+	samples  []collector.QuerySample
+}
+
+func (r *rotatedFingerprintSource) AllQueryIDs() []int64 {
+	return append([]int64(nil), r.queryIDs...)
+}
+
+func (r *rotatedFingerprintSource) SamplesInRange(_ int64, from, to time.Time) []collector.QuerySample {
+	var out []collector.QuerySample
+	for _, s := range r.samples {
+		if !s.RecordedAt.Before(from) && !s.RecordedAt.After(to) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// buildSamplesWithFingerprint is buildSamples plus an explicit Fingerprint,
+// needed to simulate two different queryids that the collector has
+// determined share the same normalized query text.
+func buildSamplesWithFingerprint(qid int64, qtext string, fingerprint string, t0 time.Time, step time.Duration, n int, latency float64) []collector.QuerySample {
+	samples := buildSamples(qid, qtext, t0, step, n, latency)
+	for i := range samples {
+		samples[i].Fingerprint = fingerprint
+	}
+	return samples
+}
+
+// TestAnalyse_DedupesQueryIDRotation reproduces the bug described in
+// docs/collector-internals.md: a query whose queryid rotates mid-window (old
+// queryid stops appearing, a new one starts) is enumerated twice by
+// AllQueryIDs(), and — once the collector's fingerprint-merge fallback has
+// kicked in — SamplesInRange returns the identical merged sample set for
+// both the old and new queryid. Before the fix, this made Analyse run
+// evaluateQuery twice on the same data and emit two PerformanceRegressions
+// for what is really one regression. It must emit exactly one.
+func TestAnalyse_DedupesQueryIDRotation(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now().UTC()
+	deployAt := now
+	step := time.Minute
+	n := 15
+
+	const fingerprint = "fp-rotated-query"
+	const oldQueryID, newQueryID = int64(501), int64(502)
+
+	// Old queryid only ever produced pre-deploy samples (fast); the rotation
+	// happened right at the deploy and the new queryid took over from there
+	// (slow) — a textbook mid-window rotation.
+	preSamples := buildSamplesWithFingerprint(oldQueryID, "SELECT 1 FROM rotated", fingerprint, deployAt.Add(-time.Duration(n)*step), step, n, 10.0)
+	postSamples := buildSamplesWithFingerprint(newQueryID, "SELECT 1 FROM rotated", fingerprint, deployAt.Add(step), step, n, 50.0)
+
+	src := &rotatedFingerprintSource{
+		queryIDs: []int64{oldQueryID, newQueryID},
+		samples:  append(preSamples, postSamples...),
+	}
+
+	engine := correlation.New(correlation.Config{
+		WindowMinutes:          20,
+		MinExecutions:          10,
+		LatencyChangeThreshold: 0.20,
+		PValueThreshold:        0.05,
+	}, src, nil)
+
+	ev := v1alpha1.DeployEvent{
+		ID:        "deploy-rotation",
+		Namespace: "production",
+		Timestamp: deployAt,
+	}
+
+	results := engine.Analyse(ev)
+
+	if len(results) != 1 {
+		t.Fatalf("expected exactly one PerformanceRegression for a rotated queryid, got %d: %+v", len(results), results)
+	}
+
+	got := results[0]
+	if got.Status != v1alpha1.StatusDetected {
+		t.Errorf("expected StatusDetected, got %s", got.Status)
+	}
+	// Reported under the "live" queryid — whichever most recently produced a
+	// sample — not whichever happened to be first in AllQueryIDs() order.
+	if got.QueryID != newQueryID {
+		t.Errorf("expected finding to be reported under the live queryid %d, got %d", newQueryID, got.QueryID)
+	}
+}
+
 // ----- E-divisive tests -----
 
 func TestEDivisive_DetectsChangePoint(t *testing.T) {

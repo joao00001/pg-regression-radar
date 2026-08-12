@@ -66,7 +66,7 @@ func (s *SampleStore) SamplesInRange(ctx context.Context, queryID int64, from, t
 	if err != nil {
 		return nil, fmt.Errorf("storage/postgres: samples in range (query_id=%d): %w", queryID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var out []collector.QuerySample
 	for rows.Next() {
@@ -97,7 +97,7 @@ func (s *SampleStore) AllQueryIDs(ctx context.Context) ([]int64, error) {
 	if err != nil {
 		return nil, fmt.Errorf("storage/postgres: all query ids: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var ids []int64
 	for rows.Next() {

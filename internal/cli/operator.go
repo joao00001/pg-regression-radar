@@ -142,7 +142,7 @@ func RunOperator(args []string) {
 				logger.Error("--dry-run: postgres state backend connection failed", "err", err)
 				os.Exit(1)
 			}
-			stateDB.Close()
+			_ = stateDB.Close()
 		} else if *stateBackend != "" && *stateBackend != "memory" {
 			logger.Error("--dry-run: unknown --state-backend (want memory or postgres)", "value", *stateBackend)
 			os.Exit(1)
@@ -268,7 +268,7 @@ func RunOperator(args []string) {
 		os.Exit(1)
 	}
 	if stateDB != nil {
-		defer stateDB.Close()
+		defer func() { _ = stateDB.Close() }()
 	}
 
 	// ---- HTTP servers ----
@@ -338,7 +338,7 @@ func RunOperator(args []string) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-			var evs []v1alpha1.DeployEvent
+				var evs []v1alpha1.DeployEvent
 				evs, cursor = store.DrainSince(cursor)
 				for _, ev := range evs {
 					// Mirror into the durable EventStore, if configured (see
