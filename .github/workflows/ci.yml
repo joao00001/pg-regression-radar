@@ -88,7 +88,20 @@ jobs:
         # this suite has to proving the tool actually detects a regression,
         # as opposed to internal/storage and internal/collector's narrower
         # integration tests, which check one layer in isolation.
-        run: go test -tags=integration -race -count=1 ./internal/storage/... ./internal/collector/... ./internal/e2e/...
+        #
+        # -p 1 forces `go test` to build/run these packages' test binaries
+        # ONE AT A TIME instead of Go's default of running different
+        # packages' tests concurrently (up to GOMAXPROCS processes at once).
+        # internal/collector's and internal/e2e's integration tests both
+        # call pg_stat_statements_reset() and read pg_stat_statements against
+        # the SAME live Postgres container — that extension's state is
+        # server-wide, not scoped per connection/session, so two of these
+        # packages' test binaries running at the same time can (and, verified
+        # locally, reliably do) stomp on each other: one test's reset() wipes
+        # out call counts the other test is mid-way through accumulating,
+        # corrupting both. -p 1 gives each package exclusive access to the
+        # shared instance for the duration of its own tests.
+        run: go test -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/...
 
       - name: Stop PostgreSQL
         if: always()

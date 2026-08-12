@@ -136,7 +136,7 @@ func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegr
 	if err != nil {
 		return fmt.Errorf("alerting: send webhook: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("alerting: webhook returned status %d", resp.StatusCode)

@@ -2,6 +2,16 @@ module github.com/joao00001/pg-regression-radar
 
 go 1.26.0
 
+// Pinned past the bare 1.26.0 base release: CI (go-version-file: go.mod)
+// and the Dockerfile (GOTOOLCHAIN=auto) both otherwise resolve to an
+// unpatched go1.26.0, which govulncheck flags against 14 stdlib
+// vulnerabilities across crypto/tls, crypto/x509, net, net/http, mime,
+// net/textproto, os, and net/url -- all fixed somewhere in 1.26.1..1.26.5.
+// See https://go.dev/doc/devel/release#go1.26.minor for the per-patch
+// changelog. Bump this alongside `go`'s own minimum whenever a new patch
+// ships; don't let it drift.
+toolchain go1.26.5
+
 require (
 	github.com/lib/pq v1.12.3
 	github.com/prometheus/client_golang v1.24.1

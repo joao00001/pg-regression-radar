@@ -173,12 +173,12 @@ func Open(ctx context.Context, dsn string) (*sql.DB, error) {
 	pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if err := db.PingContext(pingCtx); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("storage/postgres: ping: %w", err)
 	}
 
 	if err := Migrate(ctx, db); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, err
 	}
 

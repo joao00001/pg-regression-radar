@@ -71,7 +71,7 @@ func (s *EventStore) EventsInRange(ctx context.Context, from, to time.Time) ([]v
 	if err != nil {
 		return nil, fmt.Errorf("storage/postgres: events in range: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanDeployEvents(rows)
 }
 
@@ -86,7 +86,7 @@ func (s *EventStore) All(ctx context.Context) ([]v1alpha1.DeployEvent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("storage/postgres: all events: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	return scanDeployEvents(rows)
 }
 

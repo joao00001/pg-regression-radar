@@ -67,26 +67,33 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// runProbe executes n copies of "SELECT pg_sleep(<sleepSeconds>) /* marker */"
-// against db, scraping the real Collector once after each execution so each
-// scrape captures pg_stat_statements' running mean shortly after a single
-// new data point was added. It sleeps briefly between iterations so
-// RecordedAt timestamps are distinct and the loop doesn't hammer the
-// database in a tight spin.
+// runProbe executes n copies of queryTemplate (a fmt template with a single
+// %f verb for sleepSeconds, e.g. "SELECT pg_sleep(%f) /* marker */") against
+// db, scraping the real Collector once after each execution so each scrape
+// captures pg_stat_statements' running mean shortly after a single new data
+// point was added. It sleeps briefly between iterations so RecordedAt
+// timestamps are distinct and the loop doesn't hammer the database in a
+// tight spin.
+//
+// queryTemplate — not just a marker string interpolated into a single shared
+// template — is the whole point: see regressedQueryTemplate and
+// controlQueryTemplate below for why the two probes need genuinely different
+// query *shapes*, not just different SQL comments.
 //
 // pg_stat_statements.mean_exec_time is a lifetime running average since the
 // last reset, not a per-scrape-interval average — so this resets the
 // extension's stats immediately before each phase (see the two call sites
 // below) to get a clean, un-blended mean for that phase's sleepSeconds
 // instead of a mean dragged toward whatever the *other* phase's calls did.
-func runProbe(t *testing.T, ctx context.Context, db *sql.DB, c *collector.Collector, marker string, sleepSeconds float64, n int) {
+func runProbe(t *testing.T, ctx context.Context, db *sql.DB, c *collector.Collector, queryTemplate string, sleepSeconds float64, n int) {
 	t.Helper()
+	query := fmt.Sprintf(queryTemplate, sleepSeconds)
 	for i := 0; i < n; i++ {
-		if _, err := db.ExecContext(ctx, fmt.Sprintf(`SELECT pg_sleep(%f) /* %s */`, sleepSeconds, marker)); err != nil {
-			t.Fatalf("probe query #%d (marker=%s): %v", i, marker, err)
+		if _, err := db.ExecContext(ctx, query); err != nil {
+			t.Fatalf("probe query #%d (query=%s): %v", i, query, err)
 		}
 		if err := c.Scrape(ctx); err != nil {
-			t.Fatalf("scrape after probe #%d (marker=%s): %v", i, marker, err)
+			t.Fatalf("scrape after probe #%d (query=%s): %v", i, query, err)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
@@ -139,11 +146,37 @@ func TestIntegration_FullPipeline_DetectsRealRegression(t *testing.T) {
 		regressedMarker = "pgrr_e2e_regressed_query"
 		controlMarker   = "pgrr_e2e_control_query"
 		samplesPerPhase = 8
+
+		// regressedQueryTemplate and controlQueryTemplate MUST differ
+		// structurally, not just by SQL comment. pg_stat_statements computes
+		// queryid by jumbling the query's PARSE TREE: SQL comments are
+		// discarded by the lexer before parsing (so they never influence
+		// queryid at all), and literal constant VALUES are deliberately
+		// normalized away too (that's the whole point of the feature — group
+		// queries that only differ in the arguments passed). So
+		// "SELECT pg_sleep($1) /* pgrr_e2e_regressed_query */" and
+		// "SELECT pg_sleep($1) /* pgrr_e2e_control_query */" jumble to the
+		// EXACT SAME queryid and silently collapse into a single
+		// pg_stat_statements entry — verified directly against a real
+		// PostgreSQL 16 instance. That entry keeps whichever comment was
+		// captured on its first execution (here, always the regressed
+		// probe's, since it always runs first below), so the control probe's
+		// samples become permanently unfindable and
+		// TestIntegration_FullPipeline_DetectsRealRegression fails
+		// deterministically with "correlation engine produced no result for
+		// the control probe query" — not a timing flake.
+		//
+		// The "+ 0.0" below is a structural no-op (adds a real addition node
+		// to the parse tree) that's enough to force a distinct queryid while
+		// leaving the actual sleep duration — and therefore this test's
+		// latency measurements — unchanged.
+		regressedQueryTemplate = `SELECT pg_sleep(%f) /* ` + regressedMarker + ` */`
+		controlQueryTemplate   = `SELECT pg_sleep(%f + 0.0) /* ` + controlMarker + ` */`
 	)
 
 	// --- Pre-deploy phase: both queries are equally fast. ---
-	runProbe(t, ctx, setup, col, regressedMarker, 0.01, samplesPerPhase)
-	runProbe(t, ctx, setup, col, controlMarker, 0.01, samplesPerPhase)
+	runProbe(t, ctx, setup, col, regressedQueryTemplate, 0.01, samplesPerPhase)
+	runProbe(t, ctx, setup, col, controlQueryTemplate, 0.01, samplesPerPhase)
 
 	deployAt := time.Now().UTC()
 	time.Sleep(50 * time.Millisecond) // keep pre/post timestamps unambiguous
@@ -155,8 +188,8 @@ func TestIntegration_FullPipeline_DetectsRealRegression(t *testing.T) {
 	if _, err := setup.ExecContext(ctx, `SELECT pg_stat_statements_reset()`); err != nil {
 		t.Fatalf("pg_stat_statements_reset before post-deploy phase: %v", err)
 	}
-	runProbe(t, ctx, setup, col, regressedMarker, 0.08, samplesPerPhase)
-	runProbe(t, ctx, setup, col, controlMarker, 0.01, samplesPerPhase)
+	runProbe(t, ctx, setup, col, regressedQueryTemplate, 0.08, samplesPerPhase)
+	runProbe(t, ctx, setup, col, controlQueryTemplate, 0.01, samplesPerPhase)
 
 	windowStart := deployAt.Add(-time.Minute)
 	windowEnd := time.Now().UTC().Add(time.Minute)

@@ -447,7 +447,7 @@ func (c *Collector) scrape(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("query pg_stat_statements: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	now := time.Now().UTC()
 	c.scrapeTotal.Inc()

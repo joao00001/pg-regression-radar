@@ -46,6 +46,13 @@ When a regression is `Detected`, the operator's poll loop looks up the plan snap
 
 - **Generic plans, not real ones.** A `GENERIC_PLAN` reflects the planner's default, parameter-independent cost estimate — it can differ from the plan Postgres would actually choose for a real, skewed parameter value (e.g. a highly selective vs. a common value for the same column). Treat the diff as a hint pointing you toward `EXPLAIN ANALYZE`-ing the real query yourself, not a substitute for it.
 - **No real auto_explain/pg_store_plans integration.** This deliberately does not ingest real `auto_explain` log output or integrate the `pg_store_plans` extension, both of which would give real, per-parameter plans. Either is a heavier lift (a log-shipping pipeline, or an extra Postgres extension most clusters won't have installed) left as a documented follow-up — see [Roadmap](roadmap.md).
+## Deduplicating a queryid rotation
+
+`pg_stat_statements`' `queryid` is not guaranteed stable across a deploy (see [Collector Internals](collector-internals.md#queryid-is-not-a-stable-identifier-across-a-deploy)), so `AllQueryIDs()` can enumerate both the pre-rotation and post-rotation queryid for what is really a single query. Once the collector's fingerprint-merge fallback has kicked in for either side, `SamplesInRange` for both queryids returns the identical merged sample set — so evaluating both, unguarded, would run the two-stage pipeline above twice on the same data and emit two `PerformanceRegression`s for one real regression.
+
+`Engine.Analyse` prevents this: before evaluating a queryid, it looks at the `Fingerprint` of the most recently recorded sample in its (possibly merged) sample set. The first queryid — in sorted, deterministic order — to surface a given fingerprint is evaluated; every later queryid sharing that fingerprint is skipped, since it would only re-evaluate the same merged data. The one `PerformanceRegression` that *is* produced is reported under whichever queryid most recently received a sample (not necessarily the queryid that happened to win the dedup check), so it points at the "live" identity still receiving traffic in `pg_stat_statements` rather than one that may have already aged out.
+
+This guarantees at most one `PerformanceRegression` per distinct query per `Analyse` call, regardless of how many queryids `pg_stat_statements` currently associates with it.
 
 ## See also
 
