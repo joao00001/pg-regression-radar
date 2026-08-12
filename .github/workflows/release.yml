@@ -285,18 +285,15 @@ jobs:
       # extracting that one section and handing it to
       # softprops/action-gh-release as the Release body.
       #
-      # (Earlier drafts of this workflow used `git-cliff` to generate
-      # release notes from commit messages directly, with a checked-in
-      # `cliff.toml`. That approach never actually landed on `main` and is
-      # superseded by the towncrier-based flow above before it did: a
-      # generated-from-commit-messages changelog and a
-      # generated-from-user-facing-fragments changelog are redundant, and
-      # the fragment-based one is enforced in CI per-PR (see
+      # (An earlier version of this job used `git-cliff` to generate release
+      # notes from commit messages directly, with a checked-in `cliff.toml`
+      # — it briefly landed on `main` before being replaced by the
+      # towncrier-based flow above: a generated-from-commit-messages
+      # changelog and a generated-from-user-facing-fragments changelog are
+      # redundant, and the fragment-based one is enforced in CI per-PR (see
       # .github/workflows/changelog-fragment-check.yml) while commit
-      # messages are not. There is deliberately no `git-cliff`
-      # usage or `cliff.toml` in this repo to remove as part of this
-      # change — this is the first time a release-notes job has been
-      # added to this workflow.)
+      # messages are not. `cliff.toml` has been deleted; there is no
+      # `git-cliff` usage left in this repo.)
       - name: Extract this tag's section from CHANGELOG.md
         id: notes
         env:

@@ -19,18 +19,18 @@ into a new dated section here and deletes the consumed fragments —
 section verbatim as the GitHub Release body. See `towncrier.toml` for the
 category configuration.
 
-**Scope note on the section below:** the **[Unreleased]** section was a
-one-time historical backfill — generated with
-[git-cliff](https://git-cliff.org) from `git log v0.1.0..main` (47 commits)
-and hand-reorganized into the thematic sections below — covering everything
-that shipped before the newsfragment process above existed. `git-cliff` and
-`cliff.toml` are not part of the ongoing process; going forward, every new
+**Scope note on `v1.0.0-rc1` below:** that section was a one-time historical
+backfill — generated with [git-cliff](https://git-cliff.org) from `git log
+v0.1.0..main` (47 commits) and hand-reorganized into the thematic sections
+below — covering everything that shipped before the newsfragment process
+above existed. Since it predates any real `changelog.d/` fragments, it was
+hand-labeled with this release's version rather than produced by `towncrier
+build` (there was nothing for that command to consume yet). `git-cliff` and
+`cliff.toml` are retired and not part of the ongoing process; every future
 entry in this file comes from `changelog.d/` fragments via `towncrier
-build` as described above. This section keeps the **[Unreleased]** heading
-until the maintainer picks a version number and runs `towncrier build` for
-the first time, at which point it becomes that release's dated entry.
+build` as described above.
 
-## [Unreleased]
+## v1.0.0-rc1 - 2026-08-12
 
 ### Detection & Correlation
 
