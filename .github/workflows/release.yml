@@ -4,10 +4,13 @@ name: Release
 # builds (cli, operator, manager, collector, ingester — see the Dockerfile's
 # own top comment for why one Dockerfile builds all five) to GHCR, plus the
 # Helm chart (deploy/helm/deploylens) as an OCI artifact to the same
-# registry. Every other Docker-related workflow in this repo
-# (e2e-manual.yml, e2e-kind.yml) only ever builds images locally for its own
-# use within a single job — this is the only workflow that publishes
-# anything anywhere.
+# registry, plus a GitHub Release on the pushed tag itself with auto-
+# generated notes (see the `release-notes` job at the bottom — git-cliff
+# parses Conventional Commits out of `git log` between the previous tag and
+# this one; config lives in cliff.toml at the repo root). Every other
+# Docker-related workflow in this repo (e2e-manual.yml, e2e-kind.yml) only
+# ever builds images locally for its own use within a single job — this is
+# the only workflow that publishes anything anywhere.
 #
 # Deliberately gated on pushing a `v*` tag, not "every merge to main": this
 # repo has no "edge"/continuously-updated image, matching a normal tagged-
@@ -254,3 +257,73 @@ jobs:
         # as `oci://ghcr.io/joao00001/charts/pg-regression-radar` — see
         # docs/installation.md.
         run: helm push "/tmp/helm-out/pg-regression-radar-${CHART_VERSION}.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
+
+  release-notes:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    # Waits on both publish jobs so a GitHub Release only ever appears once
+    # every image and the Helm chart it describes actually made it to GHCR —
+    # never a release page advertising artifacts that failed to publish.
+    needs: [images, helm-chart]
+    permissions:
+      contents: write # create the GitHub Release on this tag
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # git-cliff needs the full history (and every tag) to diff the
+          # pushed tag against the one before it — the default shallow
+          # checkout (fetch-depth: 1) only has this one commit and no tags,
+          # which makes git-cliff either error out or emit an empty/wrong
+          # changelog. See https://git-cliff.org and the git-cliff-action
+          # README's own "IMPORTANT" note on this.
+          fetch-depth: 0
+
+      # git-cliff (https://git-cliff.org): a single-binary Rust changelog
+      # generator that parses `git log` directly against Conventional
+      # Commits (see cliff.toml at the repo root, which mirrors
+      # CONTRIBUTING.md's type/scope tables). Chosen over release-please or
+      # semantic-release because this repo already has a manual, human-
+      # decided tagging flow (`git tag vX.Y.Z && git push`) — git-cliff
+      # slots underneath that flow to produce notes for a tag that already
+      # exists, rather than replacing it with a bot-owned "release PR" that
+      # picks the next version and has to be merged first. orhun/git-cliff-
+      # action is the tool author's own maintained action: it downloads the
+      # matching git-cliff binary for the runner and exposes the rendered
+      # changelog as a step output, so no separate "install a Rust binary"
+      # step is needed here.
+      - name: Generate release notes (git-cliff)
+        id: git-cliff
+        uses: orhun/git-cliff-action@v4.8.0
+        with:
+          config: cliff.toml
+          # --latest: only the commits between the tag before HEAD and HEAD
+          # itself (i.e. exactly this release), not the full project
+          # history. --strip header: omit cliff.toml's `[changelog].header`
+          # (the "# Changelog" title + preamble, appropriate for the
+          # standalone CHANGELOG.md file but redundant on a GitHub Release
+          # page, which already shows the tag/release name above the body).
+          args: --config cliff.toml --latest --strip header
+        env:
+          OUTPUT: release-notes.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Publish the GitHub Release
+        # softprops/action-gh-release over the `gh release create` CLI: it
+        # reads the same `${{ steps.git-cliff.outputs.content }}` step
+        # output directly as the release body with no intermediate
+        # `gh auth login`/token-as-env-var plumbing, is the de facto
+        # standard Action for this in the wider GitHub Actions ecosystem,
+        # and (unlike shelling out to `gh`) fails the step with a clear
+        # error on a malformed input instead of a raw CLI exit code.
+        uses: softprops/action-gh-release@v3.0.2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.git-cliff.outputs.content }}
+          # This job only runs for a real `vX.Y.Z` tag (the whole workflow
+          # is gated on `push: tags: v*`), so it's never a draft/prerelease
+          # and always becomes the repo's "Latest release" badge on GitHub.
+          draft: false
+          prerelease: false
+          make_latest: "true"
