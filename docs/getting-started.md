@@ -4,7 +4,7 @@
 
 ## Overview
 
-pg-regression-radar ships two runnable entrypoints (`cmd/operator` and `cmd/manager`) plus a Helm chart that wraps both. This page covers the prerequisites and the minimal command to get each one running; see [Architecture Overview](architecture.md) for which one to pick, and [Configuration Reference](configuration.md) for every flag and CRD field used below.
+pg-regression-radar ships two runnable entrypoints (`cmd/operator` and `cmd/manager`) plus a Helm chart that wraps both. This page assumes you already have the binaries, the container image, or a clone of the repo — see [Installation](installation.md) if you don't yet. It covers the minimal command to get each form running; see [Architecture Overview](architecture.md) for which one to pick, and [Configuration Reference](configuration.md) for every flag and CRD field used below.
 
 ## Prerequisites
 
@@ -119,6 +119,7 @@ That payload matches the `generic` source type (the default), which accepts a `D
 
 ## See also
 
+- [Installation](installation.md) — obtaining the binaries, container image, or Helm chart used above.
 - [Architecture Overview](architecture.md) — which entrypoint to pick, and why.
 - [Configuration Reference](configuration.md) — every flag and CRD field used above.
 - [Deploy Sources & Webhooks](webhooks.md) — wiring up real ArgoCD/Rollouts/Flux webhooks instead of the simulated one above.

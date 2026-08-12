@@ -1,13 +1,14 @@
 # pg-regression-radar — Postgres Performance Regression Detector
 
 [![CI](https://github.com/joao00001/pg-regression-radar/actions/workflows/ci.yml/badge.svg)](https://github.com/joao00001/pg-regression-radar/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-joao00001.github.io-blue.svg)](https://joao00001.github.io/pg-regression-radar/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 > **pg-regression-radar** observes every query on your Postgres cluster and tells you, with
 > statistical evidence, which specific Kubernetes deployment degraded performance —
 > before it becomes an incident.
 
-**Full documentation: https://joao00001.github.io/pg-regression-radar/**
+**Full documentation: https://joao00001.github.io/pg-regression-radar**
 
 ---
 
@@ -31,7 +32,8 @@ See **[Getting Started](https://joao00001.github.io/pg-regression-radar/getting-
 
 | | |
 |---|---|
-| [Getting Started](https://joao00001.github.io/pg-regression-radar/getting-started/) | Prerequisites and the fastest path to a running instance. |
+| [Installation](https://joao00001.github.io/pg-regression-radar/installation/) | Obtaining the binaries, container image, or Helm chart. |
+| [Getting Started](https://joao00001.github.io/pg-regression-radar/getting-started/) | Running each of the three supported forms. |
 | [Architecture Overview](https://joao00001.github.io/pg-regression-radar/architecture/) | The four engine packages, and the two ways to run them. |
 | [Detection Algorithm](https://joao00001.github.io/pg-regression-radar/detection-algorithm/) | The E-divisive + Welch's t-test two-stage pipeline. |
 | [Configuration Reference](https://joao00001.github.io/pg-regression-radar/configuration/) | Every flag and CRD field, with defaults. |

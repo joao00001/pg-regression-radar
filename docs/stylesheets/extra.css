@@ -87,19 +87,58 @@
   border-bottom: 1px solid var(--md-default-fg-color--lightest);
 }
 
-/* Material colors the header/tabs text from --md-primary-bg-color, which
-   assumes an opaque, saturated header background. Against a translucent
-   blur, pin header/tabs text to the scheme's own foreground colors instead
-   so it stays readable at every scroll position. */
+/* Material colors tab links via `color: inherit` cascading down from
+   `.md-tabs { color: var(--md-primary-bg-color) }` -- white text, meant for
+   an opaque, saturated (indigo) tab-bar background. Against our translucent
+   blur that's white-on-white in light mode (the bug this fixes: the active
+   tab's text became invisible). Set the color where it's actually inherited
+   from, not just on .md-tabs__link, so every descendant picks it up. */
 .md-header,
 .md-header__title,
 .md-header__button,
-.md-tabs__link {
+.md-tabs {
   color: var(--md-default-fg-color);
 }
 
-.md-tabs__link--active {
+.md-tabs__link {
+  color: var(--md-default-fg-color--light);
+  opacity: 1;
+  position: relative;
+}
+
+.md-tabs__link:focus,
+.md-tabs__link:hover {
   color: var(--md-typeset-a-color);
+}
+
+/* The active tab's real selector is `.md-tabs__item--active .md-tabs__link`
+   (there is no `.md-tabs__link--active` in Material's markup) -- a two-class
+   descendant selector, which beats a plain `.md-tabs__link` override on
+   specificity alone regardless of source order. Match it explicitly, in a
+   clearly contrasting accent color plus an underline bar, so the active tab
+   is unmistakable in both themes instead of simply not disappearing. */
+.md-tabs__item--active .md-tabs__link {
+  color: var(--md-typeset-a-color);
+  font-weight: 700;
+}
+
+.md-tabs__item--active .md-tabs__link::after {
+  content: "";
+  position: absolute;
+  left: 0.4rem;
+  right: 0.4rem;
+  bottom: 0;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background-color: var(--md-typeset-a-color);
+}
+
+/* The collapsed header search box's placeholder/icon have the same
+   opaque-header assumption as the tabs above (var(--md-primary-bg-color)) --
+   force them to a color that's actually readable against the blur. */
+.md-search__input::placeholder,
+.md-search__input ~ .md-search__icon {
+  color: var(--md-default-fg-color--light) !important;
 }
 
 /* Search dialog gets the same treatment when open. */

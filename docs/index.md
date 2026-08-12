@@ -54,7 +54,7 @@ pg-regression-radar does.
 
 ## Where to go next
 
-- New to the project? Start with [Getting Started](getting-started.md).
+- New to the project? Start with [Installation](installation.md), then [Getting Started](getting-started.md).
 - Deciding between the two ways to run it? See [Architecture Overview](architecture.md).
 - Looking for a specific flag or CRD field? See [Configuration Reference](configuration.md).
 - Want to contribute? See [CONTRIBUTING.md](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md) in the repo root.

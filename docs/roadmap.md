@@ -23,6 +23,7 @@ This page tracks both feature roadmap and known operational/robustness gaps, so 
 
 ## Operational follow-ups
 
+- **Publish install artifacts.** No container image is published to a registry (GHCR or otherwise) and no Helm chart repository exists yet — see [Installation](installation.md). Every install path today starts from a `git clone` or, for the Go binaries only, `go install .../cmd/operator@<tag>` against the module proxy directly.
 - **Branch protection review.** See [Branch Protection](branch-protection.md) — the CI checks in [CI/CD](ci-cd.md) only have real effect once `main`'s ruleset actually requires each one by name.
 - **GitHub Discussions link.** `.github/ISSUE_TEMPLATE/config.yml` links to the repo's Discussions tab; whether Discussions is actually enabled on the repo hasn't been confirmed.
 
