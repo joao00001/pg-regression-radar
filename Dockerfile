@@ -33,6 +33,18 @@
 FROM golang:1.24-bookworm AS build
 WORKDIR /src
 
+# go.mod declares `go 1.26.0`, newer than this base image's bootstrap `go`
+# (1.24.x). Go's toolchain-switching feature (see https://go.dev/doc/toolchain)
+# would normally fetch the exact 1.26.0 toolchain automatically on demand —
+# but the official golang Docker images set GOTOOLCHAIN=local specifically to
+# suppress that implicit network fetch, so it must be re-enabled explicitly.
+# This is deliberately not "just bump the base image to golang:1.26-bookworm"
+# instead: pinning the bootstrap image to whatever tag matches today's go.mod
+# would silently break every time go.mod's `go` directive is bumped, whereas
+# GOTOOLCHAIN=auto keeps working unattended for any future Go version as long
+# as this bootstrap `go` is >= 1.21 (when toolchain switching was introduced).
+ENV GOTOOLCHAIN=auto
+
 # Cache module downloads separately from source changes.
 COPY go.mod go.sum ./
 RUN go mod download
@@ -41,10 +53,6 @@ COPY . .
 
 # CGO_ENABLED=0 for fully static binaries that run unmodified on the
 # distroless runtime image below (no libc dependency to satisfy).
-# The go.mod `go 1.26.0` directive triggers Go's toolchain auto-download
-# (see https://go.dev/doc/toolchain) to fetch the exact matching toolchain
-# even though this build stage's base image ships an older `go` — the same
-# behaviour this project's own CI and local development already rely on.
 ENV CGO_ENABLED=0 GOOS=linux
 RUN go build -trimpath -ldflags="-s -w" -o /out/operator  ./cmd/operator  && \
     go build -trimpath -ldflags="-s -w" -o /out/manager   ./cmd/manager   && \
