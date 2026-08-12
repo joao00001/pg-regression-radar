@@ -18,6 +18,7 @@
 package ingester
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -183,6 +184,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+
+	// Authenticate the request when a shared secret is configured. The caller
+	// must include the secret verbatim in the X-Webhook-Token header; a
+	// constant-time comparison prevents timing-based secret inference.
+	if h.source.WebhookSecret != "" {
+		got := r.Header.Get("X-Webhook-Token")
+		if subtle.ConstantTimeCompare([]byte(got), []byte(h.source.WebhookSecret)) != 1 {
+			h.logger.Warn("ingester: rejected webhook request with invalid or missing token",
+				"source_type", h.source.SourceType,
+				"remote_addr", r.RemoteAddr)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	var ev v1alpha1.DeployEvent

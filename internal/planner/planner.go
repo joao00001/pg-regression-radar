@@ -12,16 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package planner captures periodic query-plan snapshots via PostgreSQL 16's
-// EXPLAIN (GENERIC_PLAN) and diffs them, so a detected latency regression can
-// come with a short human-readable hint about *why* the plan may have
-// changed — see docs/detection-algorithm.md's "Plan-diff correlation"
-// section for the full design and its documented scope boundary.
+// Package planner captures a PostgreSQL query's execution plan and diffs two
+// captures against each other, so a detected latency regression (see
+// internal/correlation) can be reported alongside "here's what the plan
+// looked like before and after" instead of just "it got slower".
+//
+// There are two, deliberately non-equivalent, ways to get a plan for a
+// queryid, in order of preference:
+//
+//  1. pg_store_plans (see storeplans.go) — a contrib-style extension
+//     (https://github.com/ossc-db/pg_store_plans) that records the REAL
+//     plan of each execution, the same way pg_stat_statements records real
+//     execution statistics. This is what actually ran.
+//  2. EXPLAIN (FORMAT JSON, GENERIC_PLAN) (see genericplan.go), added in
+//     PostgreSQL 16 (https://www.postgresql.org/docs/16/sql-explain.html),
+//     which asks the planner to estimate a plan for a parameterized query
+//     *right now*, without ever executing it. This is a best-effort
+//     approximation: table statistics, index availability, and even the
+//     query's own selectivity-relevant literal values (GENERIC_PLAN plans
+//     without them) may have changed since the original slow execution
+//     actually ran, so the plan it returns is not guaranteed to be the plan
+//     that caused the regression.
+//
+// CapturePlan tries source 1 first and falls back to source 2; see its doc
+// comment and docs/detection-algorithm.md for the full rationale, including
+// the queryid-compatibility research behind why source 1 is sometimes
+// skipped even when the extension is installed.
 package planner
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,169 +48,190 @@ import (
 	"time"
 )
 
-// PlanSnapshot is a point-in-time summary of a query's execution plan, as
-// captured by CapturePlan. PlanJSON retains the full EXPLAIN output for
-// callers that want more than the root-node summary (e.g. future,
-// out-of-scope UI work); RootNodeType/TotalCost are the only fields Diff
-// currently reads.
+// Source identifies which of the two capture paths produced a PlanSnapshot.
+// It is carried on the snapshot itself (not just logged at capture time)
+// because it affects how much an alert consuming the resulting Diff should
+// trust the plan it's showing: SourceStorePlans reflects a real execution,
+// SourceGenericPlan is an estimate. See the package doc comment.
+type Source string
+
+const (
+	// SourceStorePlans marks a PlanSnapshot captured from pg_store_plans's
+	// real, previously-executed plan for a queryid.
+	SourceStorePlans Source = "pg_store_plans"
+
+	// SourceGenericPlan marks a PlanSnapshot captured via
+	// EXPLAIN (FORMAT JSON, GENERIC_PLAN), i.e. an estimate produced at
+	// analysis time rather than recorded at execution time.
+	SourceGenericPlan Source = "generic_plan"
+)
+
+// PlanSnapshot is one captured execution plan for a queryid, at a point in
+// time. A regression alert typically holds two of these — one from before
+// the suspected deploy, one from after — and passes them to Diff.
 type PlanSnapshot struct {
-	QueryID      int64
-	RecordedAt   time.Time
+	// QueryID is the pg_stat_statements-compatible query identifier this
+	// plan was captured for. See storeplans.go's package-level doc comment
+	// for why this is "pg_stat_statements-compatible" and not simply
+	// "pg_store_plans' queryid" — the two are not always the same thing.
+	QueryID int64
+
+	// RecordedAt is when this snapshot was captured (i.e. when this
+	// package ran the query/read the view row), not necessarily when the
+	// underlying plan was originally executed — pg_store_plans rows
+	// persist across many executions between first_call and last_call, so
+	// for Source == SourceStorePlans the real plan may be older than
+	// RecordedAt by as much as the analysis window.
+	RecordedAt time.Time
+
+	// RootNodeType is the "Node Type" of the plan's root node (e.g.
+	// "Seq Scan", "Index Scan", "Hash Join"), extracted from PlanJSON. A
+	// change here across two snapshots is usually the single most
+	// human-readable signal of "the plan changed shape".
 	RootNodeType string
-	TotalCost    float64
-	PlanJSON     string
+
+	// TotalCost is the planner's estimated total cost for the root node,
+	// extracted from PlanJSON. For SourceStorePlans this is the estimate
+	// that was current at capture time, not a measured runtime cost —
+	// pg_store_plans does not expose actual per-plan cost, only actual
+	// timing/row/buffer counters (see storeplans.go).
+	TotalCost float64
+
+	// PlanJSON is the full plan, as JSON text, exactly as returned by
+	// whichever Source produced it. Kept verbatim (not just the two fields
+	// above) so a caller building a richer alert has the whole tree
+	// available, not just the root node summary.
+	PlanJSON string
+
+	// Source records which capture path produced this snapshot. See the
+	// Source type's doc comment.
+	Source Source
 }
 
-// ErrUnsupportedVersion is returned by CapturePlan when the target server is
-// older than PostgreSQL 16, the first version to support
-// "EXPLAIN (GENERIC_PLAN)" (see CapturePlan's doc comment for why this
-// package relies specifically on that feature). Callers should check for
-// this with errors.Is and treat it as "plan capture unavailable on this
-// server" — log once at Info level and otherwise continue exactly as before,
-// not treat it as a per-scrape failure. CloudNativePG supports PostgreSQL
-// 14+, so this is an expected, non-exceptional outcome on some clusters.
-var ErrUnsupportedVersion = errors.New("planner: EXPLAIN (GENERIC_PLAN) requires PostgreSQL 16 or newer")
+// Sentinel errors returned by the Capture* functions in this package.
+// Callers should compare against these with errors.Is rather than on
+// string content, since the wrapping messages carry additional
+// (unstable) diagnostic detail.
+var (
+	// ErrUnsupportedVersion is returned by CaptureGenericPlan when the
+	// target server predates PostgreSQL 16, i.e. it does not support
+	// EXPLAIN's GENERIC_PLAN option at all.
+	ErrUnsupportedVersion = errors.New("planner: EXPLAIN (FORMAT JSON, GENERIC_PLAN) requires PostgreSQL 16 or newer")
 
-// explainRow mirrors the top-level shape of `EXPLAIN (FORMAT JSON) ...`
-// output: a JSON array with one element (barring EXPLAIN ANALYZE's
-// additional per-statement rows, which GENERIC_PLAN never produces since it
-// cannot execute the query), wrapping the plan tree under "Plan".
-type explainRow struct {
-	Plan explainNode `json:"Plan"`
-}
+	// ErrExtensionNotInstalled is returned by CapturePlanFromStorePlans
+	// when pg_store_plans has not been installed (CREATE EXTENSION
+	// pg_store_plans) in the target database.
+	ErrExtensionNotInstalled = errors.New("planner: pg_store_plans extension is not installed")
 
-// explainNode mirrors one node of the plan tree. Only the fields this
-// package actually reads are declared; encoding/json silently ignores the
-// many others (e.g. "Startup Cost", "Plan Rows", "Relation Name") that a
-// future enhancement could read without needing to change this shape.
-type explainNode struct {
-	NodeType  string        `json:"Node Type"`
-	TotalCost float64       `json:"Total Cost"`
-	Plans     []explainNode `json:"Plans,omitempty"`
-}
+	// ErrQueryIDUnreliable is returned by CapturePlanFromStorePlans when
+	// pg_store_plans IS installed, but this package cannot trust that its
+	// queryid values correlate with pg_stat_statements' queryid for the
+	// combination of extension version, server version, and
+	// compute_query_id setting it detected. See storeplans.go's doc
+	// comment on detectStorePlans, and docs/detection-algorithm.md, for
+	// the compatibility research this is based on.
+	ErrQueryIDUnreliable = errors.New("planner: pg_store_plans queryid cannot be trusted to correlate with pg_stat_statements queryid")
 
-// CapturePlan runs `EXPLAIN (FORMAT JSON, GENERIC_PLAN) <queryText>` against
-// db and returns a PlanSnapshot summarising the resulting plan's root node.
-//
-// Why GENERIC_PLAN, and not a plain EXPLAIN: pg_stat_statements normalises
-// query text, replacing every literal value with a "$1"/"$2"/... placeholder
-// (see internal/collector/fingerprint.go's doc comment for the full citation
-// trail on that normalization). A plain EXPLAIN cannot run against that text
-// without real bound parameter values — which pg_stat_statements never
-// records — because the planner has no way to resolve "$1" to a concrete
-// value or even infer its type from context alone; attempting it fails with
-// "there is no parameter $1". PostgreSQL 16 added EXPLAIN's GENERIC_PLAN
-// option specifically to solve this: it plans the query using the planner's
-// normal type inference and default (parameter-independent) selectivity
-// estimates for each unbound parameter, without requiring any real values
-// (see pganalyze's writeup, https://pganalyze.com/blog/5mins-postgres-explain-generic-plan,
-// and Cybertec's, https://www.cybertec-postgresql.com/en/explain-generic-plan-postgresql-16/,
-// both describing this as the feature's intended use case). Below PostgreSQL
-// 16 there is no supported way to EXPLAIN captured pg_stat_statements text at
-// all without either a real parameter-value capture pipeline (auto_explain's
-// log output, or the pg_store_plans extension) or a fragile literal-
-// substitution hack this package deliberately avoids (fragile because a
-// substituted literal can mismatch the parameter's real type, and because
-// pg_stat_statements never records what the original literal even was) — see
-// ErrUnsupportedVersion.
-//
-// queryText is expected to come directly from pg_stat_statements (i.e.
-// already containing "$1"-style placeholders) — that is the whole point of
-// GENERIC_PLAN. A query GENERIC_PLAN genuinely cannot handle — per its own
-// documented limitations, e.g. a parameter used in a structural position
-// (LIMIT via a prepared value in some contexts) or an ambiguous function
-// overload GENERIC_PLAN can't resolve without a concrete type — surfaces
-// here as a plain error; callers should log it at Debug and move on to the
-// next query, never treat one query's plan-capture failure as fatal to the
-// scrape loop.
-func CapturePlan(ctx context.Context, db *sql.DB, queryID int64, queryText string) (*PlanSnapshot, error) {
-	major, err := serverMajorVersion(ctx, db)
-	if err != nil {
-		return nil, fmt.Errorf("planner: determine server version: %w", err)
-	}
-	if major < 16 {
-		return nil, fmt.Errorf("%w (server major version %d)", ErrUnsupportedVersion, major)
-	}
+	// ErrNoPlanRecorded is returned by CapturePlanFromStorePlans when the
+	// extension is installed and its queryid is trusted, but no row exists
+	// for the requested queryid — e.g. the query has not executed since
+	// the last pg_store_plans_reset(), or its entry was evicted because
+	// more distinct plans than pg_store_plans.max were observed.
+	ErrNoPlanRecorded = errors.New("planner: no pg_store_plans entry found for queryid")
+)
 
-	const explainPrefix = `EXPLAIN (FORMAT JSON, GENERIC_PLAN) `
-	var raw string
-	if err := db.QueryRowContext(ctx, explainPrefix+queryText).Scan(&raw); err != nil {
-		return nil, fmt.Errorf("planner: explain (generic_plan) query_id=%d: %w", queryID, err)
-	}
-
-	var rows []explainRow
-	if err := json.Unmarshal([]byte(raw), &rows); err != nil {
-		return nil, fmt.Errorf("planner: parse explain json for query_id=%d: %w", queryID, err)
-	}
-	if len(rows) == 0 {
-		return nil, fmt.Errorf("planner: explain returned no plan rows for query_id=%d", queryID)
-	}
-
-	root := rows[0].Plan
-	return &PlanSnapshot{
-		QueryID:      queryID,
-		RecordedAt:   time.Now().UTC(),
-		RootNodeType: root.NodeType,
-		TotalCost:    root.TotalCost,
-		PlanJSON:     raw,
-	}, nil
-}
-
-// serverMajorVersion mirrors the exact server_version_num detection pattern
-// already used by internal/collector.Collector.resolveColumns:
-// server_version_num is formatted MMmmpp for PostgreSQL 10+ (e.g. 160003 =
-// 16.3), so dividing by 10000 yields the major version.
-func serverMajorVersion(ctx context.Context, db *sql.DB) (int, error) {
-	var versionNum int
-	if err := db.QueryRowContext(ctx, `SELECT current_setting('server_version_num')::int`).Scan(&versionNum); err != nil {
-		return 0, err
-	}
-	return versionNum / 10000, nil
-}
-
-// costChangeRatioThreshold bounds how far TotalCost must move, relatively,
-// before Diff calls it out. Postgres's cost estimates are never bit-for-bit
-// stable between two GENERIC_PLAN calls of a genuinely unchanged plan (row
-// estimates drift slightly as table statistics get re-sampled by autovacuum,
-// for instance), so a fixed 10% band separates "the planner picked a
-// meaningfully different strategy" from that background noise.
-const costChangeRatioThreshold = 1.10
-
-// Diff returns a short, human-readable summary of what changed between two
-// plan snapshots of the same query, suitable for direct inclusion in a Slack
-// alert (see internal/alerting). Returns "" if either snapshot is nil —
-// there is nothing meaningful to say without both sides, and this lets
-// callers treat "" as "no plan-diff available" without a separate check.
-//
-// When both snapshots are present but nothing meaningfully changed, this
-// still returns a short, explicit statement to that effect rather than "",
-// because "" would otherwise be ambiguous with "no snapshots were
-// available at all" from the caller's point of view.
+// Diff renders a human-readable summary of what changed between two
+// PlanSnapshots of the same queryid, for inclusion in a regression alert.
+// Either argument may be nil (e.g. no plan could be captured on one side),
+// in which case Diff says so rather than panicking.
 func Diff(before, after *PlanSnapshot) string {
-	if before == nil || after == nil {
-		return ""
+	if before == nil && after == nil {
+		return "plan diff: no plan captured on either side of the regression."
+	}
+	if before == nil {
+		return fmt.Sprintf("plan diff: no plan captured before the regression; after (%s source): %s, total cost %.2f.",
+			after.Source, after.RootNodeType, after.TotalCost)
+	}
+	if after == nil {
+		return fmt.Sprintf("plan diff: no plan captured after the regression; before (%s source): %s, total cost %.2f.",
+			before.Source, before.RootNodeType, before.TotalCost)
 	}
 
-	var parts []string
+	var b strings.Builder
+	fmt.Fprintf(&b, "plan diff for queryid %d:\n", after.QueryID)
+
 	if before.RootNodeType != after.RootNodeType {
-		parts = append(parts, fmt.Sprintf("root plan node changed from %s to %s", before.RootNodeType, after.RootNodeType))
+		fmt.Fprintf(&b, "  root node type changed: %q -> %q\n", before.RootNodeType, after.RootNodeType)
+	} else {
+		fmt.Fprintf(&b, "  root node type unchanged: %q\n", after.RootNodeType)
 	}
 
 	switch {
-	case before.TotalCost > 0 && after.TotalCost > 0:
-		ratio := after.TotalCost / before.TotalCost
-		switch {
-		case ratio >= costChangeRatioThreshold:
-			parts = append(parts, fmt.Sprintf("estimated cost increased %.1fx", ratio))
-		case ratio <= 1/costChangeRatioThreshold:
-			parts = append(parts, fmt.Sprintf("estimated cost decreased %.1fx", 1/ratio))
-		}
-	case before.TotalCost == 0 && after.TotalCost > 0:
-		parts = append(parts, fmt.Sprintf("estimated cost went from 0 to %.1f", after.TotalCost))
+	case before.TotalCost > 0:
+		delta := (after.TotalCost - before.TotalCost) / before.TotalCost * 100
+		fmt.Fprintf(&b, "  total cost: %.2f -> %.2f (%+.1f%%)\n", before.TotalCost, after.TotalCost, delta)
+	default:
+		fmt.Fprintf(&b, "  total cost: %.2f -> %.2f\n", before.TotalCost, after.TotalCost)
 	}
 
-	if len(parts) == 0 {
-		return "plan shape unchanged; cost roughly stable"
+	fmt.Fprintf(&b, "  source: %s -> %s\n", before.Source, after.Source)
+
+	if before.Source == SourceGenericPlan || after.Source == SourceGenericPlan {
+		b.WriteString("  caution: at least one snapshot is an EXPLAIN (GENERIC_PLAN) estimate, not a plan pg_store_plans recorded from a real execution — planner statistics may have changed since the original slow run, so this diff may not reflect the actual root cause.\n")
 	}
-	return strings.Join(parts, "; ")
+
+	return b.String()
+}
+
+// parsePlanJSON extracts the root node's "Node Type" and "Total Cost" from a
+// plan JSON document, tolerating the two shapes this package's two sources
+// can produce:
+//
+//   - EXPLAIN (FORMAT JSON, ...) always wraps its output in a one-element
+//     array of objects, each shaped like {"Plan": {...}} — see the
+//     PostgreSQL documentation for EXPLAIN's JSON output format
+//     (https://www.postgresql.org/docs/current/sql-explain.html, "The
+//     output format is FORMAT JSON").
+//   - pg_store_plans' pg_store_plans.plan_format = 'json' renders the
+//     single stored plan for a row directly; based on the module's own
+//     rendering functions (pg_store_plans_jsonplan(), documented at
+//     https://ossc-db.github.io/pg_store_plans/pg_store_plans.html) this is
+//     not documented to be wrapped in the same one-element array, so this
+//     parser also accepts a bare {"Plan": {...}} object, and — as a last
+//     resort, since the exact unwrapped shape is not guaranteed by
+//     upstream's documentation — a bare plan-node object with no "Plan"
+//     wrapper key at all.
+func parsePlanJSON(raw string) (rootNodeType string, totalCost float64, err error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", 0, errors.New("empty plan JSON")
+	}
+
+	var planNode map[string]any
+
+	var wrapped []map[string]any
+	if jerr := json.Unmarshal([]byte(raw), &wrapped); jerr == nil && len(wrapped) > 0 {
+		planNode = wrapped[0]
+	} else {
+		var bare map[string]any
+		if jerr := json.Unmarshal([]byte(raw), &bare); jerr != nil {
+			return "", 0, fmt.Errorf("unrecognized plan JSON shape: %w", jerr)
+		}
+		planNode = bare
+	}
+
+	plan, ok := planNode["Plan"].(map[string]any)
+	if !ok {
+		// No "Plan" wrapper key present; treat the top-level object itself
+		// as the root plan node (see doc comment above).
+		plan = planNode
+	}
+
+	nt, _ := plan["Node Type"].(string)
+	if nt == "" {
+		return "", 0, errors.New(`plan JSON missing "Node Type"`)
+	}
+	tc, _ := plan["Total Cost"].(float64)
+
+	return nt, tc, nil
 }
