@@ -27,6 +27,7 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--state-dsn` | `` | Postgres DSN for the state backend when `--state-backend=postgres` (defaults to `--dsn`) |
 | `--state-retention` | `168h` (7 days) | How long samples/events are kept in the postgres state backend |
 | `--state-prune-interval` | `15m` | How often the retention sweep runs against the postgres state backend |
+| `--capture-plans` | `false` | Capture periodic `EXPLAIN (GENERIC_PLAN)` plan snapshots for tracked queries and attach a plan-diff summary to detected regressions. Requires PostgreSQL 16+ (logged once and otherwise a no-op on older servers); adds one extra planner invocation per tracked query per scrape cycle — see [Detection Algorithm](detection-algorithm.md#plan-diff-correlation-optional) |
 | `--version` | `false` | Print version, commit, and build date, then exit — see [Versioning & dry-run](#versioning-dry-run) |
 | `--dry-run` | `false` | Validate `--source-type`, Postgres connectivity, and (if `--state-backend=postgres`) the state DSN, then exit without starting any server — see [Versioning & dry-run](#versioning-dry-run) |
 
