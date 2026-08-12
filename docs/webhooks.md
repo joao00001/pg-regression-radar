@@ -118,6 +118,93 @@ Without `eventMetadata.cluster`, the `--cluster-name` fallback is used.
 
 Set `cluster` directly in the JSON body; it is taken as-is and never overwritten by the fallback. This is also the source type used by the [manual e2e workflow](testing.md#manual-e2e-real-container) precisely because it accepts an explicit `timestamp` field, avoiding a race against the ingester's poll loop.
 
+## Webhook authentication
+
+By default the `/webhook` endpoint accepts any POST request that reaches port 8080, which means any process that can route to that port can inject deploy events. To prevent event spoofing — spam alerts, or masking a real regression under noise — configure a shared secret.
+
+### How it works
+
+Set the `--webhook-secret` flag (operator/ingester binary) or `spec.webhookSecret` (DeploySource CRD). The ingester then requires every POST to `/webhook` to include the secret verbatim in the `X-Webhook-Token` header. Requests without the header, or with a wrong value, are rejected with `401 Unauthorized`. The comparison is constant-time to prevent timing-based secret inference.
+
+### Operator / standalone ingester
+
+Pass the secret via an environment variable to avoid exposure in process listings:
+
+```bash
+export WEBHOOK_SECRET="$(openssl rand -hex 32)"
+operator --dsn=... --webhook-secret="$WEBHOOK_SECRET"
+```
+
+Or with the standalone ingester binary:
+
+```bash
+ingester --source-type=argocd --webhook-secret="$WEBHOOK_SECRET"
+```
+
+### Helm chart (mode: operator)
+
+Set `ingester.webhookSecret` in your `values.yaml` override (or via `--set`). The chart stores the value in the existing `<release>-secret` Kubernetes Secret and injects it into the pod as the `WEBHOOK_SECRET` environment variable:
+
+```yaml
+ingester:
+  sourceType: argocd
+  webhookSecret: "your-secret-here"   # generate with: openssl rand -hex 32
+```
+
+In production, avoid committing the secret to version control. Instead, pre-create the Kubernetes Secret and reference it directly, or use an external secrets operator to sync it.
+
+### Configuring ArgoCD / Argo Rollouts / Flux to send the header
+
+Each GitOps tool lets you add custom HTTP headers to its webhook notifications:
+
+**ArgoCD** (`argocd-notifications-cm`):
+
+```yaml
+service.webhook.pg-regression-radar: |
+  url: http://pg-regression-radar:8080/webhook
+  headers:
+    - name: X-Webhook-Token
+      value: $webhook-secret   # reference a secret key
+```
+
+**Argo Rollouts** (`argo-rollouts-notification-configmap`):
+
+```yaml
+service.webhook.pg-regression-radar: |
+  url: http://pg-regression-radar:8080/webhook
+  headers:
+    - name: X-Webhook-Token
+      value: $webhook-secret
+```
+
+**Flux** (`Provider` resource):
+
+```yaml
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: pg-regression-radar-webhook
+  namespace: flux-system
+spec:
+  type: generic
+  address: http://pg-regression-radar:8080/webhook
+  secretRef:
+    name: pg-regression-radar-token   # Secret with key `token`
+```
+
+The Flux generic provider sends the secret value from the referenced Secret's `token` key as the `Authorization: token <value>` header by default, but you can also use a `headers` field on the Provider if you prefer `X-Webhook-Token` (available in Flux ≥ 2.4).
+
+### Verifying the token with curl
+
+```bash
+curl -X POST http://localhost:8080/webhook \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Token: your-secret-here" \
+  -d '{"app":"my-app","revision":"abc123","timestamp":"2024-01-15T10:00:00Z"}'
+```
+
+A request without the header returns `401 Unauthorized`; with the correct token it returns `204 No Content`.
+
 ## See also
 
 - [API Reference](api-reference.md) — the `DeployEvent` JSON shape every source normalises into.

@@ -54,6 +54,13 @@ type DeploySource struct {
 	// carry destination-cluster identity (e.g. Argo Rollouts, or Flux without
 	// eventMetadata configured).
 	ClusterName string `json:"clusterName,omitempty"`
+	// WebhookSecret is the shared secret used to authenticate incoming webhook
+	// requests via the X-Webhook-Token header. When non-empty, every POST to
+	// the /webhook endpoint must include this value in the X-Webhook-Token
+	// header; requests without it or with a wrong value are rejected with 401.
+	// Leave empty to disable authentication (not recommended for
+	// internet-facing deployments).
+	WebhookSecret string `json:"webhookSecret,omitempty"`
 }
 
 // DeployEvent is a normalised deploy event ingested from any supported source.
