@@ -1,0 +1,476 @@
+name: E2E (kind + CloudNativePG)
+
+# Manually-triggered, real-Kubernetes proof that the CRD-driven mode
+# (cmd/manager, PostgresWatchReconciler) works against an actual cluster —
+# not just against fakes/envtest (internal/controller's own tests) and not
+# just against plain Docker (e2e-manual.yml, which proves cmd/operator's
+# container image against a real Postgres container but never touches a
+# Kubernetes API server, a real CRD, or a real CloudNativePG installation).
+#
+# This closes the gap tracked in docs/roadmap.md under "Known robustness
+# gaps" for a long time: "Full kind + CloudNativePG + ArgoCD cluster
+# validation hasn't been done." What this workflow actually does:
+#
+#   1. Creates a real kind (Kubernetes-in-Docker) cluster.
+#   2. Installs the real CloudNativePG operator (official upstream manifest,
+#      not a mock) and has it reconcile a real `Cluster` CR into a real,
+#      running PostgreSQL instance with pg_stat_statements enabled.
+#   3. Builds this commit's `manager` image from the repo's own Dockerfile
+#      and loads it straight into the kind cluster's nodes (`kind load
+#      docker-image`) — no registry involved, same as any local kind
+#      workflow.
+#   4. Installs pg-regression-radar the same way a real user is documented
+#      to (see docs/installation.md#option-4-install-the-helm-chart and
+#      docs/getting-started.md#deploy-on-kubernetes-via-helm): the Helm
+#      chart in `deploy/helm/deploylens`, `mode=manager`, which installs the
+#      CRDs, the manager's RBAC (ClusterRole/ClusterRoleBinding + the
+#      leader-election Role/RoleBinding), and the manager Deployment/Service
+#      in one shot.
+#   5. Applies a `PostgresWatch` CR whose `dsnSecretRef` points directly at
+#      the Secret CloudNativePG itself generates for the `Cluster` (the
+#      `<cluster-name>-app` Secret, key `uri`) — no hand-copied credentials,
+#      exactly the integration point docs/roadmap.md's multi-cluster section
+#      and this file both call out as never having been proven against a
+#      real second system.
+#   6. Generates real "before" and "after" query traffic against the real
+#      Postgres (network client -> real Service -> real CloudNativePG
+#      instance), sends a real HTTP webhook to the manager's real `/webhook`
+#      route (via `kubectl port-forward`, the same route a `DeploySource` CR
+#      registers), and asserts a real `PerformanceRegression` CR lands with
+#      `status.status: Detected` — the CRD-driven equivalent of what
+#      e2e-manual.yml already proves for cmd/operator.
+#
+# Deliberately out of scope for this first pass (see docs/roadmap.md for the
+# tracked follow-ups):
+#
+#   - Real ArgoCD is NOT installed. Standing up ArgoCD's Application
+#     controller *and* its Notifications engine (which is what actually
+#     emits an on-sync-succeeded webhook — see docs/webhooks.md) is a
+#     second, mostly-orthogonal integration surface on top of everything
+#     above. This workflow instead posts a `sourceType: generic` payload
+#     (the same deliberate choice e2e-manual.yml documents in its own
+#     comments) directly to the DeploySource webhook route — proving the
+#     manager's ingestion/correlation/CRD-persistence path end to end, just
+#     not ArgoCD's own webhook delivery on top of it.
+#   - `pg_store_plans` is NOT installed on the CloudNativePG instance. It's
+#     a C extension that isn't compiled into CloudNativePG's default operand
+#     images, and building/publishing a custom operand image just for this
+#     smoke test was judged out of proportion to the value here — see
+#     docs/roadmap.md's existing "pg_store_plans integration" entry.
+#
+# IMPORTANT — this workflow's correctness could not be verified by actually
+# running it end to end before this commit: the environment used to author
+# it has no Docker-in-Docker/kind support, so `kind create cluster` could
+# never actually execute here. Every command below was checked against
+# current upstream documentation (CloudNativePG's own installation and
+# postgresql_conf docs, kind's own docs, and helm/kind-action's README) at
+# authoring time, and the YAML in this file has been syntax-checked, but it
+# has NOT been proven to actually pass in a real GitHub Actions run. Treat
+# the first real `workflow_dispatch` run of this workflow as part of
+# reviewing the change that introduced it, not as an already-passing check.
+#
+# Single job, unlike e2e-manual.yml's build-image/e2e split: that split
+# exists there so a Docker save/load tarball can hand the built image across
+# a job boundary. Here the kind cluster itself (created by helm/kind-action)
+# only exists for the lifetime of one job/runner, so there is no clean place
+# to split "build" from "run" without either recreating the cluster twice or
+# introducing a second artifact hand-off purely for image bytes — not worth
+# the extra complexity for a workflow that is already this long.
+#
+# Not wired to push/pull_request, for the same reason as e2e-manual.yml:
+# creating a Kubernetes cluster, installing two operators, and sleeping
+# through real wall-clock traffic-generation windows takes several minutes
+# and isn't worth paying on every push/PR.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  KIND_CLUSTER_NAME: pgrr-e2e
+  NAMESPACE: pgrr-e2e
+  PG_CLUSTER_NAME: pgrr-e2e-pg
+  MANAGER_IMAGE: pg-regression-radar/manager:e2e-kind
+  # CloudNativePG's own recommended install method: the pinned per-minor-
+  # release manifest, applied with --server-side (required since CNPG
+  # mandates Server-Side Apply for its CRDs). See
+  # https://cloudnative-pg.io/documentation/current/installation_upgrade/.
+  CNPG_VERSION: "1.30.0"
+  CNPG_MINOR: "1.30"
+  # A short, deterministic prefix so every Helm-templated resource name in
+  # this run is predictable (Deployment, Service, ServiceAccount, ClusterRole,
+  # Secret) without having to reverse-engineer deploylens.fullname's
+  # "does the release name already contain the chart name" logic — see
+  # deploy/helm/deploylens/templates/_helpers.tpl.
+  RELEASE_FULLNAME: pgrr-e2e-mgr
+  # A unique-per-run id, so the final assertion against the created
+  # PerformanceRegression can't accidentally pass because of a stale
+  # resource left over by an earlier run (each run gets a fresh kind
+  # cluster, so this mostly guards against a mis-scoped kubectl selector
+  # rather than real staleness).
+  DEPLOY_EVENT_ID: e2e-kind-${{ github.run_id }}-${{ github.run_attempt }}
+
+jobs:
+  e2e-kind:
+    name: Real kind + CloudNativePG cluster, CRD-driven manager, real regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build the manager image
+        run: docker build --target manager -t "${MANAGER_IMAGE}" .
+
+      # helm/kind-action is the actively-maintained action published by the
+      # Helm project itself (github.com/helm/kind-action) for spinning up a
+      # kind cluster in CI; it also installs a matching `kubectl` and the
+      # `kind` CLI onto PATH, and — via its `post:` step — automatically
+      # tears the cluster down at the end of the job (including on
+      # failure), so no explicit "kind delete cluster" step is needed below.
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          version: v0.31.0
+          cluster_name: ${{ env.KIND_CLUSTER_NAME }}
+          wait: 90s
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+
+      - name: Load the manager image into the kind cluster
+        # No registry involved: the image built above already exists in the
+        # runner's local Docker daemon, and `kind load docker-image` copies
+        # it straight into every node's containerd image store. The Helm
+        # chart install below is told pullPolicy=Never precisely so a typo
+        # in the image name/tag fails fast instead of silently trying (and
+        # failing) to pull from ghcr.io.
+        run: kind load docker-image "${MANAGER_IMAGE}" --name "${KIND_CLUSTER_NAME}"
+
+      - name: Install the CloudNativePG operator
+        run: |
+          kubectl apply --server-side -f \
+            "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${CNPG_MINOR}/releases/cnpg-${CNPG_VERSION}.yaml"
+          kubectl rollout status deployment \
+            -n cnpg-system cnpg-controller-manager --timeout=180s
+
+      - name: Create the namespace
+        run: kubectl create namespace "${NAMESPACE}"
+
+      - name: Create a real CloudNativePG Cluster (real Postgres, pg_stat_statements enabled)
+        # A single instance (no HA replica) is a deliberate CI-speed choice,
+        # not a statement about production topology — this is a smoke test
+        # of the integration point, not a CloudNativePG HA test.
+        #
+        # No .spec.bootstrap section: CloudNativePG's own default (when it's
+        # omitted) is an `initdb` bootstrap with database "app" owned by
+        # role "app", which is exactly what generates the "<name>-app"
+        # Secret this workflow reads the DSN from below.
+        #
+        # pg_stat_statements.* parameters (rather than setting
+        # shared_preload_libraries directly, which the CloudNativePG
+        # webhook rejects as a user-settable field) are CloudNativePG's
+        # documented way to enable a "managed extension": the operator adds
+        # pg_stat_statements to shared_preload_libraries itself and runs
+        # `CREATE EXTENSION IF NOT EXISTS pg_stat_statements` on every
+        # database automatically — see
+        # https://cloudnative-pg.io/documentation/current/postgresql_conf/#enabling-pg_stat_statements.
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: postgresql.cnpg.io/v1
+          kind: Cluster
+          metadata:
+            name: ${PG_CLUSTER_NAME}
+            namespace: ${NAMESPACE}
+          spec:
+            instances: 1
+            storage:
+              size: 1Gi
+            postgresql:
+              parameters:
+                pg_stat_statements.max: "10000"
+                pg_stat_statements.track: "all"
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "256Mi"
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
+          EOF
+
+      - name: Wait for the CloudNativePG Cluster to become Ready
+        run: |
+          kubectl -n "${NAMESPACE}" wait --for=condition=Ready \
+            "cluster/${PG_CLUSTER_NAME}" --timeout=300s
+
+      - name: Dump CloudNativePG state on failure
+        if: failure()
+        run: |
+          kubectl -n "${NAMESPACE}" get cluster "${PG_CLUSTER_NAME}" -o yaml || true
+          kubectl -n "${NAMESPACE}" describe cluster "${PG_CLUSTER_NAME}" || true
+          kubectl -n "${NAMESPACE}" get pods -o wide || true
+          kubectl -n cnpg-system logs deploy/cnpg-controller-manager --tail=200 || true
+
+      - name: Install pg-regression-radar (Helm chart, mode=manager)
+        # The same install path documented in docs/getting-started.md#deploy-on-kubernetes-via-helm
+        # and docs/installation.md#option-4-install-the-helm-chart: `helm
+        # install` (not `upgrade`) is required for a fresh chart install to
+        # also apply deploy/helm/deploylens/crds/*.yaml — Helm only
+        # installs a chart's crds/ directory on `install`, never on
+        # `upgrade` (see the note in docs/getting-started.md).
+        #
+        # manager.createDefaultWatch=false: the chart's default PostgresWatch
+        # would point dsnSecretRef at the chart's own Secret (populated from
+        # postgres.dsn, a plaintext value) — this workflow instead applies
+        # its own PostgresWatch pointing straight at the CloudNativePG-
+        # generated Secret, which is the entire point of this test. Leader
+        # election is disabled for a single-replica CI run purely to avoid
+        # the extra Lease-acquisition startup latency (per the values.yaml
+        # comment: "Disable only for single-replica local development" — a
+        # short-lived CI cluster is the same case).
+        run: |
+          helm install "${RELEASE_FULLNAME}" deploy/helm/deploylens \
+            --namespace "${NAMESPACE}" \
+            --set mode=manager \
+            --set fullnameOverride="${RELEASE_FULLNAME}" \
+            --set manager.image.repository="pg-regression-radar/manager" \
+            --set manager.image.tag="e2e-kind" \
+            --set manager.image.pullPolicy=Never \
+            --set manager.replicaCount=1 \
+            --set manager.leaderElection.enabled=false \
+            --set manager.createDefaultWatch=false \
+            --wait --timeout=180s
+
+      - name: Apply PostgresWatch and DeploySource CRs
+        # dsnSecretRef points directly at the Secret CloudNativePG generated
+        # for ${PG_CLUSTER_NAME} — "<cluster-name>-app", key "uri" — rather
+        # than at any Secret this workflow creates itself. That Secret's
+        # "uri" value is a real postgresql://... connection string CNPG
+        # maintains automatically (see
+        # https://cloudnative-pg.io/documentation/current/applications/#secrets);
+        # PostgresWatchSpec.DSNSecretRef is a plain {name,key} selector with
+        # no CloudNativePG-specific assumptions, so this is exactly the
+        # integration this workflow exists to prove.
+        #
+        # sourceType: generic, not argocd — see this file's top comment and
+        # e2e-manual.yml's own identical reasoning: the reconciler's 5s poll
+        # loop analyses whatever DeployEvent it drains next using that
+        # event's own (explicit, already-elapsed) timestamp, so generating
+        # all "before"/"after" traffic before sending the webhook removes
+        # any dependency on exact poll timing. An argocd-shaped payload
+        # would instead stamp the timestamp at receipt time, reintroducing
+        # that race.
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: radar.pgregressionradar.io/v1alpha1
+          kind: PostgresWatch
+          metadata:
+            name: pgrr-e2e-watch
+            namespace: ${NAMESPACE}
+          spec:
+            clusterName: ${PG_CLUSTER_NAME}
+            dsnSecretRef:
+              name: ${PG_CLUSTER_NAME}-app
+              key: uri
+            scrapeIntervalSeconds: 5
+            windowMinutes: 5
+            minExecutions: 5
+            latencyChangeThreshold: "0.20"
+            pValueThreshold: "0.05"
+          ---
+          apiVersion: radar.pgregressionradar.io/v1alpha1
+          kind: DeploySource
+          metadata:
+            name: pgrr-e2e-deploysource
+            namespace: ${NAMESPACE}
+          spec:
+            postgresWatchRef: pgrr-e2e-watch
+            sourceType: generic
+          EOF
+
+      - name: Wait for the PostgresWatch worker to start and the webhook route to register
+        run: |
+          echo "Waiting for PostgresWatch phase=Running..."
+          for i in $(seq 1 30); do
+            phase="$(kubectl -n "${NAMESPACE}" get postgreswatch pgrr-e2e-watch -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+            [ "$phase" = "Running" ] && break
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "::error::PostgresWatch never reached phase=Running (last seen: '${phase}')"
+              kubectl -n "${NAMESPACE}" get postgreswatch pgrr-e2e-watch -o yaml || true
+              exit 1
+            fi
+          done
+
+          echo "Waiting for DeploySource phase=Ready..."
+          for i in $(seq 1 30); do
+            phase="$(kubectl -n "${NAMESPACE}" get deploysource pgrr-e2e-deploysource -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+            [ "$phase" = "Ready" ] && break
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "::error::DeploySource never reached phase=Ready (last seen: '${phase}')"
+              kubectl -n "${NAMESPACE}" get deploysource pgrr-e2e-deploysource -o yaml || true
+              exit 1
+            fi
+          done
+
+      - name: Dump manager logs on failure
+        if: failure()
+        run: kubectl -n "${NAMESPACE}" logs "deploy/${RELEASE_FULLNAME}-manager" --all-containers --tail=200 || true
+
+      - name: Generate "before" (fast) traffic against the real CloudNativePG instance
+        # A throwaway client Pod (plain postgres:16, for its psql client)
+        # connecting over the network to the CloudNativePG-managed Service,
+        # authenticated as the real "app" role from the real generated
+        # Secret — not `kubectl exec` into the Postgres pod itself as the
+        # "postgres" superuser. That distinction matters here: by default
+        # pg_stat_statements only shows a non-superuser role its own
+        # statements, and the Collector connects as "app" (the same DSN
+        # this probe Pod uses), so traffic must be run as "app" too or the
+        # Collector would never see it.
+        #
+        # The SQL comment marker (not a literal string) survives
+        # pg_stat_statements' normalisation of literal constants to $N
+        # placeholders — the same reasoning e2e-manual.yml documents and
+        # the same bug internal/collector's own integration test caught.
+        run: |
+          PGURI="$(kubectl -n "${NAMESPACE}" get secret "${PG_CLUSTER_NAME}-app" -o jsonpath='{.data.uri}' | base64 -d)"
+          echo "::add-mask::${PGURI}"
+
+          kubectl -n "${NAMESPACE}" run pgrr-e2e-probe --image=postgres:16 \
+            --restart=Never --env="PGURI=${PGURI}" --command -- sleep 3600
+          kubectl -n "${NAMESPACE}" wait --for=condition=Ready pod/pgrr-e2e-probe --timeout=120s
+
+          kubectl -n "${NAMESPACE}" exec pgrr-e2e-probe -- \
+            psql "$PGURI" -c "SELECT pg_stat_statements_reset();" >/dev/null
+
+          for i in $(seq 1 10); do
+            kubectl -n "${NAMESPACE}" exec pgrr-e2e-probe -- \
+              psql "$PGURI" -c "SELECT pg_sleep(0.01) /* pgrr_e2e_kind_probe */;" >/dev/null
+            sleep 2
+          done
+
+      - name: Record the deploy boundary and reset stats for a clean "after" signal
+        # pg_stat_statements' mean_exec_time is a lifetime running average
+        # since the last reset, not a per-window average, so resetting here
+        # keeps the "after" phase's mean from being dragged toward the
+        # "before" phase's — same reasoning as e2e-manual.yml and
+        # internal/e2e/pipeline_integration_test.go's runProbe.
+        run: |
+          echo "DEPLOY_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          PGURI="$(kubectl -n "${NAMESPACE}" get secret "${PG_CLUSTER_NAME}-app" -o jsonpath='{.data.uri}' | base64 -d)"
+          kubectl -n "${NAMESPACE}" exec pgrr-e2e-probe -- \
+            psql "$PGURI" -c "SELECT pg_stat_statements_reset();" >/dev/null
+
+      - name: Generate "after" (regressed) traffic
+        run: |
+          PGURI="$(kubectl -n "${NAMESPACE}" get secret "${PG_CLUSTER_NAME}-app" -o jsonpath='{.data.uri}' | base64 -d)"
+          for i in $(seq 1 10); do
+            kubectl -n "${NAMESPACE}" exec pgrr-e2e-probe -- \
+              psql "$PGURI" -c "SELECT pg_sleep(0.08) /* pgrr_e2e_kind_probe */;" >/dev/null
+            sleep 2
+          done
+
+      - name: Send the deploy webhook to the real /webhook route via port-forward
+        # kubectl port-forward against the manager Service stands in for
+        # "something on the cluster network can reach the webhook route" —
+        # in production that's usually ArgoCD/Flux/Argo Rollouts (or an
+        # Ingress in front of the Service); this workflow only needs *a*
+        # real HTTP client delivering *a* real POST to the real running
+        # Service, the same black-box contract e2e-manual.yml asserts for
+        # cmd/operator's container.
+        run: |
+          cat > /tmp/deploy-event.json <<JSON
+          {
+            "id": "${DEPLOY_EVENT_ID}",
+            "app": "probe-app",
+            "cluster": "${PG_CLUSTER_NAME}",
+            "namespace": "${NAMESPACE}",
+            "revision": "e2e-kind-test",
+            "timestamp": "${DEPLOY_AT}"
+          }
+          JSON
+
+          kubectl -n "${NAMESPACE}" port-forward "svc/${RELEASE_FULLNAME}-manager" 8080:8080 \
+            > /tmp/port-forward.log 2>&1 &
+          echo "PF_PID=$!" >> "$GITHUB_ENV"
+
+          echo "Waiting for the port-forward to accept connections..."
+          for i in $(seq 1 30); do
+            if curl -s -o /dev/null http://localhost:8080/; then
+              echo "Port-forward is accepting connections."
+              break
+            fi
+            sleep 1
+            if [ "$i" -eq 30 ]; then
+              echo "::error::port-forward to the manager Service never came up."
+              cat /tmp/port-forward.log || true
+              exit 1
+            fi
+          done
+
+          curl -sf -X POST "http://localhost:8080/webhook/${NAMESPACE}/pgrr-e2e-deploysource" \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/deploy-event.json
+
+      - name: Wait for the reconciler's poll loop to analyse the event
+        # pollLoop (internal/controller/postgreswatch_controller.go) drains
+        # the Store every 5s (pollInterval, hardcoded); give it a couple of
+        # ticks of margin.
+        run: sleep 15
+
+      - name: Verify a real PerformanceRegression CR was created with status Detected
+        run: |
+          echo "Waiting for a PerformanceRegression with status.status=Detected..."
+          for i in $(seq 1 30); do
+            status="$(kubectl -n "${NAMESPACE}" get performanceregressions \
+              -l radar.pgregressionradar.io/postgres-watch=pgrr-e2e-watch \
+              -o jsonpath='{.items[0].status.status}' 2>/dev/null || true)"
+            [ "$status" = "Detected" ] && break
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "::error::No PerformanceRegression reached status.status=Detected (last seen: '${status}')."
+              kubectl -n "${NAMESPACE}" get performanceregressions -o yaml || true
+              exit 1
+            fi
+          done
+
+          kubectl -n "${NAMESPACE}" get performanceregressions \
+            -l radar.pgregressionradar.io/postgres-watch=pgrr-e2e-watch -o json > /tmp/regressions.json
+          echo "--- Detected PerformanceRegression(s) ---"
+          cat /tmp/regressions.json
+
+          if ! grep -q "${DEPLOY_EVENT_ID}" /tmp/regressions.json; then
+            echo "::error::The detected PerformanceRegression doesn't reference this run's deploy event id (${DEPLOY_EVENT_ID}) — wrong or stale resource?"
+            exit 1
+          fi
+          if ! grep -q "pgrr_e2e_kind_probe" /tmp/regressions.json; then
+            echo "::error::The detected PerformanceRegression doesn't reference the probe query — wrong query flagged?"
+            exit 1
+          fi
+          echo "Full CRD-driven pipeline (real kind cluster, real CloudNativePG Postgres, real manager Deployment, real HTTP webhook) detected the regression end to end."
+
+      - name: Dump manager logs
+        if: always()
+        run: kubectl -n "${NAMESPACE}" logs "deploy/${RELEASE_FULLNAME}-manager" --all-containers --tail=500 || true
+
+      - name: Dump PostgresWatch/DeploySource/PerformanceRegression state
+        if: always()
+        run: |
+          kubectl -n "${NAMESPACE}" get postgreswatch,deploysource,performanceregression -o wide || true
+          kubectl -n "${NAMESPACE}" get cluster "${PG_CLUSTER_NAME}" -o wide || true
+
+      - name: Stop the port-forward
+        # Best-effort: the runner (and this background process with it) is
+        # discarded at the end of the job regardless, but an explicit kill
+        # keeps the step list honest about what's still running. The kind
+        # cluster itself is torn down automatically by helm/kind-action's
+        # post-run cleanup step (see the "Create kind cluster" step above) —
+        # no explicit "kind delete cluster" is needed here.
+        if: always()
+        run: '[ -n "${PF_PID:-}" ] && kill "${PF_PID}" 2>/dev/null || true'
