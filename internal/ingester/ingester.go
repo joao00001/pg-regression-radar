@@ -64,7 +64,13 @@ func (s *Store) Add(ev v1alpha1.DeployEvent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.events = append(s.events, ev)
-	// Insert ev into byTime at the position that keeps it sorted by Timestamp.
+	s.insertByTimeLocked(ev)
+}
+
+// insertByTimeLocked inserts ev into byTime at the position that keeps it
+// sorted by Timestamp. Caller must hold s.mu for writing and have already
+// appended ev to s.events.
+func (s *Store) insertByTimeLocked(ev v1alpha1.DeployEvent) {
 	pos := sort.Search(len(s.byTime), func(i int) bool {
 		return s.byTime[i].Timestamp.After(ev.Timestamp)
 	})
@@ -91,6 +97,42 @@ func (s *Store) EventsInRange(from, to time.Time) []v1alpha1.DeployEvent {
 		result = append(result, ev)
 	}
 	return result
+}
+
+// Backfill seeds the store's event history from previously persisted data
+// (see internal/storage/postgres), returning the resulting event count so
+// the caller can initialise a DrainSince cursor past these backfilled
+// events. This is important, not just cosmetic: DrainSince treats anything
+// past its cursor as newly-arrived work to analyse and potentially alert on
+// (see internal/cli.RunOperator's poll loop) — backfilling without also
+// advancing the cursor would make every historical deploy event look brand
+// new on restart and could re-trigger alerts for regressions already
+// reported in a previous process lifetime.
+//
+// Matches EventStore.Add's upsert-by-ID semantics: an event with an ID
+// already present is left in place (first write wins), consistent with
+// treating persisted history as authoritative once backfilled.
+func (s *Store) Backfill(events []v1alpha1.DeployEvent) int {
+	if len(events) == 0 {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		return len(s.events)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	existing := make(map[string]struct{}, len(s.events))
+	for _, ev := range s.events {
+		existing[ev.ID] = struct{}{}
+	}
+	for _, ev := range events {
+		if _, dup := existing[ev.ID]; dup {
+			continue
+		}
+		existing[ev.ID] = struct{}{}
+		s.events = append(s.events, ev)
+		s.insertByTimeLocked(ev)
+	}
+	return len(s.events)
 }
 
 // DrainSince returns events appended after the given cursor position and the

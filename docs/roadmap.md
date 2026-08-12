@@ -18,7 +18,6 @@ This page tracks both feature roadmap and known operational/robustness gaps, so 
 
 - **`auto_explain` plan-diff correlation** is not yet implemented — a detected latency regression currently doesn't come with an accompanying query-plan diff explaining *why* it got slower.
 - **No dedup of findings across a `queryid` rotation.** As documented in [Collector Internals](collector-internals.md), a query whose `queryid` rotates mid-window may be analyzed once per queryid, each pulling in the same fingerprint-merged data, producing duplicate `PerformanceRegression` results for what is really one regression.
-- **In-memory state doesn't yet backfill from the persistent store on restart.** See [Persistence](persistence.md#trade-offs-and-limitations) — the Postgres-backed history is durable, but the live Collector/Ingester still start cold on every restart.
 - **Full kind + CloudNativePG + ArgoCD cluster validation hasn't been done.** The [manual e2e workflow](testing.md#manual-e2e-real-container) validates the built container artifact via plain Docker (a real image, a real Postgres container, a real webhook) rather than a full Kubernetes cluster with CloudNativePG and ArgoCD actually installed — a deliberate scope choice to get a real, reliable smoke test shipped first.
 
 ## Operational follow-ups

@@ -190,6 +190,11 @@ func RunOperator(args []string) {
 		eventStore  storage.EventStore
 		stateDB     *sql.DB
 	)
+	// initialCursor seeds the deploy-event poll loop's DrainSince cursor below.
+	// It stays 0 (today's behaviour) unless the postgres backend backfills
+	// history into `store`, in which case it's advanced past the backfilled
+	// events — see the Backfill call below for why that matters.
+	initialCursor := 0
 	switch *stateBackend {
 	case "", "memory":
 		// Nothing to do — see comment above.
@@ -207,6 +212,48 @@ func RunOperator(args []string) {
 		pgSamples := postgres.NewSampleStore(db)
 		pgEvents := postgres.NewEventStore(db)
 		sampleStore, eventStore = pgSamples, pgEvents
+
+		// ---- Backfill: seed the in-memory Collector/Ingester history from
+		// the durable store before anything else starts, so a restarted
+		// process doesn't present a cold in-memory view to the correlation
+		// engine while its Postgres history is actually intact — see
+		// docs/persistence.md ("Backfill on startup").
+		since := time.Now().UTC().Add(-time.Duration(*retentionMinutes) * time.Minute)
+		backfillCtx, backfillCancel := context.WithTimeout(ctx, 30*time.Second)
+		qids, err := pgSamples.AllQueryIDs(backfillCtx)
+		if err != nil {
+			logger.Warn("operator: backfill: list query ids failed, starting with cold sample history", "err", err)
+		} else {
+			var samples []collector.QuerySample
+			for _, qid := range qids {
+				s, err := pgSamples.SamplesInRange(backfillCtx, qid, since, time.Now().UTC())
+				if err != nil {
+					logger.Warn("operator: backfill: load samples failed", "query_id", qid, "err", err)
+					continue
+				}
+				samples = append(samples, s...)
+			}
+			col.Backfill(samples)
+			logger.Info("operator: backfilled collector sample history", "samples", len(samples), "query_ids", len(qids))
+		}
+
+		events, err := pgEvents.EventsInRange(backfillCtx, since, time.Now().UTC())
+		if err != nil {
+			logger.Warn("operator: backfill: load events failed, starting with cold event history", "err", err)
+			events = nil
+		}
+		backfillCancel()
+
+		// Advancing the cursor past the backfilled events is not optional:
+		// DrainSince treats anything past its cursor as newly-arrived work to
+		// analyse and potentially alert on (see the poll loop below). Without
+		// this, the very first DrainSince(0) call would treat every
+		// backfilled (already-handled-in-a-previous-process-lifetime) deploy
+		// event as brand new, re-running correlation and potentially
+		// re-sending duplicate Slack alerts for regressions already reported
+		// before the restart.
+		initialCursor = store.Backfill(events)
+		logger.Info("operator: backfilled event history", "events", len(events), "cursor", initialCursor)
 
 		go storage.RunPruneLoop(ctx, "query_samples", pgSamples, *statePruneInterval, *stateRetention, logger)
 		go storage.RunPruneLoop(ctx, "deploy_events", pgEvents, *statePruneInterval, *stateRetention, logger)
@@ -283,7 +330,7 @@ func RunOperator(args []string) {
 	// each tick copies only newly arrived events and releases the lock
 	// immediately, avoiding repeated full-slice copies and lock contention.
 	go func() {
-		var cursor int
+		cursor := initialCursor
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 		for {

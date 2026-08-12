@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
 // newTestCollector builds a Collector without dialing a real database.
@@ -288,6 +289,112 @@ func TestCollector_SamplesInRange_NoFallbackWithoutSharedFingerprint(t *testing.
 	got = col.SamplesInRange(999, base.Add(-time.Minute), base.Add(time.Minute))
 	if len(got) != 0 {
 		t.Fatalf("expected no samples for an unknown queryid, got %d", len(got))
+	}
+}
+
+// ----- Backfill -----
+
+func TestCollector_Backfill_SeedsSamplesAndRespectsRetention(t *testing.T) {
+	col := newTestCollector(t, Config{RetentionDuration: time.Hour})
+
+	base := time.Now().UTC()
+	old := base.Add(-2 * time.Hour) // outside RetentionDuration relative to "now"
+	recent := base.Add(-10 * time.Minute)
+
+	col.Backfill([]QuerySample{
+		{QueryID: 1, QueryText: "SELECT 1", Calls: 1, MeanExecTimeMs: 5, RecordedAt: old},
+		{QueryID: 1, QueryText: "SELECT 1", Calls: 2, MeanExecTimeMs: 6, RecordedAt: recent},
+	})
+
+	// The old sample should already be pruned since Backfill runs pruneLocked
+	// against the current time, exactly like a live scrape would.
+	got := col.SamplesInRange(1, base.Add(-3*time.Hour), base)
+	if len(got) != 1 {
+		t.Fatalf("expected only the in-retention sample to survive Backfill's pruning, got %d: %+v", len(got), got)
+	}
+	if got[0].RecordedAt != recent {
+		t.Fatalf("expected surviving sample to be the recent one, got %v", got[0].RecordedAt)
+	}
+}
+
+func TestCollector_Backfill_ComputesMissingFingerprint(t *testing.T) {
+	col := newTestCollector(t, Config{RetentionDuration: time.Hour})
+
+	now := time.Now().UTC()
+	// storage.SampleStore's schema has no fingerprint column (see
+	// docs/persistence.md), so samples loaded from it arrive with an empty
+	// Fingerprint — Backfill must compute it, the same way ingestSample does
+	// for a live scrape, so the queryid-rotation fallback still works for
+	// backfilled history.
+	col.Backfill([]QuerySample{
+		{QueryID: 1, QueryText: "SELECT * FROM t WHERE id = 1", Calls: 1, MeanExecTimeMs: 5, RecordedAt: now},
+	})
+
+	col.mu.RLock()
+	fp, ok := col.queryFingerprint[1]
+	col.mu.RUnlock()
+	if !ok || fp == "" {
+		t.Fatal("expected Backfill to compute and index a fingerprint for a sample with no Fingerprint set")
+	}
+	want := FingerprintQuery("SELECT * FROM t WHERE id = 1")
+	if fp != want {
+		t.Fatalf("expected fingerprint %q, got %q", want, fp)
+	}
+}
+
+func TestCollector_Backfill_SortsOutOfOrderSamples(t *testing.T) {
+	col := newTestCollector(t, Config{RetentionDuration: time.Hour})
+
+	base := time.Now().UTC()
+	// Deliberately out of chronological order — storage.SampleStore makes no
+	// ordering promise across a bulk load built by iterating several
+	// queryids and concatenating.
+	col.Backfill([]QuerySample{
+		{QueryID: 1, QueryText: "SELECT 1", RecordedAt: base.Add(-1 * time.Minute)},
+		{QueryID: 1, QueryText: "SELECT 1", RecordedAt: base.Add(-10 * time.Minute)},
+		{QueryID: 1, QueryText: "SELECT 1", RecordedAt: base.Add(-5 * time.Minute)},
+	})
+
+	got := col.SamplesInRange(1, base.Add(-time.Hour), base)
+	for i := 1; i < len(got); i++ {
+		if got[i].RecordedAt.Before(got[i-1].RecordedAt) {
+			t.Fatalf("expected Backfill to leave samples chronologically sorted, got out-of-order at index %d: %+v", i, got)
+		}
+	}
+}
+
+func TestCollector_Backfill_DoesNotTouchLiveGauges(t *testing.T) {
+	col := newTestCollector(t, Config{RetentionDuration: time.Hour})
+
+	now := time.Now().UTC()
+	col.Backfill([]QuerySample{
+		{QueryID: 1, QueryText: "SELECT 1", Calls: 99, MeanExecTimeMs: 123.45, RecordedAt: now},
+	})
+
+	// Backfilled data must not leak into the live-scrape gauges: those are
+	// meant to reflect the most recent LIVE scrape, and a metrics scrape that
+	// races the first real Collector.Scrape() should see the zero-value
+	// default, not a stale historical number that could be mistaken for
+	// current server state.
+	m := &dto.Metric{}
+	metric, err := col.meanExecTime.GetMetricWithLabelValues("1")
+	if err != nil {
+		t.Fatalf("GetMetricWithLabelValues: %v", err)
+	}
+	if err := metric.Write(m); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if got := m.GetGauge().GetValue(); got != 0 {
+		t.Fatalf("expected meanExecTime gauge to remain at its zero-value default after Backfill (no live scrape yet), got %v", got)
+	}
+}
+
+func TestCollector_Backfill_EmptyIsNoop(t *testing.T) {
+	col := newTestCollector(t, Config{RetentionDuration: time.Hour})
+	col.Backfill(nil)
+
+	if ids := col.AllQueryIDs(); len(ids) != 0 {
+		t.Fatalf("expected no tracked queryids after backfilling an empty slice, got %v", ids)
 	}
 }
 
