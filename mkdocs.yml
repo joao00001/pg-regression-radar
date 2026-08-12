@@ -38,6 +38,9 @@ theme:
 extra_css:
   - stylesheets/extra.css
 
+extra_javascript:
+  - javascripts/nav-overflow.js
+
 markdown_extensions:
   - admonition
   - attr_list
