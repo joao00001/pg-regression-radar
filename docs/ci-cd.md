@@ -4,7 +4,7 @@
 
 ## Overview
 
-pg-regression-radar runs five workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, [Support Matrix](support-matrix.md) for which PostgreSQL versions/distributions each job actually covers, and [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`.
+pg-regression-radar runs six workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, and [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`.
 
 ## `ci.yml` — on every push/PR to `main`
 
@@ -33,6 +33,10 @@ Verifies every commit in the PR carries a `Signed-off-by:` trailer (DCO), via a 
 ## `e2e-manual.yml` — manual only (`workflow_dispatch`)
 
 The containerized, real-artifact end-to-end smoke test — see [Testing](testing.md#manual-e2e-real-container) for the full description. Deliberately not wired to push/PR: it spins up multiple long-lived containers and sleeps through real wall-clock windows, so it's opt-in rather than adding minutes to every PR.
+
+## `e2e-kind.yml` — manual only (`workflow_dispatch`)
+
+The real-Kubernetes end-to-end test for the CRD-driven mode (`cmd/manager`) — see [Testing](testing.md#e2e-kind-cloudnativepg) for the full description. Creates a real `kind` cluster, installs the real CloudNativePG operator and a real `Cluster`, installs pg-regression-radar via the Helm chart, and asserts a real `PerformanceRegression` CR is created. Real ArgoCD and `pg_store_plans` are deliberately out of scope for this first pass — see [Roadmap](roadmap.md). Same opt-in reasoning as `e2e-manual.yml`: this is even heavier (a full cluster plus two operators), so it's `workflow_dispatch`-only too.
 
 ## Dependabot (`.github/dependabot.yml`)
 
