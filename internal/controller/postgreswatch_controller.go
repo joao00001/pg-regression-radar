@@ -216,11 +216,14 @@ func (r *PostgresWatchReconciler) refreshStatus(ctx context.Context, watch *rada
 }
 
 // resolveDSN returns the Postgres DSN to use: spec.dsn takes precedence,
-// otherwise the key named by spec.dsnSecretRef is read from a Secret in the
-// watch's namespace — in the hub cluster (this manager's own API server) by
-// default, or in a remote ("spoke") cluster when spec.remoteClusterSecretRef
-// names a kubeconfig Secret. See dsnSecretClient for how that routing
-// decision is made, and docs/multi-cluster.md for the hub-spoke model.
+// otherwise the key named by spec.dsnSecretRef is read from a Secret — in
+// the hub cluster (this manager's own API server), in the watch's own
+// namespace, by default; or in a remote ("spoke") cluster when
+// spec.remoteClusterSecretRef names a kubeconfig Secret, in which case the
+// namespace comes from dsnSecretNamespace (spec.remoteNamespace when set,
+// the watch's own namespace otherwise). See dsnSecretClient for how the
+// client routing decision is made, and docs/multi-cluster.md for the
+// hub-spoke model.
 func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (string, error) {
 	if watch.Spec.DSN != "" {
 		return watch.Spec.DSN, nil
@@ -235,7 +238,7 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 	}
 
 	var secret corev1.Secret
-	key := types.NamespacedName{Namespace: watch.Namespace, Name: watch.Spec.DSNSecretRef.Name}
+	key := types.NamespacedName{Namespace: dsnSecretNamespace(watch), Name: watch.Spec.DSNSecretRef.Name}
 	if err := secretClient.Get(ctx, key, &secret); err != nil {
 		return "", fmt.Errorf("fetch dsn secret %s: %w", key, err)
 	}
@@ -244,6 +247,20 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 		return "", fmt.Errorf("secret %s has no key %q", key, watch.Spec.DSNSecretRef.Key)
 	}
 	return string(val), nil
+}
+
+// dsnSecretNamespace returns the namespace dsnSecretRef should be looked up
+// in: spec.remoteNamespace when a remote cluster is in play and it's set,
+// the watch's own namespace otherwise (the pre-existing "same name on both
+// sides" convention, still the default because it matches how
+// CloudNativePG's own generated credential Secrets are named). A
+// remoteNamespace set without remoteClusterSecretRef has no effect — it
+// only means anything once there's a remote cluster to look in.
+func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch) string {
+	if watch.Spec.RemoteClusterSecretRef != nil && watch.Spec.RemoteNamespace != "" {
+		return watch.Spec.RemoteNamespace
+	}
+	return watch.Namespace
 }
 
 // dsnSecretClient returns the client.Client to use when reading
@@ -255,11 +272,11 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 // live in the hub cluster, in the watch's namespace, precisely so the
 // manager's existing "get;list;watch Secrets" RBAC (see the kubebuilder
 // marker above Reconcile) is sufficient to reach it. The DSN Secret it then
-// unlocks access to is looked up by the *same* namespace name on the remote
-// cluster, mirroring the convention CloudNativePG itself uses for
-// generated-credential Secrets; there is deliberately no separate
-// remote-namespace field to keep this feature's surface area small (see
-// docs/multi-cluster.md for the trade-off).
+// unlocks access to is looked up by dsnSecretNamespace — the *same*
+// namespace name on the remote cluster by default (mirroring the
+// convention CloudNativePG itself uses for generated-credential Secrets),
+// or spec.remoteNamespace when the fleet's hub/spoke naming doesn't line up
+// 1:1 (see docs/multi-cluster.md).
 func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, error) {
 	if watch.Spec.RemoteClusterSecretRef == nil {
 		return r.Client, nil

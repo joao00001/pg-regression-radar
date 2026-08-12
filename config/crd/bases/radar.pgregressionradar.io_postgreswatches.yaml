@@ -162,6 +162,22 @@ spec:
                 - key
                 - name
                 type: object
+              remoteNamespace:
+                description: |-
+                  remoteNamespace overrides which namespace dsnSecretRef is looked up
+                  in on the remote cluster when remoteClusterSecretRef is set. Only
+                  meaningful alongside remoteClusterSecretRef; ignored otherwise.
+
+                  Leave unset (the default) when the spoke cluster's namespace for
+                  this workload has the same name as this PostgresWatch's own
+                  namespace in the hub cluster — the convention CloudNativePG's own
+                  generated credential Secrets follow, and the common case for a
+                  fleet with matching hub/spoke namespace naming. Set it when your
+                  fleet's naming conventions don't line up 1:1 between hub and spoke
+                  (e.g. hub namespace "prod-eu-west" but the spoke cluster's own
+                  CloudNativePG Cluster lives in a namespace simply called
+                  "postgres"). See docs/multi-cluster.md.
+                type: string
               scrapeIntervalSeconds:
                 default: 60
                 description: |-

@@ -320,6 +320,62 @@ func TestDSNSecretClient_RemoteMissingSecret_ReturnsError(t *testing.T) {
 	}
 }
 
+// TestDSNSecretNamespace covers dsnSecretNamespace's decision table
+// directly: remoteNamespace only ever takes effect alongside a remote
+// cluster, and the pre-existing same-name-on-both-sides default is
+// otherwise preserved exactly as before this field existed.
+func TestDSNSecretNamespace(t *testing.T) {
+	remoteRef := &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+
+	tests := []struct {
+		name                   string
+		namespace              string
+		remoteClusterSecretRef *radarv1alpha1.SecretKeySelector
+		remoteNamespace        string
+		want                   string
+	}{
+		{
+			name:      "no remote cluster, no override: watch's own namespace",
+			namespace: "hub-ns",
+			want:      "hub-ns",
+		},
+		{
+			name:            "remoteNamespace set without a remote cluster: ignored",
+			namespace:       "hub-ns",
+			remoteNamespace: "spoke-ns",
+			want:            "hub-ns",
+		},
+		{
+			name:                   "remote cluster set, no override: same name as hub namespace",
+			namespace:              "hub-ns",
+			remoteClusterSecretRef: remoteRef,
+			want:                   "hub-ns",
+		},
+		{
+			name:                   "remote cluster set with override: remoteNamespace wins",
+			namespace:              "hub-ns",
+			remoteClusterSecretRef: remoteRef,
+			remoteNamespace:        "spoke-ns",
+			want:                   "spoke-ns",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			watch := &radarv1alpha1.PostgresWatch{
+				ObjectMeta: metav1.ObjectMeta{Namespace: tt.namespace},
+				Spec: radarv1alpha1.PostgresWatchSpec{
+					RemoteClusterSecretRef: tt.remoteClusterSecretRef,
+					RemoteNamespace:        tt.remoteNamespace,
+				},
+			}
+			if got := dsnSecretNamespace(watch); got != tt.want {
+				t.Fatalf("dsnSecretNamespace() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 // TestDSNSecretClient_RemoteMissingKey_ReturnsError verifies that a
 // kubeconfig Secret existing but lacking the named key is a clear error.
 func TestDSNSecretClient_RemoteMissingKey_ReturnsError(t *testing.T) {

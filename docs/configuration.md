@@ -90,6 +90,7 @@ All four binaries share two flags:
 | `clusterName` | *(required)* | Label added to metrics and to `PerformanceRegression` CRs |
 | `dsn` / `dsnSecretRef` | *(one required)* | Postgres DSN, inline or via a Secret key (preferred). **Use a least-privilege role** (e.g. `pg_monitor`) — see [Installation: least-privilege role](installation.md#creating-a-least-privilege-postgres-role). |
 | `remoteClusterSecretRef` | *(none)* | Secret (in the hub cluster) holding a kubeconfig for a remote cluster to resolve `dsnSecretRef` against instead of the hub — see [Multi-Cluster (Fleet) Mode](multi-cluster.md) |
+| `remoteNamespace` | *(same name as the watch's own namespace)* | Namespace to look up `dsnSecretRef` in on the remote cluster; only meaningful alongside `remoteClusterSecretRef` — see [Multi-Cluster (Fleet) Mode: Known gaps](multi-cluster.md#known-gaps-and-deliberate-scope-cuts) |
 | `scrapeIntervalSeconds` | `60` | How often to read `pg_stat_statements` |
 | `windowMinutes` | `30` | Analysis window (minutes before/after deploy) |
 | `minExecutions` | `10` | Min query executions per window |
