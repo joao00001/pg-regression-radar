@@ -11,7 +11,8 @@ pg-regression-radar runs six workflows plus Dependabot. This page is a map of wh
 | Job | What it proves |
 |---|---|
 | `Build & Test` | `go build ./...`, `go vet ./...`, `go test -race ./...` against fakes/mocks — no external services. |
-| `Integration tests (real PostgreSQL)` | Runs the `integration`-tagged tests in `internal/storage/postgres`, `internal/collector`, and `internal/e2e` against a real `postgres:16` container with `pg_stat_statements` preloaded. |
+| `Integration tests (real PostgreSQL)` | A `postgres-version: [16, 17, 18]` matrix — runs the `integration`-tagged tests in `internal/storage/postgres`, `internal/collector`, and `internal/e2e` against a real `postgres:16`/`postgres:17`/`postgres:18` container (one job per version) with `pg_stat_statements` preloaded. See [Support Matrix](support-matrix.md#officially-supported-postgresql-versions) for why 16 is the floor. |
+| `Integration tests (EDB Postgres)` | Same integration test suite, run against EDB Postgres Advanced Server and EDB Postgres Extended Server images — but only when the `EDB_SUBSCRIPTION_TOKEN` repository secret is configured (those images live behind a private, authenticated registry), and with `continue-on-error: true` so an absent secret or a real failure here can't break CI for anyone else. See [Support Matrix](support-matrix.md#ci-coverage-for-edb-distributions) for the full rationale. |
 | `Controller tests (real kube-apiserver)` | Runs `internal/controller`'s `TestEnvtest_*` suite against a real, locally-provisioned kube-apiserver + etcd via controller-runtime's envtest. |
 
 ## `go-quality.yml` — on every push/PR to `main`
@@ -48,5 +49,6 @@ None of the above has real effect unless `main`'s ruleset/branch protection actu
 ## See also
 
 - [Testing](testing.md) — reproducing the test-related jobs locally.
+- [Support Matrix](support-matrix.md) — officially supported PostgreSQL versions/distributions and exactly which of them each CI job verifies.
 - [Branch Protection](branch-protection.md) — whether these checks actually block anything.
 - [Roadmap](roadmap.md) — CI/CD items still open (branch protection review, Discussions link).

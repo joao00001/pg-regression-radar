@@ -10,7 +10,7 @@ There is no `apt`/`brew` package, no container image on a public registry, and n
 
 - Go 1.22+ (to build from source)
 - Docker (to build the container image)
-- A Postgres cluster with `pg_stat_statements` enabled
+- A Postgres cluster with `pg_stat_statements` enabled — see [Support Matrix](support-matrix.md) for officially supported PostgreSQL versions (16, 17, 18) and distributions (community, CloudNativePG, EDB Postgres Advanced/Extended Server)
 - `kubectl` and/or `helm` (only for the Kubernetes-deployed paths)
 
 ## Option 1: Go install — one command, one binary (recommended)
@@ -88,4 +88,5 @@ There is no Helm chart repository to `helm repo add` yet — install directly fr
 
 - [Getting Started](getting-started.md) — running each of these once installed.
 - [Configuration Reference](configuration.md) — every flag and CRD field.
+- [Support Matrix](support-matrix.md) — officially supported PostgreSQL versions and distributions.
 - [Roadmap](roadmap.md) — publishing a container image and a Helm chart repository are tracked as open operational follow-ups.

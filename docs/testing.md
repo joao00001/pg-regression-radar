@@ -24,7 +24,13 @@ Gated behind the `integration` build tag so `go test ./...` stays safe with no d
 # Real PostgreSQL (internal/storage/postgres, internal/collector, and
 # internal/e2e — the last one runs the full Collector -> correlation.Engine
 # -> alerting pipeline against real pg_stat_statements data, the closest
-# thing to a proof that regressions are actually detected end to end):
+# thing to a proof that regressions are actually detected end to end).
+# CI runs this same command against postgres:16, postgres:17, and
+# postgres:18 (see the integration-postgres matrix in ci.yml) — pick
+# whichever tag locally, they're all officially supported; see the
+# support matrix doc for the full version/distribution matrix, including
+# the separate, secret-gated job that also runs this suite against EDB
+# Postgres Advanced Server and EDB Postgres Extended Server.
 docker run -d --name pgrr-test -e POSTGRES_PASSWORD=test -p 5432:5432 \
   postgres:16 postgres -c shared_preload_libraries=pg_stat_statements
 export PGRR_TEST_DSN="postgres://postgres:test@localhost:5432/postgres?sslmode=disable"
