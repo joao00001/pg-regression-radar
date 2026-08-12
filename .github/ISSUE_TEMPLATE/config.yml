@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions / discussion
+    url: https://github.com/joao00001/pg-regression-radar/discussions
+    about: For questions or open-ended discussion that isn't a bug report or a concrete feature proposal.

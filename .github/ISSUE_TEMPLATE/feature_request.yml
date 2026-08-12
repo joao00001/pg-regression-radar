@@ -1,0 +1,61 @@
+name: Feature request
+description: Propose a new capability or an improvement to an existing one.
+title: "feat: <short description>"
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For anything beyond a small, obviously-good change, filing this
+        first (before a PR) saves time on both sides if the design needs
+        discussion.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of pg-regression-radar does this mostly touch?
+      options:
+        - collector (pg_stat_statements scraping)
+        - correlation (change-point detection / regression logic)
+        - ingester (ArgoCD / Argo Rollouts / Flux webhooks)
+        - alerting (Slack / webhook notifications)
+        - storage (Postgres-backed persistence)
+        - controller / cmd/manager (CRDs, reconcilers, HA)
+        - cmd/operator (standalone CLI binary)
+        - Helm chart
+        - CI / build
+        - Documentation
+        - Something new / cross-cutting
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the gap or pain point — not the solution yet.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like to see? Sketch the API/CLI flag/CRD field if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you thought about, and why you didn't prefer them.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this hasn't been requested already
+          required: true

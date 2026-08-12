@@ -1,0 +1,43 @@
+name: DCO
+
+on:
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    name: Check sign-off (DCO)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Deliberately a plain git/grep check rather than a third-party
+      # Action: DCO enforcement is simple enough (every commit needs a
+      # "Signed-off-by: Name <email>" trailer) that pulling in an external
+      # dependency for it isn't worth the supply-chain surface.
+      - name: Verify every commit in this PR is signed off
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          missing=0
+          for sha in $(git rev-list "$base..$head"); do
+            msg="$(git log -1 --format=%B "$sha")"
+            if ! printf '%s\n' "$msg" | grep -qiE '^Signed-off-by: .+ <.+>$'; then
+              echo "::error::Commit $sha is missing a DCO sign-off (Signed-off-by trailer)."
+              printf '%s\n' "$msg" | sed 's/^/    | /'
+              missing=1
+            fi
+          done
+          if [ "$missing" -eq 1 ]; then
+            echo ""
+            echo "See CONTRIBUTING.md's DCO section: amend with 'git commit --amend -s' (or rebase, adding -s to each commit), then force-push."
+            exit 1
+          fi
+          echo "All commits in this PR are signed off."

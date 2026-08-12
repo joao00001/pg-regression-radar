@@ -1,0 +1,83 @@
+name: Bug report
+description: Something isn't working the way it should.
+title: "fix: <short description>"
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill in as much
+        of this as you can — the "How to reproduce" and "Component" fields
+        in particular make the difference between a fast fix and a long
+        back-and-forth.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of pg-regression-radar is affected?
+      options:
+        - collector (pg_stat_statements scraping)
+        - correlation (change-point detection / regression logic)
+        - ingester (ArgoCD / Argo Rollouts / Flux webhooks)
+        - alerting (Slack / webhook notifications)
+        - storage (Postgres-backed persistence)
+        - controller / cmd/manager (CRDs, reconcilers, HA)
+        - cmd/operator (standalone CLI binary)
+        - Helm chart
+        - CI / build
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: |
+        Steps, config (flags / Helm values / CRD manifests with secrets
+        redacted), and, if relevant, PostgreSQL version and how you're
+        running the tool (`cmd/operator` vs `cmd/manager`).
+      placeholder: |
+        1. Run `cmd/operator` with `--window-minutes 30 ...`
+        2. ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any relevant log output. This will be rendered as a code block automatically.
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Output of the binary's version, or the git commit you're running.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this hasn't been reported already
+          required: true

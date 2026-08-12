@@ -741,8 +741,10 @@ shift happens to overlap the analysis window (see `DetectedChangeAt` on the
 
 ## Contributing
 
-Pull requests are welcome. Please open an issue first for significant changes.
-Please follow our [Code of Conduct](CODE_OF_CONDUCT.md) in all project spaces.
+Pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the
+commit/PR conventions (Conventional Commits, DCO sign-off, squash merges)
+and branch naming this project uses. Please follow our
+[Code of Conduct](CODE_OF_CONDUCT.md) in all project spaces.
 
 ```bash
 go test ./...       # run all tests (fakes/mocks only, no external services needed)
