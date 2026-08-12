@@ -1,0 +1,241 @@
+name: Manual E2E (real container)
+
+# Manually-triggered, containerized proof that the *actual built artifact*
+# (the operator Docker image, not `go test`) detects a real regression and
+# fires a real alert. Every other pipeline check exercises Go code directly:
+#   - build-and-test / integration-postgres / envtest (ci.yml) run `go test`
+#     against the source tree — they never build the Docker image, never run
+#     it as a container, and never prove the container starts, binds its
+#     ports, and talks to a real Postgres over the network the way it would
+#     in production.
+#   - internal/e2e's TestIntegration_FullPipeline_DetectsRealRegression (see
+#     that file's doc comment) proves the Collector -> correlation.Engine ->
+#     alerting chain end to end, but in-process, via direct Go function calls.
+#
+# This workflow closes that last gap: it builds the operator image from this
+# commit, runs it as a real container against a real Postgres container (with
+# pg_stat_statements preloaded), drives real query traffic, POSTs a real
+# webhook to the running container's HTTP server, and asserts a real alert
+# HTTP request lands on a mock receiver — with the operator treated as an
+# opaque black box the same way it would run in Kubernetes.
+#
+# Not wired to push/pull_request: this spins up multiple long-lived
+# containers and sleeps through real wall-clock windows (tens of seconds), so
+# it's deliberately opt-in via workflow_dispatch rather than adding minutes to
+# every PR.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  NETWORK: pgrr-manual-e2e-net
+  PG_CONTAINER: pgrr-manual-e2e-postgres
+  OPERATOR_CONTAINER: pgrr-manual-e2e-operator
+  OPERATOR_IMAGE: pgrr-operator:manual-e2e
+  # A unique-per-run id, so an assertion against the mock webhook's received
+  # payload can't accidentally pass because of a stale file left over from a
+  # previous run of this same workflow on a reused runner.
+  DEPLOY_EVENT_ID: manual-e2e-${{ github.run_id }}-${{ github.run_attempt }}
+
+jobs:
+  e2e:
+    name: Build image, run it, verify a real regression is detected and alerted
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the operator image
+        run: docker build --target operator -t "${OPERATOR_IMAGE}" .
+
+      - name: Create an isolated Docker network
+        run: docker network create "${NETWORK}"
+
+      - name: Start PostgreSQL with pg_stat_statements preloaded
+        # Same technique as ci.yml's integration-postgres job: pg_stat_statements
+        # can only be enabled via shared_preload_libraries at server start, so
+        # Postgres is launched with `docker run` directly (not a "services:"
+        # container, which can't override the entrypoint's command-line args).
+        run: |
+          docker run -d --name "${PG_CONTAINER}" --network "${NETWORK}" \
+            -e POSTGRES_PASSWORD=test \
+            postgres:16 \
+            postgres -c shared_preload_libraries=pg_stat_statements
+
+          echo "Waiting for PostgreSQL to accept connections..."
+          for i in $(seq 1 30); do
+            if docker exec "${PG_CONTAINER}" pg_isready -U postgres >/dev/null 2>&1; then
+              echo "PostgreSQL is ready."
+              break
+            fi
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "PostgreSQL did not become ready in time." >&2
+              docker logs "${PG_CONTAINER}" || true
+              exit 1
+            fi
+          done
+
+          docker exec "${PG_CONTAINER}" psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
+
+      - name: Start a mock webhook receiver on the runner
+        # The operator's --slack-url points at this. It's a plain
+        # http.server on the runner host (not a container) so the operator
+        # container reaches it via host.docker.internal, and this job can
+        # read what it received straight off disk with no extra plumbing.
+        run: |
+          cat > /tmp/mock_webhook.py <<'PYEOF'
+          import http.server
+
+          class Handler(http.server.BaseHTTPRequestHandler):
+              def do_POST(self):
+                  length = int(self.headers.get("Content-Length", 0))
+                  body = self.rfile.read(length)
+                  with open("/tmp/webhook-received.log", "ab") as f:
+                      f.write(body + b"\n")
+                  self.send_response(200)
+                  self.end_headers()
+
+              def log_message(self, *args):
+                  pass
+
+          http.server.HTTPServer(("0.0.0.0", 8090), Handler).serve_forever()
+          PYEOF
+          nohup python3 /tmp/mock_webhook.py > /tmp/mock_webhook.out 2>&1 &
+          echo $! > /tmp/mock_webhook.pid
+          sleep 1
+
+      - name: Start the operator container
+        # source-type=generic (not argocd) is a deliberate choice, not a
+        # shortcut: cmd/operator's ingester-poll loop (see main.go) marks a
+        # deploy event "seen" and calls correlation.Engine.Analyse exactly
+        # once, the first time its 5s poll tick observes it — whatever
+        # samples exist at that instant are all it will ever get, with no
+        # retry. An argocd-shaped webhook always stamps Timestamp=now() on
+        # receipt (see ingester.parseArgoCDPayload), which would race that
+        # fixed 5s poll tick against however much "after" traffic had been
+        # generated so far. The generic payload accepts an explicit
+        # Timestamp instead (see ingester.parseGenericPayload — this is its
+        # documented purpose: "Useful for testing or custom integrations"),
+        # so this workflow generates *all* before/after traffic first and
+        # only then sends one webhook carrying the already-elapsed deploy
+        # time. That guarantees every sample either side of the deploy is
+        # already in the Collector's memory before the poll loop can look at
+        # it even once — a deterministic real-HTTP-webhook test instead of a
+        # test that only passes if a 5-second timer happens to cooperate.
+        run: |
+          docker run -d --name "${OPERATOR_CONTAINER}" --network "${NETWORK}" \
+            --add-host=host.docker.internal:host-gateway \
+            -p 8080:8080 -p 9090:9090 \
+            "${OPERATOR_IMAGE}" \
+            --dsn="postgres://postgres:test@${PG_CONTAINER}:5432/postgres?sslmode=disable" \
+            --cluster-name=e2e-cluster \
+            --namespace=default \
+            --scrape-interval=2s \
+            --source-type=generic \
+            --slack-url="http://host.docker.internal:8090/webhook" \
+            --window-minutes=5 \
+            --min-executions=5 \
+            --latency-threshold=0.20
+
+          echo "Waiting for the operator container to become healthy..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/healthz >/dev/null 2>&1; then
+              echo "Operator is healthy."
+              break
+            fi
+            sleep 1
+            if [ "$i" -eq 30 ]; then
+              echo "Operator did not become healthy in time." >&2
+              docker logs "${OPERATOR_CONTAINER}" || true
+              exit 1
+            fi
+          done
+
+      - name: Generate "before" (fast) traffic
+        # The marker is a SQL comment, not a string literal: pg_stat_statements
+        # normalizes every literal constant to a $N placeholder, so a literal
+        # marker would be stripped from the stored query text before the
+        # operator ever sees it (the same bug this project's own
+        # internal/collector integration test caught and fixed — see that
+        # file's doc comment).
+        run: |
+          docker exec "${PG_CONTAINER}" psql -U postgres -c "SELECT pg_stat_statements_reset();" >/dev/null
+          for i in $(seq 1 10); do
+            docker exec "${PG_CONTAINER}" psql -U postgres -c "SELECT pg_sleep(0.01) /* pgrr_manual_e2e_probe */;" >/dev/null
+            sleep 2
+          done
+
+      - name: Record the deploy boundary and reset stats for a clean "after" signal
+        # pg_stat_statements' mean_exec_time is a lifetime running average
+        # since the last reset, not a per-scrape-interval average, so
+        # resetting here keeps the "after" phase's mean from being dragged
+        # toward the "before" phase's — the same reasoning
+        # internal/e2e/pipeline_integration_test.go documents in runProbe.
+        run: |
+          echo "DEPLOY_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          docker exec "${PG_CONTAINER}" psql -U postgres -c "SELECT pg_stat_statements_reset();" >/dev/null
+
+      - name: Generate "after" (regressed) traffic
+        run: |
+          for i in $(seq 1 10); do
+            docker exec "${PG_CONTAINER}" psql -U postgres -c "SELECT pg_sleep(0.08) /* pgrr_manual_e2e_probe */;" >/dev/null
+            sleep 2
+          done
+
+      - name: Send the deploy webhook, now that both phases have already happened
+        run: |
+          cat > /tmp/deploy-event.json <<JSON
+          {
+            "id": "${DEPLOY_EVENT_ID}",
+            "app": "probe-app",
+            "cluster": "e2e-cluster",
+            "namespace": "default",
+            "revision": "manual-e2e-test",
+            "timestamp": "${DEPLOY_AT}"
+          }
+          JSON
+          curl -sf -X POST http://localhost:8080/webhook \
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/deploy-event.json
+
+      - name: Wait for the ingester poll loop to analyse the event and alert
+        # cmd/operator polls the ingester store every 5s (hardcoded — see
+        # main.go); give it a couple of ticks of margin.
+        run: sleep 15
+
+      - name: Verify a real alert was received, referencing this run's event
+        run: |
+          if [ ! -s /tmp/webhook-received.log ]; then
+            echo "::error::No webhook was ever received by the mock endpoint — the containerized pipeline did not fire an alert."
+            exit 1
+          fi
+          echo "--- Received webhook payload(s) ---"
+          cat /tmp/webhook-received.log
+          if ! grep -q "${DEPLOY_EVENT_ID}" /tmp/webhook-received.log; then
+            echo "::error::Received a webhook, but it doesn't reference this run's deploy event id (${DEPLOY_EVENT_ID}) — wrong or stale event flagged?"
+            exit 1
+          fi
+          if ! grep -q "pgrr_manual_e2e_probe" /tmp/webhook-received.log; then
+            echo "::error::Alert doesn't reference the probe query — wrong query flagged?"
+            exit 1
+          fi
+          echo "Full containerized pipeline (real image, real Postgres, real HTTP webhook and alert) detected the regression end to end."
+
+      - name: Dump operator container logs
+        if: always()
+        run: docker logs "${OPERATOR_CONTAINER}" || true
+
+      - name: Dump PostgreSQL container logs
+        if: always()
+        run: docker logs "${PG_CONTAINER}" || true
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker rm -f "${OPERATOR_CONTAINER}" "${PG_CONTAINER}" || true
+          docker network rm "${NETWORK}" || true
+          [ -f /tmp/mock_webhook.pid ] && kill "$(cat /tmp/mock_webhook.pid)" 2>/dev/null || true

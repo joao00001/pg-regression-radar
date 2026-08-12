@@ -700,6 +700,8 @@ shift happens to overlap the analysis window (see `DetectedChangeAt` on the
 
 ```
 .
+├── Dockerfile          # multi-stage build for all four cmd/ binaries
+│                       # (docker build --target operator|manager|collector|ingester)
 ├── api/v1alpha1/       # real CRDs (PostgresWatch, DeploySource,
 │                       # PerformanceRegression) + generated deepcopy code
 ├── cmd/
@@ -769,6 +771,29 @@ go test -tags=integration ./internal/storage/... ./internal/collector/... ./inte
 go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 export KUBEBUILDER_ASSETS="$(setup-envtest use 1.31.0 -p path)"
 go test ./internal/controller/... -run TestEnvtest -v
+```
+
+### Manual end-to-end smoke test (real container)
+
+Every check above runs `go test` against source — none of them build the
+Docker image or run it as a container. The **"Manual E2E (real container)"**
+workflow (`.github/workflows/e2e-manual.yml`) does: it builds the operator
+image from `Dockerfile`, runs it as a real container against a real
+PostgreSQL container (pg_stat_statements preloaded), generates real
+before/after query traffic, POSTs a real deploy webhook to the running
+container's `/webhook` endpoint, and asserts a real alert HTTP request lands
+on a mock receiver — the operator treated as an opaque black box, the same
+way it runs in Kubernetes.
+
+It's `workflow_dispatch`-only (not on every push/PR, since it spins up
+several containers and sleeps through real wall-clock windows): trigger it
+from the **Actions** tab → "Manual E2E (real container)" → **Run workflow**.
+
+To build the image locally:
+
+```bash
+docker build --target operator -t pg-regression-radar/operator .
+docker build --target manager  -t pg-regression-radar/manager  .
 ```
 
 ---
