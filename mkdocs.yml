@@ -58,6 +58,7 @@ nav:
   - API Reference: api-reference.md
   - Testing: testing.md
   - CI/CD: ci-cd.md
+  - Branch Protection: branch-protection.md
   - Roadmap: roadmap.md
   - Contributing: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
   - Meta:

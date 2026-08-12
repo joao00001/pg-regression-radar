@@ -23,7 +23,7 @@ This page tracks both feature roadmap and known operational/robustness gaps, so 
 
 ## Operational follow-ups
 
-- **Branch protection review.** See [`.github/BRANCH_PROTECTION.md`](https://github.com/joao00001/pg-regression-radar/blob/main/.github/BRANCH_PROTECTION.md) — the CI checks in [CI/CD](ci-cd.md) only have real effect once `main`'s ruleset actually requires each one by name.
+- **Branch protection review.** See [Branch Protection](branch-protection.md) — the CI checks in [CI/CD](ci-cd.md) only have real effect once `main`'s ruleset actually requires each one by name.
 - **GitHub Discussions link.** `.github/ISSUE_TEMPLATE/config.yml` links to the repo's Discussions tab; whether Discussions is actually enabled on the repo hasn't been confirmed.
 
 ## See also

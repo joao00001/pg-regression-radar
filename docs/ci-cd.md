@@ -4,7 +4,7 @@
 
 ## Overview
 
-pg-regression-radar runs five workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, and [`.github/BRANCH_PROTECTION.md`](https://github.com/joao00001/pg-regression-radar/blob/main/.github/BRANCH_PROTECTION.md) for how (and whether) they're actually enforced as required checks on `main`.
+pg-regression-radar runs five workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, and [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`.
 
 ## `ci.yml` — on every push/PR to `main`
 
@@ -39,9 +39,10 @@ Weekly update checks for `gomod` and `github-actions` ecosystems, with `chore(de
 
 ## Branch protection
 
-None of the above has real effect unless `main`'s ruleset/branch protection actually requires each check by name — see [`.github/BRANCH_PROTECTION.md`](https://github.com/joao00001/pg-regression-radar/blob/main/.github/BRANCH_PROTECTION.md) for the exact check names and the reasoning behind what's (and isn't) required for a solo-maintainer repo.
+None of the above has real effect unless `main`'s ruleset/branch protection actually requires each check by name — see [Branch Protection](branch-protection.md) for the exact check names and the reasoning behind what's (and isn't) required for a solo-maintainer repo.
 
 ## See also
 
 - [Testing](testing.md) — reproducing the test-related jobs locally.
+- [Branch Protection](branch-protection.md) — whether these checks actually block anything.
 - [Roadmap](roadmap.md) — CI/CD items still open (branch protection review, Discussions link).
