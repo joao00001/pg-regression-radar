@@ -1,0 +1,256 @@
+name: Release
+
+# Publishes tagged releases: the five container images this repo's Dockerfile
+# builds (cli, operator, manager, collector, ingester — see the Dockerfile's
+# own top comment for why one Dockerfile builds all five) to GHCR, plus the
+# Helm chart (deploy/helm/deploylens) as an OCI artifact to the same
+# registry. Every other Docker-related workflow in this repo
+# (e2e-manual.yml, e2e-kind.yml) only ever builds images locally for its own
+# use within a single job — this is the only workflow that publishes
+# anything anywhere.
+#
+# Deliberately gated on pushing a `v*` tag, not "every merge to main": this
+# repo has no "edge"/continuously-updated image, matching a normal tagged-
+# release cadence instead of a rolling one. Push a tag (e.g. `git tag v0.2.0
+# && git push origin v0.2.0`) to cut a release.
+#
+# ---------------------------------------------------------------------------
+# Manual prerequisites (cannot be set from workflow YAML — repo owner must
+# configure these once, before the first tag push):
+#
+#   1. Settings -> Actions -> General -> Workflow permissions: select
+#      "Read and write permissions". Without this, the default GITHUB_TOKEN
+#      is read-only and every `docker push`/`helm push` below fails with 403,
+#      regardless of the `permissions:` block in this file (repo-level
+#      settings cap what a workflow's token can be granted).
+#   2. Nothing else. GHCR is free for public repositories and needs no
+#      separate registry credential/secret — GITHUB_TOKEN (scoped by the
+#      `permissions:` block below) is sufficient to push both the container
+#      images and the Helm OCI artifact. Cosign's keyless signing likewise
+#      needs no stored secret: it exchanges this workflow run's own OIDC
+#      token (`id-token: write` below) for a short-lived signing certificate
+#      from Sigstore's public Fulcio CA at sign time.
+# ---------------------------------------------------------------------------
+#
+# Versioning: the pushed git tag (e.g. `v0.2.0`) becomes both the container
+# image tag (alongside a floating `latest`) and the Helm chart's
+# `--app-version` at package time. The chart's own `--version` (which, unlike
+# `appVersion`, must be strict SemVer with no `v` prefix — see
+# https://helm.sh/docs/topics/charts/#the-chartyaml-file) is derived by
+# stripping the leading `v`. deploy/helm/deploylens/Chart.yaml's checked-in
+# `version`/`appVersion` fields are NOT read for this — `helm package
+# --version --app-version` overrides them unconditionally — so Chart.yaml's
+# checked-in values are only a development-time placeholder (what you get
+# packaging an unreleased checkout locally), not a value that needs bumping
+# in lockstep with every tag. This avoids a whole separate PR/commit per
+# release just to edit Chart.yaml, at the cost of Chart.yaml's own version
+# field being a slightly misleading "last hand-edited" value rather than
+# "current release" — documented in docs/ci-cd.md and docs/installation.md.
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  # ghcr.io/joao00001/pg-regression-radar — matches the repository path
+  # deploy/helm/deploylens/values.yaml already hardcodes for the operator
+  # and manager images (image.repository /
+  # manager.image.repository); the other three targets below just append
+  # their own name the same way.
+  IMAGE_BASE: ghcr.io/${{ github.repository }}
+  # Floor severity that fails the job — see the "Scan" step below. Kept as
+  # an env var (rather than inlined) so bumping it later is a one-line diff.
+  TRIVY_SEVERITY: CRITICAL
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    name: "Image: ${{ matrix.target }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # docker push / helm push to ghcr.io
+      id-token: write # cosign keyless signing (OIDC token exchange with Fulcio)
+    strategy:
+      fail-fast: false
+      matrix:
+        # Exactly the five --target values the Dockerfile defines — see its
+        # top comment. Each is also the exact path suffix under
+        # ${IMAGE_BASE}/, matching values.yaml's existing operator/manager
+        # image.repository convention.
+        target: [cli, operator, manager, collector, ingester]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Resolve release version from the pushed tag
+        # github.ref_name is already the bare tag name (e.g. "v0.2.0") with
+        # no refs/tags/ prefix to strip, for a `push: tags:`-triggered run.
+        # DATE is computed here (not via github.event.head_commit.timestamp)
+        # because head_commit is not reliably populated on tag-push events.
+        run: |
+          echo "VERSION=${{ github.ref_name }}" >> "$GITHUB_ENV"
+          echo "DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build (load locally, do not push yet)
+        # push: false + load: true builds the image and hands it to the
+        # runner's local Docker daemon under a throwaway, run-scoped tag —
+        # nothing reaches ghcr.io until the Trivy scan below passes. This is
+        # the same "scan before it's public" ordering as the CRITICAL-fails-
+        # the-job gate itself: a build that fails the scan should never have
+        # been pushed in the first place, not just flagged after the fact.
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          push: false
+          load: true
+          tags: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}
+          build-args: |
+            VERSION=${{ env.VERSION }}
+            COMMIT=${{ github.sha }}
+            DATE=${{ env.DATE }}
+          # No buildx-generated provenance/SBOM manifest entries: this
+          # workflow generates and attaches its own SBOM via Syft + cosign
+          # attest below, and provenance attestations only make sense on a
+          # `push: true` build anyway (this step never pushes).
+          provenance: false
+          sbom: false
+
+      - name: Generate SBOM (SPDX)
+        # SPDX over CycloneDX: it's anchore/sbom-action's own default, it's
+        # an ISO/IEC 5962:2021 standard, and it's the format GitHub's own
+        # native dependency-graph SBOM export uses — the least surprising
+        # choice for anyone consuming this later. Scans the image already
+        # loaded into the local Docker daemon by the step above (no registry
+        # round-trip needed, and nothing has been pushed yet regardless).
+        uses: anchore/sbom-action@v0
+        with:
+          image: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.target }}.spdx.json
+          artifact-name: sbom-${{ matrix.target }}-${{ env.VERSION }}.spdx.json
+
+      - name: Scan for vulnerabilities (Trivy)
+        # Runs against the same not-yet-pushed local image. exit-code: '1'
+        # fails this step — and therefore the job, since every step after it
+        # is plain sequential (no continue-on-error) — the moment a
+        # CRITICAL-or-higher finding shows up, before the "Push" step below
+        # ever runs. Nothing reaches ghcr.io if this fails.
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}
+          format: table
+          severity: ${{ env.TRIVY_SEVERITY }}
+          exit-code: "1"
+
+      - name: Push
+        # Plain `docker tag`/`docker push` against the already-built,
+        # already-scanned local image (re-tagged straight from the exact
+        # image Trivy just approved) rather than a second buildx invocation
+        # — no reason to rebuild (or risk building something subtly
+        # different) just to change the push flag.
+        id: push
+        run: |
+          LOCAL="pgrr-release-build/${{ matrix.target }}:${{ github.sha }}"
+          IMAGE="${IMAGE_BASE}/${{ matrix.target }}"
+
+          docker tag "$LOCAL" "${IMAGE}:${VERSION}"
+          docker tag "$LOCAL" "${IMAGE}:latest"
+          docker push "${IMAGE}:${VERSION}"
+          docker push "${IMAGE}:latest"
+
+          # Both tags above point at the same image content, so they share
+          # one digest — resolve it once from whichever tag for signing.
+          DIGEST="$(docker inspect "${IMAGE}:${VERSION}" --format='{{index .RepoDigests 0}}' | cut -d@ -f2)"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4
+
+      - name: Sign the published image (keyless)
+        # No KMS key, no cosign.key, no COSIGN_PASSWORD secret: `--yes`
+        # skips cosign's interactive confirmation prompt, and keyless mode
+        # exchanges this job's own GitHub Actions OIDC token (permissions:
+        # id-token: write, above) for a short-lived signing certificate from
+        # Sigstore's public Fulcio CA, then records the signature in the
+        # public Rekor transparency log. Signs by digest (not by the mutable
+        # `:latest`/`:VERSION` tags) so the signature is bound to the exact
+        # bytes just scanned and pushed.
+        run: cosign sign --yes "${{ steps.push.outputs.image }}@${{ steps.push.outputs.digest }}"
+
+      - name: Attach the SBOM as a signed attestation
+        # In-toto attestation, keyless-signed the same way as the image
+        # signature above, attached directly to the image's digest in
+        # ghcr.io — so `cosign verify-attestation` (see docs/installation.md)
+        # is enough to fetch and verify it later with no separate file to
+        # lose track of.
+        run: cosign attest --yes --predicate "sbom-${{ matrix.target }}.spdx.json" --type spdxjson "${{ steps.push.outputs.image }}@${{ steps.push.outputs.digest }}"
+
+  helm-chart:
+    name: Helm chart (OCI)
+    runs-on: ubuntu-latest
+    needs: images
+    permissions:
+      contents: read
+      packages: write # helm push to ghcr.io
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Resolve chart/app version from the pushed tag
+        run: |
+          echo "APP_VERSION=${{ github.ref_name }}" >> "$GITHUB_ENV"
+          # Chart.yaml's `version` must be strict SemVer (no leading "v") —
+          # https://helm.sh/docs/topics/charts/#the-chartyaml-file —
+          # while `appVersion` is a free-form string and keeps the "v"
+          # prefix to match the container image tags above and each
+          # binary's own --version output (internal/buildinfo.Version).
+          echo "CHART_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          # Same version e2e-kind.yml already pins, for one fewer Helm
+          # version to reason about across this repo's workflows.
+          version: v3.19.0
+
+      - name: Log in to GHCR (Helm OCI)
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Package the chart
+        # --version/--app-version override whatever is checked into
+        # Chart.yaml unconditionally — see this workflow's top comment for
+        # why Chart.yaml's own committed version field is deliberately not
+        # bumped per release.
+        run: |
+          helm package deploy/helm/deploylens \
+            --version "${CHART_VERSION}" \
+            --app-version "${APP_VERSION}" \
+            --destination /tmp/helm-out
+
+      - name: Push the chart (OCI)
+        # oci://ghcr.io/<owner>/charts is the convention the Helm project's
+        # own docs and the wider Helm+GHCR ecosystem have converged on for
+        # "one OCI repo per chart, grouped under a `charts` namespace",
+        # keeping chart artifacts visually and path-wise separate from the
+        # container image packages published above
+        # (ghcr.io/joao00001/pg-regression-radar/*). Installable afterwards
+        # as `oci://ghcr.io/joao00001/charts/pg-regression-radar` — see
+        # docs/installation.md.
+        run: helm push "/tmp/helm-out/pg-regression-radar-${CHART_VERSION}.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"

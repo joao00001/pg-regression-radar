@@ -32,7 +32,7 @@
 # With no --target, the last stage in the file wins (operator), matching the
 # Helm chart's default `mode: operator`.
 
-FROM golang:1.24-bookworm AS build
+FROM golang:1.26.5-bookworm AS build
 WORKDIR /src
 
 # Build metadata for internal/buildinfo, surfaced by every binary's
@@ -50,16 +50,28 @@ ARG VERSION=dev
 ARG COMMIT=none
 ARG DATE=unknown
 
-# go.mod declares `go 1.26.0`, newer than this base image's bootstrap `go`
-# (1.24.x). Go's toolchain-switching feature (see https://go.dev/doc/toolchain)
-# would normally fetch the exact 1.26.0 toolchain automatically on demand —
-# but the official golang Docker images set GOTOOLCHAIN=local specifically to
-# suppress that implicit network fetch, so it must be re-enabled explicitly.
-# This is deliberately not "just bump the base image to golang:1.26-bookworm"
-# instead: pinning the bootstrap image to whatever tag matches today's go.mod
-# would silently break every time go.mod's `go` directive is bumped, whereas
-# GOTOOLCHAIN=auto keeps working unattended for any future Go version as long
-# as this bootstrap `go` is >= 1.21 (when toolchain switching was introduced).
+# Base image pinned to the exact `toolchain` line in go.mod (currently
+# go1.26.5), not just the bare `go 1.26.0` minimum — see go.mod's own comment
+# for why the toolchain is pinned past the bare minor release (govulncheck
+# flags 14 stdlib CVEs fixed somewhere in 1.26.1..1.26.5). Pinning this image
+# tag to match means the bootstrap `go` already IS the toolchain go.mod
+# wants, so no build ever needs to fetch a second toolchain over the network
+# — previously this stayed on golang:1.24-bookworm (older than go.mod's `go`
+# directive) specifically to avoid the base image drifting out of sync with
+# go.mod on every bump, relying entirely on GOTOOLCHAIN=auto to fetch
+# 1.26.5 on demand instead. That worked, but meant paying a network fetch of
+# the toolchain on every fresh build/CI cache miss, and briefly ran an
+# unpatched go1.26.0 bootstrap compiler before the fetch completed.
+#
+# GOTOOLCHAIN=auto is kept anyway as a safety net, not the primary mechanism
+# now: if go.mod's `toolchain` line is ever bumped without also bumping this
+# FROM line in the same change, a build here still fetches the newer
+# toolchain automatically instead of silently compiling with a stale,
+# potentially-vulnerable one. Whoever bumps go.mod's `toolchain` directive
+# should bump this base image tag to match in the same PR — CI's `go install
+# ...@latest` steps and `actions/setup-go`'s `go-version-file: go.mod` both
+# already track go.mod automatically, so this Dockerfile is the one place
+# that needs a manual, matching edit.
 ENV GOTOOLCHAIN=auto
 
 # Cache module downloads separately from source changes.
