@@ -14,7 +14,11 @@
 
 package controller
 
-import "testing"
+import (
+	"context"
+	"testing"
+	"time"
+)
 
 // TestRemoteClientCache_CachesByKubeconfigContent verifies that requesting
 // a client for the same kubeconfig bytes twice returns the exact same
@@ -71,5 +75,87 @@ func TestRemoteClientCache_EmptyKubeconfig_ReturnsError(t *testing.T) {
 	cache := newRemoteClientCache()
 	if _, err := cache.get([]byte("")); err == nil {
 		t.Fatal("expected an error for empty kubeconfig content")
+	}
+}
+
+// TestRemoteClientCache_Get_RefreshesLastUsed verifies that a second get()
+// for the same kubeconfig advances lastUsed rather than leaving it pinned
+// to when the entry was first built — the property evictOlderThan relies on
+// to never sweep a client that's still genuinely in use.
+func TestRemoteClientCache_Get_RefreshesLastUsed(t *testing.T) {
+	cache := newRemoteClientCache()
+	key := hashKubeconfig([]byte(validTestKubeconfig))
+
+	if _, err := cache.get([]byte(validTestKubeconfig)); err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	firstSeen := cache.clients[key].lastUsed
+
+	// Force a detectable gap: real clock resolution can otherwise make two
+	// back-to-back time.Now() calls compare equal on some platforms.
+	time.Sleep(2 * time.Millisecond)
+
+	if _, err := cache.get([]byte(validTestKubeconfig)); err != nil {
+		t.Fatalf("second get: %v", err)
+	}
+	secondSeen := cache.clients[key].lastUsed
+
+	if !secondSeen.After(firstSeen) {
+		t.Fatalf("expected lastUsed to advance on a cache hit: first=%v second=%v", firstSeen, secondSeen)
+	}
+}
+
+// TestRemoteClientCache_EvictOlderThan_RemovesOnlyStaleEntries verifies the
+// sweep removes entries last used before the cutoff and leaves fresher ones
+// (and ones exactly at the boundary) alone.
+func TestRemoteClientCache_EvictOlderThan_RemovesOnlyStaleEntries(t *testing.T) {
+	cache := newRemoteClientCache()
+	now := time.Now()
+
+	stale, err := buildRemoteClient([]byte(validTestKubeconfig))
+	if err != nil {
+		t.Fatalf("buildRemoteClient: %v", err)
+	}
+	fresh, err := buildRemoteClient([]byte(validTestKubeconfig + "\n# distinct\n"))
+	if err != nil {
+		t.Fatalf("buildRemoteClient: %v", err)
+	}
+
+	cache.clients["stale"] = cacheEntry{client: stale, lastUsed: now.Add(-2 * time.Hour)}
+	cache.clients["fresh"] = cacheEntry{client: fresh, lastUsed: now.Add(-1 * time.Minute)}
+
+	evicted := cache.evictOlderThan(1*time.Hour, now)
+
+	if evicted != 1 {
+		t.Fatalf("expected exactly 1 eviction, got %d", evicted)
+	}
+	if _, ok := cache.clients["stale"]; ok {
+		t.Fatal("expected the stale entry to be evicted")
+	}
+	if _, ok := cache.clients["fresh"]; !ok {
+		t.Fatal("expected the fresh entry to survive")
+	}
+}
+
+// TestRemoteClientCache_Start_StopsOnContextCancel verifies Start (the
+// manager.Runnable implementation registered via mgr.Add) returns promptly
+// and without error once its context is cancelled, rather than leaking a
+// goroutine past manager shutdown.
+func TestRemoteClientCache_Start_StopsOnContextCancel(t *testing.T) {
+	cache := newRemoteClientCache()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan error, 1)
+	go func() { done <- cache.Start(ctx) }()
+
+	cancel()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("expected Start to return nil on context cancel, got %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Start did not return within 2s of context cancellation")
 	}
 }
