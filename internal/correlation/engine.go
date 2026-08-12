@@ -100,29 +100,127 @@ func New(cfg Config, src SampleSource, logger *slog.Logger) *Engine {
 }
 
 // Analyse runs the full regression analysis for a given deploy event and
-// returns one PerformanceRegression per evaluated query.
+// returns at most one PerformanceRegression per distinct query (see the
+// fingerprint-dedup note below for what "distinct" means here).
+//
+// AllQueryIDs() is sorted before iterating (it returns Go map keys, so its
+// natural order is nondeterministic): this makes the loop reproducible for a
+// given input, and — combined with the dedup logic below — makes which
+// queryid a given fingerprint's "seen" entry gets recorded against
+// reproducible too, even though canonicalQueryID (not the loop's qid)
+// ultimately decides the *reported* QueryID regardless of iteration order.
 func (e *Engine) Analyse(ev v1alpha1.DeployEvent) []v1alpha1.PerformanceRegression {
 	window := time.Duration(e.cfg.WindowMinutes) * time.Minute
 	before := ev.Timestamp.Add(-window)
 	after := ev.Timestamp.Add(window)
 
-	queryIDs := e.src.AllQueryIDs()
+	queryIDs := append([]int64(nil), e.src.AllQueryIDs()...)
+	sort.Slice(queryIDs, func(i, j int) bool { return queryIDs[i] < queryIDs[j] })
+
 	e.logger.Info("correlation: analysing deploy",
 		"event_id", ev.ID,
 		"query_count", len(queryIDs),
 		"window_minutes", e.cfg.WindowMinutes)
 
+	// seen dedups findings across a queryid rotation. pg_stat_statements'
+	// queryid is not guaranteed stable (see collector.Collector.
+	// SamplesInRange's doc comment), so a query whose queryid rotates
+	// mid-window is enumerated twice by AllQueryIDs() — once for the old
+	// queryid, once for the new one. SamplesInRange's fingerprint-merge
+	// fallback means both calls pull in the same union of samples once either
+	// side's direct bucket runs low, so without this guard evaluateQuery would
+	// run twice on identical data and emit two PerformanceRegressions for one
+	// real regression. Keying on Fingerprint (not queryid) is what lets us
+	// recognise "these two loop iterations are actually the same query"
+	// without changing the SampleSource interface: the first queryid (in
+	// sorted order) that surfaces a given fingerprint wins and is evaluated;
+	// every later queryid sharing that fingerprint is skipped outright, since
+	// it would only re-evaluate the identical merged sample set.
+	seen := make(map[string]struct{}, len(queryIDs))
 	var results []v1alpha1.PerformanceRegression
 
 	for _, qid := range queryIDs {
 		allSamples := e.src.SamplesInRange(qid, before, after)
+
+		if fp := latestFingerprint(allSamples); fp != "" {
+			if _, dup := seen[fp]; dup {
+				continue
+			}
+			seen[fp] = struct{}{}
+		}
+
+		// Report under whichever queryid most recently produced a sample, not
+		// the loop's qid: when a rotation actually happened, the merged
+		// sample set legitimately contains rows stamped with two different
+		// original QueryID values, and only one of them is still "live" in
+		// pg_stat_statements — reporting under the other could point an
+		// operator at a queryid that has already fallen out of the top-500
+		// and means nothing to them by the time they look it up.
+		reportQID := canonicalQueryID(allSamples, qid)
 		preSamples, postSamples := partitionAtDeployTime(allSamples, ev.Timestamp)
 
-		r := e.evaluateQuery(ev, qid, preSamples, postSamples)
+		r := e.evaluateQuery(ev, reportQID, preSamples, postSamples)
 		results = append(results, r)
 	}
 
+	// Sorting keeps output order deterministic regardless of AllQueryIDs()'s
+	// (nondeterministic) map-iteration order or which queryid within a
+	// rotated pair happened to win the fingerprint dedup above.
+	sort.Slice(results, func(i, j int) bool { return results[i].QueryID < results[j].QueryID })
+
 	return results
+}
+
+// latestFingerprint returns the Fingerprint of whichever sample in samples
+// has the latest RecordedAt, or "" if samples is empty. Any non-empty
+// sample's fingerprint would technically do here — when SamplesInRange's
+// fingerprint-merge fallback pulled in samples from more than one queryid,
+// every sample in the merged set shares the same fingerprint by construction
+// — but picking the most recent one keeps this helper's notion of "current
+// identity" consistent with canonicalQueryID below, which also picks by most
+// recent RecordedAt.
+func latestFingerprint(samples []collector.QuerySample) string {
+	latest, ok := latestSample(samples)
+	if !ok {
+		return ""
+	}
+	return latest.Fingerprint
+}
+
+// canonicalQueryID returns the QueryID of whichever sample in samples has the
+// latest RecordedAt, or fallbackQID if samples is empty.
+//
+// This intentionally does NOT just return the loop variable that produced
+// samples: when a queryid rotation actually happened mid-window, the merged
+// sample set returned by SamplesInRange's fingerprint fallback legitimately
+// contains samples stamped with two different original QueryID values (the
+// pre- and post-rotation ones). Reporting under whichever one most recently
+// received a sample means the regression is filed under the queryid that is
+// CURRENTLY still receiving traffic in pg_stat_statements — the "live"
+// identity — not one that may already have aged out or fallen out of the
+// top-500 and would mean nothing to an operator looking it up after the fact.
+func canonicalQueryID(samples []collector.QuerySample, fallbackQID int64) int64 {
+	latest, ok := latestSample(samples)
+	if !ok {
+		return fallbackQID
+	}
+	return latest.QueryID
+}
+
+// latestSample returns the sample in samples with the latest RecordedAt, and
+// false if samples is empty. Factored out since latestFingerprint and
+// canonicalQueryID both need "the most recent sample" and must agree on which
+// one that is.
+func latestSample(samples []collector.QuerySample) (collector.QuerySample, bool) {
+	var latest collector.QuerySample
+	found := false
+	for _, s := range samples {
+		if !found || s.RecordedAt.After(latest.RecordedAt) {
+			latest = s
+			found = true
+		}
+	}
+	return latest, found
 }
 
 // evaluateQuery runs the two-stage detection for a single query and returns a

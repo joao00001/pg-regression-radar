@@ -28,6 +28,14 @@ A `PerformanceRegression` is only marked `Detected` when the change point is fou
 
 The change point's own timestamp is preserved on the result as `DetectedChangeAt`, so you can see exactly when the shift was located — which may differ slightly from the deploy event's timestamp, within the configured tolerance.
 
+## Deduplicating a queryid rotation
+
+`pg_stat_statements`' `queryid` is not guaranteed stable across a deploy (see [Collector Internals](collector-internals.md#queryid-is-not-a-stable-identifier-across-a-deploy)), so `AllQueryIDs()` can enumerate both the pre-rotation and post-rotation queryid for what is really a single query. Once the collector's fingerprint-merge fallback has kicked in for either side, `SamplesInRange` for both queryids returns the identical merged sample set — so evaluating both, unguarded, would run the two-stage pipeline above twice on the same data and emit two `PerformanceRegression`s for one real regression.
+
+`Engine.Analyse` prevents this: before evaluating a queryid, it looks at the `Fingerprint` of the most recently recorded sample in its (possibly merged) sample set. The first queryid — in sorted, deterministic order — to surface a given fingerprint is evaluated; every later queryid sharing that fingerprint is skipped, since it would only re-evaluate the same merged data. The one `PerformanceRegression` that *is* produced is reported under whichever queryid most recently received a sample (not necessarily the queryid that happened to win the dedup check), so it points at the "live" identity still receiving traffic in `pg_stat_statements` rather than one that may have already aged out.
+
+This guarantees at most one `PerformanceRegression` per distinct query per `Analyse` call, regardless of how many queryids `pg_stat_statements` currently associates with it.
+
 ## See also
 
 - [Architecture Overview](architecture.md) — where the Correlation Engine sits in the overall pipeline.
