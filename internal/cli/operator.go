@@ -52,6 +52,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/planner"
 	"github.com/joao00001/pg-regression-radar/internal/storage"
 	"github.com/joao00001/pg-regression-radar/internal/storage/postgres"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
@@ -78,6 +79,7 @@ func RunOperator(args []string) {
 	latencyThreshold := fs.Float64("latency-threshold", 0.20, "Minimum relative latency increase to flag")
 	changePointTolerance := fs.Duration("changepoint-tolerance", 0, "Max distance between the E-divisive change point and the deploy timestamp still attributed to that deploy (0 = auto: 20% of window, floor 2m)")
 	retentionMinutes := fs.Int("retention-minutes", 180, "How long (minutes) the collector retains in-memory query samples before pruning them; should stay well above 2x --window-minutes")
+	capturePlans := fs.Bool("capture-plans", false, "Capture periodic EXPLAIN (GENERIC_PLAN) plan snapshots for tracked queries and attach a plan-diff summary to detected regressions; requires PostgreSQL 16+ (no-op, logged once, on older servers) and adds one extra planner invocation per tracked query per scrape cycle — see docs/detection-algorithm.md")
 	// ---- Persistence (see internal/storage) ----
 	// "memory" preserves today's behaviour exactly: samples/events live only
 	// in the Collector/Ingester in-process maps and are lost on restart.
@@ -114,6 +116,7 @@ func RunOperator(args []string) {
 		ClusterName:       *clusterName,
 		Namespace:         *namespace,
 		RetentionDuration: time.Duration(*retentionMinutes) * time.Minute,
+		CapturePlans:      *capturePlans,
 	}, logger, reg)
 	if err != nil {
 		logger.Error("failed to create collector", "err", err)
@@ -304,6 +307,17 @@ func RunOperator(args []string) {
 					results := engine.Analyse(ev)
 					for _, r := range results {
 						if r.Status == v1alpha1.StatusDetected {
+							// Attach a plan-diff hint, if plan capture is
+							// enabled: PlansAround returns nil/nil when
+							// CapturePlans is off, the server is below
+							// PostgreSQL 16, or capture hasn't produced
+							// anything for this queryid yet, in which case
+							// planner.Diff's nil-safe handling leaves
+							// PlanDiffSummary at its empty default.
+							if *capturePlans {
+								before, after := col.PlansAround(r.QueryID, r.DetectedChangeAt)
+								r.PlanDiffSummary = planner.Diff(before, after)
+							}
 							if err := notifier.Notify(ctx, r); err != nil {
 								logger.Error("operator: notify failed", "err", err, "regression", r.Name)
 							}

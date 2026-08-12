@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/joao00001/pg-regression-radar/internal/planner"
 )
 
 // newTestCollector builds a Collector without dialing a real database.
@@ -288,6 +290,83 @@ func TestCollector_SamplesInRange_NoFallbackWithoutSharedFingerprint(t *testing.
 	got = col.SamplesInRange(999, base.Add(-time.Minute), base.Add(time.Minute))
 	if len(got) != 0 {
 		t.Fatalf("expected no samples for an unknown queryid, got %d", len(got))
+	}
+}
+
+// ----- plan capture (ring buffer / PlansAround) -----
+
+func TestCollector_AppendPlanSnapshot_BoundsHistorySize(t *testing.T) {
+	col := newTestCollector(t, Config{})
+
+	base := time.Now().UTC()
+	for i := 0; i < planHistorySize+3; i++ {
+		col.appendPlanSnapshot(planner.PlanSnapshot{
+			QueryID:      1,
+			RecordedAt:   base.Add(time.Duration(i) * time.Minute),
+			RootNodeType: fmt.Sprintf("Node%d", i),
+			TotalCost:    float64(i),
+		})
+	}
+
+	col.planMu.RLock()
+	hist := col.planHistory[1]
+	col.planMu.RUnlock()
+
+	if len(hist) != planHistorySize {
+		t.Fatalf("expected history bounded at %d entries, got %d", planHistorySize, len(hist))
+	}
+	// The oldest entries should have been dropped, keeping only the most
+	// recent planHistorySize snapshots.
+	if hist[0].RootNodeType != "Node3" {
+		t.Errorf("expected the oldest surviving snapshot to be Node3 (the first 3 dropped), got %s", hist[0].RootNodeType)
+	}
+	if hist[len(hist)-1].RootNodeType != fmt.Sprintf("Node%d", planHistorySize+2) {
+		t.Errorf("expected the newest snapshot to be the last one appended, got %s", hist[len(hist)-1].RootNodeType)
+	}
+}
+
+func TestCollector_PlansAround_ReturnsClosestBeforeAndAfter(t *testing.T) {
+	col := newTestCollector(t, Config{})
+
+	base := time.Now().UTC()
+	col.appendPlanSnapshot(planner.PlanSnapshot{QueryID: 1, RecordedAt: base.Add(-10 * time.Minute), RootNodeType: "Seq Scan", TotalCost: 100})
+	col.appendPlanSnapshot(planner.PlanSnapshot{QueryID: 1, RecordedAt: base.Add(-5 * time.Minute), RootNodeType: "Index Scan", TotalCost: 20})
+	col.appendPlanSnapshot(planner.PlanSnapshot{QueryID: 1, RecordedAt: base.Add(5 * time.Minute), RootNodeType: "Index Scan", TotalCost: 25})
+	col.appendPlanSnapshot(planner.PlanSnapshot{QueryID: 1, RecordedAt: base.Add(10 * time.Minute), RootNodeType: "Index Scan", TotalCost: 90})
+
+	before, after := col.PlansAround(1, base)
+	if before == nil || before.RootNodeType != "Index Scan" || before.TotalCost != 20 {
+		t.Fatalf("expected 'before' to be the -5m snapshot, got %+v", before)
+	}
+	if after == nil || after.TotalCost != 25 {
+		t.Fatalf("expected 'after' to be the +5m snapshot, got %+v", after)
+	}
+}
+
+func TestCollector_PlansAround_FallsBackToMostRecentWhenNoneAfter(t *testing.T) {
+	col := newTestCollector(t, Config{})
+
+	base := time.Now().UTC()
+	col.appendPlanSnapshot(planner.PlanSnapshot{QueryID: 1, RecordedAt: base.Add(-10 * time.Minute), RootNodeType: "Seq Scan", TotalCost: 100})
+	col.appendPlanSnapshot(planner.PlanSnapshot{QueryID: 1, RecordedAt: base.Add(-5 * time.Minute), RootNodeType: "Index Scan", TotalCost: 20})
+
+	// "at" is after every captured snapshot: there's nothing strictly after
+	// it, so "after" should fall back to the single most recent snapshot.
+	before, after := col.PlansAround(1, base)
+	if before == nil || before.TotalCost != 20 {
+		t.Fatalf("expected 'before' to be the -5m snapshot, got %+v", before)
+	}
+	if after == nil || after.TotalCost != 20 {
+		t.Fatalf("expected 'after' to fall back to the most recent snapshot (-5m, cost 20), got %+v", after)
+	}
+}
+
+func TestCollector_PlansAround_NoHistoryReturnsNil(t *testing.T) {
+	col := newTestCollector(t, Config{})
+
+	before, after := col.PlansAround(999, time.Now())
+	if before != nil || after != nil {
+		t.Fatalf("expected nil/nil for a queryid with no plan history, got before=%+v after=%+v", before, after)
 	}
 }
 

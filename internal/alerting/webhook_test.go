@@ -191,6 +191,62 @@ func TestNotify_ExternalCauseSuspected(t *testing.T) {
 	}
 }
 
+// TestNotify_PlanDiffSummary_IncludedWhenPresent verifies a non-empty
+// PlanDiffSummary (populated by internal/cli.RunOperator's poll loop when
+// --capture-plans is enabled — see internal/planner.Diff) is surfaced as its
+// own field in the outgoing Slack payload.
+func TestNotify_PlanDiffSummary_IncludedWhenPresent(t *testing.T) {
+	var gotBody slackPayload
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster"}, nil)
+	reg := sampleRegression(v1alpha1.StatusDetected)
+	reg.PlanDiffSummary = "root plan node changed from Index Scan to Seq Scan; estimated cost increased 4.2x"
+	if err := notifier.Notify(context.Background(), reg); err != nil {
+		t.Fatalf("Notify: %v", err)
+	}
+
+	if len(gotBody.Attachments) != 1 {
+		t.Fatalf("expected exactly one attachment, got %d", len(gotBody.Attachments))
+	}
+	found := false
+	for _, f := range gotBody.Attachments[0].Fields {
+		if f.Title == "Plan Diff" && f.Value == reg.PlanDiffSummary {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a 'Plan Diff' field containing %q, fields=%+v", reg.PlanDiffSummary, gotBody.Attachments[0].Fields)
+	}
+}
+
+// TestNotify_PlanDiffSummary_OmittedWhenEmpty verifies the common case (plan
+// capture disabled, or simply not yet available) doesn't add a confusing
+// empty "Plan Diff" field to every alert.
+func TestNotify_PlanDiffSummary_OmittedWhenEmpty(t *testing.T) {
+	var gotBody slackPayload
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster"}, nil)
+	if err := notifier.Notify(context.Background(), sampleRegression(v1alpha1.StatusDetected)); err != nil {
+		t.Fatalf("Notify: %v", err)
+	}
+
+	for _, f := range gotBody.Attachments[0].Fields {
+		if f.Title == "Plan Diff" {
+			t.Errorf("did not expect a 'Plan Diff' field when PlanDiffSummary is empty, got value %q", f.Value)
+		}
+	}
+}
+
 // TestNotify_NonSuccessStatusCode verifies Notify treats any >=300 response
 // from the webhook endpoint as a failure rather than silently swallowing it
 // — a silently-dropped alert is worse than a loud one, since nobody would

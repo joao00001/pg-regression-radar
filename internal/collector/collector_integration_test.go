@@ -54,6 +54,8 @@ import (
 
 	_ "github.com/lib/pq"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/joao00001/pg-regression-radar/internal/planner"
 )
 
 func TestIntegration_Scrape_RealPostgres(t *testing.T) {
@@ -187,4 +189,95 @@ func TestIntegration_Ping_RealPostgres(t *testing.T) {
 	if err := c.Ping(ctx); err != nil {
 		t.Errorf("Ping against a real, correctly configured Postgres should succeed, got: %v", err)
 	}
+}
+
+// TestIntegration_CapturePlans_RealPostgres16 proves the Feature 3 wiring
+// end to end against a real server: capturePlans (driven here directly,
+// rather than via a full scrape cycle, since we want deterministic control
+// over exactly which two query texts get captured) populates the plan-
+// history ring, PlansAround retrieves both sides, and planner.Diff produces
+// a real, non-empty, human-readable summary — proving this isn't just
+// "compiles and unit tests pass" but genuinely produces useful output
+// against live EXPLAIN (GENERIC_PLAN) results.
+//
+// The "before"/"after" plans come from two structurally different query
+// texts captured under one synthetic queryid, rather than the same query
+// text before/after an index drop: forcing a real plan flip via GUC toggles
+// (enable_indexscan/enable_seqscan) isn't reliably observable against a
+// pooled *sql.DB connection (each query may land on a different backend, so
+// a session-level SET doesn't reliably apply to the following query) — see
+// this repo's task notes for the explicit "structurally different queries as
+// a proxy" allowance.
+func TestIntegration_CapturePlans_RealPostgres16(t *testing.T) {
+	dsn := os.Getenv("PGRR_TEST_DSN")
+	if dsn == "" {
+		t.Skip("PGRR_TEST_DSN not set; skipping Collector CapturePlans integration test")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	setup, err := sql.Open("postgres", dsn)
+	if err != nil {
+		t.Fatalf("open setup connection: %v", err)
+	}
+	defer setup.Close()
+
+	var versionNum int
+	if err := setup.QueryRowContext(ctx, `SELECT current_setting('server_version_num')::int`).Scan(&versionNum); err != nil {
+		t.Fatalf("determine server_version_num: %v", err)
+	}
+	if versionNum/10000 < 16 {
+		t.Skipf("this test requires PostgreSQL 16+ (EXPLAIN GENERIC_PLAN); server reports major version %d", versionNum/10000)
+	}
+
+	if _, err := setup.ExecContext(ctx, `DROP TABLE IF EXISTS pgrr_capture_plans_probe`); err != nil {
+		t.Fatalf("drop table: %v", err)
+	}
+	if _, err := setup.ExecContext(ctx, `CREATE TABLE pgrr_capture_plans_probe (id INT PRIMARY KEY, val TEXT)`); err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = setup.ExecContext(context.Background(), `DROP TABLE IF EXISTS pgrr_capture_plans_probe`)
+	})
+	if _, err := setup.ExecContext(ctx, `INSERT INTO pgrr_capture_plans_probe SELECT g, 'v' || g FROM generate_series(1, 2000) g`); err != nil {
+		t.Fatalf("seed table: %v", err)
+	}
+	if _, err := setup.ExecContext(ctx, `ANALYZE pgrr_capture_plans_probe`); err != nil {
+		t.Fatalf("analyze: %v", err)
+	}
+
+	reg := prometheus.NewRegistry()
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	c, err := New(Config{DSN: dsn, ClusterName: "capture-plans-test", Namespace: "default", CapturePlans: true}, logger, reg)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	t.Cleanup(func() { _ = c.db.Close() })
+
+	const syntheticQID = int64(999001)
+
+	// "Before": an indexed primary-key lookup — the planner should pick an
+	// Index Scan (or Index Only Scan).
+	c.capturePlans(ctx, []trackedQuery{
+		{queryID: syntheticQID, queryText: "SELECT val FROM pgrr_capture_plans_probe WHERE id = $1"},
+	})
+	time.Sleep(20 * time.Millisecond)
+	// "After": an unindexed-predicate query over the same table — the
+	// planner has no index to use and must fall back to a Seq Scan.
+	c.capturePlans(ctx, []trackedQuery{
+		{queryID: syntheticQID, queryText: "SELECT val FROM pgrr_capture_plans_probe WHERE val = $1"},
+	})
+
+	before, after := c.PlansAround(syntheticQID, time.Now())
+	if before == nil || after == nil {
+		t.Fatalf("expected both a before and after plan snapshot to be captured, got before=%+v after=%+v", before, after)
+	}
+	t.Logf("before: node=%s cost=%.2f | after: node=%s cost=%.2f", before.RootNodeType, before.TotalCost, after.RootNodeType, after.TotalCost)
+
+	summary := planner.Diff(before, after)
+	if summary == "" {
+		t.Fatal("expected a non-empty PlanDiffSummary for an indexed lookup vs. an unindexed-predicate scan")
+	}
+	t.Logf("PlanDiffSummary: %s", summary)
 }

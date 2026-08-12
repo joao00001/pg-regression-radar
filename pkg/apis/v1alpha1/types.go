@@ -99,5 +99,12 @@ type PerformanceRegression struct {
 	// lag delay the observable effect of a deploy. Zero unless Status is
 	// Detected.
 	DetectedChangeAt time.Time `json:"detectedChangeAt,omitempty"`
-	CreatedAt        time.Time `json:"createdAt"`
+	// PlanDiffSummary is a short, human-readable description of how this
+	// query's EXPLAIN (GENERIC_PLAN) plan changed around DetectedChangeAt
+	// (see internal/planner.Diff and docs/detection-algorithm.md's
+	// "Plan-diff correlation" section). Only populated when the operator
+	// enabled --capture-plans and the server is PostgreSQL 16+; empty
+	// otherwise, including for every Status other than Detected.
+	PlanDiffSummary string    `json:"planDiffSummary,omitempty"`
+	CreatedAt       time.Time `json:"createdAt"`
 }
