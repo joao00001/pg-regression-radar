@@ -1,49 +1,91 @@
-name: Deploy Docs
+name: Docs
 
-# Builds docs/ with MkDocs Material and publishes it to GitHub Pages at
-# https://joao00001.github.io/pg-regression-radar/. Uses GitHub's native
-# Pages deployment (upload-pages-artifact + deploy-pages), not a gh-pages
-# branch: it needs no separate branch to keep in sync and no PAT beyond the
-# job's own OIDC token.
+# Two independent concerns, deliberately split into two jobs that trigger
+# differently:
 #
-# NOTE: this only takes effect once Pages is switched to "GitHub Actions" as
-# its source under Settings -> Pages -- a one-time repo setting change this
-# workflow file can't make on its own.
+#   `check`  — does docs/ still build cleanly? Runs on every push/PR to main
+#              that touches docs content, same as every other quality gate
+#              in this repo (ci.yml, go-quality.yml). Never publishes
+#              anything.
+#   `deploy` — publish a new, permanently versioned copy of the site to
+#              GitHub Pages via [mike](https://github.com/jimporter/mike).
+#              Runs ONLY on a real `vX.Y.Z` tag push (or a manual re-run of
+#              one), never on an ordinary push to main.
+#
+# That split exists on purpose: this workflow used to redeploy the live
+# site on every push to main that touched docs/**, which meant the public
+# site could describe features that were merged but not yet released —
+# nothing stopped someone from reading about a `feat` on the site and then
+# finding it's not in any tagged image yet. `release.yml` never had this
+# problem (it's gated on `push: tags:` already); this workflow now matches
+# that same guarantee: what's live at
+# https://joao00001.github.io/pg-regression-radar/ only ever reflects a
+# real, tagged release, exactly like the container images and Helm chart.
+#
+# mike also solves the versioning half of that: every tag gets its own
+# permanent, browsable copy of the site (a version selector renders in the
+# header via Material for MkDocs' native mike integration — see
+# mkdocs.yml's `extra.version` block), the `latest` alias always points at
+# the newest *stable* (non-prerelease) tag, and visiting the site's root
+# redirects to whatever `latest` currently is. Pre-release tags (anything
+# containing a `-`, e.g. `v1.0.0-rc1`) still get their own permanent,
+# linkable copy of the docs, they just never become `latest`.
+#
+# ---------------------------------------------------------------------------
+# Manual prerequisite (cannot be set from workflow YAML): Settings -> Pages
+# -> Source must be "Deploy from a branch", branch `gh-pages`, folder `/
+# (root)` — NOT "GitHub Actions" (this workflow used to require the
+# opposite setting before it adopted mike). mike works by committing a
+# fully-built copy of the site straight to the `gh-pages` branch itself
+# (see https://github.com/jimporter/mike#how-it-works); there is no
+# artifact-upload step for GitHub Pages to serve here at all, so leaving
+# the source on "GitHub Actions" means nothing will ever go live no matter
+# how many times this workflow runs.
+# ---------------------------------------------------------------------------
 on:
+  # A single `push` key covers both cases below — YAML doesn't allow the
+  # key twice, and combining `branches`+`tags` here (with no `paths`
+  # filter) is what lets the tags case stay unconditional: a `paths`
+  # filter set here would apply to tag pushes too, which is exactly what
+  # we don't want (see the `check`-vs-`deploy` split explained above). The
+  # two `push` cases are told apart at the job level instead, via
+  # `github.ref_type` in each job's `if:` below.
   push:
+    branches: ["main"]
+    tags: ["v*"]
+  # Path-filtered here (unlike the `push: branches:` case above) because
+  # every PR already goes through this same repo's other required checks
+  # regardless of what it touches — no reason to also build docs for a
+  # PR that doesn't touch any.
+  pull_request:
     branches: ["main"]
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "hooks.py"
       - "requirements-docs.txt"
       - ".github/workflows/docs.yml"
-    # Every `vX.Y.Z` tag also redeploys the site unconditionally (no path
-    # filter), independent of whether that exact release-prep commit
-    # happened to touch docs/**. Path-filtered pushes to main already keep
-    # the site current as docs land throughout normal development; this
-    # second trigger exists so cutting a release is never silently out of
-    # sync with what's live at https://joao00001.github.io/pg-regression-radar/
-    # — e.g. a direct-to-main release-ritual commit (see
-    # CONTRIBUTING.md#release-notes--changeset-fragments) that only touches
-    # CHANGELOG.md still forces a fresh, guaranteed-current deploy.
-    tags: ["v*"]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Existing vX.Y.Z tag to (re-)deploy docs for (e.g. after a failed
+          run). Checks out that tag explicitly rather than whatever ref
+          the workflow happens to be run from, so a manual run can never
+          accidentally publish an unreleased/untagged version of the site.
+        required: true
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-# Only one Pages deployment at a time; a newer push should win over an
-# in-flight older one rather than queuing behind it.
-concurrency:
-  group: pages
-  cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build site
+  check:
+    name: Build (no deploy)
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref_type == 'branch')
     runs-on: ubuntu-latest
+    concurrency:
+      group: docs-check-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -61,19 +103,82 @@ jobs:
       - name: Build (strict — broken nav/links fail the build)
         run: mkdocs build --strict
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: site
-
   deploy:
-    name: Deploy to GitHub Pages
-    needs: build
+    name: Deploy versioned site (mike)
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_type == 'tag')
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      # Pushing the built site straight to the gh-pages branch — see this
+      # workflow's top comment for why there's no separate Pages-deploy
+      # action/environment here, unlike release.yml's job permissions.
+      contents: write
+    # Serialize deploys rather than cancelling an in-progress one: mike
+    # commits and pushes directly to a shared branch, and interrupting a
+    # `git push` mid-flight (rather than letting a superseded run finish
+    # first) risks a half-applied commit on gh-pages. A second tag pushed
+    # moments after the first should simply queue, not race it.
+    concurrency:
+      group: docs-deploy
+      cancel-in-progress: false
     steps:
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v5
+      - name: Resolve which tag to deploy
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the tag
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ steps.tag.outputs.tag }}
+          # mike needs real branch history to commit on top of (a shallow,
+          # single-ref checkout has none) — see the explicit `git fetch
+          # origin gh-pages` step below, which needs this to not be a
+          # from-scratch shallow clone of just the tag.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - name: Install MkDocs Material + mike
+        run: pip install -r requirements-docs.txt
+
+      - name: Configure git identity for mike's commits
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch existing gh-pages branch, if any
+        # `|| true`: on the very first-ever deploy, gh-pages doesn't exist
+        # yet — mike creates it from scratch in that case. On every
+        # subsequent run, this brings in the real history mike needs to
+        # add a new commit on top of instead of orphaning one (see mike's
+        # own "Deploying via CI" guidance).
+        run: git fetch origin gh-pages --depth=1 || true
+
+      - name: Deploy this version
+        id: deploy
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          # SemVer prerelease convention this repo already uses for
+          # release-candidate tags (v1.0.0-rc1, etc.): a hyphen after the
+          # numeric core. Prereleases still get their own permanent,
+          # linkable copy of the docs (mike deploy always runs below) —
+          # they just never become the `latest` alias real users land on
+          # by default.
+          if [[ "$TAG" == *-* ]]; then
+            echo "::notice::${TAG} looks like a pre-release tag — deploying it without moving the 'latest' alias."
+            mike deploy --push --branch gh-pages "$TAG"
+          else
+            mike deploy --push --update-aliases --branch gh-pages "$TAG" latest
+            mike set-default --push --branch gh-pages latest
+          fi

@@ -38,6 +38,26 @@ theme:
 hooks:
   - hooks.py
 
+# Declaring `plugins:` explicitly replaces MkDocs' implicit default plugin
+# list (which is just `search`) rather than adding to it — `search` is
+# listed here for that reason, not because it's new. `mike` wires up
+# Material's version selector below; the actual `mike deploy`/`mike
+# set-default` commands that publish a version only run in
+# .github/workflows/docs.yml's `deploy` job — a plain `mkdocs build`
+# (what the `check` job runs on every PR) works fine with this plugin
+# present and does not require a `versions.json` to already exist.
+plugins:
+  - search
+  - mike
+
+extra:
+  version:
+    provider: mike
+    # Show the alias (e.g. "latest") next to the version number in the
+    # selector, not just the bare version string — see
+    # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#version-alias
+    alias: true
+
 extra_css:
   - stylesheets/extra.css
 
@@ -68,6 +88,7 @@ markdown_extensions:
 # need it can stay on their own" rule.
 nav:
   - Home: index.md
+  - Changelog: changelog.md
   - Get Started:
       - Installation: installation.md
       - Getting Started: getting-started.md
