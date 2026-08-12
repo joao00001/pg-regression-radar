@@ -84,6 +84,17 @@
   border-bottom: 1px solid var(--md-default-fg-color--lightest);
 }
 
+/* Material's `.md-tabs__list` is `overflow: auto`. `scrollbar-width: none`
+   (already set by Material) hides Firefox's scrollbar, but Chrome/Safari
+   have no equivalent, so hovering it revealed a native overlay scrollbar
+   -- a thin bar at the bottom edge that reads as an unwanted
+   `border-bottom` appearing only on hover. There's nothing to actually
+   scroll (the tabs bar only ever holds a handful of short labels), so
+   disable the scroll axis outright instead of just hiding its scrollbar. */
+.md-tabs__list {
+  overflow-x: hidden;
+}
+
 /* Material colors tab links via `color: inherit` cascading down from
    `.md-tabs { color: var(--md-primary-bg-color) }` -- white text, meant for
    an opaque, saturated (indigo) tab-bar background. Against our translucent
@@ -193,14 +204,11 @@
   font-size: 0.7rem;
   text-decoration: none;
   white-space: nowrap;
-  border-radius: 2rem;
-  border: 1px solid var(--md-default-fg-color--lightest);
 }
 
 .pgrr-tabs-flyout a:hover,
 .pgrr-tabs-flyout a:focus {
   color: var(--md-typeset-a-color);
-  border-color: var(--md-typeset-a-color);
 }
 
 /* ---- "Back to top" button: always purple, not just on hover ----
