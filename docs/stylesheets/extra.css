@@ -144,37 +144,39 @@
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* ---- Tabs bar: no lateral scroll, overflow tabs go into a "More" menu ----
+/* ---- Tabs bar: no lateral scroll, overflow tabs go into a hover menu ----
    Material's default `.md-tabs__list` is `overflow: auto; white-space:
    nowrap` with `scrollbar-width: none` -- a horizontally-scrollable strip
    whose own scrollbar is hidden, so with this many top-level nav entries
-   several tabs are only reachable by dragging sideways with no visual
-   hint they exist. `overflow: hidden` below clips instead of scrolling;
-   docs/javascripts/nav-overflow.js is what keeps the clipped tabs
-   reachable, by moving whichever don't fit into the `.pgrr-tabs-more`
-   item it appends (styled here) and hiding the rest. */
+   several tabs were only reachable by dragging sideways with no visual
+   hint they existed. `overflow: hidden` below clips instead of scrolling;
+   docs/javascripts/nav-overflow.js keeps the clipped tabs reachable by
+   moving whichever don't fit behind a plain "⋯" indicator it appends
+   (`.pgrr-tabs-more`, styled to blend in as just another tab rather than
+   a separate "More" button).
+
+   The dropdown itself (`.pgrr-tabs-more__menu`) is intentionally styled
+   here as a standalone, `position: fixed` element -- nav-overflow.js
+   appends it to <body>, not inside `.md-tabs__list`, and positions it in
+   JS from the trigger's live bounding box. It can't be a normal CSS
+   descendant of `.pgrr-tabs-more` the way a typical dropdown would be:
+   `.md-tabs__list`'s `overflow: hidden` (needed to stop the lateral
+   scroll above) would clip the dropdown too, since it renders below the
+   trigger's own box -- that was the original, broken version of this
+   feature. Because it's detached, show/hide is driven by JS
+   (mouseenter/mouseleave/focus) rather than a CSS :hover rule. */
 .md-tabs__list {
   overflow: hidden;
   flex-wrap: nowrap;
 }
 
-.pgrr-tabs-more {
-  position: relative;
-}
-
-.pgrr-tabs-more__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
+.pgrr-tabs-more__trigger {
   cursor: pointer;
 }
 
 .pgrr-tabs-more__menu {
-  display: none;
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: 10;
+  position: fixed;
+  z-index: 100;
   min-width: 14rem;
   margin: 0;
   padding: 0.4rem 0;
@@ -185,11 +187,8 @@
   box-shadow: var(--md-shadow-z2);
 }
 
-/* Expands on hover, and on keyboard focus of any link inside it, so it
-   isn't mouse-only. */
-.pgrr-tabs-more:hover .pgrr-tabs-more__menu,
-.pgrr-tabs-more:focus-within .pgrr-tabs-more__menu {
-  display: block;
+.pgrr-tabs-more__menu[hidden] {
+  display: none;
 }
 
 .pgrr-tabs-more__menu li {
