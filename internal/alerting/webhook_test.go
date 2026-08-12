@@ -223,7 +223,9 @@ func TestNotify_NetworkError(t *testing.T) {
 		t.Fatalf("net.Listen: %v", err)
 	}
 	addr := ln.Addr().String()
-	ln.Close()
+	if err := ln.Close(); err != nil {
+		t.Fatalf("close listener: %v", err)
+	}
 
 	notifier := NewWebhookNotifier(WebhookConfig{URL: "http://" + addr}, nil)
 	err = notifier.Notify(context.Background(), sampleRegression(v1alpha1.StatusDetected))
