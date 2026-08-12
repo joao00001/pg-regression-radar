@@ -142,6 +142,32 @@ jobs:
         # choice for anyone consuming this later. Scans the image already
         # loaded into the local Docker daemon by the step above (no registry
         # round-trip needed, and nothing has been pushed yet regardless).
+        #
+        # continue-on-error here, paired with the conditional retry step
+        # right below: this action downloads syft's release tarball from
+        # github.com's Releases CDN at run time, and a transient
+        # connection failure there (HTTP status=000 — the connection
+        # never completed) hit this exact step on the real v1.0.0-rc1
+        # release run. Re-running the job from the Actions UI fixed it on
+        # the very next attempt with no code change, confirming a
+        # flaky-network blip rather than a real config problem — one
+        # automatic retry means a future release doesn't need a human to
+        # notice the failure and manually re-run the job.
+        id: sbom
+        continue-on-error: true
+        uses: anchore/sbom-action@v0
+        with:
+          image: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.target }}.spdx.json
+          artifact-name: sbom-${{ matrix.target }}-${{ env.VERSION }}.spdx.json
+
+      - name: Generate SBOM (SPDX) — retry after transient failure
+        # Only runs if the attempt above failed; skipped entirely when it
+        # succeeded. No continue-on-error here — if this retry also
+        # fails, the job fails for real, same as before this change. A
+        # *persistent* SBOM failure should still block the release.
+        if: steps.sbom.outcome == 'failure'
         uses: anchore/sbom-action@v0
         with:
           image: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}
