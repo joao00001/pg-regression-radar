@@ -75,9 +75,7 @@
 .md-header {
   background-color: var(--md-header-bg-color);
   backdrop-filter: blur(14px) saturate(180%);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
   box-shadow: none;
-  border-bottom: 1px solid var(--md-default-fg-color--lightest);
 }
 
 .md-tabs {
@@ -125,11 +123,11 @@
 .md-tabs__item--active .md-tabs__link::after {
   content: "";
   position: absolute;
-  left: 0.4rem;
-  right: 0.4rem;
-  bottom: 0;
-  height: 3px;
-  border-radius: 2px 2px 0 0;
+  left: 0.1rem;
+  right: 0.1rem;
+  bottom: -2px;
+  height: 1px;
+  border-radius: 2px 2px;
   background-color: var(--md-typeset-a-color);
 }
 
