@@ -87,6 +87,24 @@ type PerformanceRegressionStatus struct {
 	// +optional
 	ExternalCauseSuspected bool `json:"externalCauseSuspected,omitempty"`
 
+	// autoAbortTriggered is true if the owning PostgresWatch had
+	// spec.autoAbort.enabled set and this regression's confidence cleared
+	// spec.autoAbort.confidenceThreshold, so this manager attempted to
+	// abort the originating Argo Rollouts canary. It does not by itself
+	// mean the abort succeeded -- see autoAbortError. Always false for a
+	// regression whose deploy event didn't come from an argo-rollouts
+	// DeploySource, regardless of confidence, since there is nothing to
+	// abort. See docs/auto-abort.md.
+	// +optional
+	AutoAbortTriggered bool `json:"autoAbortTriggered,omitempty"`
+
+	// autoAbortError carries the abort attempt's error, if autoAbortTriggered
+	// is true and the attempt failed (e.g. the Rollout object no longer
+	// exists, or RBAC wasn't granted). Empty when autoAbortTriggered is
+	// false, or when the attempt succeeded.
+	// +optional
+	AutoAbortError string `json:"autoAbortError,omitempty"`
+
 	// planDiffSummary is a short, human-readable description of how this
 	// query's execution plan changed around the detected change point (see
 	// internal/planner.Diff and

@@ -99,6 +99,14 @@ type PerformanceRegression struct {
 	LatencyChangeFactor float64                     `json:"latencyChangeFactor"`
 	// ExternalCauseSuspected hints that CPU/IO also shifted, so the deploy may not be the sole cause.
 	ExternalCauseSuspected bool `json:"externalCauseSuspected,omitempty"`
+	// AutoAbortTriggered is true if the owning PostgresWatch had auto-abort
+	// enabled and this regression's confidence cleared its threshold, so an
+	// abort of the originating Argo Rollouts canary was attempted. Does not
+	// by itself mean the abort succeeded; see AutoAbortError.
+	AutoAbortTriggered bool `json:"autoAbortTriggered,omitempty"`
+	// AutoAbortError carries the abort attempt's error, if any. Empty when
+	// AutoAbortTriggered is false or the attempt succeeded.
+	AutoAbortError string `json:"autoAbortError,omitempty"`
 	// DetectedChangeAt is the timestamp of the change point the E-divisive
 	// stage actually located in the query latency series. It may differ
 	// slightly from DeployEventID's deploy timestamp (within the engine's

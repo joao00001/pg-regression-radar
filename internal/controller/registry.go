@@ -21,6 +21,7 @@
 package controller
 
 import (
+	"context"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -32,6 +33,15 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 )
+
+// RolloutAborter is the narrow interface pollLoop needs to auto-abort an
+// Argo Rollouts canary; *internal/actuation.ArgoRolloutsAborter satisfies
+// it structurally. Declared here (the consumer), not in internal/actuation,
+// so controller tests can supply a stub without importing
+// k8s.io/client-go/dynamic at all.
+type RolloutAborter interface {
+	Abort(ctx context.Context, namespace, name string) error
+}
 
 // WatchRuntime bundles the running background components that back a single
 // PostgresWatch CR: a Collector scraping pg_stat_statements, a Correlation
@@ -82,6 +92,24 @@ type WatchRuntime struct {
 	// iteration) so pollLoop can cheaply decide whether to call
 	// Collector.PlansAround for a detected regression.
 	CapturePlans bool
+
+	// AutoAbortEnabled mirrors the owning PostgresWatch's
+	// spec.autoAbort.enabled. False (the default) means pollLoop never
+	// calls Aborter, regardless of whether one is configured.
+	AutoAbortEnabled bool
+
+	// AutoAbortThreshold mirrors spec.autoAbort.confidenceThreshold
+	// (parsed, defaulted to 0.99). Only consulted when AutoAbortEnabled.
+	AutoAbortThreshold float64
+
+	// Aborter performs the actual abort call when pollLoop decides a
+	// detected regression is confident enough. Shared across every
+	// WatchRuntime (it is not Postgres-cluster-specific) — set from
+	// PostgresWatchReconciler.Aborter, which is nil unless cmd/manager was
+	// able to build a Kubernetes dynamic client, in which case
+	// AutoAbortEnabled is simply never actionable regardless of what any
+	// PostgresWatch's spec says.
+	Aborter RolloutAborter
 }
 
 // Registry tracks the live WatchRuntime for every reconciled PostgresWatch,

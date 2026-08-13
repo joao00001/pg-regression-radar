@@ -75,11 +75,14 @@ func TestPendingSet_RetriesUntilEnoughData(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("tick 2: expected exactly 1 newly-detected regression once enough data exists, got %d: %+v", len(results), results)
 	}
-	if results[0].Status != v1alpha1.StatusDetected {
-		t.Errorf("tick 2: expected Status=Detected, got %s", results[0].Status)
+	if results[0].Regression.Status != v1alpha1.StatusDetected {
+		t.Errorf("tick 2: expected Status=Detected, got %s", results[0].Regression.Status)
 	}
-	if results[0].QueryID != queryID {
-		t.Errorf("tick 2: expected query id %d, got %d", queryID, results[0].QueryID)
+	if results[0].Regression.QueryID != queryID {
+		t.Errorf("tick 2: expected query id %d, got %d", queryID, results[0].Regression.QueryID)
+	}
+	if results[0].Event.ID != "dep-1" {
+		t.Errorf("tick 2: expected the paired deploy event dep-1, got %q", results[0].Event.ID)
 	}
 
 	// --- Tick 3: same data, no new samples — must not re-report. ---

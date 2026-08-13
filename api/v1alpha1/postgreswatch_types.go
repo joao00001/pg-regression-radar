@@ -138,6 +138,40 @@ type PostgresWatchSpec struct {
 	// default because it adds a per-scrape-cycle EXPLAIN/lookup cost.
 	// +optional
 	CapturePlans bool `json:"capturePlans,omitempty"`
+
+	// autoAbort optionally closes the loop between detection and
+	// remediation: when set and enabled, a sufficiently confident detected
+	// regression automatically aborts the Argo Rollouts canary that caused
+	// it, instead of only alerting and waiting for a human to do it. See
+	// docs/auto-abort.md for the full safety model. nil (the default) means
+	// disabled -- this manager never touches any Rollout object unless a
+	// PostgresWatch explicitly opts in.
+	// +optional
+	AutoAbort *AutoAbortConfig `json:"autoAbort,omitempty"`
+}
+
+// AutoAbortConfig controls automatic Argo Rollouts abortion. It only ever
+// applies to a regression whose deploy event came from a DeploySource with
+// spec.sourceType "argo-rollouts" -- deploys from argocd/flux/generic/
+// kubernetes sources are never auto-aborted, since none of those has an
+// equivalent "abort mid-rollout" primitive to call in this version. See
+// docs/auto-abort.md.
+type AutoAbortConfig struct {
+	// enabled turns on automatic abortion for this watch. Every other field
+	// below is ignored while this is false.
+	// +kubebuilder:default=false
+	Enabled bool `json:"enabled"`
+
+	// confidenceThreshold is the minimum PerformanceRegression
+	// confidenceScore (1 - Welch's t-test p-value) required before this
+	// manager will abort a rollout automatically, on top of it already
+	// having cleared pValueThreshold to be reported as Detected at all.
+	// Deliberately conservative by default: auto-abort is meant to fire
+	// only on the clearest possible signals, not on every detection that
+	// merely clears the ordinary alerting bar.
+	// +optional
+	// +kubebuilder:default="0.99"
+	ConfidenceThreshold string `json:"confidenceThreshold,omitempty"`
 }
 
 // SecretKeySelector selects a key of a Secret in the same namespace as the

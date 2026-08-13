@@ -164,10 +164,10 @@ func TestIntegration_PendingSet_RetriesUntilRealDataArrives(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("tick #2 (post-deploy data has now arrived): expected exactly 1 newly-detected regression, got %d: %+v", len(results), results)
 	}
-	if results[0].Status != v1alpha1.StatusDetected {
-		t.Errorf("tick #2: expected Status=Detected, got %s", results[0].Status)
+	if results[0].Regression.Status != v1alpha1.StatusDetected {
+		t.Errorf("tick #2: expected Status=Detected, got %s", results[0].Regression.Status)
 	}
-	if err := notifier.Notify(ctx, results[0]); err != nil {
+	if err := notifier.Notify(ctx, results[0].Regression); err != nil {
 		t.Fatalf("notifier.Notify: %v", err)
 	}
 	mu.Lock()
