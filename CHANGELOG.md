@@ -32,6 +32,15 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.1.0 - 2026-08-13
+
+### Features
+
+- Make deploy-event retry analysis observable: the operator and manager now log when a deploy event is registered for retry and when its analysis window elapses, and expose a `pg_regression_radar_pending_deploy_events` gauge, so an operator can tell "still waiting for data" apart from a silent failure and confirm memory stays bounded over long uptimes. (#65)
+- Add a native Kubernetes watch deploy source: setting `sourceType: kubernetes` on a `DeploySource` CR watches a Deployment or StatefulSet directly and emits a deploy event once its rollout completes, so clusters with no ArgoCD, Argo Rollouts, or Flux installed can still be correlated against — no webhook required. (#66)
+- Add opt-in Argo Rollouts auto-abort: setting `autoAbort.enabled` on a `PostgresWatch` now aborts the Argo Rollouts canary behind a sufficiently confident detected regression automatically, instead of only alerting and waiting for a human to act, with its own confidence threshold and RBAC gate, and the outcome recorded on the resulting `PerformanceRegression`. (#67)
+
+
 ## v1.0.2 - 2026-08-13
 
 ### Fixes
