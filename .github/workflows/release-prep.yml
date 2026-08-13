@@ -1,0 +1,147 @@
+name: Prepare release changelog
+
+# Keeps a standing "ci: prepare release vX.Y.Z" PR up to date with
+# CHANGELOG.md built from whatever fragments currently sit in
+# changelog.d/, so the repo owner's only manual step left in the release
+# process is: review/merge that PR, then tag and push in the usual way.
+#
+# Before this workflow existed, "towncrier build --version vX.Y.Z --yes"
+# was a step the repo owner ran locally, by hand, before every single
+# release (see CONTRIBUTING.md's "How releases consume fragments" section
+# and docs/ci-cd.md) — exactly the kind of repetitive, mechanical step the
+# changelog.d/ fragment system (enforced per-PR by
+# changelog-fragment-check.yml) was supposed to make possible to automate.
+# This workflow is that automation. It does NOT remove the human step
+# entirely: a person still reviews the compiled CHANGELOG.md diff and
+# decides when to actually cut the release (merge the PR, then tag) — see
+# docs/ci-cd.md's note on why full auto-tagging was deliberately not
+# chosen.
+#
+# One-time manual prerequisite, same shape as release.yml's GHCR note:
+# Settings -> Actions -> General -> Workflow permissions must allow
+# "Read and write permissions", AND "Allow GitHub Actions to create and
+# approve pull requests" must be checked — without the latter,
+# peter-evans/create-pull-request fails to open the PR even though the
+# `permissions:` block below is otherwise sufficient.
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "changelog.d/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Only one release-prep PR is ever kept open at a time (branch "release-prep",
+# reused across cycles — see the create-pull-request step below), so
+# overlapping runs racing to push it are a real possibility if two
+# feat/fix/perf PRs merge to main within moments of each other.
+concurrency:
+  group: release-prep
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Build CHANGELOG.md and open/update the release-prep PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history + tags)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check for pending fragments
+        id: pending
+        run: |
+          # changelog.d/README.md is the only file that should ever sit in
+          # this directory between releases; anything else means at least
+          # one feat/fix/perf PR has merged since the last towncrier build.
+          count=$(git ls-files changelog.d | grep -v '^changelog\.d/README\.md$' | wc -l)
+          echo "count=$count" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Nothing to prepare
+        if: steps.pending.outputs.count == '0'
+        run: echo "No fragments in changelog.d/ besides README.md; nothing to release-prep."
+
+      - name: Compute next version
+        if: steps.pending.outputs.count != '0'
+        id: version
+        run: |
+          last_tag=$(git tag --list 'v*' --sort=-v:refname | head -1)
+          if [ -z "$last_tag" ]; then
+            echo "::error::No existing vX.Y.Z tag found to compute the next version from. This workflow bumps relative to the most recent tag; it doesn't pick a first version."
+            exit 1
+          fi
+
+          version="${last_tag#v}"
+          major="${version%%.*}"
+          rest="${version#*.}"
+          minor="${rest%%.*}"
+          patch="${rest#*.}"
+
+          # Bump policy (same convention as semantic-release / Conventional
+          # Commits): the highest-impact fragment type currently pending
+          # decides the bump. This repo's fragment vocabulary (see
+          # towncrier.toml) is only feat/fix/perf -- no "breaking" type
+          # exists yet, so there is no major-bump case here.
+          if git ls-files 'changelog.d/*.feat.md' | grep -q .; then
+            minor=$((minor + 1))
+            patch=0
+          else
+            patch=$((patch + 1))
+          fi
+
+          next="v${major}.${minor}.${patch}"
+          echo "Last tag: $last_tag -> next: $next"
+          echo "next=$next" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        if: steps.pending.outputs.count != '0'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install towncrier
+        if: steps.pending.outputs.count != '0'
+        run: pip install towncrier
+
+      - name: Build CHANGELOG.md
+        if: steps.pending.outputs.count != '0'
+        run: towncrier build --version "${{ steps.version.outputs.next }}" --yes
+
+      - name: Open or update the release-prep PR
+        if: steps.pending.outputs.count != '0'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          # signoff + explicit committer/author satisfy dco.yml's check
+          # (it only requires a "Signed-off-by: Name <email>" trailer on
+          # every commit in the PR, not that the signer match any
+          # particular identity).
+          committer: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
+          author: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
+          signoff: true
+          commit-message: "ci: prepare release ${{ steps.version.outputs.next }}"
+          branch: release-prep
+          title: "ci: prepare release ${{ steps.version.outputs.next }}"
+          labels: release-prep
+          body: |
+            Automatically built from every fragment currently in `changelog.d/`,
+            via `towncrier build --version ${{ steps.version.outputs.next }} --yes`.
+
+            Review the `CHANGELOG.md` diff below same as any other PR. Merging
+            this PR is the release-readiness signal -- once it's on `main`, tag
+            and push as usual to trigger `release.yml`:
+
+            ```
+            git tag ${{ steps.version.outputs.next }}
+            git push origin ${{ steps.version.outputs.next }}
+            ```
+
+            If another feat/fix/perf PR merges before this one, this PR (and
+            its computed version) will update automatically rather than a
+            second one being opened.
+
+            See [CONTRIBUTING.md: Release notes / changeset fragments](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md#release-notes--changeset-fragments)
+            and [docs/ci-cd.md](https://github.com/joao00001/pg-regression-radar/blob/main/docs/ci-cd.md#release-prepyml--on-push-to-main-touching-changelogd).
