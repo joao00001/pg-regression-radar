@@ -146,6 +146,14 @@ helm install pg-regression-radar oci://ghcr.io/joao00001/charts/pg-regression-ra
 
 `--version` here is the chart's SemVer version (the release tag *without* its leading `v` — release `v0.3.0` publishes chart version `0.3.0`; see [CI/CD](ci-cd.md#releaseyml-on-pushing-a-v-tag) for why the two differ by that one character). No `helm repo add` is needed for an OCI registry — `helm install`/`helm pull` reference `oci://` URLs directly. The chart's `image.tag` values default to the chart's own `appVersion` (the release tag *with* the `v`, e.g. `v0.3.0`), which already matches the images published in the same release, so you don't need to set `image.tag`/`manager.image.tag` explicitly unless you want to run a different image tag than the chart's own release.
 
+**Verify the chart's signature before trusting it**, the same way as the container images above — the published Helm OCI artifact is keyless-signed with cosign too, using the chart's SemVer version as the tag (same one `--version` above installs):
+
+```bash
+cosign verify ghcr.io/joao00001/charts/pg-regression-radar:0.3.0 \
+  --certificate-identity-regexp "^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
 **From a local clone**, e.g. to test unreleased chart changes:
 
 ```bash
