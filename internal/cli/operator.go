@@ -346,7 +346,23 @@ func RunOperator(args []string) {
 	// visible several minutes into the post-deploy window is still caught —
 	// see internal/correlation.PendingSet's doc comment for how this gap was
 	// actually found (running this binary for real, not via the test suite).
-	pending := correlation.NewPendingSet(engine)
+	pending := correlation.NewPendingSet(engine, logger)
+	// Exposes PendingSet.Len() as a gauge so a long-running operator's memory
+	// use here is directly observable rather than just "trusted by design":
+	// PendingSet retires every deploy event once its analysis window
+	// elapses (see PendingSet's doc comment), so this should track deploy
+	// frequency × --window-minutes, not grow without bound over days/weeks
+	// of uptime — if it ever does, that's a real bug this metric would
+	// actually surface.
+	reg.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Namespace: "pg_regression_radar",
+		Name:      "pending_deploy_events",
+		Help:      "Deploy events still under active retry, waiting for their analysis window to close.",
+		ConstLabels: prometheus.Labels{
+			"cluster":   *clusterName,
+			"namespace": *namespace,
+		},
+	}, func() float64 { return float64(pending.Len()) }))
 	go func() {
 		cursor := initialCursor
 		ticker := time.NewTicker(5 * time.Second)

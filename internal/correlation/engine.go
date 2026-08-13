@@ -282,6 +282,21 @@ func (e *Engine) evaluateQuery(
 	// Require minimum sample counts in both windows to avoid false positives from sparse data.
 	if int64(len(preSamples)) < e.cfg.MinExecutions || int64(len(postSamples)) < e.cfg.MinExecutions {
 		base.Status = v1alpha1.StatusInsufficientData
+		// This is the routine, expected case for a deploy event analysed
+		// soon after it arrives — a real deploy webhook fires the moment
+		// the deploy completes, well before --scrape-interval has had time
+		// to accumulate --min-executions worth of post-deploy samples. On
+		// its own, this used to be indistinguishable in the logs from "the
+		// query has no regression" or "analysis never ran at all" — Debug
+		// rather than Info because a caller retrying via PendingSet logs
+		// its own Info-level lifecycle events (registered / window
+		// elapsed), so this line's job is purely to answer "why, for this
+		// one query" when someone's already looking.
+		e.logger.Debug("correlation: insufficient data, not yet ready to evaluate",
+			"query_id", queryID,
+			"pre_samples", len(preSamples),
+			"post_samples", len(postSamples),
+			"min_executions", e.cfg.MinExecutions)
 		return base
 	}
 

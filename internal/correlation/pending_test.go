@@ -54,7 +54,7 @@ func TestPendingSet_RetriesUntilEnoughData(t *testing.T) {
 		LatencyChangeThreshold: 0.20,
 	}, src, nil)
 
-	pending := correlation.NewPendingSet(engine)
+	pending := correlation.NewPendingSet(engine, nil)
 	pending.Add(v1alpha1.DeployEvent{ID: "dep-1", Timestamp: deployAt})
 
 	// --- Tick 1: only 2 post-deploy samples exist so far (min is 5). ---
@@ -119,7 +119,7 @@ func TestPendingSet_RetiresAfterWindowElapses(t *testing.T) {
 		LatencyChangeThreshold: 0.20,
 	}, src, nil)
 
-	pending := correlation.NewPendingSet(engine)
+	pending := correlation.NewPendingSet(engine, nil)
 	pending.Add(v1alpha1.DeployEvent{ID: "dep-2", Timestamp: deployAt})
 
 	results := pending.Tick()

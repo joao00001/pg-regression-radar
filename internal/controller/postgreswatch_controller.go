@@ -409,7 +409,19 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 
-	pending := correlation.NewPendingSet(rt.Engine)
+	pending := correlation.NewPendingSet(rt.Engine, r.Logger)
+	// Same rationale as internal/cli/operator.go's identical metric: makes
+	// PendingSet's by-design bound (every event retires once its analysis
+	// window elapses) directly observable instead of just asserted.
+	rt.PromRegistry.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Namespace: "pg_regression_radar",
+		Name:      "pending_deploy_events",
+		Help:      "Deploy events still under active retry, waiting for their analysis window to close.",
+		ConstLabels: prometheus.Labels{
+			"cluster":   rt.ClusterName,
+			"namespace": key.Namespace,
+		},
+	}, func() float64 { return float64(pending.Len()) }))
 
 	for {
 		select {

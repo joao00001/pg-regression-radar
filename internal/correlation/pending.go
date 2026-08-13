@@ -15,6 +15,7 @@
 package correlation
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
@@ -46,6 +47,7 @@ import (
 // bookkeeping.
 type PendingSet struct {
 	engine  *Engine
+	logger  *slog.Logger
 	pending []*pendingEvent
 }
 
@@ -57,19 +59,32 @@ type pendingEvent struct {
 
 // NewPendingSet creates a PendingSet backed by engine. engine's own
 // AnalysisWindow determines how long a deploy event stays under active
-// retry.
-func NewPendingSet(engine *Engine) *PendingSet {
-	return &PendingSet{engine: engine}
+// retry. logger receives this PendingSet's own lifecycle events —
+// registration and retirement of a deploy event — at Info level, so an
+// operator watching logs can always answer "what ultimately happened with
+// deploy X" without having to infer it from the absence of a
+// "regression detected" line; a nil logger falls back to slog.Default(),
+// matching Engine's own New.
+func NewPendingSet(engine *Engine, logger *slog.Logger) *PendingSet {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	return &PendingSet{engine: engine, logger: logger}
 }
 
 // Add registers a newly-arrived deploy event for (repeated) analysis. It is
 // safe to call this for every event DrainSince returns, in arrival order.
 func (p *PendingSet) Add(ev v1alpha1.DeployEvent) {
+	deadline := ev.Timestamp.Add(p.engine.AnalysisWindow())
 	p.pending = append(p.pending, &pendingEvent{
 		ev:       ev,
-		deadline: ev.Timestamp.Add(p.engine.AnalysisWindow()),
+		deadline: deadline,
 		notified: make(map[int64]struct{}),
 	})
+	p.logger.Info("correlation: deploy event registered for retry",
+		"event_id", ev.ID,
+		"deploy_at", ev.Timestamp,
+		"retry_until", deadline)
 }
 
 // Tick re-analyses every still-pending event and returns every regression
@@ -98,12 +113,21 @@ func (p *PendingSet) Tick() []v1alpha1.PerformanceRegression {
 
 		if now.Before(pe.deadline) {
 			live = append(live, pe)
+			continue
 		}
-		// Past its deadline: pe is dropped from the next Tick's pending
-		// list. Any query that reached Detected already made it into
-		// `detected` above (on this call or an earlier one); anything still
-		// NoRegression/InsufficientData at the deadline stays that way
-		// forever, since no more post-deploy data will ever arrive for it.
+		// Past its deadline: pe is retired here and dropped from the next
+		// Tick's pending list. Any query that reached Detected already made
+		// it into `detected` above (on this call or an earlier one);
+		// anything still NoRegression/InsufficientData at the deadline
+		// stays that way forever, since no more post-deploy data will ever
+		// arrive for it. Logging this explicitly closes the same
+		// observability gap Add's registration log opens: without it, a
+		// deploy event that never regressed would simply stop appearing in
+		// the logs with no line marking that it was, in fact, fully
+		// evaluated rather than lost to a crash or a silent bug.
+		p.logger.Info("correlation: deploy event's analysis window elapsed",
+			"event_id", pe.ev.ID,
+			"queries_detected", len(pe.notified))
 	}
 
 	p.pending = live
