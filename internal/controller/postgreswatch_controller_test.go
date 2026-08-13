@@ -266,12 +266,15 @@ func TestDSNSecretClient_DefaultsToHubClient(t *testing.T) {
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
 	r, _ := newTestReconciler(t, watch)
 
-	cl, err := r.dsnSecretClient(context.Background(), watch)
+	cl, kubeconfig, err := r.dsnSecretClient(context.Background(), watch)
 	if err != nil {
 		t.Fatalf("dsnSecretClient: %v", err)
 	}
 	if cl != r.Client {
 		t.Fatal("expected the hub client when remoteClusterSecretRef is unset")
+	}
+	if kubeconfig != nil {
+		t.Fatalf("expected a nil kubeconfig for the hub-client path, got %q", kubeconfig)
 	}
 }
 
@@ -288,20 +291,26 @@ func TestDSNSecretClient_RemoteValidKubeconfig_ReturnsDistinctCachedClient(t *te
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", validTestKubeconfig)
 	r, _ := newTestReconciler(t, watch, secret)
 
-	cl1, err := r.dsnSecretClient(context.Background(), watch)
+	cl1, kubeconfig1, err := r.dsnSecretClient(context.Background(), watch)
 	if err != nil {
 		t.Fatalf("dsnSecretClient (1st call): %v", err)
 	}
 	if cl1 == r.Client {
 		t.Fatal("expected a remote client distinct from the hub client")
 	}
+	if string(kubeconfig1) != validTestKubeconfig {
+		t.Fatalf("expected the raw kubeconfig bytes to be returned, got %q", kubeconfig1)
+	}
 
-	cl2, err := r.dsnSecretClient(context.Background(), watch)
+	cl2, kubeconfig2, err := r.dsnSecretClient(context.Background(), watch)
 	if err != nil {
 		t.Fatalf("dsnSecretClient (2nd call): %v", err)
 	}
 	if cl1 != cl2 {
 		t.Fatal("expected the cached remote client to be reused across calls")
+	}
+	if string(kubeconfig2) != validTestKubeconfig {
+		t.Fatalf("expected the raw kubeconfig bytes to be returned, got %q", kubeconfig2)
 	}
 }
 
@@ -315,7 +324,7 @@ func TestDSNSecretClient_RemoteMissingSecret_ReturnsError(t *testing.T) {
 	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "does-not-exist", Key: "kubeconfig"}
 	r, _ := newTestReconciler(t, watch)
 
-	if _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
+	if _, _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
 		t.Fatal("expected an error when the kubeconfig secret does not exist")
 	}
 }
@@ -387,7 +396,7 @@ func TestDSNSecretClient_RemoteMissingKey_ReturnsError(t *testing.T) {
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "wrong-key", validTestKubeconfig)
 	r, _ := newTestReconciler(t, watch, secret)
 
-	if _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
+	if _, _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
 		t.Fatal("expected an error when the kubeconfig secret lacks the named key")
 	}
 }
@@ -404,7 +413,7 @@ func TestDSNSecretClient_RemoteInvalidKubeconfig_ReturnsError(t *testing.T) {
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", "this is not a valid kubeconfig")
 	r, _ := newTestReconciler(t, watch, secret)
 
-	if _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
+	if _, _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
 		t.Fatal("expected an error for malformed kubeconfig content")
 	}
 }
@@ -560,5 +569,42 @@ func TestApplyRegressionStatus_OmitsPlanDiffSummaryWhenEmpty(t *testing.T) {
 
 	if obj.Status.PlanDiffSummary != "" {
 		t.Fatalf("expected empty status.planDiffSummary, got %q", obj.Status.PlanDiffSummary)
+	}
+}
+
+// TestResolveDSN_RemoteFailure_EvictsCacheEntry verifies that a failed DSN
+// Secret fetch against an unreachable remote cluster evicts that
+// kubeconfig's entry from the remote client cache (see
+// remoteClientCache.evict), so the next dsnSecretClient call for the same
+// kubeconfig is forced to build a fresh client.Client rather than reusing
+// the one that just failed.
+func TestResolveDSN_RemoteFailure_EvictsCacheEntry(t *testing.T) {
+	watch := samplePostgresWatch("watch-j", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+
+	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", validTestKubeconfig)
+	r, _ := newTestReconciler(t, watch, secret)
+
+	// Prime the cache: this builds and caches a client.Client for
+	// validTestKubeconfig before any failed request has happened.
+	before, _, err := r.dsnSecretClient(context.Background(), watch)
+	if err != nil {
+		t.Fatalf("dsnSecretClient (priming): %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if _, err := r.resolveDSN(ctx, watch); err == nil {
+		t.Fatal("expected resolveDSN to fail against an unreachable remote cluster")
+	}
+
+	after, _, err := r.dsnSecretClient(context.Background(), watch)
+	if err != nil {
+		t.Fatalf("dsnSecretClient (after failure): %v", err)
+	}
+	if before == after {
+		t.Fatal("expected the failed request to evict the cache entry, forcing a fresh client on the next call")
 	}
 }

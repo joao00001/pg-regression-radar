@@ -232,7 +232,7 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 		return "", fmt.Errorf("postgreswatch %s/%s: neither spec.dsn nor spec.dsnSecretRef is set", watch.Namespace, watch.Name)
 	}
 
-	secretClient, err := r.dsnSecretClient(ctx, watch)
+	secretClient, remoteKubeconfig, err := r.dsnSecretClient(ctx, watch)
 	if err != nil {
 		return "", err
 	}
@@ -240,6 +240,19 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 	var secret corev1.Secret
 	key := types.NamespacedName{Namespace: dsnSecretNamespace(watch), Name: watch.Spec.DSNSecretRef.Name}
 	if err := secretClient.Get(ctx, key, &secret); err != nil {
+		if remoteKubeconfig != nil {
+			// The cached remote client we just used failed a real request
+			// against the spoke cluster — most plausibly an expired or
+			// revoked credential embedded in the kubeconfig, though a
+			// transient network failure looks identical from here. Evict
+			// it immediately rather than letting this watch's next
+			// reconcile (or any sibling PostgresWatch pointed at the same
+			// remote cluster) keep reusing a client already known to be
+			// broken until the next scheduled TTL sweep — see
+			// remoteClientCache.evict for exactly what this does and does
+			// not fix.
+			r.getRemoteClients().evict(remoteKubeconfig)
+		}
 		return "", fmt.Errorf("fetch dsn secret %s: %w", key, err)
 	}
 	val, ok := secret.Data[watch.Spec.DSNSecretRef.Key]
@@ -266,7 +279,10 @@ func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch) string {
 // dsnSecretClient returns the client.Client to use when reading
 // watch.Spec.DSNSecretRef: the reconciler's own (hub) client by default, or
 // a client built from a remote cluster's kubeconfig when
-// watch.Spec.RemoteClusterSecretRef is set.
+// watch.Spec.RemoteClusterSecretRef is set — in which case the raw
+// kubeconfig bytes are also returned (nil in the hub-client case) so
+// resolveDSN can evict this exact cache entry if the client goes on to fail
+// a real request.
 //
 // The kubeconfig Secret itself is always read via the hub client — it must
 // live in the hub cluster, in the watch's namespace, precisely so the
@@ -277,26 +293,26 @@ func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch) string {
 // convention CloudNativePG itself uses for generated-credential Secrets),
 // or spec.remoteNamespace when the fleet's hub/spoke naming doesn't line up
 // 1:1 (see docs/multi-cluster.md).
-func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, error) {
+func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, []byte, error) {
 	if watch.Spec.RemoteClusterSecretRef == nil {
-		return r.Client, nil
+		return r.Client, nil, nil
 	}
 
 	var kubeconfigSecret corev1.Secret
 	key := types.NamespacedName{Namespace: watch.Namespace, Name: watch.Spec.RemoteClusterSecretRef.Name}
 	if err := r.Get(ctx, key, &kubeconfigSecret); err != nil {
-		return nil, fmt.Errorf("fetch remote cluster kubeconfig secret %s: %w", key, err)
+		return nil, nil, fmt.Errorf("fetch remote cluster kubeconfig secret %s: %w", key, err)
 	}
 	kubeconfig, ok := kubeconfigSecret.Data[watch.Spec.RemoteClusterSecretRef.Key]
 	if !ok {
-		return nil, fmt.Errorf("secret %s has no key %q", key, watch.Spec.RemoteClusterSecretRef.Key)
+		return nil, nil, fmt.Errorf("secret %s has no key %q", key, watch.Spec.RemoteClusterSecretRef.Key)
 	}
 
 	remoteClient, err := r.getRemoteClients().get(kubeconfig)
 	if err != nil {
-		return nil, fmt.Errorf("build client for remote cluster from secret %s: %w", key, err)
+		return nil, nil, fmt.Errorf("build client for remote cluster from secret %s: %w", key, err)
 	}
-	return remoteClient, nil
+	return remoteClient, kubeconfig, nil
 }
 
 // startWatch builds a fresh WatchRuntime and starts its background
