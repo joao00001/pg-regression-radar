@@ -101,7 +101,7 @@ Weekly update checks for `gomod` and `github-actions` ecosystems, with `chore(de
 
 ## Branch protection
 
-None of the above has real effect unless `main`'s ruleset/branch protection actually requires each check by name — see [Branch Protection](branch-protection.md) for the exact check names and the reasoning behind what's (and isn't) required for a solo-maintainer repo.
+None of the above has real effect unless `main`'s ruleset/branch protection actually requires each check by name — see [Branch Protection](branch-protection.md) for the exact check names and which settings are worth enabling alongside them.
 
 ## See also
 
