@@ -61,6 +61,36 @@ spec:
               PostgresWatchReconciler, which translates it into a
               internal/collector.Config and internal/correlation.Config pair.
             properties:
+              autoAbort:
+                description: |-
+                  autoAbort optionally closes the loop between detection and
+                  remediation: when set and enabled, a sufficiently confident detected
+                  regression automatically aborts the Argo Rollouts canary that caused
+                  it, instead of only alerting and waiting for a human to do it. See
+                  docs/auto-abort.md for the full safety model. nil (the default) means
+                  disabled -- this manager never touches any Rollout object unless a
+                  PostgresWatch explicitly opts in.
+                properties:
+                  confidenceThreshold:
+                    default: "0.99"
+                    description: |-
+                      confidenceThreshold is the minimum PerformanceRegression
+                      confidenceScore (1 - Welch's t-test p-value) required before this
+                      manager will abort a rollout automatically, on top of it already
+                      having cleared pValueThreshold to be reported as Detected at all.
+                      Deliberately conservative by default: auto-abort is meant to fire
+                      only on the clearest possible signals, not on every detection that
+                      merely clears the ordinary alerting bar.
+                    type: string
+                  enabled:
+                    default: false
+                    description: |-
+                      enabled turns on automatic abortion for this watch. Every other field
+                      below is ignored while this is false.
+                    type: boolean
+                required:
+                - enabled
+                type: object
               capturePlans:
                 description: |-
                   capturePlans enables plan-diff correlation for this watch: around a

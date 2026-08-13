@@ -57,6 +57,20 @@ type pendingEvent struct {
 	notified map[int64]struct{}
 }
 
+// TickResult pairs a newly-detected regression with the deploy event that
+// produced it. Tick used to return just the []v1alpha1.PerformanceRegression
+// slice, but callers that want to act on *which deploy* regressed — not
+// just which query — need more than PerformanceRegression carries: it has
+// no App/Namespace/Source field, only a DeployEventID string. The
+// motivating caller is internal/controller.PostgresWatchReconciler's
+// pollLoop, which needs Event.Source (the originating DeploySource's name)
+// and Event.App/Event.Namespace to decide whether, and what, to
+// auto-abort — see internal/actuation.
+type TickResult struct {
+	Event      v1alpha1.DeployEvent
+	Regression v1alpha1.PerformanceRegression
+}
+
 // NewPendingSet creates a PendingSet backed by engine. engine's own
 // AnalysisWindow determines how long a deploy event stays under active
 // retry. logger receives this PendingSet's own lifecycle events —
@@ -88,15 +102,17 @@ func (p *PendingSet) Add(ev v1alpha1.DeployEvent) {
 }
 
 // Tick re-analyses every still-pending event and returns every regression
-// that has newly reached StatusDetected since the last Tick — the set a
-// caller should notify/persist right now. Events whose post-deploy window
-// has fully elapsed as of this call are retired afterward (win or lose):
+// that has newly reached StatusDetected since the last Tick, paired with
+// its originating deploy event (see TickResult) — the set a caller should
+// notify/persist (and, if configured, consider auto-aborting) right now.
+// Events whose post-deploy window has fully elapsed as of this call are
+// retired afterward (win or lose):
 // past that point Analyse would see the exact same data on every future
 // call, so continuing to retry would be pure waste, not a missed chance at
 // a different outcome.
-func (p *PendingSet) Tick() []v1alpha1.PerformanceRegression {
+func (p *PendingSet) Tick() []TickResult {
 	now := time.Now().UTC()
-	var detected []v1alpha1.PerformanceRegression
+	var detected []TickResult
 	live := p.pending[:0]
 
 	for _, pe := range p.pending {
@@ -108,7 +124,7 @@ func (p *PendingSet) Tick() []v1alpha1.PerformanceRegression {
 				continue
 			}
 			pe.notified[r.QueryID] = struct{}{}
-			detected = append(detected, r)
+			detected = append(detected, TickResult{Event: pe.ev, Regression: r})
 		}
 
 		if now.Before(pe.deadline) {

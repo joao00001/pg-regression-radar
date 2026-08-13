@@ -132,6 +132,17 @@ manager:
   # Deployment).
   createDefaultWatch: true
 
+  # Auto-abort (see docs/auto-abort.md): automatically aborting an Argo
+  # Rollouts canary on a high-confidence detected regression, instead of
+  # only alerting. Off by default at two independent levels: the RBAC to
+  # even reach Rollout objects (rbacEnabled, below) and the behaviour
+  # itself (PostgresWatch.spec.autoAbort.enabled, per watch, unset by this
+  # chart). Set rbacEnabled: true here only if at least one PostgresWatch
+  # you manage will actually set spec.autoAbort.enabled — there is no
+  # reason to grant this RBAC otherwise.
+  autoAbort:
+    rbacEnabled: false
+
   resources:
     limits:
       cpu: 200m

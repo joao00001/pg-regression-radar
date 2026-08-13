@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -34,6 +35,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	"github.com/joao00001/pg-regression-radar/internal/actuation"
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/controller"
 )
@@ -146,11 +148,28 @@ func RunManager(args []string) {
 	registry := controller.NewRegistry()
 	mux := controller.NewDynamicMux()
 
+	// Backs auto-abort (PostgresWatch.spec.autoAbort — see
+	// docs/auto-abort.md): a plain dynamic client is enough since this
+	// manager only ever needs to set one status field on a Rollout, not
+	// vendor Argo Rollouts' own Go types. A failure here is not fatal to
+	// startup — it only means auto-abort silently has nothing to call
+	// (PostgresWatchReconciler.Aborter stays nil, and startWatch already
+	// treats a nil Aborter as "auto-abort unavailable" rather than
+	// panicking) — everything else this manager does (detection, alerting,
+	// the webhook/native-watch ingestion paths) is unaffected.
+	var aborter controller.RolloutAborter
+	if dynClient, err := dynamic.NewForConfig(cfg); err != nil {
+		managerSetupLog.Error(err, "unable to build dynamic client; PostgresWatch.spec.autoAbort will have no effect")
+	} else {
+		aborter = actuation.NewArgoRolloutsAborter(dynClient)
+	}
+
 	if err := (&controller.PostgresWatchReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		Registry: registry,
 		Logger:   logger,
+		Aborter:  aborter,
 	}).SetupWithManager(mgr); err != nil {
 		managerSetupLog.Error(err, "unable to create controller", "controller", "PostgresWatch")
 		os.Exit(1)

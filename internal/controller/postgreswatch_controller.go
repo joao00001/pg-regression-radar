@@ -72,6 +72,12 @@ const pollInterval = 5 * time.Second
 // embedded in the kubeconfig a remoteClusterSecretRef Secret points at,
 // which is operator-managed and out of this manager's control by design.
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+//
+// Only reached when spec.autoAbort.enabled is set on at least one
+// PostgresWatch and cmd/manager was able to build a Kubernetes dynamic
+// client (see maybeAutoAbort and docs/auto-abort.md). Grants no access to
+// anything but the one status field this project ever writes.
+// +kubebuilder:rbac:groups=argoproj.io,resources=rollouts;rollouts/status,verbs=get;patch
 
 // PostgresWatchReconciler reconciles a PostgresWatch object: it ensures a
 // background WatchRuntime (Collector + Correlation Engine + Notifier) is
@@ -110,6 +116,16 @@ type PostgresWatchReconciler struct {
 	// having to know about it.
 	remoteClientsOnce sync.Once
 	remoteClients     *remoteClientCache
+
+	// Aborter performs Argo Rollouts abort calls for any PostgresWatch with
+	// spec.autoAbort.enabled set — see docs/auto-abort.md. nil (the zero
+	// value, as used throughout postgreswatch_controller_test.go) is a
+	// perfectly valid, safe default: startWatch simply never sets
+	// AutoAbortEnabled on the resulting WatchRuntime when Aborter is nil,
+	// regardless of what any PostgresWatch's spec asks for, so a manager
+	// that couldn't build a Kubernetes dynamic client degrades to
+	// alert-only rather than panicking on a nil Aborter.
+	Aborter RolloutAborter
 }
 
 // getRemoteClients returns the reconciler's remote client cache,
@@ -360,18 +376,31 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		ClusterName: watch.Spec.ClusterName,
 	}, r.Logger)
 
+	// AutoAbortEnabled only ever ends up true when both the spec asks for
+	// it AND this reconciler actually has an Aborter to call — see the
+	// Aborter field's doc comment for why a nil Aborter must degrade to
+	// alert-only rather than a nil-pointer panic in pollLoop.
+	autoAbortEnabled := r.Aborter != nil && watch.Spec.AutoAbort != nil && watch.Spec.AutoAbort.Enabled
+	autoAbortThreshold := 0.99
+	if watch.Spec.AutoAbort != nil {
+		autoAbortThreshold = parseFloatOr(watch.Spec.AutoAbort.ConfidenceThreshold, 0.99)
+	}
+
 	workerCtx, cancel := context.WithCancel(context.Background())
 
 	rt := &WatchRuntime{
-		Store:        &ingester.Store{},
-		Collector:    col,
-		Engine:       engine,
-		Notifier:     notifier,
-		PromRegistry: promReg,
-		SpecHash:     specHash,
-		ClusterName:  watch.Spec.ClusterName,
-		CapturePlans: watch.Spec.CapturePlans,
-		Cancel:       cancel,
+		Store:              &ingester.Store{},
+		Collector:          col,
+		Engine:             engine,
+		Notifier:           notifier,
+		PromRegistry:       promReg,
+		SpecHash:           specHash,
+		ClusterName:        watch.Spec.ClusterName,
+		CapturePlans:       watch.Spec.CapturePlans,
+		AutoAbortEnabled:   autoAbortEnabled,
+		AutoAbortThreshold: autoAbortThreshold,
+		Aborter:            r.Aborter,
+		Cancel:             cancel,
 	}
 
 	go func() {
@@ -434,7 +463,9 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 				pending.Add(ev)
 			}
 
-			for _, res := range pending.Tick() {
+			for _, tr := range pending.Tick() {
+				res := tr.Regression
+
 				// Attach a plan-diff summary before notifying/persisting,
 				// mirroring internal/cli/operator.go's poll loop, so the
 				// CRD-driven (cmd/manager) and standalone CLI paths give
@@ -446,6 +477,10 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 				if rt.CapturePlans {
 					before, after := rt.Collector.PlansAround(res.QueryID, res.DetectedChangeAt)
 					res.PlanDiffSummary = planner.Diff(before, after)
+				}
+
+				if rt.AutoAbortEnabled && res.ConfidenceScore >= rt.AutoAbortThreshold {
+					r.maybeAutoAbort(ctx, key, rt, tr.Event, &res)
 				}
 
 				notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -462,6 +497,46 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 			}
 		}
 	}
+}
+
+// maybeAutoAbort attempts to abort the Argo Rollouts canary behind ev, and
+// records the outcome on res (AutoAbortTriggered/AutoAbortError) so it is
+// visible on the resulting PerformanceRegression CR and included in the
+// Slack alert that follows it. Called only after the caller has already
+// checked rt.AutoAbortEnabled and the confidence threshold; this method
+// itself checks the one thing that can't be decided from res alone: whether
+// ev actually came from an argo-rollouts DeploySource. Deploys from
+// argocd/flux/generic/kubernetes sources are left untouched even if
+// AutoAbortEnabled is set, since none of those has an equivalent
+// "abort mid-rollout" primitive to call — see docs/auto-abort.md.
+func (r *PostgresWatchReconciler) maybeAutoAbort(ctx context.Context, watchKey types.NamespacedName, rt *WatchRuntime, ev dto.DeployEvent, res *dto.PerformanceRegression) {
+	lookupCtx, lookupCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer lookupCancel()
+
+	var src radarv1alpha1.DeploySource
+	srcKey := types.NamespacedName{Namespace: watchKey.Namespace, Name: ev.Source}
+	if err := r.Get(lookupCtx, srcKey, &src); err != nil {
+		// Not an error worth surfacing: most deploy events (argocd, flux,
+		// generic, kubernetes) legitimately have no abort action to take.
+		// Only log at Debug-equivalent (Info with a clear "skipped" reason)
+		// so this isn't mistaken for a failed abort attempt.
+		r.Logger.Info("postgreswatch: auto-abort skipped, deploysource not found", "watch", watchKey.String(), "source", ev.Source, "err", err)
+		return
+	}
+	if src.Spec.SourceType != "argo-rollouts" {
+		return
+	}
+
+	abortCtx, abortCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer abortCancel()
+
+	res.AutoAbortTriggered = true
+	if err := rt.Aborter.Abort(abortCtx, ev.Namespace, ev.App); err != nil {
+		res.AutoAbortError = err.Error()
+		r.Logger.Error("postgreswatch: auto-abort failed", "watch", watchKey.String(), "rollout", ev.Namespace+"/"+ev.App, "confidence", res.ConfidenceScore, "err", err)
+		return
+	}
+	r.Logger.Info("postgreswatch: auto-abort triggered", "watch", watchKey.String(), "rollout", ev.Namespace+"/"+ev.App, "confidence", res.ConfidenceScore, "query", res.QueryID)
 }
 
 // recordRegression creates (or updates, on retry) a PerformanceRegression
@@ -525,6 +600,8 @@ func applyRegressionStatus(obj *radarv1alpha1.PerformanceRegression, res dto.Per
 		LatencyChangeFactor:    strconv.FormatFloat(res.LatencyChangeFactor, 'f', 4, 64),
 		ExternalCauseSuspected: res.ExternalCauseSuspected,
 		PlanDiffSummary:        res.PlanDiffSummary,
+		AutoAbortTriggered:     res.AutoAbortTriggered,
+		AutoAbortError:         res.AutoAbortError,
 		DetectedAt:             &now,
 		Conditions:             obj.Status.Conditions,
 	}

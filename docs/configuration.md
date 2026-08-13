@@ -99,6 +99,8 @@ All four binaries share two flags:
 | `criticalQueryIDs` | `[]` | Queries that bypass `minExecutions` |
 | `slackWebhookUrl` | `""` | Slack incoming-webhook URL for this watch |
 | `capturePlans` | `false` | Enable plan-diff correlation — see [Detection Algorithm: Plan-diff correlation](detection-algorithm.md#plan-diff-correlation-optional). Populates the resulting `PerformanceRegression`'s `status.planDiffSummary` |
+| `autoAbort.enabled` | `false` | Automatically abort the Argo Rollouts canary behind a high-confidence detected regression instead of only alerting — see [Auto-Abort](auto-abort.md) |
+| `autoAbort.confidenceThreshold` | `"0.99"` | Minimum confidence required before auto-aborting; only meaningful alongside `autoAbort.enabled` — see [Auto-Abort: Confidence threshold](auto-abort.md#confidence-threshold) |
 
 ## `DeploySource` spec fields
 
@@ -115,5 +117,6 @@ All four binaries share two flags:
 - [Detection Algorithm](detection-algorithm.md) — what `--window-minutes`, `--min-executions`, `--latency-threshold`, and `--changepoint-tolerance` actually control.
 - [Persistence](persistence.md) — the `--state-*` flags in depth.
 - [Deploy Sources & Webhooks](webhooks.md) — `--source-type` and `sourceType` per webhook source.
+- [Auto-Abort (Argo Rollouts)](auto-abort.md) — `autoAbort.enabled`/`autoAbort.confidenceThreshold` in depth, including the RBAC gate.
 - [Multi-Cluster (Fleet) Mode](multi-cluster.md) — `remoteClusterSecretRef` in depth, including the hub-spoke RBAC split.
 - [API Versioning & Compatibility](api-versioning.md) — what `v1alpha1` guarantees (and doesn't) for the CRDs documented above.

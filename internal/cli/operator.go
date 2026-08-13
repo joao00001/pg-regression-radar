@@ -385,7 +385,8 @@ func RunOperator(args []string) {
 					pending.Add(ev)
 				}
 
-				for _, r := range pending.Tick() {
+				for _, tr := range pending.Tick() {
+					r := tr.Regression
 					// Attach a plan-diff hint, if plan capture is enabled:
 					// PlansAround returns nil/nil when CapturePlans is off,
 					// the server is below PostgreSQL 16, or capture hasn't

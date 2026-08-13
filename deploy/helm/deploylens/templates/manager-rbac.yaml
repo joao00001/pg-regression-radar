@@ -28,6 +28,18 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets"]
     verbs: ["get", "list", "watch"]
+  {{- if .Values.manager.autoAbort.rbacEnabled }}
+  # Only granted when manager.autoAbort.rbacEnabled is set. Backs
+  # spec.autoAbort on PostgresWatch (see docs/auto-abort.md): grants no
+  # access to anything but the one status field this project ever writes;
+  # no read of spec, no create/delete of Rollouts. Off by default so a
+  # cluster that doesn't use (or doesn't even have) Argo Rollouts, and
+  # never sets spec.autoAbort.enabled on any PostgresWatch, doesn't get
+  # this RBAC granted for nothing.
+  - apiGroups: ["argoproj.io"]
+    resources: ["rollouts", "rollouts/status"]
+    verbs: ["get", "patch"]
+  {{- end }}
   # Read-only, hub cluster only: resolves PostgresWatch.spec.dsnSecretRef
   # directly, and/or the spec.remoteClusterSecretRef kubeconfig Secret used
   # to resolve dsnSecretRef against a remote ("spoke") cluster instead —

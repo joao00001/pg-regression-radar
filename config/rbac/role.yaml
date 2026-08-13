@@ -63,3 +63,15 @@ rules:
   - patch
   - update
   - watch
+# Only reached when spec.autoAbort.enabled is set on at least one
+# PostgresWatch (see docs/auto-abort.md). Grants no access to anything but
+# the one status field this project ever writes; no read of spec, no
+# create/delete of Rollouts.
+- apiGroups:
+  - argoproj.io
+  resources:
+  - rollouts
+  - rollouts/status
+  verbs:
+  - get
+  - patch

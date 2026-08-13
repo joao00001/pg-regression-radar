@@ -108,6 +108,7 @@ nav:
       - API Versioning & Compatibility: api-versioning.md
       - Persistence: persistence.md
       - Deploy Sources & Webhooks: webhooks.md
+      - Auto-Abort (Argo Rollouts): auto-abort.md
       - Support Matrix: support-matrix.md
   - Contributing:
       - Testing: testing.md
