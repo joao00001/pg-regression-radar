@@ -209,25 +209,41 @@ like; it writes nothing and doesn't touch your fragment files.
 
 ### How releases consume fragments (repo owner only)
 
-This repo's tags are pushed manually, not cut by a release bot. Before
-tagging a release:
+`towncrier build` used to be a step the repo owner ran locally by hand
+before every release. It no longer is:
+`.github/workflows/release-prep.yml` runs it automatically, on every push
+to `main` that touches `changelog.d/`, and keeps a single standing PR
+titled `ci: prepare release vX.Y.Z` open and up to date with the resulting
+`CHANGELOG.md` — the next version number is computed from the pushed tags
+plus whichever fragment types are currently pending (any `feat` fragment
+bumps minor; `fix`/`perf`-only bumps patch).
+
+The only manual step left is reviewing and merging that PR — same as any
+other PR — and then tagging the resulting commit on `main`:
+
+```bash
+git pull origin main   # after merging the release-prep PR
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+This repo's tags are still pushed manually, not cut by a release bot —
+only the changelog-building step is automated, not the decision of when to
+actually release. `release.yml`'s `release-notes` job extracts the section
+matching the pushed tag straight out of the committed `CHANGELOG.md` and
+uses it as the GitHub Release body, so the section must already exist on
+the tagged commit — which merging the release-prep PR first guarantees.
+
+If you'd rather build it locally instead of waiting for CI (e.g. to
+preview the exact wording before opening/merging the PR), the manual
+command still works exactly as before:
 
 ```bash
 towncrier build --version vX.Y.Z --yes
-git add CHANGELOG.md changelog.d/
-git commit -s -m "docs(changelog): release vX.Y.Z"
-git tag vX.Y.Z
-git push origin main vX.Y.Z
 ```
 
-`towncrier build` rewrites `CHANGELOG.md` with a new `## vX.Y.Z - <date>`
-section compiled from every fragment currently in `changelog.d/` (grouped
-under "Features"/"Fixes"/"Performance"), and removes the fragments it just
-consumed via `git rm`. Commit that change, *then* tag it — `release.yml`'s
-`release-notes` job extracts the section matching the pushed tag straight
-out of the committed `CHANGELOG.md` and uses it as the GitHub Release body,
-so the section must already exist on the tagged commit. See
-[CI/CD](docs/ci-cd.md#changelog-fragment-checkyml-on-pr-openeditsync) for the full pipeline.
+See [CI/CD](docs/ci-cd.md#release-prepyml--on-push-to-main-touching-changelogd)
+for the full pipeline.
 
 ## Code style
 
