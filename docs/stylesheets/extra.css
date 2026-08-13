@@ -211,73 +211,64 @@
   color: var(--md-typeset-a-color);
 }
 
-/* ---- Version selector: soften Material's default dropdown, drive it
-   from JS instead of raw :hover ----
-   Material's stock `.md-version` menu has two real problems, not just a
-   cosmetic one: it reveals with an abrupt max-height jump inside a heavy
-   `box-shadow: var(--md-shadow-z2)` card, and it's triggered purely by
-   `:hover`/`:focus-within` -- no click/tap support at all (Material's own
-   CSS even ships a `@media (hover:none)` "hoverfix" animation hack to
-   paper over iOS Safari's sticky-hover bug, which is a workaround for
-   :hover-only triggering, not a real fix). A raw :hover trigger also
-   flickers shut if the pointer crosses the small visual gap between the
-   button and the popped-out list even slightly too slowly.
-   docs/javascripts/version-flyout.js addresses both: it adds real
-   click/tap toggling (the WAI-ARIA "menu button" pattern -- the same
-   interaction GitHub's own branch/tag selector uses) and a short
-   hover-intent close delay, borrowing nav-flyout.js's own
-   CLOSE_DELAY_MS technique for the identical gap-crossing problem.
-   The rules below give that script a `.md-version--open` class to
-   toggle, fully replacing Material's default trigger and transition
-   (kept as a `:hover`/`:focus-within` fallback further down only for
-   graceful degradation if the script fails to load). */
-.md-version__list {
-  background-color: var(--md-default-bg-color);
-  border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 0.2rem;
-  box-shadow: none;
+/* ---- Version selector: push content down instead of overlapping it ----
+   Material's stock `.md-version` menu is a `position: absolute` card
+   that floats on top of whatever's underneath it -- and is triggered by
+   raw `:hover`/`:focus-within` with no click/tap support at all
+   (Material's own CSS even ships a `@media (hover:none)` "hoverfix"
+   animation hack to paper over iOS Safari's sticky-hover bug, which is a
+   workaround for :hover-only triggering, not a real fix).
+   docs/javascripts/version-flyout.js replaces that entirely: once
+   Material injects `.md-version` (this happens asynchronously, after it
+   fetches versions.json client-side -- there is no `.md-version` in the
+   server-rendered HTML at all), the script moves the real
+   `.md-version__list` node out of it and into `.pgrr-version-flyout`, a
+   plain block appended at the end of `.md-header` -- the exact same
+   "real block in normal flow, animated via max-height" technique
+   `.pgrr-tabs-flyout` above already uses for the tabs menu, for the same
+   reason: since `.md-header` is `position: sticky`, growing it taller
+   pushes the tabs bar and page content below it down, instead of
+   floating a card over either. Interaction (click/tap toggle, a short
+   hover-intent close delay borrowed from `.pgrr-tabs-flyout`'s own
+   CLOSE_DELAY_MS, keyboard, Escape) is entirely the script's job; these
+   rules are just what it animates between. If the script never runs
+   (JS disabled, or the version fetch fails so `.md-version` never
+   appears), nothing gets moved and Material's own default hover/overlay
+   behavior is untouched -- this file adds no separate no-JS fallback of
+   its own to keep in sync. */
+.pgrr-version-flyout {
+  overflow: hidden;
   max-height: 0;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-4px);
-  /* Deliberately does not include max-height: with a real close delay
-     already handled in JS, max-height only needs to act as a clipping
-     container (so the closed list doesn't affect page layout), not an
-     animated dimension itself -- animating opacity and a gentle upward
-     drift together, on the same easing curve `.pgrr-tabs-flyout` above
-     already uses, is what makes the reveal read as one soft motion
-     instead of Material's default hard toggle-then-fade. */
-  transition:
-    opacity 200ms ease,
-    transform 200ms ease;
+  transition: max-height 200ms ease;
+  background-color: var(--md-default-bg-color);
+  border-top: 1px solid var(--md-default-fg-color--lightest);
 }
 
-.md-version--open .md-version__list {
-  max-height: 10rem; /* matches Material's own default reveal height */
+.pgrr-version-flyout[hidden] {
+  display: none;
+}
+
+/* Once version-flyout.js reparents it here, the list is a plain block
+   in normal flow -- undo Material's absolute-positioning/card styling
+   (position, margin, background, shadow), which only made sense for the
+   floating card this replaces. */
+.pgrr-version-flyout .md-version__list {
+  position: static;
+  margin: 0;
+  padding: 0.4rem 0;
+  background-color: transparent;
+  box-shadow: none;
+  max-height: none;
   opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
 
-/* No-JS fallback only -- version-flyout.js takes over as soon as it
-   runs (see its own top comment), at which point this never matters:
-   the script's `.md-version--open` class produces the identical end
-   state, just reached through click/tap and a debounced hover-intent
-   close instead of raw, flicker-prone :hover. */
-.md-version:hover .md-version__list,
-.md-version:focus-within .md-version__list {
-  max-height: 10rem;
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
-}
-
-.md-version__link {
+.pgrr-version-flyout .md-version__link {
+  padding: 0.3rem 1.2rem;
   transition: color 150ms ease;
 }
 
-.md-version__link:focus,
-.md-version__link:hover {
+.pgrr-version-flyout .md-version__link:focus,
+.pgrr-version-flyout .md-version__link:hover {
   /* This site's own established accent for hover/focus feedback
      (`.md-tabs__link:hover`, `.pgrr-tabs-flyout a:hover`) -- not
      Material's default `--md-accent-fg-color`, which is a more
@@ -293,7 +284,7 @@
    to) but leaves it at full default-text color, indistinguishable from
    an unvisited version at a glance. Dimming it communicates "you're
    already here" the same way a disabled control usually does. */
-.md-version__link[data-md-state="active"] {
+.pgrr-version-flyout .md-version__link[data-md-state="active"] {
   color: var(--md-default-fg-color--lighter);
 }
 
