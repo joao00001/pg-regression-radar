@@ -334,6 +334,19 @@ func RunOperator(args []string) {
 	// DrainSince uses a cursor (the count of already-processed events) so
 	// each tick copies only newly arrived events and releases the lock
 	// immediately, avoiding repeated full-slice copies and lock contention.
+	//
+	// A newly-arrived event is registered with pending rather than analysed
+	// once and discarded: a real deploy webhook fires the moment the deploy
+	// completes, well before --scrape-interval/--min-executions could have
+	// accumulated enough post-deploy samples, so an immediate one-shot
+	// Analyse call almost always sees StatusInsufficientData and, with no
+	// retry, a real regression could go unreported entirely. pending.Tick
+	// keeps re-running Analyse for every event still inside its analysis
+	// window each tick, so a regression that only becomes statistically
+	// visible several minutes into the post-deploy window is still caught —
+	// see internal/correlation.PendingSet's doc comment for how this gap was
+	// actually found (running this binary for real, not via the test suite).
+	pending := correlation.NewPendingSet(engine)
 	go func() {
 		cursor := initialCursor
 		ticker := time.NewTicker(5 * time.Second)
@@ -353,24 +366,22 @@ func RunOperator(args []string) {
 							logger.Error("operator: persist event failed", "err", err, "event_id", ev.ID)
 						}
 					}
-					results := engine.Analyse(ev)
-					for _, r := range results {
-						if r.Status == v1alpha1.StatusDetected {
-							// Attach a plan-diff hint, if plan capture is
-							// enabled: PlansAround returns nil/nil when
-							// CapturePlans is off, the server is below
-							// PostgreSQL 16, or capture hasn't produced
-							// anything for this queryid yet, in which case
-							// planner.Diff's nil-safe handling leaves
-							// PlanDiffSummary at its empty default.
-							if *capturePlans {
-								before, after := col.PlansAround(r.QueryID, r.DetectedChangeAt)
-								r.PlanDiffSummary = planner.Diff(before, after)
-							}
-							if err := notifier.Notify(ctx, r); err != nil {
-								logger.Error("operator: notify failed", "err", err, "regression", r.Name)
-							}
-						}
+					pending.Add(ev)
+				}
+
+				for _, r := range pending.Tick() {
+					// Attach a plan-diff hint, if plan capture is enabled:
+					// PlansAround returns nil/nil when CapturePlans is off,
+					// the server is below PostgreSQL 16, or capture hasn't
+					// produced anything for this queryid yet, in which case
+					// planner.Diff's nil-safe handling leaves
+					// PlanDiffSummary at its empty default.
+					if *capturePlans {
+						before, after := col.PlansAround(r.QueryID, r.DetectedChangeAt)
+						r.PlanDiffSummary = planner.Diff(before, after)
+					}
+					if err := notifier.Notify(ctx, r); err != nil {
+						logger.Error("operator: notify failed", "err", err, "regression", r.Name)
 					}
 				}
 			}

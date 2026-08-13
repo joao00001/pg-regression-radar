@@ -77,6 +77,17 @@ func (c *Config) defaults() {
 	}
 }
 
+// AnalysisWindow returns the configured pre/post-deploy window duration —
+// the same span Analyse subtracts from and adds to a deploy event's
+// timestamp to bound the samples it considers. Callers that retry Analyse
+// as more post-deploy data arrives (see internal/cli.RunOperator and
+// internal/controller.PostgresWatchReconciler's poll loops) use this to know
+// when a deploy event's post-deploy window has fully elapsed and no further
+// retry could possibly see new data for it.
+func (e *Engine) AnalysisWindow() time.Duration {
+	return time.Duration(e.cfg.WindowMinutes) * time.Minute
+}
+
 // SampleSource can provide QuerySamples for a time range.
 type SampleSource interface {
 	SamplesInRange(queryID int64, from, to time.Time) []collector.QuerySample
