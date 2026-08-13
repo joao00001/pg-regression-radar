@@ -9,6 +9,10 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
+  # overrides/main.html overrides the `outdated` block to show a banner on
+  # any version other than `latest` — see
+  # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#version-warning
+  custom_dir: overrides
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
