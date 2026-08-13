@@ -211,6 +211,64 @@
   color: var(--md-typeset-a-color);
 }
 
+/* ---- Version selector: soften Material's default dropdown ----
+   Material's stock `.md-version` menu reveals with an abrupt max-height
+   jump, a heavy `box-shadow: var(--md-shadow-z2)` card that reads as a
+   generic Material-Design popover rather than this site's own look, and
+   hovers straight to the theme's saturated `--md-accent-fg-color` -- none
+   of which matches the muted, color-only hover feedback used everywhere
+   else here (`.md-tabs__link:hover`, `.pgrr-tabs-flyout a:hover`) or the
+   soft `max-height`/`ease` growth already established for
+   `.pgrr-tabs-flyout` above. This re-styles the same markup/behavior
+   (still pure CSS -- Material's own JS still just toggles `:hover`/
+   `:focus-within`) rather than replacing it with a custom dropdown. */
+.md-version__list {
+  background-color: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.2rem;
+  box-shadow: none;
+  /* Material's default is `transition: max-height 0ms 250ms, opacity
+     250ms` -- opacity fades in only after max-height has already
+     snapped open, which is what reads as abrupt. Animating opacity and a
+     gentle upward drift together, on the same easing curve already used
+     for `.pgrr-tabs-flyout`, makes the whole reveal feel like one soft
+     motion instead of a hard toggle followed by a fade. */
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+  transform: translateY(-4px);
+}
+
+.md-version:hover .md-version__list,
+.md-version:focus-within .md-version__list {
+  transform: translateY(0);
+}
+
+.md-version__link {
+  transition: color 150ms ease;
+}
+
+.md-version__link:focus,
+.md-version__link:hover {
+  /* This site's own established accent for hover/focus feedback
+     (`.md-tabs__link:hover`, `.pgrr-tabs-flyout a:hover`) -- not
+     Material's default `--md-accent-fg-color`, which is a more
+     saturated blue tuned for an opaque indigo header, not this site's
+     monochrome one. No background fill on hover, matching the same
+     color-only feedback pattern used by every other hoverable nav
+     element on this site. */
+  color: var(--md-typeset-a-color);
+}
+
+/* The currently-viewed version's own entry in the list -- Material marks
+   it `pointer-events: none` (already correct, nothing to click through
+   to) but leaves it at full default-text color, indistinguishable from
+   an unvisited version at a glance. Dimming it communicates "you're
+   already here" the same way a disabled control usually does. */
+.md-version__link[data-md-state="active"] {
+  color: var(--md-default-fg-color--lighter);
+}
+
 /* ---- "Back to top" button: always purple, not just on hover ----
    Material only colors it on :hover (background-color:
    var(--md-accent-fg-color)); this repo's accent is indigo, whose
