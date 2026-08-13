@@ -30,8 +30,14 @@ build` (there was nothing for that command to consume yet). `git-cliff` and
 entry in this file comes from `changelog.d/` fragments via `towncrier
 build` as described above.
 
-
 <!-- towncrier release notes start -->
+
+## v1.0.1 - 2026-08-12
+
+### Fixes
+
+- Add a separate `docker/login-action` step to the release workflow's Helm chart job, so `cosign` can find registry credentials it needs to sign the chart — `helm registry login` alone writes to a config file `cosign` never reads, which made the chart-signing step fail with an authentication error on every release. (#60)
+
 
 ## v1.0.0 - 2026-08-12
 
