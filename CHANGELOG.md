@@ -32,6 +32,13 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.0.2 - 2026-08-13
+
+### Fixes
+
+- Fix regression detection silently missing real regressions: both `operator` and `manager` used to analyse a deploy event exactly once, immediately on arrival, well before enough post-deploy data could exist — now analysis retries every poll tick until the deploy's analysis window closes, deduplicating notifications so a detected regression is still only ever reported once. (#64)
+
+
 ## v1.0.1 - 2026-08-12
 
 ### Fixes
