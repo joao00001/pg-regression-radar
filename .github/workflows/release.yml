@@ -71,7 +71,14 @@ permissions:
 
 jobs:
   images:
-    name: "Image: ${{ matrix.target }}"
+    # Each (target, platform) pair is scanned and pushed independently as
+    # its own arch-specific tag (":<version>-amd64", ":<version>-arm64") —
+    # see the "Push" step below for why. The `manifests` job (needs: images)
+    # combines each target's two arch-specific tags into the single
+    # multi-arch ":<version>"/":latest" tags that
+    # deploy/helm/deploylens/values.yaml and docs/installation.md actually
+    # reference; nothing under those two tags exists until `manifests` runs.
+    name: "Image: ${{ matrix.target }} (${{ matrix.platform }})"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -85,19 +92,44 @@ jobs:
         # ${IMAGE_BASE}/, matching values.yaml's existing operator/manager
         # image.repository convention.
         target: [cli, operator, manager, collector, ingester]
+        # linux/arm64 alongside the existing linux/amd64: EDB Postgres AI
+        # and CloudNativePG both run on arm64 Kubernetes nodes (Graviton on
+        # EKS, Ampere/Axion on GKE/AKS, Apple Silicon `kind` clusters for
+        # local dev), and this repo's own Dockerfile already cross-compiles
+        # cleanly for it (see the Dockerfile's GOARCH=$TARGETARCH comment) —
+        # there was no technical reason left to publish amd64-only images.
+        platform: [linux/amd64, linux/arm64]
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Resolve release version from the pushed tag
+      - name: Resolve release version and arch from the pushed tag / matrix
         # github.ref_name is already the bare tag name (e.g. "v0.2.0") with
         # no refs/tags/ prefix to strip, for a `push: tags:`-triggered run.
         # DATE is computed here (not via github.event.head_commit.timestamp)
         # because head_commit is not reliably populated on tag-push events.
+        # ARCH strips the "linux/" prefix off matrix.platform (e.g.
+        # "linux/arm64" -> "arm64") for use in this job's own tag/artifact
+        # names below.
         run: |
           echo "VERSION=${{ github.ref_name }}" >> "$GITHUB_ENV"
           echo "DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          echo "ARCH=${PLATFORM#linux/}" >> "$GITHUB_ENV"
+        env:
+          PLATFORM: ${{ matrix.platform }}
+
+      - name: Set up QEMU
+        # Registers binfmt_misc handlers so buildx *can* run non-native-arch
+        # containers under emulation. The Dockerfile's build stage avoids
+        # actually needing this (see its --platform=$BUILDPLATFORM comment)
+        # by cross-compiling instead, but this is kept as a defensive,
+        # standard part of the documented multi-arch buildx setup in case a
+        # future Dockerfile change (an added RUN step in a runtime stage,
+        # say) starts needing it — cheap to keep, expensive to silently miss.
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.platform }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -116,14 +148,24 @@ jobs:
         # the same "scan before it's public" ordering as the CRITICAL-fails-
         # the-job gate itself: a build that fails the scan should never have
         # been pushed in the first place, not just flagged after the fact.
+        #
+        # platforms is a single value here (never a comma-separated list):
+        # `load: true` only works for a single-platform build — buildx has
+        # no way to "load" a multi-arch manifest list into a single-arch
+        # Docker daemon. That's the whole reason this matrix has a
+        # `platform` dimension building one arch-specific image per job,
+        # rather than one `docker buildx build --platform linux/amd64,linux/arm64`
+        # per target: a true multi-platform build can only be `push: true`,
+        # which would mean pushing before Trivy ever gets to scan it.
         id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           target: ${{ matrix.target }}
+          platforms: ${{ matrix.platform }}
           push: false
           load: true
-          tags: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}
+          tags: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}-${{ env.ARCH }}
           build-args: |
             VERSION=${{ env.VERSION }}
             COMMIT=${{ github.sha }}
@@ -157,10 +199,10 @@ jobs:
         continue-on-error: true
         uses: anchore/sbom-action@v0
         with:
-          image: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}
+          image: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}-${{ env.ARCH }}
           format: spdx-json
-          output-file: sbom-${{ matrix.target }}.spdx.json
-          artifact-name: sbom-${{ matrix.target }}-${{ env.VERSION }}.spdx.json
+          output-file: sbom-${{ matrix.target }}-${{ env.ARCH }}.spdx.json
+          artifact-name: sbom-${{ matrix.target }}-${{ env.ARCH }}-${{ env.VERSION }}.spdx.json
 
       - name: Generate SBOM (SPDX) — retry after transient failure
         # Only runs if the attempt above failed; skipped entirely when it
@@ -170,10 +212,10 @@ jobs:
         if: steps.sbom.outcome == 'failure'
         uses: anchore/sbom-action@v0
         with:
-          image: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}
+          image: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}-${{ env.ARCH }}
           format: spdx-json
-          output-file: sbom-${{ matrix.target }}.spdx.json
-          artifact-name: sbom-${{ matrix.target }}-${{ env.VERSION }}.spdx.json
+          output-file: sbom-${{ matrix.target }}-${{ env.ARCH }}.spdx.json
+          artifact-name: sbom-${{ matrix.target }}-${{ env.ARCH }}-${{ env.VERSION }}.spdx.json
 
       - name: Scan for vulnerabilities (Trivy)
         # Runs against the same not-yet-pushed local image. exit-code: '1'
@@ -183,30 +225,31 @@ jobs:
         # ever runs. Nothing reaches ghcr.io if this fails.
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}
+          image-ref: pgrr-release-build/${{ matrix.target }}:${{ github.sha }}-${{ env.ARCH }}
           format: table
           severity: ${{ env.TRIVY_SEVERITY }}
           exit-code: "1"
 
       - name: Push
-        # Plain `docker tag`/`docker push` against the already-built,
-        # already-scanned local image (re-tagged straight from the exact
-        # image Trivy just approved) rather than a second buildx invocation
-        # — no reason to rebuild (or risk building something subtly
-        # different) just to change the push flag.
+        # Pushed under an arch-specific tag only (":<version>-amd64",
+        # ":<version>-arm64") — never directly as ":<version>"/":latest"
+        # themselves. Those multi-arch tags are created afterwards by the
+        # `manifests` job, combining both arch-specific images this matrix
+        # produces via `docker buildx imagetools create` (a registry-side
+        # operation, no rebuild). Plain `docker tag`/`docker push` against
+        # the already-built, already-scanned local image (re-tagged straight
+        # from the exact image Trivy just approved) rather than a second
+        # buildx invocation — no reason to rebuild (or risk building
+        # something subtly different) just to change the push flag.
         id: push
         run: |
-          LOCAL="pgrr-release-build/${{ matrix.target }}:${{ github.sha }}"
+          LOCAL="pgrr-release-build/${{ matrix.target }}:${{ github.sha }}-${{ env.ARCH }}"
           IMAGE="${IMAGE_BASE}/${{ matrix.target }}"
 
-          docker tag "$LOCAL" "${IMAGE}:${VERSION}"
-          docker tag "$LOCAL" "${IMAGE}:latest"
-          docker push "${IMAGE}:${VERSION}"
-          docker push "${IMAGE}:latest"
+          docker tag "$LOCAL" "${IMAGE}:${VERSION}-${ARCH}"
+          docker push "${IMAGE}:${VERSION}-${ARCH}"
 
-          # Both tags above point at the same image content, so they share
-          # one digest — resolve it once from whichever tag for signing.
-          DIGEST="$(docker inspect "${IMAGE}:${VERSION}" --format='{{index .RepoDigests 0}}' | cut -d@ -f2)"
+          DIGEST="$(docker inspect "${IMAGE}:${VERSION}-${ARCH}" --format='{{index .RepoDigests 0}}' | cut -d@ -f2)"
           echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
@@ -224,8 +267,11 @@ jobs:
         # id-token: write, above) for a short-lived signing certificate from
         # Sigstore's public Fulcio CA, then records the signature in the
         # public Rekor transparency log. Signs by digest (not by the mutable
-        # `:latest`/`:VERSION` tags) so the signature is bound to the exact
-        # bytes just scanned and pushed.
+        # arch-specific tag) so the signature is bound to the exact bytes
+        # just scanned and pushed. The `manifests` job additionally signs
+        # each target's combined multi-arch index digest, so both the
+        # per-arch image and the tag most people will actually pull are
+        # independently verifiable.
         run: cosign sign --yes "${{ steps.push.outputs.image }}@${{ steps.push.outputs.digest }}"
 
       - name: Attach the SBOM as a signed attestation
@@ -234,12 +280,75 @@ jobs:
         # ghcr.io — so `cosign verify-attestation` (see docs/installation.md)
         # is enough to fetch and verify it later with no separate file to
         # lose track of.
-        run: cosign attest --yes --predicate "sbom-${{ matrix.target }}.spdx.json" --type spdxjson "${{ steps.push.outputs.image }}@${{ steps.push.outputs.digest }}"
+        run: cosign attest --yes --predicate "sbom-${{ matrix.target }}-${{ env.ARCH }}.spdx.json" --type spdxjson "${{ steps.push.outputs.image }}@${{ steps.push.outputs.digest }}"
+
+  manifests:
+    # Combines each target's linux/amd64 and linux/arm64 images (pushed
+    # above as ":<version>-amd64"/":<version>-arm64") into the single
+    # ":<version>" and ":latest" tags everything else in this repo
+    # (deploy/helm/deploylens/values.yaml, docs/installation.md, the "Push"
+    # step's own pre-multi-arch tags before this change) has always
+    # referenced — a multi-arch manifest list/OCI image index, exactly like
+    # every official multi-arch image on Docker Hub. `docker buildx
+    # imagetools create` does this as a pure registry-side operation (it
+    # only writes a small manifest-list document referencing the two
+    # already-pushed digests) — no rebuilding, no re-pulling, no re-scanning
+    # needed, since both arch-specific images it points at were already
+    # scanned individually by the `images` job above.
+    name: "Manifest list: ${{ matrix.target }}"
+    runs-on: ubuntu-latest
+    needs: images
+    permissions:
+      contents: read
+      packages: write # docker push (imagetools create) to ghcr.io
+      id-token: write # cosign keyless signing (OIDC token exchange with Fulcio)
+    strategy:
+      matrix:
+        target: [cli, operator, manager, collector, ingester]
+    steps:
+      - name: Resolve release version from the pushed tag
+        run: echo "VERSION=${{ github.ref_name }}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push the multi-arch manifest list
+        id: create
+        run: |
+          IMAGE="${IMAGE_BASE}/${{ matrix.target }}"
+
+          docker buildx imagetools create \
+            --tag "${IMAGE}:${VERSION}" \
+            --tag "${IMAGE}:latest" \
+            "${IMAGE}:${VERSION}-amd64" \
+            "${IMAGE}:${VERSION}-arm64"
+
+          DIGEST="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{json .Manifest}}' | jq -r '.digest')"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.0
+
+      - name: Sign the multi-arch manifest list (keyless)
+        # Signs the index digest itself (in addition to the two per-arch
+        # digests already signed in the `images` job above), so `cosign
+        # verify` against the plain ":<version>"/":latest" tag most people
+        # will actually pull — see docs/installation.md — works directly,
+        # without needing to know either per-arch digest first.
+        run: cosign sign --yes "${{ steps.create.outputs.image }}@${{ steps.create.outputs.digest }}"
 
   helm-chart:
     name: Helm chart (OCI)
     runs-on: ubuntu-latest
-    needs: images
+    needs: manifests
     permissions:
       contents: read
       packages: write # helm push to ghcr.io
@@ -329,9 +438,14 @@ jobs:
   release-notes:
     name: Publish GitHub Release notes
     runs-on: ubuntu-latest
-    needs: [images, helm-chart]
-    # Waits on both other jobs so a GitHub Release is never published
-    # pointing at images/chart that failed to build, scan, sign, or push.
+    needs: [images, manifests, helm-chart]
+    # Waits on every other job so a GitHub Release is never published
+    # pointing at images/manifests/chart that failed to build, scan, sign,
+    # combine, or push. `images` is listed explicitly even though
+    # `helm-chart`'s own `needs: manifests` (which itself needs `images`)
+    # already implies it transitively — being explicit here means this
+    # job's dependency graph stays correct on its own even if `helm-chart`
+    # is ever restructured to depend on something other than `manifests`.
     permissions:
       contents: write # softprops/action-gh-release creates/updates the Release
     steps:
