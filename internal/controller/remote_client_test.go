@@ -78,6 +78,54 @@ func TestRemoteClientCache_EmptyKubeconfig_ReturnsError(t *testing.T) {
 	}
 }
 
+// TestRemoteClientCache_Evict_ForcesRebuildOnNextGet verifies that evicting
+// a kubeconfig's cache entry causes the next get() for that exact same
+// kubeconfig content to build (and cache) a brand new client.Client
+// instance, rather than returning the one just evicted.
+func TestRemoteClientCache_Evict_ForcesRebuildOnNextGet(t *testing.T) {
+	cache := newRemoteClientCache()
+
+	first, err := cache.get([]byte(validTestKubeconfig))
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+
+	cache.evict([]byte(validTestKubeconfig))
+
+	second, err := cache.get([]byte(validTestKubeconfig))
+	if err != nil {
+		t.Fatalf("get after evict: %v", err)
+	}
+	if first == second {
+		t.Fatal("expected evict to force a fresh client.Client on the next get")
+	}
+
+	// And the cache is usable afterwards for the normal case too: a third
+	// call (no eviction in between) reuses the second instance.
+	third, err := cache.get([]byte(validTestKubeconfig))
+	if err != nil {
+		t.Fatalf("get (no eviction since): %v", err)
+	}
+	if second != third {
+		t.Fatal("expected the cache to resume normal reuse after a rebuild")
+	}
+}
+
+// TestRemoteClientCache_Evict_UnknownKubeconfig_NoOp verifies that evicting
+// a kubeconfig that was never cached (or already evicted) is a harmless
+// no-op rather than a panic — resolveDSN calls evict reactively on request
+// failure and should never need to reason about whether an entry exists.
+func TestRemoteClientCache_Evict_UnknownKubeconfig_NoOp(t *testing.T) {
+	cache := newRemoteClientCache()
+
+	cache.evict([]byte(validTestKubeconfig)) // never cached; must not panic
+
+	// The cache must still work normally afterwards.
+	if _, err := cache.get([]byte(validTestKubeconfig)); err != nil {
+		t.Fatalf("get after no-op evict: %v", err)
+	}
+}
+
 // TestRemoteClientCache_Get_RefreshesLastUsed verifies that a second get()
 // for the same kubeconfig advances lastUsed rather than leaving it pinned
 // to when the entry was first built — the property evictOlderThan relies on

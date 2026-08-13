@@ -134,6 +134,38 @@ func (c *remoteClientCache) get(kubeconfig []byte) (client.Client, error) {
 	return built, nil
 }
 
+// evict removes the cache entry for kubeconfig, if any. Called when a
+// client built from it has just failed a real request against the remote
+// cluster (see resolveDSN), so the next get() is forced to build a fresh
+// client.Client — with a fresh REST config and a fresh underlying HTTP
+// transport/connection pool — rather than reusing one already known to be
+// broken. This is a targeted, immediate complement to evictOlderThan's
+// periodic sweep below, not a replacement for it: evict only ever removes
+// the one entry a caller just proved is broken, while evictOlderThan
+// reclaims entries nothing has asked for in a while regardless of whether
+// they ever failed.
+//
+// This does not, by itself, let the manager "refresh" a credential it has
+// no authority to mint: a bare static token embedded directly in the
+// kubeconfig that has genuinely expired will parse into an equally-expired
+// token on the very next buildRemoteClient call, since evict does not (and
+// cannot) change the kubeconfig's own bytes. What it does fix: (a) a
+// transient failure (a network blip, a stale keep-alive connection in the
+// old transport) gets a genuinely fresh connection on retry instead of
+// reusing a client that just failed; (b) once whatever owns this
+// kubeconfig Secret actually rewrites it with fresh credentials — an
+// exec-based kubeconfig plugin, or an external rotator — the very next
+// get() picks that new content up immediately (a new hash builds a new
+// entry regardless of whether the old one was evicted), and evicting the
+// old, now-orphaned entry here means it does not sit in memory until the
+// next TTL sweep for no reason.
+func (c *remoteClientCache) evict(kubeconfig []byte) {
+	key := hashKubeconfig(kubeconfig)
+	c.mu.Lock()
+	delete(c.clients, key)
+	c.mu.Unlock()
+}
+
 // evictOlderThan removes every entry last used before now.Add(-ttl),
 // returning how many were removed. A free function of (ttl, now) rather
 // than reading time.Now() itself so tests can drive eviction deterministic
