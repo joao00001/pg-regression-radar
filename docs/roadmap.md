@@ -6,17 +6,25 @@
 
 This page tracks both feature roadmap and known operational/robustness gaps, so "what's next" lives in one place instead of being scattered across commit messages and release notes.
 
-## Version roadmap
+## Feature roadmap
 
-- **MVP (done):** Collector + Ingester + Correlation Engine + Slack alerting + Helm chart.
-- **v0.2 (done):** Argo Rollouts and Flux source types — see [Deploy Sources & Webhooks](webhooks.md).
-- **v0.3 (done):** Real CRDs (`PostgresWatch`, `DeploySource`, `PerformanceRegression`) reconciled by `cmd/manager` via controller-runtime, with leader-election HA — see [Architecture Overview](architecture.md).
-- **v0.4 (not started):** GitHub/GitLab PR comment on detected regression; Grafana annotation.
-- **v1.0 (in progress):** OLM bundle for OperatorHub.io (not started); multi-cluster support — **partially done**, see below.
+This project does not commit features to specific version numbers — a version tag marks when something shipped, not a promise of what a future one will contain. Work below is grouped by whether it has shipped, not by which release it's slated for.
+
+**Shipped:**
+
+- Collector + Ingester + Correlation Engine + Slack alerting + Helm chart.
+- Argo Rollouts and Flux source types — see [Deploy Sources & Webhooks](webhooks.md).
+- Real CRDs (`PostgresWatch`, `DeploySource`, `PerformanceRegression`) reconciled by `cmd/manager` via controller-runtime, with leader-election HA — see [Architecture Overview](architecture.md).
+- Multi-cluster (fleet) support via `spec.remoteClusterSecretRef` — see below for what's still open within it.
+
+**Planned for a future release** (no version committed):
+
+- GitHub/GitLab PR comment on detected regression; Grafana annotation.
+- An OLM bundle for OperatorHub.io.
 
 ### Multi-cluster support, in detail
 
-`cmd/manager` reconciling many `PostgresWatch` CRs at once, each with its own isolated `Collector`/`Engine`/`Notifier` (`internal/controller/registry.go`), predates this entry and was never actually the missing piece — that's "many Postgres clusters reachable over the network from one manager," which has worked since the CRD controller shipped in v0.3. The real gap was **the manager reaching a Postgres cluster whose CloudNativePG-generated DSN Secret lives in a different Kubernetes cluster than the manager itself** — until now the only way to make that work was manually copying the Secret into the manager's own cluster, a pure operational workaround with no code support.
+`cmd/manager` reconciling many `PostgresWatch` CRs at once, each with its own isolated `Collector`/`Engine`/`Notifier` (`internal/controller/registry.go`), predates this entry and was never actually the missing piece — that's "many Postgres clusters reachable over the network from one manager," which has worked since the CRD controller shipped. The real gap was **the manager reaching a Postgres cluster whose CloudNativePG-generated DSN Secret lives in a different Kubernetes cluster than the manager itself** — until now the only way to make that work was manually copying the Secret into the manager's own cluster, a pure operational workaround with no code support.
 
 `spec.remoteClusterSecretRef` (see [Multi-Cluster (Fleet) Mode](multi-cluster.md) and [Configuration Reference](configuration.md#postgreswatch-spec-fields)) closes that gap: a kubeconfig Secret in the hub cluster lets `PostgresWatchReconciler` build a `client.Client` for a remote cluster and read that cluster's DSN Secret through it, following the same hub-spoke pattern Cluster API / Argo CD / Open Cluster Management use. What's still open, deliberately left out of this first pass:
 

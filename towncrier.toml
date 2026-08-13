@@ -24,6 +24,15 @@
 # .github/workflows/changelog-fragment-check.yml and
 # scripts/check_changelog_fragment.py) and docs/ci-cd.md for how
 # .github/workflows/release.yml consumes the resulting CHANGELOG.md.
+#
+# CHANGELOG.md must keep the literal line
+# "<!-- towncrier release notes start -->" right after the file's intro
+# text (above the first "## vX.Y.Z" section). That's towncrier's own
+# default `start_string` marker — without it present, `towncrier build`
+# has no way to know the intro text should stay above the new section, and
+# prepends the new section at the very top of the file instead (this bit
+# the v1.0.0 build; the marker was added then specifically to prevent it
+# from happening again).
 [tool.towncrier]
 name = "pg-regression-radar"
 directory = "changelog.d"

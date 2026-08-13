@@ -40,10 +40,10 @@ This is intentional and not a quality judgment — the CRD surface is still bein
 The project intends to graduate the CRDs through the standard Kubernetes API maturity ladder:
 
 1. **`v1alpha1` (current):** schema is being shaped. Breaking changes permitted without deprecation period.
-2. **`v1beta1` (target: v0.5 or later):** schema is considered mostly stable. Breaking changes require a deprecation notice in at least one minor release and a migration note in the release. A conversion webhook will be introduced to support stored-version migration.
-3. **`v1` (target: v1.0 or later):** schema is stable. No breaking changes without a full deprecation cycle (minimum two minor releases). Stored objects from any prior `v1` sub-version are guaranteed to be readable after upgrade.
+2. **`v1beta1` (target: a future minor release):** schema is considered mostly stable. Breaking changes require a deprecation notice in at least one minor release and a migration note in the release. A conversion webhook will be introduced to support stored-version migration.
+3. **`v1` (target: a future major release):** schema is stable. No breaking changes without a full deprecation cycle (minimum two minor releases). Stored objects from any prior `v1` sub-version are guaranteed to be readable after upgrade.
 
-There is no firm timeline for `v1beta1` or `v1`. Graduation will follow demonstrated stability of the schema in real-world use, not a fixed calendar. Updates to the graduation timeline will be tracked in [Roadmap](roadmap.md).
+There is no firm timeline or committed version number for `v1beta1` or `v1`. Graduation will follow demonstrated stability of the schema in real-world use, not a fixed calendar. Updates to the graduation timeline will be tracked in [Roadmap](roadmap.md).
 
 ## How breaking changes are communicated
 
@@ -58,5 +58,5 @@ After `v1beta1`, the project additionally commits to a deprecation annotation (`
 ## See also
 
 - [Configuration Reference](configuration.md#postgreswatch-spec-fields) — current `PostgresWatch` spec fields and their defaults.
-- [Roadmap](roadmap.md) — the v1.0 milestone and what else is still open.
+- [Roadmap](roadmap.md) — what's shipped and what's still open.
 - [Installation](installation.md) — pinning a specific Helm chart version.

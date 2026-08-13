@@ -30,6 +30,21 @@ build` (there was nothing for that command to consume yet). `git-cliff` and
 entry in this file comes from `changelog.d/` fragments via `towncrier
 build` as described above.
 
+
+<!-- towncrier release notes start -->
+
+## v1.0.0 - 2026-08-12
+
+### Features
+
+- Add `spec.capturePlans` to `PostgresWatch`, so the CRD-driven `manager` mode can attach a plan-diff summary to a detected `PerformanceRegression`'s `status.planDiffSummary`, matching the standalone `operator` CLI's existing `--capture-plans` behavior. (#51)
+- Add `spec.remoteNamespace` to `PostgresWatch`, letting a fleet's remote-cluster DSN Secret live in a differently-named namespace than the hub-side `PostgresWatch`, instead of requiring matching namespace names on both sides. (#58)
+- Fleet mode now evicts a remote cluster's cached client immediately after it fails a real request, so a transient network blip or a genuinely rotated kubeconfig no longer keeps a broken connection in circulation until a future reconcile happens to notice. (#59)
+
+### Fixes
+
+- Evict entries from the manager's remote-cluster client cache after an hour of disuse, so a rotated-away kubeconfig or a deleted fleet member's cached client no longer stays in memory for the life of the manager process. (#52)
+
 ## v1.0.0-rc1 - 2026-08-12
 
 ### Detection & Correlation
@@ -171,6 +186,6 @@ build` as described above.
 MVP: Collector + Ingester + Correlation Engine + Slack alerting + Helm
 chart, plus Argo Rollouts/Flux deploy-source support and the real
 `PostgresWatch`/`DeploySource`/`PerformanceRegression` CRD-driven
-controller-runtime mode — see [`docs/roadmap.md`](docs/roadmap.md#version-roadmap)
-for the version-by-version breakdown. Predates this file; not reconstructed
-here since `git-cliff`'s useful range starts at this tag.
+controller-runtime mode — see [`docs/roadmap.md`](docs/roadmap.md#feature-roadmap)
+for what's shipped since. Predates this file; not reconstructed here since
+`git-cliff`'s useful range starts at this tag.
