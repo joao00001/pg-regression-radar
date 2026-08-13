@@ -30,14 +30,29 @@ type DeploySourceSpec struct {
 	PostgresWatchRef string `json:"postgresWatchRef"`
 
 	// sourceType drives payload normalisation in internal/ingester.Handler.
-	// +kubebuilder:validation:Enum=argocd;argo-rollouts;flux;generic
+	// "kubernetes" is different from the other three: instead of registering
+	// an inbound webhook route, it makes WorkloadWatchReconciler watch the
+	// Deployment or StatefulSet named by appName directly via the Kubernetes
+	// API and synthesise a DeployEvent whenever its rollout completes on a
+	// new revision — no ArgoCD, Argo Rollouts, or Flux installation
+	// required. See docs/webhooks.md#native-kubernetes-watch.
+	// +kubebuilder:validation:Enum=argocd;argo-rollouts;flux;generic;kubernetes
 	// +kubebuilder:default=generic
 	SourceType string `json:"sourceType,omitempty"`
 
 	// appName narrows correlation to a single application; empty means all
-	// apps reported by this source are considered.
+	// apps reported by this source are considered. When sourceType is
+	// "kubernetes", this is not just a filter: it is the name of the
+	// Deployment or StatefulSet to watch, and is required.
 	// +optional
 	AppName string `json:"appName,omitempty"`
+
+	// workloadKind selects which kind of workload appName refers to. Only
+	// meaningful (and required) when sourceType is "kubernetes"; ignored
+	// otherwise.
+	// +kubebuilder:validation:Enum=Deployment;StatefulSet
+	// +optional
+	WorkloadKind string `json:"workloadKind,omitempty"`
 
 	// webhookSecret is the shared secret used to authenticate incoming webhook
 	// requests via the X-Webhook-Token header. When non-empty, every POST to

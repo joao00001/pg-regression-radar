@@ -62,7 +62,9 @@ spec:
               appName:
                 description: |-
                   appName narrows correlation to a single application; empty means all
-                  apps reported by this source are considered.
+                  apps reported by this source are considered. When sourceType is
+                  "kubernetes", this is not just a filter: it is the name of the
+                  Deployment or StatefulSet to watch, and is required.
                 type: string
               postgresWatchRef:
                 description: |-
@@ -73,12 +75,29 @@ spec:
                 type: string
               sourceType:
                 default: generic
-                description: sourceType drives payload normalisation in internal/ingester.Handler.
+                description: |-
+                  sourceType drives payload normalisation in internal/ingester.Handler.
+                  "kubernetes" is different from the other three: instead of registering
+                  an inbound webhook route, it makes WorkloadWatchReconciler watch the
+                  Deployment or StatefulSet named by appName directly via the Kubernetes
+                  API and synthesise a DeployEvent whenever its rollout completes on a
+                  new revision — no ArgoCD, Argo Rollouts, or Flux installation
+                  required. See docs/webhooks.md#native-kubernetes-watch.
                 enum:
                 - argocd
                 - argo-rollouts
                 - flux
                 - generic
+                - kubernetes
+                type: string
+              workloadKind:
+                description: |-
+                  workloadKind selects which kind of workload appName refers to. Only
+                  meaningful (and required) when sourceType is "kubernetes"; ignored
+                  otherwise.
+                enum:
+                - Deployment
+                - StatefulSet
                 type: string
             required:
             - postgresWatchRef

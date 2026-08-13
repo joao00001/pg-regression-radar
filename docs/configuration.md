@@ -105,8 +105,9 @@ All four binaries share two flags:
 | Field | Default | Description |
 |---|---|---|
 | `postgresWatchRef` | *(required)* | Name of the `PostgresWatch` (same namespace) to correlate against |
-| `sourceType` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic` |
-| `appName` | `""` (all apps) | Narrow correlation to a single application |
+| `sourceType` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic`, `kubernetes` — see [Deploy Sources & Webhooks: Native Kubernetes watch](webhooks.md#native-kubernetes-watch-no-webhook) for `kubernetes` |
+| `appName` | `""` (all apps) | Narrow correlation to a single application. When `sourceType` is `kubernetes`, this is the Deployment/StatefulSet's name and is required |
+| `workloadKind` | `""` | `Deployment` or `StatefulSet`. Only meaningful (and required) when `sourceType` is `kubernetes` |
 
 ## See also
 
