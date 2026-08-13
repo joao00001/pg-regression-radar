@@ -166,6 +166,15 @@ func RunManager(args []string) {
 		os.Exit(1)
 	}
 
+	if err := (&controller.WorkloadWatchReconciler{
+		Client:   mgr.GetClient(),
+		Registry: registry,
+		Logger:   logger,
+	}).SetupWithManager(mgr); err != nil {
+		managerSetupLog.Error(err, "unable to create controller", "controller", "WorkloadWatch")
+		os.Exit(1)
+	}
+
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		managerSetupLog.Error(err, "unable to set up health check")
 		os.Exit(1)

@@ -115,6 +115,32 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		sourceType = "generic"
 	}
 
+	if sourceType == "kubernetes" {
+		// Nothing to register: this source is fed by WorkloadWatchReconciler
+		// watching spec.appName's Deployment/StatefulSet directly via the
+		// Kubernetes API, not by an inbound webhook. Unregister any stale
+		// route left over from before sourceType was changed to
+		// "kubernetes", then report Ready without a webhookPath.
+		r.Mux.Unregister(webhookPath(req.NamespacedName))
+
+		src.Status.Phase = radarv1alpha1.DeploySourcePhaseReady
+		src.Status.ObservedGeneration = src.Generation
+		src.Status.WebhookPath = ""
+		src.Status.Message = "Watched natively via the Kubernetes API; no webhook route is registered."
+		setCondition(&src.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionTrue,
+			Reason:             "NativeWatchActive",
+			Message:            src.Status.Message,
+			ObservedGeneration: src.Generation,
+		})
+		if err := r.Status().Update(ctx, &src); err != nil {
+			return ctrl.Result{}, err
+		}
+		log.Info("deploysource watched natively, no webhook route registered", "sourceType", sourceType, "appName", src.Spec.AppName)
+		return ctrl.Result{}, nil
+	}
+
 	handler := ingester.NewHandler(rt.Store, dto.DeploySource{
 		Name:             req.Name,
 		Namespace:        req.Namespace,

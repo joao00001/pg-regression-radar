@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -47,6 +48,11 @@ func testScheme(t *testing.T) *runtime.Scheme {
 	// &corev1.Secret{}) in resolveDSN/dsnSecretClient.
 	if err := corev1.AddToScheme(s); err != nil {
 		t.Fatalf("add corev1 scheme: %v", err)
+	}
+	// appsv1 is needed by WorkloadWatchReconciler's tests (Deployment/
+	// StatefulSet objects); harmless to register unconditionally here too.
+	if err := appsv1.AddToScheme(s); err != nil {
+		t.Fatalf("add appsv1 scheme: %v", err)
 	}
 	return s
 }

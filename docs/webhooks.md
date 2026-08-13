@@ -6,6 +6,8 @@
 
 The Ingester (`internal/ingester`) normalises webhook payloads from four source types into a single `DeployEvent` — see [API Reference](api-reference.md) for that shape. Every `DeployEvent` carries a `cluster` field so multi-cluster setups can tell deploys apart; this page covers how each source populates it.
 
+A fifth source, **Kubernetes-native watch**, doesn't send a webhook at all — see [below](#native-kubernetes-watch-no-webhook) — and is only available in `manager` mode (CRD-driven), not via the standalone `operator`/`ingester` binaries' `--source-type` flag.
+
 ## Supported sources
 
 | Source | Trigger | Notes |
@@ -14,6 +16,7 @@ The Ingester (`internal/ingester`) normalises webhook payloads from four source 
 | **Argo Rollouts** | Rollout promotion webhook | Set `--source-type argo-rollouts` |
 | **Flux** | Notification Controller event | Set `--source-type flux` |
 | **Generic** | Any JSON matching `DeployEvent` schema | Useful for custom CI systems |
+| **Kubernetes-native** | Deployment/StatefulSet rollout completes | `manager` mode only; `sourceType: kubernetes` on a `DeploySource` CR — no webhook, no GitOps tool required |
 
 ## Cluster attribution
 
@@ -117,6 +120,31 @@ Without `eventMetadata.cluster`, the `--cluster-name` fallback is used.
 ### Generic
 
 Set `cluster` directly in the JSON body; it is taken as-is and never overwritten by the fallback. This is also the source type used by the [manual e2e workflow](testing.md#manual-e2e-real-container) precisely because it accepts an explicit `timestamp` field, avoiding a race against the ingester's poll loop.
+
+### Native Kubernetes watch (no webhook)
+
+Every other source in this table exists to receive a webhook from something that already knows a deploy happened. If nothing in your cluster sends that webhook — no ArgoCD, no Argo Rollouts, no Flux, just plain `kubectl apply` or a CI pipeline rolling a `Deployment`/`StatefulSet` forward directly — there was previously no way to feed this project anything at all.
+
+`sourceType: kubernetes` closes that gap by watching the workload itself instead of waiting for a notification about it. Set it on a `DeploySource` CR (manager mode only):
+
+```yaml
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: DeploySource
+metadata:
+  name: checkout-native
+  namespace: default
+spec:
+  postgresWatchRef: prod-db
+  sourceType: kubernetes
+  workloadKind: Deployment   # or StatefulSet
+  appName: checkout          # the Deployment/StatefulSet's own name
+```
+
+`WorkloadWatchReconciler` watches `apps/v1` `Deployment` and `StatefulSet` objects cluster-wide and, whenever the one named `appName` (in the same namespace as this `DeploySource`) finishes rolling out to a new revision, synthesises a `DeployEvent` exactly as if a webhook had arrived — `revision` is the Deployment's `deployment.kubernetes.io/revision` annotation, or the StatefulSet's `status.updateRevision`. "Finishes rolling out" means the full `kubectl rollout status` completion signal, not just "the spec changed" — a half-finished rollout never gets reported, since that would mix two revisions' data in the correlation engine's before/after windows.
+
+Because there's no webhook payload to read a `cluster` field from, the event's `cluster` always comes from the owning `PostgresWatch`'s `spec.clusterName`.
+
+This mode needs read-only RBAC on `apps/v1` `deployments`/`statefulsets`, already included in the manager's default `ClusterRole` (see [Configuration Reference](configuration.md)).
 
 ## Webhook authentication
 
