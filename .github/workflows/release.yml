@@ -377,6 +377,28 @@ jobs:
       - name: Log in to GHCR (Helm OCI)
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
 
+      - name: Log in to GHCR (for cosign)
+        # `helm registry login` above writes its credential to Helm's own
+        # config file ($HELM_REGISTRY_CONFIG, defaulting to
+        # ~/.config/helm/registry/config.json) — enough for `helm push`
+        # below, but cosign doesn't read that file. cosign resolves registry
+        # credentials through go-containerregistry's default keychain, which
+        # only looks at the standard Docker config location
+        # (~/.docker/config.json / $DOCKER_CONFIG). Without this second,
+        # separate login, "Sign the published Helm chart" below fails with
+        # "UNAUTHORIZED: unauthenticated" even though the chart push itself
+        # just succeeded — this is exactly what happened on the real
+        # v1.0.0 tag push, the first time this job ever ran for real (see
+        # docs/roadmap.md). The `images`/`manifests` jobs above never hit
+        # this because they already log in with docker/login-action before
+        # their own cosign sign step; this job only had the Helm-specific
+        # login until now.
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Package the chart
         # --version/--app-version override whatever is checked into
         # Chart.yaml unconditionally — see this workflow's top comment for
