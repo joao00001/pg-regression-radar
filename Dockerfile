@@ -32,7 +32,18 @@
 # With no --target, the last stage in the file wins (operator), matching the
 # Helm chart's default `mode: operator`.
 
-FROM golang:1.26.5-bookworm AS build
+# --platform=$BUILDPLATFORM pins this stage to the runner's own native
+# platform regardless of what --platform the overall `docker buildx build`
+# invocation targets (e.g. release.yml building linux/arm64 on an
+# ubuntu-latest/amd64 runner) — combined with ARG TARGETARCH + GOARCH below,
+# this cross-compiles via the Go toolchain's own native support for it
+# instead of running the entire compiler under QEMU emulation, which would
+# otherwise be dramatically slower for a CPU-bound build step like this one.
+# The runtime stages below deliberately do NOT set --platform=$BUILDPLATFORM,
+# so buildx still produces a correctly-tagged linux/arm64 (or whichever)
+# final image — they only ever COPY a prebuilt static binary, never execute
+# anything at build time, so there is no emulation cost to avoid there.
+FROM --platform=$BUILDPLATFORM golang:1.26.5-bookworm AS build
 WORKDIR /src
 
 # Build metadata for internal/buildinfo, surfaced by every binary's
@@ -49,6 +60,16 @@ WORKDIR /src
 ARG VERSION=dev
 ARG COMMIT=none
 ARG DATE=unknown
+
+# TARGETARCH is populated automatically by buildx for every stage (no
+# --build-arg needed) with the arch half of whatever --platform this build
+# was invoked with, e.g. "amd64" or "arm64" — see
+# https://docs.docker.com/build/building/multi-platform/#cross-compilation.
+# Combined with --platform=$BUILDPLATFORM on the FROM line above, this is
+# what actually makes the go build below produce a linux/arm64 binary when
+# cross-compiling from an amd64 runner, without needing an emulated arm64
+# Go toolchain at all.
+ARG TARGETARCH
 
 # Base image pinned to the exact `toolchain` line in go.mod (currently
 # go1.26.5), not just the bare `go 1.26.0` minimum — see go.mod's own comment
@@ -81,8 +102,14 @@ RUN go mod download
 COPY . .
 
 # CGO_ENABLED=0 for fully static binaries that run unmodified on the
-# distroless runtime image below (no libc dependency to satisfy).
-ENV CGO_ENABLED=0 GOOS=linux
+# distroless runtime image below (no libc dependency to satisfy). GOARCH is
+# set from TARGETARCH (not left to default to the build host's own arch, as
+# it otherwise would once CGO_ENABLED=0 stops Go from needing a matching C
+# toolchain) — omitting this is the classic multi-arch-Docker-plus-Go
+# mistake that silently bakes an amd64 binary into an arm64-tagged image,
+# then fails at container start with "exec format error" on real arm64
+# hardware instead of at build time.
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=$TARGETARCH
 RUN LDFLAGS="-s -w \
       -X github.com/joao00001/pg-regression-radar/internal/buildinfo.Version=${VERSION} \
       -X github.com/joao00001/pg-regression-radar/internal/buildinfo.Commit=${COMMIT} \
