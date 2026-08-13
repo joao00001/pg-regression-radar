@@ -76,6 +76,12 @@ type WatchRuntime struct {
 	// ClusterName is copied from the spec for use when building
 	// PerformanceRegression CRs without re-reading the PostgresWatch.
 	ClusterName string
+
+	// CapturePlans mirrors the owning PostgresWatch's spec.capturePlans —
+	// copied here (rather than re-read from the CR on every poll
+	// iteration) so pollLoop can cheaply decide whether to call
+	// Collector.PlansAround for a detected regression.
+	CapturePlans bool
 }
 
 // Registry tracks the live WatchRuntime for every reconciled PostgresWatch,

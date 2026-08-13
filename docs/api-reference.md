@@ -38,11 +38,12 @@ Produced by the Ingester from any of the four webhook sources — see [Deploy So
   "meanLatencyAfter": 13.7,
   "latencyChangeFactor": 3.26,
   "externalCauseSuspected": false,
+  "planDiffSummary": "root node changed from Index Scan to Seq Scan",
   "createdAt": "2026-08-11T12:35:00Z"
 }
 ```
 
-Produced by the Correlation Engine for every query analysed against a `DeployEvent` — see [Detection Algorithm](detection-algorithm.md) for what `status`, `confidenceScore`, and the latency fields mean, and how `Detected` is decided. `status` is one of `Detected`, `NoRegression`, or `InsufficientData`.
+Produced by the Correlation Engine for every query analysed against a `DeployEvent` — see [Detection Algorithm](detection-algorithm.md) for what `status`, `confidenceScore`, and the latency fields mean, and how `Detected` is decided. `status` is one of `Detected`, `NoRegression`, or `InsufficientData`. `planDiffSummary` is only populated when plan-diff correlation is enabled (`--capture-plans` / `spec.capturePlans`) — see [Detection Algorithm: Plan-diff correlation](detection-algorithm.md#plan-diff-correlation-optional).
 
 ## See also
 

@@ -97,6 +97,7 @@ All four binaries share two flags:
 | `pValueThreshold` | `"0.05"` | Welch's t-test significance cutoff |
 | `criticalQueryIDs` | `[]` | Queries that bypass `minExecutions` |
 | `slackWebhookUrl` | `""` | Slack incoming-webhook URL for this watch |
+| `capturePlans` | `false` | Enable plan-diff correlation — see [Detection Algorithm: Plan-diff correlation](detection-algorithm.md#plan-diff-correlation-optional). Populates the resulting `PerformanceRegression`'s `status.planDiffSummary` |
 
 ## `DeploySource` spec fields
 

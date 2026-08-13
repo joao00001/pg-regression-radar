@@ -87,6 +87,14 @@ type PerformanceRegressionStatus struct {
 	// +optional
 	ExternalCauseSuspected bool `json:"externalCauseSuspected,omitempty"`
 
+	// planDiffSummary is a short, human-readable description of how this
+	// query's execution plan changed around the detected change point (see
+	// internal/planner.Diff and
+	// docs/detection-algorithm.md#plan-diff-correlation-optional). Only
+	// populated when the owning PostgresWatch has spec.capturePlans set.
+	// +optional
+	PlanDiffSummary string `json:"planDiffSummary,omitempty"`
+
 	// detectedAt is when the Correlation Engine produced this result.
 	// +optional
 	DetectedAt *metav1.Time `json:"detectedAt,omitempty"`
