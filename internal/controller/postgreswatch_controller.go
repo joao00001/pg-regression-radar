@@ -396,11 +396,20 @@ func (r *PostgresWatchReconciler) stopWatch(key types.NamespacedName) {
 // through rt.Engine, fires alerts for detected regressions via rt.Notifier,
 // and persists a PerformanceRegression CR for each one so
 // `kubectl get performanceregressions` reflects reality. It mirrors the
-// polling loop in cmd/operator/main.go.
+// polling loop in cmd/operator/main.go — including using a
+// correlation.PendingSet rather than a single immediate Analyse call per
+// event: a real deploy webhook fires the moment the deploy completes, well
+// before enough post-deploy samples could exist yet, so analysing once,
+// immediately, and discarding the result almost always missed a real
+// regression entirely. See correlation.PendingSet's doc comment for how
+// this was actually found (running the operator binary for real against a
+// live Postgres and a live webhook, not via the test suite).
 func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.NamespacedName, rt *WatchRuntime) {
 	var cursor int
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
+
+	pending := correlation.NewPendingSet(rt.Engine)
 
 	for {
 		select {
@@ -410,38 +419,34 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 			events, newCursor := rt.Store.DrainSince(cursor)
 			cursor = newCursor
 			for _, ev := range events {
+				pending.Add(ev)
+			}
 
-				results := rt.Engine.Analyse(ev)
-				for _, res := range results {
-					if res.Status != dto.StatusDetected {
-						continue
-					}
-
-					// Attach a plan-diff summary before notifying/persisting,
-					// mirroring internal/cli/operator.go's poll loop, so the
-					// CRD-driven (cmd/manager) and standalone CLI paths give
-					// the same plan-diff-correlation behavior when enabled.
-					// PlansAround is nil-safe and returns (nil, nil) when
-					// CapturePlans was never enabled on the Collector, so this
-					// gate is an optimization (skip the lookup entirely), not
-					// a correctness requirement.
-					if rt.CapturePlans {
-						before, after := rt.Collector.PlansAround(res.QueryID, res.DetectedChangeAt)
-						res.PlanDiffSummary = planner.Diff(before, after)
-					}
-
-					notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-					if err := rt.Notifier.Notify(notifyCtx, res); err != nil {
-						r.Logger.Error("postgreswatch: alert notify failed", "watch", key.String(), "regression", res.Name, "err", err)
-					}
-					cancel()
-
-					recCtx, recCancel := context.WithTimeout(context.Background(), 15*time.Second)
-					if err := r.recordRegression(recCtx, key, res); err != nil {
-						r.Logger.Error("postgreswatch: failed to persist PerformanceRegression CR", "watch", key.String(), "regression", res.Name, "err", err)
-					}
-					recCancel()
+			for _, res := range pending.Tick() {
+				// Attach a plan-diff summary before notifying/persisting,
+				// mirroring internal/cli/operator.go's poll loop, so the
+				// CRD-driven (cmd/manager) and standalone CLI paths give
+				// the same plan-diff-correlation behavior when enabled.
+				// PlansAround is nil-safe and returns (nil, nil) when
+				// CapturePlans was never enabled on the Collector, so this
+				// gate is an optimization (skip the lookup entirely), not
+				// a correctness requirement.
+				if rt.CapturePlans {
+					before, after := rt.Collector.PlansAround(res.QueryID, res.DetectedChangeAt)
+					res.PlanDiffSummary = planner.Diff(before, after)
 				}
+
+				notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+				if err := rt.Notifier.Notify(notifyCtx, res); err != nil {
+					r.Logger.Error("postgreswatch: alert notify failed", "watch", key.String(), "regression", res.Name, "err", err)
+				}
+				cancel()
+
+				recCtx, recCancel := context.WithTimeout(context.Background(), 15*time.Second)
+				if err := r.recordRegression(recCtx, key, res); err != nil {
+					r.Logger.Error("postgreswatch: failed to persist PerformanceRegression CR", "watch", key.String(), "regression", res.Name, "err", err)
+				}
+				recCancel()
 			}
 		}
 	}
