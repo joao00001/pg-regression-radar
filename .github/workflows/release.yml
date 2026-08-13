@@ -243,6 +243,7 @@ jobs:
     permissions:
       contents: read
       packages: write # helm push to ghcr.io
+      id-token: write # cosign keyless signing (OIDC token exchange with Fulcio)
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -287,7 +288,43 @@ jobs:
         # (ghcr.io/joao00001/pg-regression-radar/*). Installable afterwards
         # as `oci://ghcr.io/joao00001/charts/pg-regression-radar` — see
         # docs/installation.md.
-        run: helm push "/tmp/helm-out/pg-regression-radar-${CHART_VERSION}.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts"
+        #
+        # `helm push` prints a "Digest: sha256:..." line for the artifact it
+        # just pushed (the same digest `helm pull`/OCI clients resolve the
+        # tag to) — captured here so the signing step below can sign by
+        # digest, the same "pin the exact bytes just published" approach
+        # the `images` job already uses for the container images, rather
+        # than the mutable chart-version tag.
+        id: push
+        run: |
+          helm push "/tmp/helm-out/pg-regression-radar-${CHART_VERSION}.tgz" "oci://ghcr.io/${{ github.repository_owner }}/charts" 2>&1 | tee /tmp/helm-push.log
+
+          DIGEST="$(grep -oE 'Digest: sha256:[0-9a-f]+' /tmp/helm-push.log | awk '{print $2}')"
+          if [ -z "$DIGEST" ]; then
+            echo "::error::Could not parse a 'Digest: sha256:...' line out of 'helm push' output — see the log above. Cannot sign the chart without knowing its digest."
+            exit 1
+          fi
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "ref=ghcr.io/${{ github.repository_owner }}/charts/pg-regression-radar" >> "$GITHUB_OUTPUT"
+
+      - name: Install cosign
+        # sigstore/cosign-installer does not publish a floating major-version
+        # tag — see the same note on this step in the `images` job above.
+        uses: sigstore/cosign-installer@v4.1.0
+
+      - name: Sign the published Helm chart (keyless)
+        # The five container images have been cosign-signed since this
+        # workflow's first version; the Helm OCI artifact itself was not —
+        # see docs/roadmap.md's former "Helm chart signing not implemented"
+        # gap. cosign signs any OCI artifact by digest, not just container
+        # images, so this is the exact same keyless flow (GitHub Actions
+        # OIDC exchanged with Sigstore's public Fulcio CA, signature
+        # recorded in the public Rekor transparency log) already used
+        # above — no separate key-management story needed, contrary to what
+        # that roadmap entry originally assumed before this was looked into.
+        # See docs/installation.md's "Verify the chart's signature" section
+        # for the exact `cosign verify` command this repo documents for it.
+        run: cosign sign --yes "${{ steps.push.outputs.ref }}@${{ steps.push.outputs.digest }}"
 
   release-notes:
     name: Publish GitHub Release notes
