@@ -68,6 +68,7 @@ extra_css:
 extra_javascript:
   - javascripts/nav-data.js
   - javascripts/nav-flyout.js
+  - javascripts/version-flyout.js
 
 markdown_extensions:
   - admonition

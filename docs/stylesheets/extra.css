@@ -211,36 +211,64 @@
   color: var(--md-typeset-a-color);
 }
 
-/* ---- Version selector: soften Material's default dropdown ----
-   Material's stock `.md-version` menu reveals with an abrupt max-height
-   jump, a heavy `box-shadow: var(--md-shadow-z2)` card that reads as a
-   generic Material-Design popover rather than this site's own look, and
-   hovers straight to the theme's saturated `--md-accent-fg-color` -- none
-   of which matches the muted, color-only hover feedback used everywhere
-   else here (`.md-tabs__link:hover`, `.pgrr-tabs-flyout a:hover`) or the
-   soft `max-height`/`ease` growth already established for
-   `.pgrr-tabs-flyout` above. This re-styles the same markup/behavior
-   (still pure CSS -- Material's own JS still just toggles `:hover`/
-   `:focus-within`) rather than replacing it with a custom dropdown. */
+/* ---- Version selector: soften Material's default dropdown, drive it
+   from JS instead of raw :hover ----
+   Material's stock `.md-version` menu has two real problems, not just a
+   cosmetic one: it reveals with an abrupt max-height jump inside a heavy
+   `box-shadow: var(--md-shadow-z2)` card, and it's triggered purely by
+   `:hover`/`:focus-within` -- no click/tap support at all (Material's own
+   CSS even ships a `@media (hover:none)` "hoverfix" animation hack to
+   paper over iOS Safari's sticky-hover bug, which is a workaround for
+   :hover-only triggering, not a real fix). A raw :hover trigger also
+   flickers shut if the pointer crosses the small visual gap between the
+   button and the popped-out list even slightly too slowly.
+   docs/javascripts/version-flyout.js addresses both: it adds real
+   click/tap toggling (the WAI-ARIA "menu button" pattern -- the same
+   interaction GitHub's own branch/tag selector uses) and a short
+   hover-intent close delay, borrowing nav-flyout.js's own
+   CLOSE_DELAY_MS technique for the identical gap-crossing problem.
+   The rules below give that script a `.md-version--open` class to
+   toggle, fully replacing Material's default trigger and transition
+   (kept as a `:hover`/`:focus-within` fallback further down only for
+   graceful degradation if the script fails to load). */
 .md-version__list {
   background-color: var(--md-default-bg-color);
   border: 1px solid var(--md-default-fg-color--lightest);
   border-radius: 0.2rem;
   box-shadow: none;
-  /* Material's default is `transition: max-height 0ms 250ms, opacity
-     250ms` -- opacity fades in only after max-height has already
-     snapped open, which is what reads as abrupt. Animating opacity and a
-     gentle upward drift together, on the same easing curve already used
-     for `.pgrr-tabs-flyout`, makes the whole reveal feel like one soft
-     motion instead of a hard toggle followed by a fade. */
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  /* Deliberately does not include max-height: with a real close delay
+     already handled in JS, max-height only needs to act as a clipping
+     container (so the closed list doesn't affect page layout), not an
+     animated dimension itself -- animating opacity and a gentle upward
+     drift together, on the same easing curve `.pgrr-tabs-flyout` above
+     already uses, is what makes the reveal read as one soft motion
+     instead of Material's default hard toggle-then-fade. */
   transition:
     opacity 200ms ease,
     transform 200ms ease;
-  transform: translateY(-4px);
 }
 
+.md-version--open .md-version__list {
+  max-height: 10rem; /* matches Material's own default reveal height */
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* No-JS fallback only -- version-flyout.js takes over as soon as it
+   runs (see its own top comment), at which point this never matters:
+   the script's `.md-version--open` class produces the identical end
+   state, just reached through click/tap and a debounced hover-intent
+   close instead of raw, flicker-prone :hover. */
 .md-version:hover .md-version__list,
 .md-version:focus-within .md-version__list {
+  max-height: 10rem;
+  opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 
