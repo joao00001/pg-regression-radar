@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{#
+  Outdated-version warning banner.
+
+  mike (see mkdocs.yml's `plugins: [mike]` / `extra.version.provider: mike`
+  and .github/workflows/docs.yml's `deploy` job) publishes every released
+  version to its own permanent /<version>/ subdirectory of the gh-pages
+  branch, and moves the `latest` alias to whichever version was most
+  recently released. Material for MkDocs already renders a version
+  selector in the header from that data (see
+  https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#versioning),
+  but says nothing about whether the version currently being viewed is the
+  latest one — a reader who followed an old bookmark or search result into
+  e.g. /v1.0.0-rc1/ has no visual cue they're not looking at current docs.
+
+  This overrides the theme's `outdated` block (documented at
+  https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#version-warning)
+  to render a banner above the header on any version other than the one(s)
+  aliased `latest`. Material's own JS (assets/javascripts/bundle.*.min.js)
+  decides whether to show this block at all — it diffs the current
+  version's aliases (from this build's mike-generated versions.json)
+  against `extra.version.default` (unset here, so it defaults to the
+  `latest` alias per the docs above) and only unhides `#outdated` when they
+  don't match. Nothing here needs to duplicate that check.
+#}
+{% block outdated %}
+  You are not viewing the latest version of these docs.
+  <a href="{{ '../' ~ base_url }}">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+{% endblock %}

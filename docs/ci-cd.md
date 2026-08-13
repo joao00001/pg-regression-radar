@@ -92,6 +92,8 @@ This used to be one job that redeployed the live site on every push to `main` to
 
 **Version indicator:** `docs/installation.md`'s image-tag examples remain illustrative placeholders (e.g. `:v0.3.0`) with an explicit "substitute the actual latest tag" note — deliberately not kept in lockstep with the mike version selector, to avoid a second place that goes stale. The version a visitor is actually looking at is shown by Material's version selector itself (top of every page), sourced from mike's `versions.json`, not hand-maintained anywhere.
 
+**Outdated-version warning banner:** `overrides/main.html` (wired in via `mkdocs.yml`'s `theme.custom_dir: overrides`) overrides Material's `outdated` block so a visitor browsing any version other than the one aliased `latest` sees a banner above the header linking back to the site root — see [Material's version-warning docs](https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#version-warning). The banner's markup is baked into every version's build identically; Material's own client-side JS decides at page-load time (by comparing the current version against `versions.json`) whether to actually unhide it, so this needs no per-version build logic of its own.
+
 ## Dependabot (`.github/dependabot.yml`)
 
 Weekly update checks for `gomod` and `github-actions` ecosystems, with `chore(deps)` / `ci(deps)` commit-message prefixes matching this project's Conventional Commits convention.
