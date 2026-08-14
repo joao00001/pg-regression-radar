@@ -18,6 +18,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -255,10 +256,103 @@ users:
     token: fake-token-for-tests
 `
 
+// kubeconfigSecret returns a Secret carrying the consent label required by
+// checkSecretConsent (secret_consent.go) — every existing caller of this
+// helper represents a Secret its own test intends to be a valid,
+// authorized reference (they're testing other failure paths: a missing
+// key, malformed content, an unreachable cluster), so the label defaults
+// to present here. TestDsnSecretClient_RemoteMissingConsentLabel_ReturnsError
+// builds an unlabeled Secret directly, rather than via this helper, to
+// exercise the rejection path itself.
 func kubeconfigSecret(name, namespace, key, kubeconfig string) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
-		Data:       map[string][]byte{key: []byte(kubeconfig)},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels:    map[string]string{secretConsentLabel: secretConsentValue},
+		},
+		Data: map[string][]byte{key: []byte(kubeconfig)},
+	}
+}
+
+// TestDsnSecretClient_RemoteMissingConsentLabel_ReturnsError verifies that
+// a kubeconfig Secret without the required consent label
+// (pg-regression-radar.io/allow-postgreswatch-access) is rejected before
+// its content is ever used to build a remote client — the F-01 fix: RBAC
+// alone (get;list;watch on all Secrets) must not be sufficient for a
+// PostgresWatch to use a Secret its owner hasn't explicitly opted in.
+func TestDsnSecretClient_RemoteMissingConsentLabel_ReturnsError(t *testing.T) {
+	watch := samplePostgresWatch("watch-no-consent", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+
+	// Built directly (not via the kubeconfigSecret helper, which always
+	// carries the label) — this is the one Secret in this file
+	// deliberately missing it.
+	unlabeled := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "remote-kubeconfig", Namespace: "default"},
+		Data:       map[string][]byte{"kubeconfig": []byte(validTestKubeconfig)},
+	}
+	r, _ := newTestReconciler(t, watch, unlabeled)
+
+	_, _, err := r.dsnSecretClient(context.Background(), watch)
+	if err == nil {
+		t.Fatal("expected an error for a kubeconfig Secret missing the consent label")
+	}
+	if !strings.Contains(err.Error(), secretConsentLabel) {
+		t.Fatalf("expected the error to name the missing consent label, got: %v", err)
+	}
+}
+
+// TestResolveDSN_DSNSecretMissingConsentLabel_ReturnsError is the same
+// check as above, but for the DSN Secret itself (the same-cluster, no
+// remoteClusterSecretRef path) rather than a remote kubeconfig Secret —
+// checkSecretConsent is applied to both.
+func TestResolveDSN_DSNSecretMissingConsentLabel_ReturnsError(t *testing.T) {
+	watch := samplePostgresWatch("watch-dsn-no-consent", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+
+	unlabeled := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "dsn-secret", Namespace: "default"},
+		Data:       map[string][]byte{"dsn": []byte("postgres://user:pass@127.0.0.1:5432/app")},
+	}
+	r, _ := newTestReconciler(t, watch, unlabeled)
+
+	_, err := r.resolveDSN(context.Background(), watch)
+	if err == nil {
+		t.Fatal("expected an error for a DSN Secret missing the consent label")
+	}
+	if !strings.Contains(err.Error(), secretConsentLabel) {
+		t.Fatalf("expected the error to name the missing consent label, got: %v", err)
+	}
+}
+
+// TestResolveDSN_DSNSecretWithConsentLabel_Succeeds is the positive-path
+// counterpart: a properly labeled DSN Secret must still resolve normally.
+func TestResolveDSN_DSNSecretWithConsentLabel_Succeeds(t *testing.T) {
+	watch := samplePostgresWatch("watch-dsn-consent-ok", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+
+	const dsn = "postgres://user:pass@127.0.0.1:5432/app"
+	labeled := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dsn-secret",
+			Namespace: "default",
+			Labels:    map[string]string{secretConsentLabel: secretConsentValue},
+		},
+		Data: map[string][]byte{"dsn": []byte(dsn)},
+	}
+	r, _ := newTestReconciler(t, watch, labeled)
+
+	got, err := r.resolveDSN(context.Background(), watch)
+	if err != nil {
+		t.Fatalf("resolveDSN: %v", err)
+	}
+	if got != dsn {
+		t.Fatalf("expected DSN %q, got %q", dsn, got)
 	}
 }
 

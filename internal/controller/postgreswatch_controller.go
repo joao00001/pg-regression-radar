@@ -71,6 +71,17 @@ const pollInterval = 5 * time.Second
 // clusters themselves: that access comes entirely from whatever RBAC is
 // embedded in the kubeconfig a remoteClusterSecretRef Secret points at,
 // which is operator-managed and out of this manager's control by design.
+//
+// This grant is cluster-wide and namespace-unscoped by necessity (the
+// remote path can't know which namespace it needs to reach until a
+// PostgresWatch names it), which on its own would let anyone able to
+// create a PostgresWatch reference an arbitrary Secret and have the
+// manager read it on their behalf — a confused-deputy path. resolveDSN
+// and dsnSecretClient (postgreswatch_controller.go) close that gap in
+// code, not RBAC: checkSecretConsent (secret_consent.go) refuses to use
+// either Secret's contents unless its owner has explicitly labeled it
+// pg-regression-radar.io/allow-postgreswatch-access=true — see
+// docs/multi-cluster.md#secret-consent-label.
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 //
 // Only reached when spec.autoAbort.enabled is set on at least one
@@ -271,6 +282,9 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 		}
 		return "", fmt.Errorf("fetch dsn secret %s: %w", key, err)
 	}
+	if err := checkSecretConsent(&secret, "dsn secret"); err != nil {
+		return "", err
+	}
 	val, ok := secret.Data[watch.Spec.DSNSecretRef.Key]
 	if !ok {
 		return "", fmt.Errorf("secret %s has no key %q", key, watch.Spec.DSNSecretRef.Key)
@@ -318,6 +332,9 @@ func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *ra
 	key := types.NamespacedName{Namespace: watch.Namespace, Name: watch.Spec.RemoteClusterSecretRef.Name}
 	if err := r.Get(ctx, key, &kubeconfigSecret); err != nil {
 		return nil, nil, fmt.Errorf("fetch remote cluster kubeconfig secret %s: %w", key, err)
+	}
+	if err := checkSecretConsent(&kubeconfigSecret, "remote cluster kubeconfig secret"); err != nil {
+		return nil, nil, err
 	}
 	kubeconfig, ok := kubeconfigSecret.Data[watch.Spec.RemoteClusterSecretRef.Key]
 	if !ok {

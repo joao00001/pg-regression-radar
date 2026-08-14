@@ -185,6 +185,117 @@ func TestRemoteClientCache_EvictOlderThan_RemovesOnlyStaleEntries(t *testing.T) 
 	}
 }
 
+// execKubeconfig is validTestKubeconfig with its static token replaced by
+// an exec-based credential plugin — the shape F-02 (see the audit report
+// this fix responds to) flagged as letting a tenant-controlled Secret
+// cause the manager to execute an arbitrary local process.
+const execKubeconfig = `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://127.0.0.1:6443
+    insecure-skip-tls-verify: true
+  name: remote
+contexts:
+- context:
+    cluster: remote
+    user: remote
+  name: remote
+current-context: remote
+users:
+- name: remote
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1
+      command: /bin/sh
+      args: ["-c", "echo pwned"]
+`
+
+// authProviderKubeconfig is validTestKubeconfig with its static token
+// replaced by the deprecated auth-provider mechanism.
+const authProviderKubeconfig = `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://127.0.0.1:6443
+    insecure-skip-tls-verify: true
+  name: remote
+contexts:
+- context:
+    cluster: remote
+    user: remote
+  name: remote
+current-context: remote
+users:
+- name: remote
+  user:
+    auth-provider:
+      name: gcp
+`
+
+// proxyURLKubeconfig is validTestKubeconfig with a proxy-url added to its
+// cluster entry.
+const proxyURLKubeconfig = `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: https://127.0.0.1:6443
+    insecure-skip-tls-verify: true
+    proxy-url: http://attacker-controlled-proxy.example:8080
+  name: remote
+contexts:
+- context:
+    cluster: remote
+    user: remote
+  name: remote
+current-context: remote
+users:
+- name: remote
+  user:
+    token: fake-token-for-tests
+`
+
+// TestBuildRemoteClient_RejectsExecAuth verifies a kubeconfig using an
+// exec-based credential plugin is rejected outright, rather than being
+// parsed into a REST config that would later execute that command.
+func TestBuildRemoteClient_RejectsExecAuth(t *testing.T) {
+	if _, err := buildRemoteClient([]byte(execKubeconfig)); err == nil {
+		t.Fatal("expected an error for a kubeconfig using an exec-based credential plugin")
+	}
+}
+
+// TestBuildRemoteClient_RejectsAuthProvider verifies a kubeconfig using the
+// deprecated auth-provider mechanism is rejected outright, for the same
+// reason as exec above.
+func TestBuildRemoteClient_RejectsAuthProvider(t *testing.T) {
+	if _, err := buildRemoteClient([]byte(authProviderKubeconfig)); err == nil {
+		t.Fatal("expected an error for a kubeconfig using auth-provider")
+	}
+}
+
+// TestBuildRemoteClient_RejectsProxyURL verifies a kubeconfig whose cluster
+// entry sets proxy-url is rejected outright, rather than silently routing
+// the manager's API traffic through an attacker-chosen proxy.
+func TestBuildRemoteClient_RejectsProxyURL(t *testing.T) {
+	if _, err := buildRemoteClient([]byte(proxyURLKubeconfig)); err == nil {
+		t.Fatal("expected an error for a kubeconfig whose cluster sets proxy-url")
+	}
+}
+
+// TestBuildRemoteClient_StaticTokenKubeconfig_Accepted is the converse of
+// the three tests above: a plain static-token kubeconfig (no exec,
+// auth-provider, or proxy-url) — exactly the shape docs/multi-cluster.md
+// recommends — must still be accepted, so validateKubeconfigAuth is
+// confirmed to reject only what it's meant to, not kubeconfigs generally.
+func TestBuildRemoteClient_StaticTokenKubeconfig_Accepted(t *testing.T) {
+	if _, err := buildRemoteClient([]byte(validTestKubeconfig)); err != nil {
+		t.Fatalf("expected a plain static-token kubeconfig to be accepted, got: %v", err)
+	}
+}
+
 // TestRemoteClientCache_Start_StopsOnContextCancel verifies Start (the
 // manager.Runnable implementation registered via mgr.Add) returns promptly
 // and without error once its context is cancelled, rather than leaking a

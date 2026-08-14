@@ -128,8 +128,8 @@ All four binaries share two flags:
 | Field | Default | Description |
 |---|---|---|
 | `clusterName` | *(required)* | Label added to metrics and to `PerformanceRegression` CRs |
-| `dsn` / `dsnSecretRef` | *(one required)* | Postgres DSN, inline or via a Secret key (preferred). **Use a least-privilege role** (e.g. `pg_monitor`) — see [Installation: least-privilege role](installation.md#creating-a-least-privilege-postgres-role). |
-| `remoteClusterSecretRef` | *(none)* | Secret (in the hub cluster) holding a kubeconfig for a remote cluster to resolve `dsnSecretRef` against instead of the hub — see [Multi-Cluster (Fleet) Mode](multi-cluster.md) |
+| `dsn` / `dsnSecretRef` | *(one required)* | Postgres DSN, inline or via a Secret key (preferred). **Use a least-privilege role** (e.g. `pg_monitor`) — see [Installation: least-privilege role](installation.md#creating-a-least-privilege-postgres-role). The referenced Secret must carry the `pg-regression-radar.io/allow-postgreswatch-access: "true"` label or the manager refuses to read it — see [Multi-Cluster: Secret consent label](multi-cluster.md#secret-consent-label). |
+| `remoteClusterSecretRef` | *(none)* | Secret (in the hub cluster) holding a kubeconfig for a remote cluster to resolve `dsnSecretRef` against instead of the hub — see [Multi-Cluster (Fleet) Mode](multi-cluster.md). Same consent-label requirement as `dsnSecretRef` above, and the kubeconfig itself must use a static credential (no `exec`/`auth-provider`/`proxy-url`) — see [Multi-Cluster: Kubeconfig restrictions](multi-cluster.md#kubeconfig-restrictions). |
 | `remoteNamespace` | *(same name as the watch's own namespace)* | Namespace to look up `dsnSecretRef` in on the remote cluster; only meaningful alongside `remoteClusterSecretRef` — see [Multi-Cluster (Fleet) Mode: What actually happens on reconcile](multi-cluster.md#what-actually-happens-on-reconcile) |
 | `scrapeIntervalSeconds` | `60` | How often to read `pg_stat_statements` |
 | `windowMinutes` | `30` | Analysis window (minutes before/after deploy) |

@@ -38,7 +38,7 @@ This is the same shape Cluster API, Argo CD's cluster Secrets, and Open Cluster 
 1. **`remoteClusterSecretRef` unset (default):** read the DSN Secret with the manager's own client, exactly as before this feature existed. Zero behavior change, zero new RBAC needed.
 2. **`remoteClusterSecretRef` set:**
    a. Read the kubeconfig Secret it names — **in the hub cluster**, in the `PostgresWatch`'s own namespace — using the manager's own client (the same "get;list;watch Secrets" RBAC it already needs for `dsnSecretRef` covers this; see below).
-   b. Build (or reuse a cached) `client.Client` from that kubeconfig via `clientcmd.RESTConfigFromKubeConfig` + `client.New` (`internal/controller/remote_client.go`).
+   b. Build (or reuse a cached) `client.Client` from that kubeconfig — after rejecting it outright if it doesn't meet the restrictions below — via `clientcmd.Load` + `validateKubeconfigAuth` + `client.New` (`internal/controller/remote_client.go`).
    c. Read `spec.dsnSecretRef` **through that remote client**, against the Secret of the same name, in the namespace `spec.remoteNamespace` names — or, when `remoteNamespace` is unset, **a namespace of the same name** as the `PostgresWatch`'s own namespace, mirroring the convention CloudNativePG itself uses for its generated credential Secrets. Set `remoteNamespace` when your fleet's hub/spoke namespace naming doesn't line up 1:1.
 
 Any failure in that chain — the kubeconfig Secret doesn't exist, its key is missing, the kubeconfig is malformed, or the remote API server is unreachable/rejects the request — is treated exactly like any other DSN resolution failure: `Reconcile` calls `markFailed`, which sets `status.phase = Failed`, `status.message` to the underlying error, and returns the error so controller-runtime's rate limiter retries with backoff. There is no special-cased fleet error path; a broken remote cluster looks, to an operator running `kubectl get postgreswatch`, exactly like a broken DSN.
@@ -71,6 +71,12 @@ kubectl create rolebinding pg-regression-radar-dsn-reader \
 kubectl create secret generic prod-eu-west-kubeconfig \
   --from-file=kubeconfig=./spoke-scoped.kubeconfig \
   -n default
+
+# Required — see "Secret consent label" below: without this label the
+# manager refuses to read this Secret at all, regardless of RBAC.
+kubectl label secret prod-eu-west-kubeconfig \
+  pg-regression-radar.io/allow-postgreswatch-access=true \
+  -n default
 ```
 
 The Role above grants `get` on exactly one named Secret — nothing else. It should **not** grant `list`/`watch` on all Secrets, access to any other resource type, or any verb beyond what's needed to read that one DSN Secret. This is an operational responsibility of whoever creates the kubeconfig Secret, not something `cmd/manager` or its own RBAC can enforce from the hub side.
@@ -86,11 +92,43 @@ It's easy to conflate "the manager's own RBAC" with "what the manager can reach 
 
 `config/rbac/role.yaml`'s existing `secrets: get;list;watch` ClusterRole rule is unchanged by this feature — it was already necessary and sufficient for `dsnSecretRef`, and the exact same rule is what makes `remoteClusterSecretRef` kubeconfig Secrets readable too, since both live in the hub cluster. If you're running a hardened setup that narrows that ClusterRole to specific Secret names (e.g. via `resourceNames`), remember to include your kubeconfig Secrets in that list alongside your DSN Secrets.
 
+## Secret consent label
+
+That cluster-wide `secrets: get;list;watch` grant means anyone who can create or edit a `PostgresWatch` in a namespace — a much weaker permission than being able to read Secrets in that namespace directly — could otherwise name *any* Secret there in `dsnSecretRef` or `remoteClusterSecretRef` and have the manager read it on their behalf: a classic confused-deputy path, since it's the manager's own broader Secret-read privilege being exercised at the referencer's request, not the Secret owner's.
+
+`internal/controller/secret_consent.go` closes this: before either Secret's contents are used, the manager checks it carries the label
+
+```
+pg-regression-radar.io/allow-postgreswatch-access: "true"
+```
+
+If the label is missing, `resolveDSN`/`dsnSecretClient` return an error (surfaced the same way any other DSN resolution failure is — `status.phase: Failed`, `status.message` set) instead of using the Secret's contents. This applies to **both** `dsnSecretRef` (the DSN Secret itself) and `remoteClusterSecretRef` (the kubeconfig Secret) — whoever owns a Secret must explicitly opt it in before any `PostgresWatch` can reference it, in the hub cluster or, via a remote kubeconfig, in a spoke cluster's own Secrets:
+
+```bash
+kubectl label secret prod-eu-west-app-superuser \
+  pg-regression-radar.io/allow-postgreswatch-access=true \
+  -n <namespace>
+```
+
+This is a namespace-local decision the Secret's own owner makes (labeling a Secret requires the same `patch`/`update` permission on that Secret that creating it did), independent of whatever RBAC governs who can create `PostgresWatch` CRs — it doesn't replace narrowing that RBAC or the ClusterRole above where you can, it closes the gap for installations where you can't (or haven't yet).
+
+## Kubeconfig restrictions
+
+Because a `remoteClusterSecretRef` kubeconfig comes from a Secret a `PostgresWatch`'s owner controls — untrusted input from the manager's perspective, even after the consent label above — `buildRemoteClient` (`internal/controller/remote_client.go`) rejects any kubeconfig that would hand the manager process more capability than "talk to a remote API server with a static credential":
+
+| Rejected | Why |
+|---|---|
+| `users[].exec` (exec-based credential plugins) | client-go would execute it as a local process inside the manager's own pod every time the resulting client authenticates — a kubeconfig-controlled arbitrary command, not just a credential. |
+| `users[].auth-provider` (deprecated auth-provider plugins) | Same "plugin decides how to authenticate" shape as `exec`; some implementations shell out too. |
+| `clusters[].proxy-url` | Would route the manager's API traffic for that cluster through a proxy endpoint the kubeconfig's author chooses, not the cluster operator — a network egress redirection risk. |
+
+Static-credential kubeconfigs — bearer token, client-certificate, or username/password `users[]` entries, with no `proxy-url` — are unaffected; those are exactly the shapes the [previous section](#generating-and-storing-the-kubeconfig-secret)'s `kubectl create token`-based example produces. A rejected kubeconfig surfaces the same way any other DSN resolution failure does (`status.phase: Failed`), with an error naming the specific user/cluster entry and restriction that was violated.
+
 ## Known gaps and deliberate scope cuts
 
 This feature closes the "Postgres lives in a different Kubernetes cluster" gap, but intentionally does not attempt everything a mature fleet story eventually needs:
 
-- **No kubeconfig rotation/expiration handling beyond evict-on-failure.** A short-lived static token embedded in a kubeconfig Secret that genuinely expires still fails DSN resolution the same way (surfacing as `status.phase: Failed`) — no code running in the hub cluster has the authority to mint a fresh credential for a spoke cluster it doesn't control, so refreshing the Secret's content remains an operational responsibility, same as rotating `dsnSecretRef` itself. What *is* handled: the moment a cached remote client fails a real request (`resolveDSN`), its entry is evicted from `remoteClientCache` immediately (`remoteClientCache.evict`, `internal/controller/remote_client.go`), rather than waiting for a future reconcile to keep reusing a client already known to be broken. This means (a) a transient failure gets a genuinely fresh connection/transport on the very next attempt instead of reusing one that just failed, and (b) once an external rotator *does* rewrite the kubeconfig Secret with fresh credentials, the next reconcile picks that new content up immediately with no orphaned old entry left sitting in the cache. Exec-based kubeconfig auth plugins (as opposed to a bare static token) already get transparent, automatic refresh from client-go itself and are unaffected by any of this.
+- **No kubeconfig rotation/expiration handling beyond evict-on-failure.** A short-lived static token embedded in a kubeconfig Secret that genuinely expires still fails DSN resolution the same way (surfacing as `status.phase: Failed`) — no code running in the hub cluster has the authority to mint a fresh credential for a spoke cluster it doesn't control, so refreshing the Secret's content remains an operational responsibility, same as rotating `dsnSecretRef` itself. What *is* handled: the moment a cached remote client fails a real request (`resolveDSN`), its entry is evicted from `remoteClientCache` immediately (`remoteClientCache.evict`, `internal/controller/remote_client.go`), rather than waiting for a future reconcile to keep reusing a client already known to be broken. This means (a) a transient failure gets a genuinely fresh connection/transport on the very next attempt instead of reusing one that just failed, and (b) once an external rotator *does* rewrite the kubeconfig Secret with fresh credentials, the next reconcile picks that new content up immediately with no orphaned old entry left sitting in the cache. This is now the *only* supported way to keep credentials current — [exec-based kubeconfig auth plugins](#kubeconfig-restrictions), which would otherwise get transparent, automatic refresh from client-go itself with no evict/re-fetch cycle needed at all, are rejected outright, precisely because that same "runs a local process to get fresh credentials" mechanism is what makes them unsafe to accept from a tenant-controlled Secret.
 - **The remote client cache's time-based eviction has no failure-aware equivalent.** Entries unused for over an hour are swept out (`internal/controller/remote_client.go`'s `Start`, registered as a manager-owned background task in `SetupWithManager`, running every 10 minutes) — a kubeconfig still referenced by a live `PostgresWatch` gets its cache entry refreshed at least every 30 seconds (the reconciler's status-refresh cadence), so this only ever reclaims clients for kubeconfigs that were rotated away from or whose `PostgresWatch`/Secret was deleted, never one still genuinely in use. What's still out of scope: eviction isn't triggered directly by a Secret's deletion (it just stops being asked for and ages out on the next sweep), and there's no proactive health check of a cached client's remote reachability — that still only surfaces as a failed request.
 - **The CloudNativePG `Cluster` resource itself is not read remotely.** Only the generated DSN Secret is fetched from the spoke cluster; nothing here reads spoke-side `Cluster`/`Pooler`/etc. custom resources to, say, auto-discover DSN Secret names or validate the target actually exists. `clusterName` remains a free-text label, not a live cross-cluster reference.
 - **Not validated against a real second Kubernetes cluster.** Testing here uses `sigs.k8s.io/controller-runtime/pkg/client/fake` for the hub-side Secret reads, and a syntactically valid kubeconfig pointing at an address nothing listens on to exercise the "unreachable remote cluster" failure path (see `internal/controller/postgreswatch_controller_test.go` and `remote_client_test.go`) — the same sandboxed-CI constraint noted elsewhere in [the roadmap](roadmap.md#known-robustness-gaps) for real-`kind`-cluster validation applies doubly here, since it would need *two* real clusters.

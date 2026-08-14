@@ -11,6 +11,13 @@ rules:
 # remote cluster: that access comes entirely from whatever RBAC is baked
 # into the kubeconfig a remoteClusterSecretRef Secret points at, which is
 # the responsibility of whoever creates that Secret, not this ClusterRole.
+#
+# Cluster-wide and namespace-unscoped by necessity, which on its own would
+# let anyone able to create a PostgresWatch reference an arbitrary Secret
+# and have the manager read it on their behalf. Closed in code, not RBAC:
+# the manager refuses to use either Secret's contents unless its owner has
+# labeled it pg-regression-radar.io/allow-postgreswatch-access=true — see
+# docs/multi-cluster.md#secret-consent-label.
 - apiGroups:
   - ""
   resources:
