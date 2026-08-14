@@ -30,6 +30,10 @@ go run ./cmd/operator \
   --min-executions 10 \
   --latency-threshold 0.20
 ```
+> **Note:** The `--dsn` value above is a placeholder. Replace it with a full PostgreSQL
+> connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
+> Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
+
 
 ## Run the manager (CRD-driven, HA)
 
@@ -79,6 +83,9 @@ go run ./cmd/manager \
 kubectl get postgreswatch,deploysource -n production
 kubectl get performanceregressions -A
 ```
+> **Note:** The `--from-literal=dsn` value above is a placeholder. Replace it with a full
+> PostgreSQL connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
+> Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
 ## Deploy on Kubernetes via Helm
 
@@ -100,6 +107,9 @@ helm install pg-regression-radar ./deploy/helm/deploylens \
   --set postgres.clusterName=cnpg-cluster \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```
+> **Note:** The `postgres.dsn` values above are placeholders. Replace them with a full
+> PostgreSQL connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
+> Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
 !!! note
     Helm only installs a chart's `crds/` directory on `helm install`, never on `helm upgrade` — this is a deliberate Helm safety behaviour, not a bug in this chart (see the [Helm docs on CRDs](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/)). To pick up CRD schema changes after upgrading the chart, apply `deploy/helm/deploylens/crds/*.yaml` (or `config/crd/bases/*.yaml`, the same files) with `kubectl apply -f` directly.
