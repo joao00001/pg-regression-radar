@@ -52,5 +52,5 @@ import (
 )
 
 func main() {
-	cli.RunManager(os.Args[1:])
+	os.Exit(cli.RunManager(os.Args[1:]))
 }

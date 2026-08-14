@@ -80,13 +80,13 @@ func main() {
 	cmd, args := os.Args[1], os.Args[2:]
 	switch cmd {
 	case "operator":
-		cli.RunOperator(args)
+		os.Exit(cli.RunOperator(args))
 	case "manager":
-		cli.RunManager(args)
+		os.Exit(cli.RunManager(args))
 	case "collector":
-		cli.RunCollector(args)
+		os.Exit(cli.RunCollector(args))
 	case "ingester":
-		cli.RunIngester(args)
+		os.Exit(cli.RunIngester(args))
 	case "version", "--version", "-v":
 		fmt.Println(buildinfo.String("pg-regression-radar"))
 	case "help", "--help", "-h":

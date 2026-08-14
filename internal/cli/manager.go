@@ -16,6 +16,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -62,8 +63,8 @@ func init() {
 // with leader election so multiple replicas can run for HA (only the
 // elected leader does any work; standbys take over via a
 // coordination.k8s.io Lease on failover).
-func RunManager(args []string) {
-	fs := flag.NewFlagSet("manager", flag.ExitOnError)
+func RunManager(args []string) int {
+	fs := flag.NewFlagSet("manager", flag.ContinueOnError)
 	var metricsAddr string
 	var probeAddr string
 	var pgMetricsAddr string
@@ -97,11 +98,16 @@ func RunManager(args []string) {
 			"kubeconfig), then exit without starting the manager.")
 	opts := zap.Options{Development: true}
 	opts.BindFlags(fs)
-	_ = fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
 
 	if versionFlag {
 		fmt.Println(buildinfo.String("manager"))
-		return
+		return 0
 	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
@@ -110,12 +116,12 @@ func RunManager(args []string) {
 	cfg, err := ctrl.GetConfig()
 	if err != nil {
 		managerSetupLog.Error(err, "unable to resolve Kubernetes API server config")
-		os.Exit(1)
+		return 1
 	}
 
 	if dryRun {
 		logger.Info("--dry-run: configuration OK", "version", buildinfo.String("manager"), "apiServerHost", cfg.Host)
-		return
+		return 0
 	}
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
@@ -142,7 +148,7 @@ func RunManager(args []string) {
 	})
 	if err != nil {
 		managerSetupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		return 1
 	}
 
 	registry := controller.NewRegistry()
@@ -172,7 +178,7 @@ func RunManager(args []string) {
 		Aborter:  aborter,
 	}).SetupWithManager(mgr); err != nil {
 		managerSetupLog.Error(err, "unable to create controller", "controller", "PostgresWatch")
-		os.Exit(1)
+		return 1
 	}
 
 	if err := (&controller.DeploySourceReconciler{
@@ -182,7 +188,7 @@ func RunManager(args []string) {
 		Logger:   logger,
 	}).SetupWithManager(mgr); err != nil {
 		managerSetupLog.Error(err, "unable to create controller", "controller", "DeploySource")
-		os.Exit(1)
+		return 1
 	}
 
 	if err := (&controller.WorkloadWatchReconciler{
@@ -191,16 +197,16 @@ func RunManager(args []string) {
 		Logger:   logger,
 	}).SetupWithManager(mgr); err != nil {
 		managerSetupLog.Error(err, "unable to create controller", "controller", "WorkloadWatch")
-		os.Exit(1)
+		return 1
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		managerSetupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
+		return 1
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		managerSetupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
+		return 1
 	}
 
 	// The webhook listener and the aggregated Postgres metrics listener
@@ -217,7 +223,7 @@ func RunManager(args []string) {
 		logger:  logger,
 	}); err != nil {
 		managerSetupLog.Error(err, "unable to add webhook server")
-		os.Exit(1)
+		return 1
 	}
 
 	pgMetricsMux := http.NewServeMux()
@@ -229,14 +235,15 @@ func RunManager(args []string) {
 		logger:  logger,
 	}); err != nil {
 		managerSetupLog.Error(err, "unable to add pg-metrics server")
-		os.Exit(1)
+		return 1
 	}
 
 	managerSetupLog.Info("starting manager", "leaderElection", enableLeaderElection)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		managerSetupLog.Error(err, "problem running manager")
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // httpRunnable adapts a plain net/http.Handler into a

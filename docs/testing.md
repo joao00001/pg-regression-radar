@@ -14,7 +14,15 @@ go vet ./...        # static analysis
 go build ./...      # build all binaries
 ```
 
-These cover collector, correlation, ingester, alerting, storage, and controller logic against synthetic data and fakes — fast, and safe to run with no external services.
+These cover collector, correlation, ingester, alerting, storage, controller, and CLI-flag/`--dry-run` logic against synthetic data and fakes — fast (the whole suite runs in well under a second), and safe to run with no external services. `.github/workflows/ci.yml`'s `build-and-test` job runs this exact command on every push/PR and posts a per-package coverage breakdown to the job's summary (`go tool cover -func`, plus the raw profile as a downloadable artifact) — visibility, not a hard-blocking threshold.
+
+### Coverage philosophy
+
+There is no single repo-wide coverage percentage this project targets, deliberately: unit coverage means genuinely different things depending on what a package actually does, and a blanket target (99%, say) would either be impossible for some packages or actively counterproductive for others.
+
+- **Pure logic** — `internal/correlation`'s statistics (E-divisive, Welch's t-test, its p-value machinery), `internal/collector`'s query fingerprinting, `internal/alerting`'s formatters, `internal/ingester`'s payload parsing, `internal/cli`'s flag validation and `--dry-run` checks — has no real dependency (no network, no database, no Kubernetes API) standing between it and a fast, deterministic unit test. This is where high unit coverage (90-100%) is both achievable and worth pursuing, and where a coverage number going *down* on a PR diff is a meaningful signal worth looking at.
+- **Real-infrastructure-dependent code** — `internal/collector`'s actual `pg_stat_statements` scrape, `internal/storage/postgres`'s SQL, `internal/controller`'s envtest-based reconciliation — correctly shows up as low/zero in the *unit-only* coverage number above, because faking away a real Postgres/Kubernetes API to chase that number would mean testing the fake, not the code. This is covered instead, deliberately, by the real-infrastructure integration tests, the envtest suite, and the two full end-to-end workflows below — see [CI/CD](ci-cd.md) for which of those actually run automatically.
+- **Wiring/glue code** — `cmd/*/main.go`'s few-line wrappers, generated code (`zz_generated.deepcopy.go`), `SetupWithManager` calls — isn't meaningfully unit-testable at all (there's no logic to assert on beyond "does it call the thing it's supposed to call"), and its correctness is instead proven by the fact the real binary starts up and reconciles for real in the [real-cluster end-to-end test](#e2e-kind-cloudnativepg) below. No coverage target applies here, and none should.
 
 ## Real-infrastructure integration tests
 
@@ -34,7 +42,7 @@ Gated behind the `integration` build tag so `go test ./...` stays safe with no d
 docker run -d --name pgrr-test -e POSTGRES_PASSWORD=test -p 5432:5432 \
   postgres:16 postgres -c shared_preload_libraries=pg_stat_statements
 export PGRR_TEST_DSN="postgres://postgres:test@localhost:5432/postgres?sslmode=disable"
-go test -tags=integration ./internal/storage/... ./internal/collector/... ./internal/e2e/...
+go test -tags=integration ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
 
 # Real kube-apiserver + etcd (internal/controller):
 go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest

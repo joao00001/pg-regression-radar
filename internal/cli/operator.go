@@ -38,6 +38,7 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -64,8 +65,8 @@ import (
 // together the Collector, Deploy Event Ingester, Correlation Engine, and
 // Alerting components into a single process suitable for running in
 // Kubernetes as a Deployment. See docs/getting-started.md for full usage.
-func RunOperator(args []string) {
-	fs := flag.NewFlagSet("operator", flag.ExitOnError)
+func RunOperator(args []string) int {
+	fs := flag.NewFlagSet("operator", flag.ContinueOnError)
 	dsn := fs.String("dsn", "", "Postgres DSN (required)")
 	clusterName := fs.String("cluster-name", "default", "CloudNativePG cluster name label")
 	namespace := fs.String("namespace", "default", "Kubernetes namespace label")
@@ -109,16 +110,21 @@ func RunOperator(args []string) {
 	statePruneInterval := fs.Duration("state-prune-interval", 15*time.Minute, "How often to sweep the postgres state backend for records older than --state-retention")
 	versionFlag := fs.Bool("version", false, "Print version information and exit")
 	dryRun := fs.Bool("dry-run", false, "Validate configuration and Postgres connectivity, then exit without starting any servers")
-	_ = fs.Parse(args)
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
 
 	if *versionFlag {
 		fmt.Println(buildinfo.String("operator"))
-		return
+		return 0
 	}
 
 	if *dsn == "" {
 		slog.Error("--dsn is required")
-		os.Exit(1)
+		return 1
 	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -137,7 +143,7 @@ func RunOperator(args []string) {
 		b, err := os.ReadFile(*alertTemplateFile)
 		if err != nil {
 			logger.Error("failed to read --alert-template-file", "err", err)
-			os.Exit(1)
+			return 1
 		}
 		customAlertTemplate = string(b)
 	}
@@ -160,7 +166,7 @@ func RunOperator(args []string) {
 	}, logger, reg)
 	if err != nil {
 		logger.Error("failed to create collector", "err", err)
-		os.Exit(1)
+		return 1
 	}
 
 	if *dryRun {
@@ -169,25 +175,25 @@ func RunOperator(args []string) {
 
 		if !ingester.ValidSourceTypes[*sourceType] {
 			logger.Error("--dry-run: unknown --source-type", "value", *sourceType)
-			os.Exit(1)
+			return 1
 		}
 		if _, err := alerting.BuildNotifier(alertCfg, logger); err != nil {
 			logger.Error("--dry-run: invalid alerting configuration", "err", err)
-			os.Exit(1)
+			return 1
 		}
 		if *periodicDetection {
 			if *periodicWindowMinutes <= 0 {
 				logger.Error("--dry-run: --periodic-window-minutes must be positive", "value", *periodicWindowMinutes)
-				os.Exit(1)
+				return 1
 			}
 			if *periodicIntervalMinutes <= 0 {
 				logger.Error("--dry-run: --periodic-interval-minutes must be positive", "value", *periodicIntervalMinutes)
-				os.Exit(1)
+				return 1
 			}
 		}
 		if err := col.Ping(ctx); err != nil {
 			logger.Error("--dry-run: collector ping failed", "err", err)
-			os.Exit(1)
+			return 1
 		}
 		if *stateBackend == "postgres" {
 			stateConnDSN := *stateDSN
@@ -197,15 +203,15 @@ func RunOperator(args []string) {
 			stateDB, err := postgres.Open(ctx, stateConnDSN)
 			if err != nil {
 				logger.Error("--dry-run: postgres state backend connection failed", "err", err)
-				os.Exit(1)
+				return 1
 			}
 			_ = stateDB.Close()
 		} else if *stateBackend != "" && *stateBackend != "memory" {
 			logger.Error("--dry-run: unknown --state-backend (want memory or postgres)", "value", *stateBackend)
-			os.Exit(1)
+			return 1
 		}
 		logger.Info("--dry-run: configuration and connectivity OK", "version", buildinfo.String("operator"))
-		return
+		return 0
 	}
 
 	// ---- Ingester ----
@@ -231,7 +237,7 @@ func RunOperator(args []string) {
 	notifier, err := alerting.BuildNotifier(alertCfg, logger)
 	if err != nil {
 		logger.Error("failed to configure alerting", "err", err)
-		os.Exit(1)
+		return 1
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -266,7 +272,7 @@ func RunOperator(args []string) {
 		db, err := postgres.Open(ctx, stateConnDSN)
 		if err != nil {
 			logger.Error("failed to initialise postgres state backend", "err", err)
-			os.Exit(1)
+			return 1
 		}
 		stateDB = db
 		pgSamples := postgres.NewSampleStore(db)
@@ -325,7 +331,7 @@ func RunOperator(args []string) {
 			"separate_state_dsn", *stateDSN != "")
 	default:
 		logger.Error("unknown --state-backend (want memory or postgres)", "value", *stateBackend)
-		os.Exit(1)
+		return 1
 	}
 	if stateDB != nil {
 		defer func() { _ = stateDB.Close() }()
@@ -502,6 +508,7 @@ func RunOperator(args []string) {
 	// ---- Collector (blocking) ----
 	if err := col.Run(ctx); err != nil {
 		logger.Error("collector exited with error", "err", err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }

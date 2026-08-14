@@ -49,5 +49,5 @@ import (
 )
 
 func main() {
-	cli.RunOperator(os.Args[1:])
+	os.Exit(cli.RunOperator(os.Args[1:]))
 }

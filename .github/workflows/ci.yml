@@ -33,8 +33,44 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name: Test
-        run: go test -race -count=1 ./...
+      - name: Test (with coverage)
+        run: go test -race -count=1 -coverprofile=coverage.out ./...
+
+      # Reports coverage on every run — visibility, not a gate: this repo
+      # deliberately does not fail CI below some blanket percentage. Unit
+      # coverage means different things for different packages (pure logic
+      # like internal/correlation/internal/alerting can reasonably approach
+      # 100%; internal/collector/internal/storage/postgres's real-Postgres
+      # code paths are correctly 0% *here* and covered instead by the
+      # integration-postgres job below; generated code and thin cmd/*
+      # wiring aren't meaningfully coverable at all) — see docs/testing.md
+      # for the tiered expectations this number should be read against,
+      # rather than chasing one aggregate target.
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo "### Unit test coverage (this job only — see integration-postgres for real-Postgres coverage)"
+            echo
+            echo '```'
+            go tool cover -func=coverage.out | tail -1
+            echo '```'
+            echo
+            echo "<details><summary>Per-package breakdown</summary>"
+            echo
+            echo '```'
+            go tool cover -func=coverage.out
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage profile
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-unit
+          path: coverage.out
+          retention-days: 14
 
   # Runs the tests behind the "integration" build tag against a real
   # PostgreSQL server (internal/storage/postgres, internal/collector),
@@ -104,6 +140,10 @@ jobs:
         # this suite has to proving the tool actually detects a regression,
         # as opposed to internal/storage and internal/collector's narrower
         # integration tests, which check one layer in isolation.
+        # internal/cli's integration tests are narrower still — they only
+        # prove `operator`/`collector --dry-run` actually succeeds against a
+        # real, reachable Postgres (every unit test in that package uses a
+        # deliberately unreachable DSN, so none of them can prove that).
         #
         # -p 1 forces `go test` to build/run these packages' test binaries
         # ONE AT A TIME instead of Go's default of running different
@@ -117,7 +157,7 @@ jobs:
         # out call counts the other test is mid-way through accumulating,
         # corrupting both. -p 1 gives each package exclusive access to the
         # shared instance for the duration of its own tests.
-        run: go test -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/...
+        run: go test -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
 
       - name: Stop PostgreSQL
         if: always()
@@ -242,7 +282,7 @@ jobs:
       - name: Run integration tests
         env:
           PGRR_TEST_DSN: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
-        run: go test -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/...
+        run: go test -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
 
       - name: Stop EDB Postgres
         if: always()

@@ -41,5 +41,5 @@ import (
 )
 
 func main() {
-	cli.RunCollector(os.Args[1:])
+	os.Exit(cli.RunCollector(os.Args[1:]))
 }
