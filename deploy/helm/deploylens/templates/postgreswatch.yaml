@@ -19,4 +19,17 @@ spec:
   latencyChangeThreshold: {{ .Values.analysis.latencyThreshold | quote }}
   pValueThreshold: {{ .Values.analysis.pValueThreshold | quote }}
   slackWebhookUrl: {{ .Values.alerting.slackWebhookUrl | quote }}
+  {{- if .Values.alerting.format }}
+  alerting:
+    format: {{ .Values.alerting.format | quote }}
+    {{- if .Values.alerting.url }}
+    url: {{ .Values.alerting.url | quote }}
+    {{- end }}
+    {{- if .Values.alerting.pagerDutyRoutingKey }}
+    pagerDutyRoutingKey: {{ .Values.alerting.pagerDutyRoutingKey | quote }}
+    {{- end }}
+    {{- if .Values.alerting.customTemplate }}
+    customTemplate: {{ .Values.alerting.customTemplate | quote }}
+    {{- end }}
+  {{- end }}
 {{- end }}
