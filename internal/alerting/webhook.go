@@ -161,9 +161,9 @@ func registerCounterVec(reg prometheus.Registerer, opts prometheus.CounterOpts, 
 
 func formatLabel(f Formatter) string {
 	switch f.(type) {
-	case SlackFormatter:
+	case SlackFormatter, *SlackFormatter:
 		return "slack"
-	case TeamsFormatter:
+	case TeamsFormatter, *TeamsFormatter:
 		return "teams"
 	case *PagerDutyFormatter:
 		return "pagerduty"

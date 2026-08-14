@@ -402,7 +402,7 @@ func TestNotify_RecordsErrorMetrics(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "prod-east", Registerer: reg}, nil)
 	regression := sampleRegression(v1alpha1.StatusDetected)
-	regression.TriggerType = ""
+	regression.TriggerType = v1alpha1.TriggerTypeDeploy
 
 	notifier.ObserveDetectedRegression(regression)
 	err := notifier.Notify(context.Background(), regression)
