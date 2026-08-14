@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -122,6 +123,12 @@ func RunManager(args []string) int {
 	if dryRun {
 		logger.Info("--dry-run: configuration OK", "version", buildinfo.String("manager"), "apiServerHost", cfg.Host)
 		return 0
+	}
+
+	statusClient, err := client.New(cfg, client.Options{Scheme: managerScheme})
+	if err != nil {
+		managerSetupLog.Error(err, "unable to build direct Kubernetes client for startup failure reporting")
+		statusClient = nil
 	}
 
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
@@ -240,6 +247,13 @@ func RunManager(args []string) int {
 
 	managerSetupLog.Info("starting manager", "leaderElection", enableLeaderElection)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+		if statusClient != nil {
+			statusCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if markErr := reportManagerStartupFailureStatus(statusCtx, statusClient, err); markErr != nil {
+				managerSetupLog.Error(markErr, "unable to report manager startup failure in custom resource status")
+			}
+		}
 		managerSetupLog.Error(err, "problem running manager")
 		return 1
 	}

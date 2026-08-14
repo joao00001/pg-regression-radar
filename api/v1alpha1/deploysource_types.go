@@ -75,6 +75,9 @@ const (
 	// DeploySourcePhaseReady means the webhook route is registered and
 	// accepting deploy events.
 	DeploySourcePhaseReady DeploySourcePhase = "Ready"
+	// DeploySourcePhaseFailed means the manager could not keep the route
+	// active because it failed before reconciliation could complete.
+	DeploySourcePhaseFailed DeploySourcePhase = "Failed"
 )
 
 // DeploySourceStatus reflects whether the webhook route is live.
