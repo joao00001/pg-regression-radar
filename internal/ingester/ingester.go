@@ -52,18 +52,31 @@ type Store struct {
 	// byTime mirrors events sorted by Timestamp, maintained on every Add so
 	// that EventsInRange can binary-search instead of doing a full O(n) scan.
 	byTime []v1alpha1.DeployEvent
+	// ids is a set of event IDs already present, used to enforce upsert-by-ID
+	// deduplication in Add so that webhook retries for the same deploy do not
+	// create duplicate entries.
+	ids map[string]struct{}
 }
 
 // NewStore returns an empty Store with a small pre-allocated backing slice to
 // reduce early-growth reallocations.
 func NewStore() *Store {
-	return &Store{events: make([]v1alpha1.DeployEvent, 0, 64)}
+	return &Store{events: make([]v1alpha1.DeployEvent, 0, 64), ids: make(map[string]struct{}, 64)}
 }
 
-// Add appends a new event to the store.
+// Add stores ev. If an event with the same ID already exists it is left
+// unchanged (first-write-wins upsert), matching EventStore.Add's idempotency
+// contract so that webhook retries for the same deploy are deduplicated.
 func (s *Store) Add(ev v1alpha1.DeployEvent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.ids == nil {
+		s.ids = make(map[string]struct{})
+	}
+	if _, dup := s.ids[ev.ID]; dup {
+		return
+	}
+	s.ids[ev.ID] = struct{}{}
 	s.events = append(s.events, ev)
 	s.insertByTimeLocked(ev)
 }
@@ -121,15 +134,17 @@ func (s *Store) Backfill(events []v1alpha1.DeployEvent) int {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	existing := make(map[string]struct{}, len(s.events))
-	for _, ev := range s.events {
-		existing[ev.ID] = struct{}{}
+	if s.ids == nil {
+		s.ids = make(map[string]struct{}, len(s.events)+len(events))
+		for _, ev := range s.events {
+			s.ids[ev.ID] = struct{}{}
+		}
 	}
 	for _, ev := range events {
-		if _, dup := existing[ev.ID]; dup {
+		if _, dup := s.ids[ev.ID]; dup {
 			continue
 		}
-		existing[ev.ID] = struct{}{}
+		s.ids[ev.ID] = struct{}{}
 		s.events = append(s.events, ev)
 		s.insertByTimeLocked(ev)
 	}
@@ -303,7 +318,7 @@ func (h *Handler) parseArgoCDPayload(r *http.Request) (v1alpha1.DeployEvent, err
 	}
 
 	return v1alpha1.DeployEvent{
-		ID:        fmt.Sprintf("argocd-%s-%d", p.App.Metadata.Name, time.Now().UnixNano()),
+		ID:        fmt.Sprintf("argocd-%s-%s", p.App.Metadata.Name, p.App.Status.Sync.Revision),
 		App:       p.App.Metadata.Name,
 		Cluster:   cluster,
 		Namespace: p.App.Metadata.Namespace,
@@ -349,7 +364,7 @@ func (h *Handler) parseArgoRolloutsPayload(r *http.Request) (v1alpha1.DeployEven
 	}
 
 	return v1alpha1.DeployEvent{
-		ID:        fmt.Sprintf("argo-rollouts-%s-%d", p.Rollout.Metadata.Name, time.Now().UnixNano()),
+		ID:        fmt.Sprintf("argo-rollouts-%s-%s", p.Rollout.Metadata.Name, p.Rollout.Status.CurrentPodHash),
 		App:       p.Rollout.Metadata.Name,
 		Cluster:   p.Cluster,
 		Namespace: p.Rollout.Metadata.Namespace,

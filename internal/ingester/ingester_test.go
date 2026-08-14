@@ -291,6 +291,80 @@ func TestHandler_ArgoCDWebhook_ClusterFallbackWhenDestinationMissing(t *testing.
 	}
 }
 
+func TestHandler_ArgoCDWebhook_DeterministicID(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	src := v1alpha1.DeploySource{Name: "test", SourceType: "argocd"}
+	h := ingester.NewHandler(store, src, nil)
+
+	payload := map[string]interface{}{
+		"app": map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"name":      "my-app",
+				"namespace": "production",
+			},
+			"status": map[string]interface{}{
+				"sync": map[string]interface{}{"revision": "deadbeef"},
+			},
+		},
+	}
+	body, _ := json.Marshal(payload)
+
+	// Simulate two webhook deliveries for the same deploy event.
+	for range 2 {
+		req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, req)
+		if rr.Code != http.StatusNoContent {
+			t.Fatalf("expected 204, got %d", rr.Code)
+		}
+	}
+
+	events := store.All()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 deduplicated event, got %d", len(events))
+	}
+	if events[0].ID != "argocd-my-app-deadbeef" {
+		t.Errorf("expected deterministic ID argocd-my-app-deadbeef, got %s", events[0].ID)
+	}
+}
+
+func TestHandler_ArgoRolloutsWebhook_DeterministicID(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	src := v1alpha1.DeploySource{Name: "rollouts-src", SourceType: "argo-rollouts"}
+	h := ingester.NewHandler(store, src, nil)
+
+	payload := map[string]interface{}{
+		"rollout": map[string]interface{}{
+			"metadata": map[string]interface{}{"name": "canary-app", "namespace": "staging"},
+			"status":   map[string]interface{}{"currentPodHash": "abc123"},
+		},
+	}
+	body, _ := json.Marshal(payload)
+
+	// Simulate two webhook deliveries for the same deploy event.
+	for range 2 {
+		req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, req)
+		if rr.Code != http.StatusNoContent {
+			t.Fatalf("expected 204, got %d", rr.Code)
+		}
+	}
+
+	events := store.All()
+	if len(events) != 1 {
+		t.Fatalf("expected 1 deduplicated event, got %d", len(events))
+	}
+	if events[0].ID != "argo-rollouts-canary-app-abc123" {
+		t.Errorf("expected deterministic ID argo-rollouts-canary-app-abc123, got %s", events[0].ID)
+	}
+}
+
 func TestHandler_ArgoRolloutsWebhook_ClusterFromPayload(t *testing.T) {
 	t.Parallel()
 
