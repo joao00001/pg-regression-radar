@@ -561,6 +561,13 @@ func TestCollector_QueryStatStatements_UsesConfiguredMaxQueryTextLen(t *testing.
 	}
 }
 
+func TestCollector_QueryStatStatements_FallsBackToDefaultBudgetWhenUnset(t *testing.T) {
+	got := (&Collector{}).queryStatStatements()
+	if !strings.Contains(got, "LEFT(query, 201)") {
+		t.Fatalf("expected zero-value collector SQL to fall back to the default budget, got:\n%s", got)
+	}
+}
+
 // ----- Ping -----
 
 // TestPing_UnreachableHost_ReturnsError exercises the failure path without
