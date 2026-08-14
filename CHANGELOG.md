@@ -32,6 +32,21 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.3.0 - 2026-08-14
+
+### Features
+
+- Added Prometheus counters for detected regressions and webhook notification successes or failures, so operators can alert on broken delivery paths and chart alerting reliability from `/metrics`. (#87)
+
+### Fixes
+
+- Webhook notifications now drain response bodies before closing them so Go can reuse keep-alive HTTP connections between alerts. (#89)
+- Malformed PostgreSQL DSNs that look like redacted or broken connection URIs are now rejected at operator startup with a clear parse error instead of silently falling back to localhost until scrape time. (#90)
+- Collector scrapes now cap `pg_stat_statements` query text at the configured `--max-query-text-len` budget instead of always asking PostgreSQL for up to 500 characters per row. (#91)
+- Manager startup failures that prevent controller informers from reaching the Kubernetes API now best-effort mark existing PostgresWatch and DeploySource resources with a non-empty degraded status instead of leaving them blank. (#92)
+- Periodic regressions now carry the configured namespace, so alerts, queries, and Kubernetes resources stay scoped to the same namespace as the PostgresWatch or operator configuration. (#93)
+
+
 ## v1.2.0 - 2026-08-14
 
 ### Features
