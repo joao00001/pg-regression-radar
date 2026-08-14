@@ -6,7 +6,7 @@
 
 The Ingester (`internal/ingester`) normalises webhook payloads from four source types into a single `DeployEvent` — see [API Reference](api-reference.md) for that shape. Every `DeployEvent` carries a `cluster` field so multi-cluster setups can tell deploys apart; this page covers how each source populates it.
 
-A fifth source, **Kubernetes-native watch**, doesn't send a webhook at all — see [below](#native-kubernetes-watch-no-webhook) — and is only available in `manager` mode (CRD-driven), not via the standalone `operator`/`ingester` binaries' `--source-type` flag.
+A fifth source, **Kubernetes-native watch**, doesn't send a webhook at all — see [below](#native-kubernetes-watch-no-webhook) — and is only available in `manager` mode (CRD-driven), not via the standalone `operator`/`ingester` binaries' `--source-type` flag. See [Configuration Reference: Source-type capabilities by mode](configuration.md#source-type-capabilities-by-mode) for the full accepted-values comparison.
 
 ## Supported sources
 
