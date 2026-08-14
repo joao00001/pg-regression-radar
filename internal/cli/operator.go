@@ -90,6 +90,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 	minExecutions := fs.Int64("min-executions", 10, "Minimum query executions per window")
 	latencyThreshold := fs.Float64("latency-threshold", 0.20, "Minimum relative latency increase to flag")
 	changePointTolerance := fs.Duration("changepoint-tolerance", 0, "Max distance between the E-divisive change point and the deploy timestamp still attributed to that deploy (0 = auto: 20% of window, floor 2m)")
+	maxQueryTextLen := fs.Int("max-query-text-len", 200, "Max query text length (characters) stored per sample before truncation for alerting/fingerprinting")
 	retentionMinutes := fs.Int("retention-minutes", 180, "How long (minutes) the collector retains in-memory query samples before pruning them; should stay well above 2x --window-minutes")
 	capturePlans := fs.Bool("capture-plans", false, "Capture periodic EXPLAIN (GENERIC_PLAN) plan snapshots for tracked queries and attach a plan-diff summary to detected regressions; requires PostgreSQL 16+ (no-op, logged once, on older servers) and adds one extra planner invocation per tracked query per scrape cycle — see docs/detection-algorithm.md")
 	// ---- Periodic (deploy-independent) detection — see docs/periodic-detection.md ----
@@ -129,6 +130,10 @@ func runOperator(args []string, logOutput io.Writer) int {
 
 	if *dsn == "" {
 		slog.Error("--dsn is required")
+		return 1
+	}
+	if *maxQueryTextLen <= 0 {
+		slog.Error("--max-query-text-len must be positive", "value", *maxQueryTextLen)
 		return 1
 	}
 
@@ -177,6 +182,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 		ScrapeInterval:    *scrapeInterval,
 		ClusterName:       *clusterName,
 		Namespace:         *namespace,
+		MaxQueryTextLen:   *maxQueryTextLen,
 		RetentionDuration: time.Duration(*retentionMinutes) * time.Minute,
 		CapturePlans:      *capturePlans,
 	}, logger, reg)

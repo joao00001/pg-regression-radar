@@ -42,6 +42,7 @@ func RunCollector(args []string) int {
 	clusterName := fs.String("cluster-name", "default", "CloudNativePG cluster name")
 	namespace := fs.String("namespace", "default", "Kubernetes namespace")
 	listen := fs.String("listen", ":9090", "Prometheus metrics listen address")
+	maxQueryTextLen := fs.Int("max-query-text-len", 200, "Max query text length (characters) stored per sample before truncation for alerting/fingerprinting")
 	retentionMinutes := fs.Int("retention-minutes", 180, "How long (minutes) to retain in-memory query samples before pruning them; should stay well above the correlation window(s) analysed against this data")
 	versionFlag := fs.Bool("version", false, "Print version information and exit")
 	dryRun := fs.Bool("dry-run", false, "Validate configuration and Postgres connectivity, then exit without starting any servers")
@@ -61,6 +62,10 @@ func RunCollector(args []string) int {
 		slog.Error("--dsn is required")
 		return 1
 	}
+	if *maxQueryTextLen <= 0 {
+		slog.Error("--max-query-text-len must be positive", "value", *maxQueryTextLen)
+		return 1
+	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	reg := prometheus.NewRegistry()
@@ -70,6 +75,7 @@ func RunCollector(args []string) int {
 		ScrapeInterval:    *scrapeInterval,
 		ClusterName:       *clusterName,
 		Namespace:         *namespace,
+		MaxQueryTextLen:   *maxQueryTextLen,
 		RetentionDuration: time.Duration(*retentionMinutes) * time.Minute,
 	}, logger, reg)
 	if err != nil {

@@ -48,6 +48,17 @@ func TestRunCollector_Help(t *testing.T) {
 	}
 }
 
+func TestRunCollector_MaxQueryTextLenMustBePositive(t *testing.T) {
+	t.Parallel()
+	got := cli.RunCollector([]string{
+		"--dsn", unreachableDSN,
+		"--max-query-text-len", "0",
+	})
+	if got != 1 {
+		t.Errorf("RunCollector(--max-query-text-len=0) = %d, want 1", got)
+	}
+}
+
 // TestRunCollector_DryRun_PingFails mirrors
 // TestRunOperator_DryRun_PingFails: 127.0.0.1:1 refuses the connection
 // immediately (nothing listens there), so this stays fast with no real
