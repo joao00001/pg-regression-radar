@@ -26,6 +26,7 @@ package alerting
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -293,6 +294,31 @@ func TestNotify_NetworkError(t *testing.T) {
 	}
 }
 
+func TestNotify_DrainsResponseBodyBeforeClose(t *testing.T) {
+	body := &trackingReadCloser{reader: strings.NewReader("ok")}
+	notifier := NewWebhookNotifier(WebhookConfig{URL: "http://example.invalid", Registerer: prometheus.NewRegistry()}, nil)
+	notifier.client = &http.Client{
+		Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       body,
+				Header:     make(http.Header),
+			}, nil
+		}),
+		Timeout: notifier.client.Timeout,
+	}
+
+	if err := notifier.Notify(context.Background(), sampleRegression(v1alpha1.StatusDetected)); err != nil {
+		t.Fatalf("Notify: %v", err)
+	}
+	if !body.sawEOF {
+		t.Fatal("expected Notify to read the response body to EOF before closing it")
+	}
+	if !body.closed {
+		t.Fatal("expected Notify to close the response body")
+	}
+}
+
 // TestNotify_RespectsConfiguredTimeout verifies WebhookConfig.Timeout is
 // actually wired into the HTTP client Notify uses: a handler that sleeps
 // past the timeout must cause Notify to return (with an error) close to the
@@ -433,4 +459,29 @@ func counterVecValue(t *testing.T, cv *prometheus.CounterVec, labelValues ...str
 		t.Fatalf("Write(%v): %v", labelValues, err)
 	}
 	return m.GetCounter().GetValue()
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+type trackingReadCloser struct {
+	reader io.Reader
+	closed bool
+	sawEOF bool
+}
+
+func (t *trackingReadCloser) Read(p []byte) (int, error) {
+	n, err := t.reader.Read(p)
+	if err == io.EOF {
+		t.sawEOF = true
+	}
+	return n, err
+}
+
+func (t *trackingReadCloser) Close() error {
+	t.closed = true
+	return nil
 }
