@@ -79,6 +79,8 @@ func TestValidatePostgresDSN_RejectsMalformedURIForms(t *testing.T) {
 }
 
 func TestRunOperator_RejectsMalformedDSNBeforePing(t *testing.T) {
+	t.Parallel()
+
 	var output bytes.Buffer
 	got := runOperator([]string{
 		"--dsn", "postgres:127.0.0.2:5432/postgres?sslmode=disable",
