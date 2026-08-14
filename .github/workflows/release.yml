@@ -368,7 +368,7 @@ jobs:
           echo "CHART_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@v5
         with:
           # Same version e2e-kind.yml already pins, for one fewer Helm
           # version to reason about across this repo's workflows.
