@@ -377,6 +377,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	}
 
 	engine := correlation.New(correlation.Config{
+		Namespace:              watch.Namespace,
 		WindowMinutes:          windowMinutes,
 		MinExecutions:          minExecutions,
 		LatencyChangeThreshold: latencyThreshold,

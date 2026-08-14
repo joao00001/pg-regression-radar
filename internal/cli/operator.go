@@ -242,6 +242,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 
 	// ---- Correlation Engine ----
 	engine := correlation.New(correlation.Config{
+		Namespace:              *namespace,
 		WindowMinutes:          *windowMinutes,
 		MinExecutions:          *minExecutions,
 		LatencyChangeThreshold: *latencyThreshold,
