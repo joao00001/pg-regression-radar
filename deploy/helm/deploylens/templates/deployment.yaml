@@ -64,6 +64,11 @@ spec:
             - --state-dsn=$(STATE_DSN)
             - --state-retention={{ .Values.state.retention }}
             - --state-prune-interval={{ .Values.state.pruneInterval }}
+            {{- if .Values.periodicDetection.enabled }}
+            - --periodic-detection
+            - --periodic-window-minutes={{ .Values.periodicDetection.windowMinutes }}
+            - --periodic-interval-minutes={{ .Values.periodicDetection.intervalMinutes }}
+            {{- end }}
           env:
             - name: POSTGRES_DSN
               valueFrom:

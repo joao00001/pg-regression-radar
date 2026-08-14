@@ -110,6 +110,7 @@ nav:
       - Deploy Sources & Webhooks: webhooks.md
       - Alerting: alerting.md
       - Auto-Abort (Argo Rollouts): auto-abort.md
+      - Periodic (Deploy-Independent) Detection: periodic-detection.md
       - Support Matrix: support-matrix.md
   - Contributing:
       - Testing: testing.md

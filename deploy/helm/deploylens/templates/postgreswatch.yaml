@@ -32,4 +32,10 @@ spec:
     customTemplate: {{ .Values.alerting.customTemplate | quote }}
     {{- end }}
   {{- end }}
+  {{- if .Values.periodicDetection.enabled }}
+  periodicDetection:
+    enabled: {{ .Values.periodicDetection.enabled }}
+    windowMinutes: {{ .Values.periodicDetection.windowMinutes }}
+    intervalMinutes: {{ .Values.periodicDetection.intervalMinutes }}
+  {{- end }}
 {{- end }}
