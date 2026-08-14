@@ -404,7 +404,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		// this deprecated field -- see SlackWebhookURL's own doc comment.
 		alertCfg.URL = watch.Spec.SlackWebhookURL
 	}
-	notifier, err := alerting.BuildNotifier(alertCfg, r.Logger)
+	notifier, err := alerting.BuildNotifier(alertCfg, r.Logger, promReg)
 	if err != nil {
 		return nil, fmt.Errorf("build alert notifier: %w", err)
 	}

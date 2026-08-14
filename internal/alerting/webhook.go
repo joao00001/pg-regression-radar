@@ -29,6 +29,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -45,6 +47,9 @@ type WebhookConfig struct {
 	// prefer BuildNotifier, which sets this from a --alert-format flag or
 	// spec.alerting.format instead of leaving it to this zero-value default.
 	Formatter Formatter
+	// Registerer receives the alerting metrics for this notifier. Defaults to
+	// prometheus.DefaultRegisterer when nil.
+	Registerer prometheus.Registerer
 }
 
 func (c *WebhookConfig) defaults() {
@@ -58,9 +63,11 @@ func (c *WebhookConfig) defaults() {
 
 // WebhookNotifier POSTs a Formatter-rendered payload to a webhook endpoint.
 type WebhookNotifier struct {
-	cfg    WebhookConfig
-	client *http.Client
-	logger *slog.Logger
+	cfg                      WebhookConfig
+	client                   *http.Client
+	logger                   *slog.Logger
+	notificationsTotal       *prometheus.CounterVec
+	regressionsDetectedTotal *prometheus.CounterVec
 }
 
 // NewWebhookNotifier creates a new WebhookNotifier.
@@ -69,10 +76,22 @@ func NewWebhookNotifier(cfg WebhookConfig, logger *slog.Logger) *WebhookNotifier
 	if logger == nil {
 		logger = slog.Default()
 	}
+	reg := cfg.Registerer
+	if reg == nil {
+		reg = prometheus.DefaultRegisterer
+	}
 	return &WebhookNotifier{
 		cfg:    cfg,
 		client: &http.Client{Timeout: cfg.Timeout},
 		logger: logger,
+		notificationsTotal: registerCounterVec(reg, prometheus.CounterOpts{
+			Name: "pg_regression_radar_notifications_total",
+			Help: "Total notification attempts, labeled by final status and configured payload format.",
+		}, []string{"status", "format"}),
+		regressionsDetectedTotal: registerCounterVec(reg, prometheus.CounterOpts{
+			Name: "pg_regression_radar_regressions_detected_total",
+			Help: "Total regressions that reached StatusDetected, labeled by trigger type and cluster.",
+		}, []string{"trigger", "cluster"}),
 	}
 }
 
@@ -82,31 +101,71 @@ func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegr
 	if r.Status != v1alpha1.StatusDetected {
 		return nil
 	}
+	n.regressionsDetectedTotal.WithLabelValues(triggerLabel(r.TriggerType), n.cfg.ClusterName).Inc()
 
 	body, contentType, err := n.cfg.Formatter.Format(r, n.cfg.ClusterName)
 	if err != nil {
+		n.notificationsTotal.WithLabelValues("error", formatLabel(n.cfg.Formatter)).Inc()
 		return fmt.Errorf("alerting: format payload: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, n.cfg.URL, bytes.NewReader(body))
 	if err != nil {
+		n.notificationsTotal.WithLabelValues("error", formatLabel(n.cfg.Formatter)).Inc()
 		return fmt.Errorf("alerting: create request: %w", err)
 	}
 	req.Header.Set("Content-Type", contentType)
 
 	resp, err := n.client.Do(req)
 	if err != nil {
+		n.notificationsTotal.WithLabelValues("error", formatLabel(n.cfg.Formatter)).Inc()
 		return fmt.Errorf("alerting: send webhook: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 300 {
+		n.notificationsTotal.WithLabelValues("error", formatLabel(n.cfg.Formatter)).Inc()
 		return fmt.Errorf("alerting: webhook returned status %d", resp.StatusCode)
 	}
+	n.notificationsTotal.WithLabelValues("success", formatLabel(n.cfg.Formatter)).Inc()
 
 	n.logger.Info("alerting: notification sent",
 		"regression", r.Name,
 		"status_code", resp.StatusCode)
 
 	return nil
+}
+
+func registerCounterVec(reg prometheus.Registerer, opts prometheus.CounterOpts, labelNames []string) *prometheus.CounterVec {
+	cv := prometheus.NewCounterVec(opts, labelNames)
+	if err := reg.Register(cv); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			if existing, ok := are.ExistingCollector.(*prometheus.CounterVec); ok {
+				return existing
+			}
+		}
+	}
+	return cv
+}
+
+func formatLabel(f Formatter) string {
+	switch f.(type) {
+	case SlackFormatter:
+		return "slack"
+	case TeamsFormatter:
+		return "teams"
+	case *PagerDutyFormatter:
+		return "pagerduty"
+	case *CustomFormatter:
+		return "custom"
+	default:
+		return "custom"
+	}
+}
+
+func triggerLabel(trigger v1alpha1.TriggerType) string {
+	if trigger == v1alpha1.TriggerTypePeriodic {
+		return string(v1alpha1.TriggerTypePeriodic)
+	}
+	return string(v1alpha1.TriggerTypeDeploy)
 }

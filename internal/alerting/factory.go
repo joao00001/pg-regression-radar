@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // BuildConfig collects every alerting-related knob from either CLI flags
@@ -57,7 +59,7 @@ type BuildConfig struct {
 // surfaced at startup (operator flag parsing, or the first reconcile of a
 // PostgresWatch) rather than silently failing the first time a regression is
 // actually detected.
-func BuildNotifier(cfg BuildConfig, logger *slog.Logger) (*WebhookNotifier, error) {
+func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Registerer) (*WebhookNotifier, error) {
 	format := cfg.Format
 	if format == "" {
 		format = "slack"
@@ -95,5 +97,6 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger) (*WebhookNotifier, erro
 		Timeout:     cfg.Timeout,
 		ClusterName: cfg.ClusterName,
 		Formatter:   formatter,
+		Registerer:  reg,
 	}, logger), nil
 }

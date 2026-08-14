@@ -16,13 +16,15 @@ package alerting
 
 import (
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // TestBuildNotifier_DefaultsToSlack verifies an empty Format behaves
 // exactly like this package's original, Slack-only API — the backward
 // compatibility BuildConfig's doc comment promises.
 func TestBuildNotifier_DefaultsToSlack(t *testing.T) {
-	n, err := BuildNotifier(BuildConfig{URL: "http://example.invalid", ClusterName: "test"}, nil)
+	n, err := BuildNotifier(BuildConfig{URL: "http://example.invalid", ClusterName: "test"}, nil, prometheus.NewRegistry())
 	if err != nil {
 		t.Fatalf("BuildNotifier: %v", err)
 	}
@@ -37,7 +39,7 @@ func TestBuildNotifier_DefaultsToSlack(t *testing.T) {
 // TestBuildNotifier_Teams verifies format=teams selects TeamsFormatter and
 // keeps the configured URL (unlike pagerduty, teams has no fixed endpoint).
 func TestBuildNotifier_Teams(t *testing.T) {
-	n, err := BuildNotifier(BuildConfig{Format: "teams", URL: "http://example.invalid"}, nil)
+	n, err := BuildNotifier(BuildConfig{Format: "teams", URL: "http://example.invalid"}, nil, prometheus.NewRegistry())
 	if err != nil {
 		t.Fatalf("BuildNotifier: %v", err)
 	}
@@ -53,7 +55,7 @@ func TestBuildNotifier_Teams(t *testing.T) {
 // new required field this refactor introduces is actually enforced at
 // construction time, with an actionable error message.
 func TestBuildNotifier_PagerDuty_RequiresRoutingKey(t *testing.T) {
-	if _, err := BuildNotifier(BuildConfig{Format: "pagerduty"}, nil); err == nil {
+	if _, err := BuildNotifier(BuildConfig{Format: "pagerduty"}, nil, prometheus.NewRegistry()); err == nil {
 		t.Fatal("expected an error when format=pagerduty has no routing key, got nil")
 	}
 }
@@ -67,7 +69,7 @@ func TestBuildNotifier_PagerDuty_OverridesURL(t *testing.T) {
 		Format:              "pagerduty",
 		URL:                 "http://this-should-be-ignored.invalid",
 		PagerDutyRoutingKey: "R0UTE",
-	}, nil)
+	}, nil, prometheus.NewRegistry())
 	if err != nil {
 		t.Fatalf("BuildNotifier: %v", err)
 	}
@@ -82,7 +84,7 @@ func TestBuildNotifier_PagerDuty_OverridesURL(t *testing.T) {
 // TestBuildNotifier_Custom_RequiresTemplate mirrors the pagerduty
 // requiredness test for format=custom's required template.
 func TestBuildNotifier_Custom_RequiresTemplate(t *testing.T) {
-	if _, err := BuildNotifier(BuildConfig{Format: "custom", URL: "http://example.invalid"}, nil); err == nil {
+	if _, err := BuildNotifier(BuildConfig{Format: "custom", URL: "http://example.invalid"}, nil, prometheus.NewRegistry()); err == nil {
 		t.Fatal("expected an error when format=custom has no template, got nil")
 	}
 }
@@ -95,7 +97,7 @@ func TestBuildNotifier_Custom_RejectsInvalidTemplate(t *testing.T) {
 		Format:         "custom",
 		URL:            "http://example.invalid",
 		CustomTemplate: "{{ .Unclosed",
-	}, nil)
+	}, nil, prometheus.NewRegistry())
 	if err == nil {
 		t.Fatal("expected an error for an unparseable custom template, got nil")
 	}
@@ -104,7 +106,7 @@ func TestBuildNotifier_Custom_RejectsInvalidTemplate(t *testing.T) {
 // TestBuildNotifier_UnknownFormat verifies a typo'd/unsupported format is
 // rejected clearly rather than silently falling back to Slack.
 func TestBuildNotifier_UnknownFormat(t *testing.T) {
-	if _, err := BuildNotifier(BuildConfig{Format: "webex"}, nil); err == nil {
+	if _, err := BuildNotifier(BuildConfig{Format: "webex"}, nil, prometheus.NewRegistry()); err == nil {
 		t.Fatal("expected an error for an unknown format, got nil")
 	}
 }

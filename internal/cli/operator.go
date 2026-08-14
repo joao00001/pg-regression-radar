@@ -177,7 +177,7 @@ func RunOperator(args []string) int {
 			logger.Error("--dry-run: unknown --source-type", "value", *sourceType)
 			return 1
 		}
-		if _, err := alerting.BuildNotifier(alertCfg, logger); err != nil {
+		if _, err := alerting.BuildNotifier(alertCfg, logger, reg); err != nil {
 			logger.Error("--dry-run: invalid alerting configuration", "err", err)
 			return 1
 		}
@@ -234,7 +234,7 @@ func RunOperator(args []string) int {
 	}, col, logger)
 
 	// ---- Alerting ----
-	notifier, err := alerting.BuildNotifier(alertCfg, logger)
+	notifier, err := alerting.BuildNotifier(alertCfg, logger, reg)
 	if err != nil {
 		logger.Error("failed to configure alerting", "err", err)
 		return 1
