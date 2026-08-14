@@ -31,7 +31,7 @@ go run ./cmd/operator \
   --latency-threshold 0.20
 ```
 > **Note:** The `--dsn` value above is a placeholder. Replace it with a full PostgreSQL
-> connection URI in the form `******host:port/dbname?sslmode=disable`.
+> connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
 > Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
 
@@ -84,7 +84,7 @@ kubectl get postgreswatch,deploysource -n production
 kubectl get performanceregressions -A
 ```
 > **Note:** The `--from-literal=dsn` value above is a placeholder. Replace it with a full
-> PostgreSQL connection URI in the form `******host:port/dbname?sslmode=disable`.
+> PostgreSQL connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
 > Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
 ## Deploy on Kubernetes via Helm
@@ -108,7 +108,7 @@ helm install pg-regression-radar ./deploy/helm/deploylens \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```
 > **Note:** The `postgres.dsn` values above are placeholders. Replace them with a full
-> PostgreSQL connection URI in the form `******host:port/dbname?sslmode=disable`.
+> PostgreSQL connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
 > Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
 !!! note

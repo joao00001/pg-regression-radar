@@ -30,9 +30,9 @@ pg-regression-radar operator \
   --source-type argocd
 ```
 > **Note:** The `--dsn` value must be a full PostgreSQL connection URI of the form
-> `******host:port/dbname?sslmode=disable`. Any DSN shown in these docs with the credentials portion
-> redacted or omitted is for documentation safety only and cannot be used as-is —
-> replace it with your real connection string before running the command.
+> `postgres://username:password@host:port/dbname?sslmode=disable`.
+> Every DSN shown in these docs with `******` in place of the credentials is for documentation
+> safety only and cannot be used as-is — replace it with your real connection string.
 
 
 Or, from a clone: `go run ./cmd/operator --dsn ... --cluster-name ... --source-type argocd`.

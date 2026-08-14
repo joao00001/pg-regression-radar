@@ -45,7 +45,7 @@ export PGRR_TEST_DSN="postgres://postgres:test@localhost:5432/postgres?sslmode=d
 go test -tags=integration ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
 ```
 > **Note:** `PGRR_TEST_DSN` must be a full PostgreSQL connection URI, for example
-> `******localhost:5432/postgres?sslmode=disable`.
+> `postgres://username:password@localhost:5432/postgres?sslmode=disable`.
 > The redacted form shown above is for documentation safety only and cannot be used as-is —
 > replace it with your real connection string.
 

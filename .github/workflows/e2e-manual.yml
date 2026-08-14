@@ -167,13 +167,13 @@ jobs:
         # it even once — a deterministic real-HTTP-webhook test instead of a
         # test that only passes if a 5-second timer happens to cooperate.
         run: |
+          # NOTE: The "******" prefix in the DSN below is a placeholder for the
+          # redacted credentials and URI scheme (e.g. ******).
+          # Replace the full value with a real PostgreSQL connection URI.
           docker run -d --name "${OPERATOR_CONTAINER}" --network "${NETWORK}" \
             --add-host=host.docker.internal:host-gateway \
             -p 8080:8080 -p 9090:9090 \
             "${OPERATOR_IMAGE}" \
-            # NOTE: The "******" prefix in the DSN below is a placeholder representing
-            # the redacted credentials and URI scheme. Replace it with a full PostgreSQL
-            # connection URI, e.g. ******host:port/dbname?sslmode=...
             --dsn="postgres://postgres:test@${PG_CONTAINER}:5432/postgres?sslmode=disable" \
             --cluster-name=e2e-cluster \
             --namespace=default \
