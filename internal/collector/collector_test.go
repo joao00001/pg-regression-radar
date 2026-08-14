@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -550,10 +551,10 @@ func TestCollector_QueryStatStatements_UsesConfiguredMaxQueryTextLen(t *testing.
 			if !strings.Contains(got, tt.wantLeft) {
 				t.Fatalf("expected SQL to contain %q, got:\n%s", tt.wantLeft, got)
 			}
-			if !strings.Contains(got, tt.wantExec+"                        AS total_exec_time") {
+			if !regexp.MustCompile(regexp.QuoteMeta(tt.wantExec) + `\s+AS total_exec_time`).MatchString(got) {
 				t.Fatalf("expected SQL to select %q as total_exec_time, got:\n%s", tt.wantExec, got)
 			}
-			if !strings.Contains(got, tt.wantMean+"                        AS mean_exec_time") {
+			if !regexp.MustCompile(regexp.QuoteMeta(tt.wantMean) + `\s+AS mean_exec_time`).MatchString(got) {
 				t.Fatalf("expected SQL to select %q as mean_exec_time, got:\n%s", tt.wantMean, got)
 			}
 		})
