@@ -25,6 +25,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"time"
@@ -130,7 +131,10 @@ func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegr
 		n.notificationsTotal.WithLabelValues("error", formatLabel(n.cfg.Formatter)).Inc()
 		return fmt.Errorf("alerting: send webhook: %w", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode >= 300 {
 		n.notificationsTotal.WithLabelValues("error", formatLabel(n.cfg.Formatter)).Inc()
