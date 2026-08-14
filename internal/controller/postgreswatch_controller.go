@@ -364,12 +364,30 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	latencyThreshold := parseFloatOr(watch.Spec.LatencyChangeThreshold, 0.20)
 	pValueThreshold := parseFloatOr(watch.Spec.PValueThreshold, 0.05)
 
+	periodicEnabled := watch.Spec.PeriodicDetection != nil && watch.Spec.PeriodicDetection.Enabled
+	periodicWindowMinutes := 60
+	periodicIntervalMinutes := 15
+	if watch.Spec.PeriodicDetection != nil {
+		if v := int(watch.Spec.PeriodicDetection.WindowMinutes); v > 0 {
+			periodicWindowMinutes = v
+		}
+		if v := int(watch.Spec.PeriodicDetection.IntervalMinutes); v > 0 {
+			periodicIntervalMinutes = v
+		}
+	}
+
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          windowMinutes,
 		MinExecutions:          minExecutions,
 		LatencyChangeThreshold: latencyThreshold,
 		PValueThreshold:        pValueThreshold,
+		PeriodicWindowMinutes:  periodicWindowMinutes,
 	}, col, r.Logger)
+
+	var periodicTracker *correlation.PeriodicTracker
+	if periodicEnabled {
+		periodicTracker = correlation.NewPeriodicTracker(engine, r.Logger)
+	}
 
 	// spec.alerting supersedes spec.slackWebhookUrl entirely when set (see
 	// AlertingConfig's doc comment) -- there is no field-by-field merge
@@ -404,18 +422,21 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	workerCtx, cancel := context.WithCancel(context.Background())
 
 	rt := &WatchRuntime{
-		Store:              &ingester.Store{},
-		Collector:          col,
-		Engine:             engine,
-		Notifier:           notifier,
-		PromRegistry:       promReg,
-		SpecHash:           specHash,
-		ClusterName:        watch.Spec.ClusterName,
-		CapturePlans:       watch.Spec.CapturePlans,
-		AutoAbortEnabled:   autoAbortEnabled,
-		AutoAbortThreshold: autoAbortThreshold,
-		Aborter:            r.Aborter,
-		Cancel:             cancel,
+		Store:                   &ingester.Store{},
+		Collector:               col,
+		Engine:                  engine,
+		Notifier:                notifier,
+		PromRegistry:            promReg,
+		SpecHash:                specHash,
+		ClusterName:             watch.Spec.ClusterName,
+		CapturePlans:            watch.Spec.CapturePlans,
+		AutoAbortEnabled:        autoAbortEnabled,
+		AutoAbortThreshold:      autoAbortThreshold,
+		Aborter:                 r.Aborter,
+		PeriodicTracker:         periodicTracker,
+		PeriodicEnabled:         periodicEnabled,
+		PeriodicIntervalMinutes: periodicIntervalMinutes,
+		Cancel:                  cancel,
 	}
 
 	go func() {
@@ -424,6 +445,9 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		}
 	}()
 	go r.pollLoop(workerCtx, key, rt)
+	if periodicEnabled {
+		go r.periodicPollLoop(workerCtx, key, rt)
+	}
 
 	return rt, nil
 }
@@ -514,6 +538,47 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 	}
 }
 
+// periodicPollLoop drives rt.PeriodicTracker on its own ticker
+// (rt.PeriodicIntervalMinutes), completely independent of pollLoop's
+// DeployEvent-driven cadence. Started alongside pollLoop only when
+// rt.PeriodicEnabled is true (see startWatch). There is no equivalent of
+// pollLoop's auto-abort step here: auto-abort targets the Argo Rollouts
+// canary behind a specific DeployEvent, and a periodic tick has no
+// DeployEvent to point at -- see docs/periodic-detection.md.
+func (r *PostgresWatchReconciler) periodicPollLoop(ctx context.Context, key types.NamespacedName, rt *WatchRuntime) {
+	ticker := time.NewTicker(time.Duration(rt.PeriodicIntervalMinutes) * time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			for _, res := range rt.PeriodicTracker.Tick(time.Now().UTC()) {
+				// Same rationale as pollLoop's identical gate: PlansAround is
+				// nil-safe, but skipping the lookup entirely when
+				// CapturePlans was never enabled avoids the work.
+				if rt.CapturePlans {
+					before, after := rt.Collector.PlansAround(res.QueryID, res.DetectedChangeAt)
+					res.PlanDiffSummary = planner.Diff(before, after)
+				}
+
+				notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+				if err := rt.Notifier.Notify(notifyCtx, res); err != nil {
+					r.Logger.Error("postgreswatch: periodic alert notify failed", "watch", key.String(), "regression", res.Name, "err", err)
+				}
+				cancel()
+
+				recCtx, recCancel := context.WithTimeout(context.Background(), 15*time.Second)
+				if err := r.recordRegression(recCtx, key, res); err != nil {
+					r.Logger.Error("postgreswatch: failed to persist periodic PerformanceRegression CR", "watch", key.String(), "regression", res.Name, "err", err)
+				}
+				recCancel()
+			}
+		}
+	}
+}
+
 // maybeAutoAbort attempts to abort the Argo Rollouts canary behind ev, and
 // records the outcome on res (AutoAbortTriggered/AutoAbortError) so it is
 // visible on the resulting PerformanceRegression CR and included in the
@@ -561,8 +626,13 @@ func (r *PostgresWatchReconciler) recordRegression(ctx context.Context, watchKey
 	var owner radarv1alpha1.PostgresWatch
 	hasOwner := r.Get(ctx, watchKey, &owner) == nil
 
-	name := regressionResourceName(res.DeployEventID, res.QueryID)
+	name := regressionResourceName(res.TriggerType, res.DeployEventID, res.QueryID)
 	nsName := types.NamespacedName{Namespace: watchKey.Namespace, Name: name}
+
+	triggerType := radarv1alpha1.RegressionTriggerTypeDeploy
+	if res.TriggerType == dto.TriggerTypePeriodic {
+		triggerType = radarv1alpha1.RegressionTriggerTypePeriodic
+	}
 
 	var existing radarv1alpha1.PerformanceRegression
 	err := r.Get(ctx, nsName, &existing)
@@ -581,6 +651,7 @@ func (r *PostgresWatchReconciler) recordRegression(ctx context.Context, watchKey
 				DeployEventID:    res.DeployEventID,
 				QueryID:          res.QueryID,
 				QueryText:        res.QueryText,
+				TriggerType:      triggerType,
 			},
 		}
 		if hasOwner {
@@ -675,10 +746,20 @@ func parseFloatOr(s string, fallback float64) float64 {
 var invalidNameChars = regexp.MustCompile(`[^a-z0-9-]+`)
 
 // regressionResourceName derives a valid, deterministic Kubernetes object
-// name from a deploy event ID and query ID so re-analysing the same
-// (event, query) pair is idempotent (Create-or-Update rather than
-// duplicating objects).
-func regressionResourceName(deployEventID string, queryID int64) string {
+// name for a detected regression so re-analysing the same pair is
+// idempotent (Create-or-Update rather than duplicating objects).
+//
+// Deploy-triggered regressions are named from the deploy event ID, since
+// each deploy is its own episode. Periodic regressions have no event to
+// anchor to and no natural retirement (see PeriodicTracker's doc comment in
+// internal/correlation/periodic.go), so they instead get one stable
+// per-query name -- repeated episodes for the same query update the same CR
+// rather than accumulating one object per tick forever.
+func regressionResourceName(triggerType dto.TriggerType, deployEventID string, queryID int64) string {
+	if triggerType == dto.TriggerTypePeriodic {
+		return fmt.Sprintf("periodic-q%d", queryID)
+	}
+
 	base := strings.ToLower(deployEventID)
 	base = invalidNameChars.ReplaceAllString(base, "-")
 	base = strings.Trim(base, "-")

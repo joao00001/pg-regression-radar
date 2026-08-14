@@ -539,6 +539,68 @@ func TestReconcile_CapturePlansDefaultsFalse(t *testing.T) {
 	}
 }
 
+// TestReconcile_PeriodicDetectionPropagatesToRuntime verifies that a
+// PostgresWatch with spec.periodicDetection.enabled produces a WatchRuntime
+// wired to actually run it: PeriodicEnabled true, a non-nil PeriodicTracker,
+// and the configured interval carried through (rather than silently falling
+// back to the default), mirroring the CapturePlans propagation tests above.
+func TestReconcile_PeriodicDetectionPropagatesToRuntime(t *testing.T) {
+	watch := samplePostgresWatch("watch-periodic-on", "default")
+	watch.Spec.PeriodicDetection = &radarv1alpha1.PeriodicDetectionConfig{
+		Enabled:         true,
+		WindowMinutes:   45,
+		IntervalMinutes: 5,
+	}
+	r, _ := newTestReconciler(t, watch)
+
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "watch-periodic-on", Namespace: "default"}}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	rt, ok := r.Registry.Get(req.NamespacedName)
+	if !ok {
+		t.Fatal("expected a WatchRuntime to be registered after create")
+	}
+	defer rt.Cancel()
+
+	if !rt.PeriodicEnabled {
+		t.Fatal("expected WatchRuntime.PeriodicEnabled to be true when spec.periodicDetection.enabled is true")
+	}
+	if rt.PeriodicTracker == nil {
+		t.Fatal("expected a non-nil PeriodicTracker when periodic detection is enabled")
+	}
+	if rt.PeriodicIntervalMinutes != 5 {
+		t.Errorf("expected PeriodicIntervalMinutes=5 (from spec), got %d", rt.PeriodicIntervalMinutes)
+	}
+}
+
+// TestReconcile_PeriodicDetectionDefaultsDisabled is the inverse: leaving
+// spec.periodicDetection unset must not silently start a second detection
+// path alongside the deploy-triggered one.
+func TestReconcile_PeriodicDetectionDefaultsDisabled(t *testing.T) {
+	watch := samplePostgresWatch("watch-periodic-off", "default")
+	r, _ := newTestReconciler(t, watch)
+
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "watch-periodic-off", Namespace: "default"}}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	rt, ok := r.Registry.Get(req.NamespacedName)
+	if !ok {
+		t.Fatal("expected a WatchRuntime to be registered after create")
+	}
+	defer rt.Cancel()
+
+	if rt.PeriodicEnabled {
+		t.Fatal("expected WatchRuntime.PeriodicEnabled to default to false")
+	}
+	if rt.PeriodicTracker != nil {
+		t.Fatal("expected a nil PeriodicTracker when periodic detection is disabled")
+	}
+}
+
 // TestApplyRegressionStatus_IncludesPlanDiffSummary verifies the internal
 // DTO's PlanDiffSummary (set by pollLoop when CapturePlans is enabled) is
 // copied onto the CRD's status, exactly like every other analysis field —

@@ -38,6 +38,17 @@ type Config struct {
 	LatencyChangeThreshold float64
 	// PValueThreshold — lower values increase specificity at the cost of sensitivity.
 	PValueThreshold float64
+	// PeriodicWindowMinutes sizes the rolling window AnalysePeriodic splits
+	// in half (recent vs. previous) to look for a regression with no
+	// deploy event to anchor to. Deliberately independent from
+	// WindowMinutes (deploy-triggered analysis) rather than reusing it:
+	// periodic analysis has no deploy nearby to narrow down where to look,
+	// so it defaults to double WindowMinutes's default to reduce false
+	// positives from ordinary short-lived traffic variation — see
+	// docs/periodic-detection.md's false-positive caveat.
+	//
+	// Zero means "auto": 60 minutes.
+	PeriodicWindowMinutes int
 	// ChangePointTolerance bounds how far the change point located by
 	// E-divisive (stage 1) may sit from the deploy timestamp and still be
 	// attributed to that deploy. Rolling deploys take time to roll out across
@@ -75,6 +86,9 @@ func (c *Config) defaults() {
 			c.ChangePointTolerance = 2 * time.Minute
 		}
 	}
+	if c.PeriodicWindowMinutes == 0 {
+		c.PeriodicWindowMinutes = 60
+	}
 }
 
 // AnalysisWindow returns the configured pre/post-deploy window duration —
@@ -86,6 +100,14 @@ func (c *Config) defaults() {
 // retry could possibly see new data for it.
 func (e *Engine) AnalysisWindow() time.Duration {
 	return time.Duration(e.cfg.WindowMinutes) * time.Minute
+}
+
+// PeriodicWindow returns the configured periodic-analysis window — the span
+// AnalysePeriodic splits in half around a rolling "now", with no deploy
+// event to anchor to. Mirrors AnalysisWindow's purpose for a caller that
+// wants to reason about periodic analysis's own cadence.
+func (e *Engine) PeriodicWindow() time.Duration {
+	return time.Duration(e.cfg.PeriodicWindowMinutes) * time.Minute
 }
 
 // SampleSource can provide QuerySamples for a time range.
@@ -111,27 +133,71 @@ func New(cfg Config, src SampleSource, logger *slog.Logger) *Engine {
 }
 
 // Analyse runs the full regression analysis for a given deploy event and
-// returns at most one PerformanceRegression per distinct query (see the
-// fingerprint-dedup note below for what "distinct" means here).
-//
-// AllQueryIDs() is sorted before iterating (it returns Go map keys, so its
-// natural order is nondeterministic): this makes the loop reproducible for a
-// given input, and — combined with the dedup logic below — makes which
-// queryid a given fingerprint's "seen" entry gets recorded against
-// reproducible too, even though canonicalQueryID (not the loop's qid)
-// ultimately decides the *reported* QueryID regardless of iteration order.
+// returns at most one PerformanceRegression per distinct query (see
+// analyseWindow's fingerprint-dedup note for what "distinct" means here,
+// and its own doc comment for why AllQueryIDs() is sorted before iterating).
 func (e *Engine) Analyse(ev v1alpha1.DeployEvent) []v1alpha1.PerformanceRegression {
 	window := time.Duration(e.cfg.WindowMinutes) * time.Minute
 	before := ev.Timestamp.Add(-window)
 	after := ev.Timestamp.Add(window)
 
-	queryIDs := append([]int64(nil), e.src.AllQueryIDs()...)
-	sort.Slice(queryIDs, func(i, j int) bool { return queryIDs[i] < queryIDs[j] })
-
 	e.logger.Info("correlation: analysing deploy",
 		"event_id", ev.ID,
-		"query_count", len(queryIDs),
+		"query_count", len(e.src.AllQueryIDs()),
 		"window_minutes", e.cfg.WindowMinutes)
+
+	return e.analyseWindow(before, ev.Timestamp, after, func(queryID int64, pre, post []collector.QuerySample) v1alpha1.PerformanceRegression {
+		return e.evaluateQuery(ev, queryID, pre, post)
+	})
+}
+
+// AnalysePeriodic runs the same two-stage detection as Analyse, but with no
+// DeployEvent to anchor to: it takes a rolling window ending at now, splits
+// it in half (the first half is "baseline", the second is "recent"), and
+// reports a regression for any change point E-divisive finds and Welch's
+// t-test confirms — anywhere in the window, not just near a known instant.
+// Deploy-triggered Analyse rejects a change point that falls outside
+// ChangePointTolerance of ev.Timestamp because it has a specific instant to
+// compare against; AnalysePeriodic has none, so that check simply doesn't
+// apply here — see evaluatePeriodic.
+//
+// Callers wanting to avoid re-reporting an already-known, still-ongoing
+// regression on every call should wrap this in a PeriodicTracker rather
+// than calling it directly on a plain ticker — see periodic.go.
+func (e *Engine) AnalysePeriodic(now time.Time) []v1alpha1.PerformanceRegression {
+	window := time.Duration(e.cfg.PeriodicWindowMinutes) * time.Minute
+	before := now.Add(-2 * window)
+	split := now.Add(-window)
+
+	e.logger.Info("correlation: periodic analysis",
+		"query_count", len(e.src.AllQueryIDs()),
+		"window_minutes", e.cfg.PeriodicWindowMinutes,
+		"now", now)
+
+	return e.analyseWindow(before, split, now, func(queryID int64, pre, post []collector.QuerySample) v1alpha1.PerformanceRegression {
+		return e.evaluatePeriodic(queryID, pre, post, now)
+	})
+}
+
+// analyseWindow is the shared query-enumeration/dedup loop behind both
+// Analyse and AnalysePeriodic: given a [before, after] sample window and a
+// split point dividing it into "pre"/"post" halves, it evaluates every
+// tracked query via evalFn (evaluateQuery for a deploy, evaluatePeriodic for
+// a rolling window) and returns the results in deterministic order.
+//
+// AllQueryIDs() is sorted before iterating (it returns Go map keys, so its
+// natural order is nondeterministic): this makes the loop reproducible for a
+// given input, and — combined with the fingerprint-dedup logic below —
+// makes which queryid a given fingerprint's "seen" entry gets recorded
+// against reproducible too, even though canonicalQueryID (not the loop's
+// qid) ultimately decides the *reported* QueryID regardless of iteration
+// order.
+func (e *Engine) analyseWindow(
+	before, split, after time.Time,
+	evalFn func(queryID int64, pre, post []collector.QuerySample) v1alpha1.PerformanceRegression,
+) []v1alpha1.PerformanceRegression {
+	queryIDs := append([]int64(nil), e.src.AllQueryIDs()...)
+	sort.Slice(queryIDs, func(i, j int) bool { return queryIDs[i] < queryIDs[j] })
 
 	// seen dedups findings across a queryid rotation. pg_stat_statements'
 	// queryid is not guaranteed stable (see collector.Collector.
@@ -139,8 +205,8 @@ func (e *Engine) Analyse(ev v1alpha1.DeployEvent) []v1alpha1.PerformanceRegressi
 	// mid-window is enumerated twice by AllQueryIDs() — once for the old
 	// queryid, once for the new one. SamplesInRange's fingerprint-merge
 	// fallback means both calls pull in the same union of samples once either
-	// side's direct bucket runs low, so without this guard evaluateQuery would
-	// run twice on identical data and emit two PerformanceRegressions for one
+	// side's direct bucket runs low, so without this guard evalFn would run
+	// twice on identical data and emit two PerformanceRegressions for one
 	// real regression. Keying on Fingerprint (not queryid) is what lets us
 	// recognise "these two loop iterations are actually the same query"
 	// without changing the SampleSource interface: the first queryid (in
@@ -168,9 +234,9 @@ func (e *Engine) Analyse(ev v1alpha1.DeployEvent) []v1alpha1.PerformanceRegressi
 		// operator at a queryid that has already fallen out of the top-500
 		// and means nothing to them by the time they look it up.
 		reportQID := canonicalQueryID(allSamples, qid)
-		preSamples, postSamples := partitionAtDeployTime(allSamples, ev.Timestamp)
+		preSamples, postSamples := partitionAt(allSamples, split)
 
-		r := e.evaluateQuery(ev, reportQID, preSamples, postSamples)
+		r := evalFn(reportQID, preSamples, postSamples)
 		results = append(results, r)
 	}
 
@@ -234,8 +300,35 @@ func latestSample(samples []collector.QuerySample) (collector.QuerySample, bool)
 	return latest, found
 }
 
-// evaluateQuery runs the two-stage detection for a single query and returns a
-// PerformanceRegression describing the outcome.
+// changeStats is the deploy-agnostic result of the statistical core shared
+// by evaluateQuery (deploy-triggered) and evaluatePeriodic (rolling-window):
+// stage 0's cheap naive-mean pre-filter, stage 1's E-divisive change-point
+// search, and stage 2's Welch's t-test confirmation. It says nothing about
+// whether a found change point is close enough to any particular reference
+// instant — that decision belongs to the caller, since only evaluateQuery
+// has one (ev.Timestamp) to check against at all.
+type changeStats struct {
+	// insufficientData means MinExecutions wasn't met in one or both
+	// windows; every other field is zero-valued when this is true.
+	insufficientData bool
+	meanPre          float64
+	meanPost         float64
+	changeFactor     float64
+	// changePointFound is false when either the naive pre-filter or
+	// E-divisive rejected the window outright; changeAt/pValue/confidence/
+	// significant are zero-valued when this is false, but meanPre/meanPost/
+	// changeFactor are still populated regardless.
+	changePointFound bool
+	changeAt         time.Time
+	pValue           float64
+	confidence       float64
+	significant      bool
+}
+
+// computeChangeStats runs stages 0–2 of the two-stage detection pipeline
+// against a single query's pre/post sample windows — everything Analyse and
+// AnalysePeriodic have identically in common. queryID is only used for log
+// context.
 //
 // Stage 0 (cheap pre-filter): reject outright if the naive pre/post means —
 // computed over the whole pre-deploy and post-deploy windows — don't differ
@@ -245,43 +338,18 @@ func latestSample(samples []collector.QuerySample) (collector.QuerySample, bool)
 // Stage 1 (E-divisive): for queries that pass the pre-filter, build the
 // combined, chronologically-ordered series covering the whole window and
 // locate the single most significant change point in it. This does NOT
-// assume the shift happens exactly at ev.Timestamp — rolling deploys,
-// connection draining and scrape lag all delay the observable effect.
+// assume the shift happens at any particular instant — rolling deploys,
+// connection draining and scrape lag all delay the observable effect, and
+// periodic analysis has no such instant to assume one at in the first place.
 //
 // Stage 2 (Welch's t-test): confirm that the two segments defined by the
-// change point E-divisive actually found (not the naive deploy-timestamp
-// split) are statistically different.
-//
-// A PerformanceRegression is only marked Detected when the change point
-// exists, lies within ChangePointTolerance of the deploy timestamp, AND the
-// t-test on the real segments is significant. Any one of those failing —
-// including a naive mean shift with no corresponding change point, or a
-// genuine change point that's unrelated to this deploy — yields NoRegression.
-func (e *Engine) evaluateQuery(
-	ev v1alpha1.DeployEvent,
-	queryID int64,
-	preSamples, postSamples []collector.QuerySample,
-) v1alpha1.PerformanceRegression {
-	name := fmt.Sprintf("%s-q%d", ev.ID, queryID)
-	queryText := ""
-	if len(preSamples) > 0 {
-		queryText = preSamples[0].QueryText
-	} else if len(postSamples) > 0 {
-		queryText = postSamples[0].QueryText
-	}
-
-	base := v1alpha1.PerformanceRegression{
-		Name:          name,
-		Namespace:     ev.Namespace,
-		DeployEventID: ev.ID,
-		QueryID:       queryID,
-		QueryText:     queryText,
-		CreatedAt:     time.Now().UTC(),
-	}
-
+// change point E-divisive actually found (not the naive pre/post-window
+// split) are statistically different. Always runs once a change point is
+// found — evaluateQuery may still discard the result via its own
+// ChangePointTolerance check regardless of significance.
+func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []collector.QuerySample) changeStats {
 	// Require minimum sample counts in both windows to avoid false positives from sparse data.
 	if int64(len(preSamples)) < e.cfg.MinExecutions || int64(len(postSamples)) < e.cfg.MinExecutions {
-		base.Status = v1alpha1.StatusInsufficientData
 		// This is the routine, expected case for a deploy event analysed
 		// soon after it arrives — a real deploy webhook fires the moment
 		// the deploy completes, well before --scrape-interval has had time
@@ -297,7 +365,7 @@ func (e *Engine) evaluateQuery(
 			"pre_samples", len(preSamples),
 			"post_samples", len(postSamples),
 			"min_executions", e.cfg.MinExecutions)
-		return base
+		return changeStats{insufficientData: true}
 	}
 
 	preLatencies := extractLatencies(preSamples)
@@ -310,18 +378,11 @@ func (e *Engine) evaluateQuery(
 	if meanPre > 0 {
 		changeFactor = meanPost / meanPre
 	}
-
-	// These are always reported relative to the deploy timestamp (not the
-	// change point) because that's the comparison operators actually care
-	// about: "what did latency look like before/after this deploy".
-	base.MeanLatencyBefore = meanPre
-	base.MeanLatencyAfter = meanPost
-	base.LatencyChangeFactor = changeFactor
+	stats := changeStats{meanPre: meanPre, meanPost: meanPost, changeFactor: changeFactor}
 
 	relativeChange := changeFactor - 1.0
 	if relativeChange < e.cfg.LatencyChangeThreshold {
-		base.Status = v1alpha1.StatusNoRegression
-		return base
+		return stats
 	}
 
 	// ---- Stage 1: locate the real change point (E-divisive) ----
@@ -349,8 +410,7 @@ func (e *Engine) evaluateQuery(
 		e.logger.Debug("correlation: no change point found, rejecting naive mean shift",
 			"query_id", queryID,
 			"change_factor", changeFactor)
-		base.Status = v1alpha1.StatusNoRegression
-		return base
+		return stats
 	}
 	cp := cps[0]
 	// cp.Index is the boundary sample: series[:cp.Index] is the segment
@@ -358,43 +418,18 @@ func (e *Engine) evaluateQuery(
 	// attribute the change to the timestamp of the first "after" sample.
 	changeAt := allSamples[cp.Index].RecordedAt
 
-	// The change point must fall close to the deploy to be attributable to
-	// it — otherwise we'd be alerting on some unrelated shift that merely
-	// happens to overlap the analysis window.
-	distance := changeAt.Sub(ev.Timestamp)
-	if distance < 0 {
-		distance = -distance
-	}
-	if distance > e.cfg.ChangePointTolerance {
-		e.logger.Debug("correlation: change point too far from deploy, rejecting",
-			"query_id", queryID,
-			"change_at", changeAt,
-			"deploy_at", ev.Timestamp,
-			"distance", distance,
-			"tolerance", e.cfg.ChangePointTolerance)
-		base.Status = v1alpha1.StatusNoRegression
-		return base
-	}
-
 	// ---- Stage 2: confirm significance (Welch's t-test) on the REAL segments ----
-	// Deliberately NOT preLatencies/postLatencies (the naive deploy-timestamp
-	// split): we test the two segments E-divisive actually found, which may
-	// be offset from ev.Timestamp by up to ChangePointTolerance.
+	// Deliberately NOT preLatencies/postLatencies (the naive pre/post-window
+	// split): we test the two segments E-divisive actually found.
 	preSeg := series[:cp.Index]
 	postSeg := series[cp.Index:]
-	tStat, pValue := welchTTest(preSeg, postSeg)
-	_ = tStat
+	_, pValue := welchTTest(preSeg, postSeg)
 
 	e.logger.Debug("correlation: t-test result",
 		"query_id", queryID,
 		"p_value", pValue,
 		"change_factor", changeFactor,
 		"change_at", changeAt)
-
-	if pValue > e.cfg.PValueThreshold {
-		base.Status = v1alpha1.StatusNoRegression
-		return base
-	}
 
 	// Confidence is derived from the p-value: a p-value close to zero means the
 	// observed shift is extremely unlikely to be random noise.
@@ -403,17 +438,154 @@ func (e *Engine) evaluateQuery(
 		confidence = 1
 	}
 
+	stats.changePointFound = true
+	stats.changeAt = changeAt
+	stats.pValue = pValue
+	stats.confidence = confidence
+	stats.significant = pValue <= e.cfg.PValueThreshold
+	return stats
+}
+
+// evaluateQuery runs the two-stage detection (via computeChangeStats) for a
+// single query against a deploy event and returns a PerformanceRegression
+// describing the outcome.
+//
+// A PerformanceRegression is only marked Detected when the change point
+// exists, lies within ChangePointTolerance of the deploy timestamp, AND the
+// t-test on the real segments is significant. Any one of those failing —
+// including a naive mean shift with no corresponding change point, or a
+// genuine change point that's unrelated to this deploy — yields NoRegression.
+func (e *Engine) evaluateQuery(
+	ev v1alpha1.DeployEvent,
+	queryID int64,
+	preSamples, postSamples []collector.QuerySample,
+) v1alpha1.PerformanceRegression {
+	base := v1alpha1.PerformanceRegression{
+		Name:          fmt.Sprintf("%s-q%d", ev.ID, queryID),
+		Namespace:     ev.Namespace,
+		DeployEventID: ev.ID,
+		QueryID:       queryID,
+		QueryText:     queryText(preSamples, postSamples),
+		TriggerType:   v1alpha1.TriggerTypeDeploy,
+		CreatedAt:     time.Now().UTC(),
+	}
+
+	stats := e.computeChangeStats(queryID, preSamples, postSamples)
+	if stats.insufficientData {
+		base.Status = v1alpha1.StatusInsufficientData
+		return base
+	}
+
+	// These are always reported relative to the deploy timestamp (not the
+	// change point) because that's the comparison operators actually care
+	// about: "what did latency look like before/after this deploy".
+	base.MeanLatencyBefore = stats.meanPre
+	base.MeanLatencyAfter = stats.meanPost
+	base.LatencyChangeFactor = stats.changeFactor
+
+	if !stats.changePointFound {
+		base.Status = v1alpha1.StatusNoRegression
+		return base
+	}
+
+	// The change point must fall close to the deploy to be attributable to
+	// it — otherwise we'd be alerting on some unrelated shift that merely
+	// happens to overlap the analysis window.
+	distance := stats.changeAt.Sub(ev.Timestamp)
+	if distance < 0 {
+		distance = -distance
+	}
+	if distance > e.cfg.ChangePointTolerance {
+		e.logger.Debug("correlation: change point too far from deploy, rejecting",
+			"query_id", queryID,
+			"change_at", stats.changeAt,
+			"deploy_at", ev.Timestamp,
+			"distance", distance,
+			"tolerance", e.cfg.ChangePointTolerance)
+		base.Status = v1alpha1.StatusNoRegression
+		return base
+	}
+
+	if !stats.significant {
+		base.Status = v1alpha1.StatusNoRegression
+		return base
+	}
+
 	base.Status = v1alpha1.StatusDetected
-	base.ConfidenceScore = confidence
-	base.DetectedChangeAt = changeAt
+	base.ConfidenceScore = stats.confidence
+	base.DetectedChangeAt = stats.changeAt
 
 	e.logger.Info("correlation: regression detected",
 		"query_id", queryID,
-		"change_factor", changeFactor,
-		"confidence", confidence,
-		"change_at", changeAt)
+		"change_factor", stats.changeFactor,
+		"confidence", stats.confidence,
+		"change_at", stats.changeAt)
 
 	return base
+}
+
+// evaluatePeriodic runs the same statistical core as evaluateQuery (via
+// computeChangeStats) but with no deploy event to check the change point
+// against — see AnalysePeriodic's doc comment for why that check doesn't
+// apply to a self-contained rolling window. now is the instant this
+// periodic analysis pass is anchored to; it is only used to give each new
+// regression episode for the same query a distinct Name, so a caller
+// persisting these (see internal/controller.PostgresWatchReconciler)
+// doesn't collide successive episodes onto one record — contrast
+// PeriodicTracker, which is what actually decides a given tick's result is
+// a new episode worth reporting at all, not just a still-ongoing one.
+func (e *Engine) evaluatePeriodic(
+	queryID int64,
+	preSamples, postSamples []collector.QuerySample,
+	now time.Time,
+) v1alpha1.PerformanceRegression {
+	base := v1alpha1.PerformanceRegression{
+		Name:        fmt.Sprintf("periodic-q%d-%d", queryID, now.Unix()),
+		QueryID:     queryID,
+		QueryText:   queryText(preSamples, postSamples),
+		TriggerType: v1alpha1.TriggerTypePeriodic,
+		CreatedAt:   time.Now().UTC(),
+	}
+
+	stats := e.computeChangeStats(queryID, preSamples, postSamples)
+	if stats.insufficientData {
+		base.Status = v1alpha1.StatusInsufficientData
+		return base
+	}
+
+	base.MeanLatencyBefore = stats.meanPre
+	base.MeanLatencyAfter = stats.meanPost
+	base.LatencyChangeFactor = stats.changeFactor
+
+	if !stats.changePointFound || !stats.significant {
+		base.Status = v1alpha1.StatusNoRegression
+		return base
+	}
+
+	base.Status = v1alpha1.StatusDetected
+	base.ConfidenceScore = stats.confidence
+	base.DetectedChangeAt = stats.changeAt
+
+	e.logger.Info("correlation: periodic regression detected",
+		"query_id", queryID,
+		"change_factor", stats.changeFactor,
+		"confidence", stats.confidence,
+		"change_at", stats.changeAt)
+
+	return base
+}
+
+// queryText picks the QueryText to report from whichever of preSamples/
+// postSamples is non-empty, preferring preSamples — shared by evaluateQuery
+// and evaluatePeriodic, which both need this identically.
+func queryText(preSamples, postSamples []collector.QuerySample) string {
+	if len(preSamples) > 0 {
+		return preSamples[0].QueryText
+	}
+	if len(postSamples) > 0 {
+		return postSamples[0].QueryText
+	}
+	return ""
 }
 
 // changePointMinSegLen picks E-divisive's minimum segment length as a
@@ -429,17 +601,18 @@ func changePointMinSegLen(n int) int {
 	return minSegLen
 }
 
-// partitionAtDeployTime splits samples into pre- and post-deploy slices.
-// Pre contains samples with RecordedAt ≤ deployAt; post contains samples with
-// RecordedAt ≥ deployAt. A sample recorded exactly at deployAt appears in both
+// partitionAt splits samples into pre- and post- slices around split — the
+// deploy timestamp for Analyse, or the window midpoint for AnalysePeriodic.
+// Pre contains samples with RecordedAt ≤ split; post contains samples with
+// RecordedAt ≥ split. A sample recorded exactly at split appears in both
 // slices, matching the inclusive-boundary semantics of two separate
-// SamplesInRange([before, deployAt]) and SamplesInRange([deployAt, after]) calls.
-func partitionAtDeployTime(samples []collector.QuerySample, deployAt time.Time) (pre, post []collector.QuerySample) {
+// SamplesInRange([before, split]) and SamplesInRange([split, after]) calls.
+func partitionAt(samples []collector.QuerySample, split time.Time) (pre, post []collector.QuerySample) {
 	for _, s := range samples {
-		if !s.RecordedAt.After(deployAt) {
+		if !s.RecordedAt.After(split) {
 			pre = append(pre, s)
 		}
-		if !s.RecordedAt.Before(deployAt) {
+		if !s.RecordedAt.Before(split) {
 			post = append(post, s)
 		}
 	}

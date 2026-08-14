@@ -75,6 +75,19 @@ analysis:
   latencyThreshold: "0.20"
   pValueThreshold: "0.05"
 
+# Deploy-independent ("periodic") regression detection: also analyses every
+# tracked query on its own rolling schedule, instead of only around
+# DeployEvents. See docs/periodic-detection.md and docs/adr/0001. Used by
+# both modes: operator passes these as CLI flags (--periodic-detection,
+# --periodic-window-minutes, --periodic-interval-minutes); manager's
+# default PostgresWatch CR (see manager.createDefaultWatch) sets the
+# equivalent spec.periodicDetection fields. Off by default; deploy-triggered
+# detection above is unaffected either way.
+periodicDetection:
+  enabled: false
+  windowMinutes: 60
+  intervalMinutes: 15
+
 # Webhook ingester settings.
 ingester:
   sourceType: "argocd"

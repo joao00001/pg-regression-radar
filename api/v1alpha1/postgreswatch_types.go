@@ -161,6 +161,17 @@ type PostgresWatchSpec struct {
 	// PostgresWatch explicitly opts in.
 	// +optional
 	AutoAbort *AutoAbortConfig `json:"autoAbort,omitempty"`
+
+	// periodicDetection optionally runs regression detection on a rolling
+	// schedule, independent of any tracked deploy: no DeploySource or
+	// DeployEvent is required for it to fire. See
+	// docs/periodic-detection.md, including its false-positive caveat --
+	// this is a materially different, less deploy-anchored kind of
+	// detection than the rest of this project's default behaviour. nil
+	// (the default) means disabled -- this watch behaves exactly as before
+	// this field existed unless explicitly opted in.
+	// +optional
+	PeriodicDetection *PeriodicDetectionConfig `json:"periodicDetection,omitempty"`
 }
 
 // AutoAbortConfig controls automatic Argo Rollouts abortion. It only ever
@@ -217,6 +228,39 @@ type AlertingConfig struct {
 	// available template fields and a worked example.
 	// +optional
 	CustomTemplate string `json:"customTemplate,omitempty"`
+}
+
+// PeriodicDetectionConfig controls deploy-independent regression detection:
+// running the same E-divisive + Welch's t-test pipeline on a rolling
+// schedule instead of only in response to a DeployEvent. See
+// docs/periodic-detection.md and ADR-0001
+// (docs/adr/0001-deploy-independent-regression-detection.md) for the full
+// design rationale, including why the window defaults to double the
+// deploy-triggered default and why suppression is a re-arm state machine
+// rather than a fixed cooldown.
+type PeriodicDetectionConfig struct {
+	// enabled turns on periodic detection for this watch. Every other field
+	// below is ignored while this is false.
+	// +kubebuilder:default=false
+	Enabled bool `json:"enabled"`
+
+	// windowMinutes sizes the rolling window that gets split in half
+	// (recent vs. previous) to look for a regression with no deploy event
+	// to anchor to. Deliberately independent from (and, by default,
+	// double) the deploy-triggered spec.windowMinutes default: periodic
+	// analysis has no deploy nearby to narrow down where to look, so a
+	// shorter window would be noisier.
+	// +optional
+	// +kubebuilder:default=60
+	// +kubebuilder:validation:Minimum=1
+	WindowMinutes int32 `json:"windowMinutes,omitempty"`
+
+	// intervalMinutes is how often a full periodic analysis pass runs over
+	// every tracked query.
+	// +optional
+	// +kubebuilder:default=15
+	// +kubebuilder:validation:Minimum=1
+	IntervalMinutes int32 `json:"intervalMinutes,omitempty"`
 }
 
 // SecretKeySelector selects a key of a Secret in the same namespace as the

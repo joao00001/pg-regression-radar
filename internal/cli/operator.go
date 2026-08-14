@@ -86,6 +86,15 @@ func RunOperator(args []string) {
 	changePointTolerance := fs.Duration("changepoint-tolerance", 0, "Max distance between the E-divisive change point and the deploy timestamp still attributed to that deploy (0 = auto: 20% of window, floor 2m)")
 	retentionMinutes := fs.Int("retention-minutes", 180, "How long (minutes) the collector retains in-memory query samples before pruning them; should stay well above 2x --window-minutes")
 	capturePlans := fs.Bool("capture-plans", false, "Capture periodic EXPLAIN (GENERIC_PLAN) plan snapshots for tracked queries and attach a plan-diff summary to detected regressions; requires PostgreSQL 16+ (no-op, logged once, on older servers) and adds one extra planner invocation per tracked query per scrape cycle — see docs/detection-algorithm.md")
+	// ---- Periodic (deploy-independent) detection — see docs/periodic-detection.md ----
+	// Off by default: this is a materially different, less deploy-anchored
+	// kind of detection than the rest of this project's default behaviour,
+	// with a real false-positive risk from ordinary traffic variation that
+	// hasn't been validated against production traffic yet — see ADR-0001
+	// (docs/adr/0001-deploy-independent-regression-detection.md).
+	periodicDetection := fs.Bool("periodic-detection", false, "Also run regression detection on a rolling schedule, independent of any tracked deploy — see docs/periodic-detection.md")
+	periodicWindowMinutes := fs.Int("periodic-window-minutes", 60, "Rolling window --periodic-detection splits in half (recent vs. previous) to look for a regression with no deploy to anchor to")
+	periodicIntervalMinutes := fs.Int("periodic-interval-minutes", 15, "How often a full --periodic-detection pass runs over every tracked query")
 	// ---- Persistence (see internal/storage) ----
 	// "memory" preserves today's behaviour exactly: samples/events live only
 	// in the Collector/Ingester in-process maps and are lost on restart.
@@ -166,6 +175,16 @@ func RunOperator(args []string) {
 			logger.Error("--dry-run: invalid alerting configuration", "err", err)
 			os.Exit(1)
 		}
+		if *periodicDetection {
+			if *periodicWindowMinutes <= 0 {
+				logger.Error("--dry-run: --periodic-window-minutes must be positive", "value", *periodicWindowMinutes)
+				os.Exit(1)
+			}
+			if *periodicIntervalMinutes <= 0 {
+				logger.Error("--dry-run: --periodic-interval-minutes must be positive", "value", *periodicIntervalMinutes)
+				os.Exit(1)
+			}
+		}
 		if err := col.Ping(ctx); err != nil {
 			logger.Error("--dry-run: collector ping failed", "err", err)
 			os.Exit(1)
@@ -205,6 +224,7 @@ func RunOperator(args []string) {
 		MinExecutions:          *minExecutions,
 		LatencyChangeThreshold: *latencyThreshold,
 		ChangePointTolerance:   *changePointTolerance,
+		PeriodicWindowMinutes:  *periodicWindowMinutes,
 	}, col, logger)
 
 	// ---- Alerting ----
@@ -439,6 +459,45 @@ func RunOperator(args []string) {
 			}
 		}
 	}()
+
+	// ---- Periodic (deploy-independent) detection — see docs/periodic-detection.md ----
+	// A separate goroutine and ticker from the deploy-triggered poll loop
+	// above: this one runs on its own --periodic-interval-minutes cadence,
+	// entirely independent of whether (or how often) deploy events arrive,
+	// and calls AnalysePeriodic (via PeriodicTracker) rather than Analyse.
+	if *periodicDetection {
+		tracker := correlation.NewPeriodicTracker(engine, logger)
+		reg.MustRegister(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+			Namespace: "pg_regression_radar",
+			Name:      "periodic_regressions_in_progress",
+			Help:      "Queries currently suppressed under an already-reported, still-ongoing periodic regression episode.",
+			ConstLabels: prometheus.Labels{
+				"cluster":   *clusterName,
+				"namespace": *namespace,
+			},
+		}, func() float64 { return float64(tracker.Len()) }))
+
+		go func() {
+			ticker := time.NewTicker(time.Duration(*periodicIntervalMinutes) * time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					for _, r := range tracker.Tick(time.Now().UTC()) {
+						if *capturePlans {
+							before, after := col.PlansAround(r.QueryID, r.DetectedChangeAt)
+							r.PlanDiffSummary = planner.Diff(before, after)
+						}
+						if err := notifier.Notify(ctx, r); err != nil {
+							logger.Error("operator: periodic notify failed", "err", err, "regression", r.Name)
+						}
+					}
+				}
+			}
+		}()
+	}
 
 	// ---- Collector (blocking) ----
 	if err := col.Run(ctx); err != nil {

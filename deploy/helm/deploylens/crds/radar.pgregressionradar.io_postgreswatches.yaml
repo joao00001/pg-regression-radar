@@ -198,6 +198,46 @@ spec:
                   pValueThreshold is the Welch's t-test significance cutoff. Lower
                   values increase specificity at the cost of sensitivity.
                 type: string
+              periodicDetection:
+                description: |-
+                  periodicDetection optionally runs regression detection on a rolling
+                  schedule, independent of any tracked deploy: no DeploySource or
+                  DeployEvent is required for it to fire. See
+                  docs/periodic-detection.md, including its false-positive caveat --
+                  this is a materially different, less deploy-anchored kind of
+                  detection than the rest of this project's default behaviour. nil
+                  (the default) means disabled -- this watch behaves exactly as before
+                  this field existed unless explicitly opted in.
+                properties:
+                  enabled:
+                    default: false
+                    description: |-
+                      enabled turns on periodic detection for this watch. Every other field
+                      below is ignored while this is false.
+                    type: boolean
+                  intervalMinutes:
+                    default: 15
+                    description: |-
+                      intervalMinutes is how often a full periodic analysis pass runs over
+                      every tracked query.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                  windowMinutes:
+                    default: 60
+                    description: |-
+                      windowMinutes sizes the rolling window that gets split in half
+                      (recent vs. previous) to look for a regression with no deploy event
+                      to anchor to. Deliberately independent from (and, by default,
+                      double) the deploy-triggered spec.windowMinutes default: periodic
+                      analysis has no deploy nearby to narrow down where to look, so a
+                      shorter window would be noisier.
+                    format: int32
+                    minimum: 1
+                    type: integer
+                required:
+                - enabled
+                type: object
               remoteClusterSecretRef:
                 description: |-
                   remoteClusterSecretRef points at a Secret, in the hub cluster and in

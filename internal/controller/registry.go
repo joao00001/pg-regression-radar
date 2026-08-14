@@ -110,6 +110,22 @@ type WatchRuntime struct {
 	// AutoAbortEnabled is simply never actionable regardless of what any
 	// PostgresWatch's spec says.
 	Aborter RolloutAborter
+
+	// PeriodicTracker runs deploy-independent regression detection on its
+	// own ticker (see periodicPollLoop) when PeriodicEnabled is true; nil
+	// otherwise. Mirrors AutoAbortEnabled's pattern: PeriodicEnabled is the
+	// single flag pollLoop's sibling goroutine checks, so a nil tracker
+	// here is never dereferenced when the watch didn't opt in — see
+	// docs/periodic-detection.md.
+	PeriodicTracker *correlation.PeriodicTracker
+
+	// PeriodicEnabled mirrors the owning PostgresWatch's
+	// spec.periodicDetection.enabled.
+	PeriodicEnabled bool
+
+	// PeriodicIntervalMinutes mirrors spec.periodicDetection.intervalMinutes
+	// (parsed, defaulted to 15). Only consulted when PeriodicEnabled.
+	PeriodicIntervalMinutes int
 }
 
 // Registry tracks the live WatchRuntime for every reconciled PostgresWatch,

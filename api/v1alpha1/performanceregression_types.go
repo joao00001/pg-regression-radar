@@ -33,8 +33,15 @@ type PerformanceRegressionSpec struct {
 	ClusterName string `json:"clusterName,omitempty"`
 
 	// deployEventID identifies the deploy event that triggered this
-	// analysis (see internal/ingester's DeployEvent.ID).
-	DeployEventID string `json:"deployEventId"`
+	// analysis (see internal/ingester's DeployEvent.ID). Empty when
+	// triggerType is "periodic" -- a periodic analysis pass has no deploy
+	// event to reference at all.
+	//
+	// Was a required field before triggerType existed; relaxed to optional
+	// alongside it, since every pre-existing (deploy-triggered) regression
+	// already sets this and is unaffected.
+	// +optional
+	DeployEventID string `json:"deployEventId,omitempty"`
 
 	// queryID is the pg_stat_statements queryid analysed.
 	QueryID int64 `json:"queryId"`
@@ -43,7 +50,26 @@ type PerformanceRegressionSpec struct {
 	// human-readable display in `kubectl describe`.
 	// +optional
 	QueryText string `json:"queryText,omitempty"`
+
+	// triggerType identifies which analysis path produced this regression:
+	// "deploy" (deployEventID is populated) or "periodic" (deployEventID is
+	// empty -- see docs/periodic-detection.md). Empty is treated as
+	// "deploy", matching every regression created before this field
+	// existed.
+	// +kubebuilder:validation:Enum=deploy;periodic
+	// +optional
+	TriggerType RegressionTriggerType `json:"triggerType,omitempty"`
 }
+
+// RegressionTriggerType mirrors pkg/apis/v1alpha1.TriggerType so the CRD
+// Spec uses the exact same vocabulary as the internal DTO the Correlation
+// Engine returns.
+type RegressionTriggerType string
+
+const (
+	RegressionTriggerTypeDeploy   RegressionTriggerType = "deploy"
+	RegressionTriggerTypePeriodic RegressionTriggerType = "periodic"
+)
 
 // RegressionStatus mirrors pkg/apis/v1alpha1.PerformanceRegressionStatus so
 // the CRD Status uses the exact same vocabulary as the internal DTO the

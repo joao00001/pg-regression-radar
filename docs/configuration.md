@@ -33,8 +33,11 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--state-retention` | `168h` (7 days) | How long samples/events are kept in the postgres state backend |
 | `--state-prune-interval` | `15m` | How often the retention sweep runs against the postgres state backend |
 | `--capture-plans` | `false` | Capture periodic `EXPLAIN (GENERIC_PLAN)` plan snapshots for tracked queries and attach a plan-diff summary to detected regressions. Requires PostgreSQL 16+ (logged once and otherwise a no-op on older servers); adds one extra planner invocation per tracked query per scrape cycle — see [Detection Algorithm](detection-algorithm.md#plan-diff-correlation-optional) |
+| `--periodic-detection` | `false` | Also run regression detection on a rolling schedule, independent of any tracked deploy — see [Periodic Detection](periodic-detection.md) |
+| `--periodic-window-minutes` | `60` | Split-window size for periodic detection; only meaningful alongside `--periodic-detection` |
+| `--periodic-interval-minutes` | `15` | How often a full periodic-detection pass runs; only meaningful alongside `--periodic-detection` |
 | `--version` | `false` | Print version, commit, and build date, then exit — see [Versioning & dry-run](#versioning-dry-run) |
-| `--dry-run` | `false` | Validate `--source-type`, the alerting configuration (`--alert-format` and its format-specific required fields), Postgres connectivity, and (if `--state-backend=postgres`) the state DSN, then exit without starting any server — see [Versioning & dry-run](#versioning-dry-run) |
+| `--dry-run` | `false` | Validate `--source-type`, the alerting configuration (`--alert-format` and its format-specific required fields), Postgres connectivity, (if `--state-backend=postgres`) the state DSN, and (if `--periodic-detection`) that `--periodic-window-minutes`/`--periodic-interval-minutes` are positive, then exit without starting any server — see [Versioning & dry-run](#versioning-dry-run) |
 
 ## Standalone collector flags (`cmd/collector`)
 
@@ -110,6 +113,9 @@ All four binaries share two flags:
 | `capturePlans` | `false` | Enable plan-diff correlation — see [Detection Algorithm: Plan-diff correlation](detection-algorithm.md#plan-diff-correlation-optional). Populates the resulting `PerformanceRegression`'s `status.planDiffSummary` |
 | `autoAbort.enabled` | `false` | Automatically abort the Argo Rollouts canary behind a high-confidence detected regression instead of only alerting — see [Auto-Abort](auto-abort.md) |
 | `autoAbort.confidenceThreshold` | `"0.99"` | Minimum confidence required before auto-aborting; only meaningful alongside `autoAbort.enabled` — see [Auto-Abort: Confidence threshold](auto-abort.md#confidence-threshold) |
+| `periodicDetection.enabled` | `false` | Also run regression detection on a rolling schedule, independent of any tracked deploy — see [Periodic Detection](periodic-detection.md) |
+| `periodicDetection.windowMinutes` | `60` | Split-window size for periodic detection; only meaningful alongside `periodicDetection.enabled` |
+| `periodicDetection.intervalMinutes` | `15` | How often a full periodic-detection pass runs; only meaningful alongside `periodicDetection.enabled` |
 
 ## `DeploySource` spec fields
 
@@ -127,5 +133,6 @@ All four binaries share two flags:
 - [Persistence](persistence.md) — the `--state-*` flags in depth.
 - [Deploy Sources & Webhooks](webhooks.md) — `--source-type` and `sourceType` per webhook source.
 - [Auto-Abort (Argo Rollouts)](auto-abort.md) — `autoAbort.enabled`/`autoAbort.confidenceThreshold` in depth, including the RBAC gate.
+- [Periodic (Deploy-Independent) Detection](periodic-detection.md) — `--periodic-detection`/`periodicDetection.*` in depth, including the false-positive caveat and re-arm suppression model.
 - [Multi-Cluster (Fleet) Mode](multi-cluster.md) — `remoteClusterSecretRef` in depth, including the hub-spoke RBAC split.
 - [API Versioning & Compatibility](api-versioning.md) — what `v1alpha1` guarantees (and doesn't) for the CRDs documented above.

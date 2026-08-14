@@ -85,6 +85,19 @@ const (
 	StatusInsufficientData PerformanceRegressionStatus = "InsufficientData"
 )
 
+// TriggerType identifies which analysis path produced a PerformanceRegression.
+type TriggerType string
+
+const (
+	// TriggerTypeDeploy means correlation.Engine.Analyse ran because a
+	// tracked DeployEvent arrived; DeployEventID identifies which one.
+	TriggerTypeDeploy TriggerType = "deploy"
+	// TriggerTypePeriodic means correlation.Engine.AnalysePeriodic ran on
+	// its own rolling schedule, with no DeployEvent involved at all —
+	// DeployEventID is empty for these. See docs/periodic-detection.md.
+	TriggerTypePeriodic TriggerType = "periodic"
+)
+
 // PerformanceRegression is created by the Correlation Engine when it analyses a deploy.
 type PerformanceRegression struct {
 	Name                string                      `json:"name"`
@@ -107,6 +120,13 @@ type PerformanceRegression struct {
 	// AutoAbortError carries the abort attempt's error, if any. Empty when
 	// AutoAbortTriggered is false or the attempt succeeded.
 	AutoAbortError string `json:"autoAbortError,omitempty"`
+	// TriggerType identifies which analysis path produced this regression:
+	// TriggerTypeDeploy (DeployEventID is populated) or TriggerTypePeriodic
+	// (DeployEventID is empty — no deploy was involved). Empty only for
+	// values constructed before this field existed; treat that the same as
+	// TriggerTypeDeploy, since deploy-triggered analysis is what this
+	// project originally, and still by default, does.
+	TriggerType TriggerType `json:"triggerType,omitempty"`
 	// DetectedChangeAt is the timestamp of the change point the E-divisive
 	// stage actually located in the query latency series. It may differ
 	// slightly from DeployEventID's deploy timestamp (within the engine's
