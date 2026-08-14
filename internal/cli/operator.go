@@ -458,6 +458,7 @@ func RunOperator(args []string) int {
 						before, after := col.PlansAround(r.QueryID, r.DetectedChangeAt)
 						r.PlanDiffSummary = planner.Diff(before, after)
 					}
+					notifier.ObserveDetectedRegression(r)
 					if err := notifier.Notify(ctx, r); err != nil {
 						logger.Error("operator: notify failed", "err", err, "regression", r.Name)
 					}
@@ -496,6 +497,7 @@ func RunOperator(args []string) int {
 							before, after := col.PlansAround(r.QueryID, r.DetectedChangeAt)
 							r.PlanDiffSummary = planner.Diff(before, after)
 						}
+						notifier.ObserveDetectedRegression(r)
 						if err := notifier.Notify(ctx, r); err != nil {
 							logger.Error("operator: periodic notify failed", "err", err, "regression", r.Name)
 						}

@@ -95,13 +95,22 @@ func NewWebhookNotifier(cfg WebhookConfig, logger *slog.Logger) *WebhookNotifier
 	}
 }
 
+// ObserveDetectedRegression records that a regression reached StatusDetected.
+// Callers should invoke this once for each newly detected regression before
+// attempting delivery.
+func (n *WebhookNotifier) ObserveDetectedRegression(r v1alpha1.PerformanceRegression) {
+	if r.Status != v1alpha1.StatusDetected {
+		return
+	}
+	n.regressionsDetectedTotal.WithLabelValues(triggerLabel(r.TriggerType), n.cfg.ClusterName).Inc()
+}
+
 // Notify sends a webhook notification for a detected regression.
 // It is a no-op (returns nil) when r.Status != StatusDetected.
 func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegression) error {
 	if r.Status != v1alpha1.StatusDetected {
 		return nil
 	}
-	n.regressionsDetectedTotal.WithLabelValues(triggerLabel(r.TriggerType), n.cfg.ClusterName).Inc()
 
 	body, contentType, err := n.cfg.Formatter.Format(r, n.cfg.ClusterName)
 	if err != nil {
@@ -161,7 +170,7 @@ func formatLabel(f Formatter) string {
 	case *CustomFormatter:
 		return "custom"
 	default:
-		return "custom"
+		return "unknown"
 	}
 }
 
@@ -172,6 +181,6 @@ func triggerLabel(trigger v1alpha1.TriggerType) string {
 	case "", v1alpha1.TriggerTypeDeploy:
 		return string(v1alpha1.TriggerTypeDeploy)
 	default:
-		return string(v1alpha1.TriggerTypeDeploy)
+		return "unknown"
 	}
 }

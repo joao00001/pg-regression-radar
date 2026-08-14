@@ -377,6 +377,7 @@ func TestNotify_RecordsSuccessMetrics(t *testing.T) {
 	regression := sampleRegression(v1alpha1.StatusDetected)
 	regression.TriggerType = v1alpha1.TriggerTypePeriodic
 
+	notifier.ObserveDetectedRegression(regression)
 	if err := notifier.Notify(context.Background(), regression); err != nil {
 		t.Fatalf("Notify: %v", err)
 	}
@@ -403,6 +404,7 @@ func TestNotify_RecordsErrorMetrics(t *testing.T) {
 	regression := sampleRegression(v1alpha1.StatusDetected)
 	regression.TriggerType = ""
 
+	notifier.ObserveDetectedRegression(regression)
 	err := notifier.Notify(context.Background(), regression)
 	if err == nil {
 		t.Fatal("expected Notify to fail for a non-2xx response")
