@@ -15,8 +15,7 @@
 package cli
 
 import (
-	"io"
-	"os"
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -80,51 +79,22 @@ func TestValidatePostgresDSN_RejectsMalformedURIForms(t *testing.T) {
 }
 
 func TestRunOperator_RejectsMalformedDSNBeforePing(t *testing.T) {
-	output := captureStdout(t, func() {
-		got := RunOperator([]string{
-			"--dsn", "postgres:127.0.0.2:5432/postgres?sslmode=disable",
-			"--dry-run",
-		})
-		if got != 1 {
-			t.Fatalf("RunOperator(--dry-run, malformed --dsn) = %d, want 1", got)
-		}
-	})
+	var output bytes.Buffer
+	got := runOperator([]string{
+		"--dsn", "postgres:127.0.0.2:5432/postgres?sslmode=disable",
+		"--dry-run",
+	}, &output)
+	if got != 1 {
+		t.Fatalf("RunOperator(--dry-run, malformed --dsn) = %d, want 1", got)
+	}
 
-	if !strings.Contains(output, `"msg":"invalid --dsn"`) {
-		t.Fatalf("RunOperator output = %q, want invalid --dsn log", output)
+	if !strings.Contains(output.String(), `"msg":"invalid --dsn"`) {
+		t.Fatalf("RunOperator output = %q, want invalid --dsn log", output.String())
 	}
-	if !strings.Contains(output, "opaque URI form is not supported") {
-		t.Fatalf("RunOperator output = %q, want parse error detail", output)
+	if !strings.Contains(output.String(), "opaque URI form is not supported") {
+		t.Fatalf("RunOperator output = %q, want parse error detail", output.String())
 	}
-	if strings.Contains(output, "collector ping failed") {
-		t.Fatalf("RunOperator output = %q, want startup validation before any ping attempt", output)
+	if strings.Contains(output.String(), "collector ping failed") {
+		t.Fatalf("RunOperator output = %q, want startup validation before any ping attempt", output.String())
 	}
-}
-
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-
-	origStdout := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("os.Pipe() error = %v", err)
-	}
-	os.Stdout = w
-	defer func() {
-		os.Stdout = origStdout
-	}()
-
-	fn()
-
-	if err := w.Close(); err != nil {
-		t.Fatalf("w.Close() error = %v", err)
-	}
-	out, err := io.ReadAll(r)
-	if err != nil {
-		t.Fatalf("io.ReadAll() error = %v", err)
-	}
-	if err := r.Close(); err != nil {
-		t.Fatalf("r.Close() error = %v", err)
-	}
-	return string(out)
 }
