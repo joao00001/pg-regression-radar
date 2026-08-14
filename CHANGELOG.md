@@ -32,6 +32,14 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.2.0 - 2026-08-14
+
+### Features
+
+- Alerting now supports more than Slack: `--alert-format`/`spec.alerting.format` selects between `slack` (default, unchanged), `teams` (Microsoft Teams Incoming Webhook), `pagerduty` (Events API v2, opens/updates an incident), or `custom` (a user-supplied Go `text/template`, for any destination that isn't one of the built-in three). `slackWebhookUrl`/`--slack-url` keep working exactly as before. See [Alerting](https://joao00001.github.io/pg-regression-radar/alerting/) for the full field/flag reference and the custom template's available fields. (#71)
+- Regression detection no longer requires a tracked deploy. `--periodic-detection`/`spec.periodicDetection.enabled` runs the same E-divisive/Welch's-t-test analysis on a rolling schedule, per query, independent of any `DeployEvent` — catching regressions with no deploy behind them (autovacuum lag, index bloat, stale planner stats, organic growth) that were previously invisible to this tool. A re-arm state machine suppresses repeat alerts for an ongoing episode until the query recovers. Deploy-triggered detection is unaffected either way; the two paths run side by side. See [Periodic Detection](https://joao00001.github.io/pg-regression-radar/periodic-detection/) for configuration and the false-positive caveat, and [ADR-0001](https://joao00001.github.io/pg-regression-radar/adr/0001-deploy-independent-regression-detection/) for the design rationale. (#73)
+
+
 ## v1.1.0 - 2026-08-13
 
 ### Features
