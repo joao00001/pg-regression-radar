@@ -512,7 +512,7 @@ func TestCollector_QueryStatStatements_UsesConfiguredMaxQueryTextLen(t *testing.
 		wantMean string
 	}{
 		{
-			name:     "defaults to configured budget plus one",
+			name:     "zero-value config falls back to default budget",
 			cfg:      Config{},
 			wantLeft: "LEFT(query, 201)",
 			wantExec: "total_exec_time",
