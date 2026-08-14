@@ -26,6 +26,7 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--window-minutes` | `30` | Analysis window (minutes before/after deploy) |
 | `--min-executions` | `10` | Min query executions per window |
 | `--latency-threshold` | `0.20` | Min relative latency increase to flag (e.g. 0.20 = 20%) |
+| `--max-query-text-len` | `200` | Max query text length (characters) stored per sample before truncation for alerting and fingerprint fallback — see [Collector Internals](collector-internals.md) |
 | `--retention-minutes` | `180` | How long the collector keeps in-memory query samples before pruning them — see [Collector Internals](collector-internals.md) |
 | `--changepoint-tolerance` | `0` (auto) | Max distance between the E-divisive change point and the deploy timestamp still attributed to that deploy (0 = auto: 20% of window, floor 2m) |
 | `--state-backend` | `memory` | State persistence backend: `memory` or `postgres` — see [Persistence](persistence.md) |
@@ -50,6 +51,7 @@ The `collector` binary exposes the scraper on its own, without the correlation/a
 | `--cluster-name` | `default` | Label added to all metrics |
 | `--namespace` | `default` | Kubernetes namespace label |
 | `--listen` | `:9090` | Prometheus metrics listen address |
+| `--max-query-text-len` | `200` | Max query text length (characters) stored per sample before truncation for alerting and fingerprint fallback — see [Collector Internals](collector-internals.md) |
 | `--retention-minutes` | `180` | How long to keep in-memory query samples before pruning them |
 | `--version` | `false` | Print version, commit, and build date, then exit |
 | `--dry-run` | `false` | Validate Postgres connectivity (dial + `pg_stat_statements` installed), then exit without scraping |
@@ -90,6 +92,36 @@ All four binaries share two flags:
 
 - **`--version`** prints a one-line `<binary> <version> (commit <sha>, built <date>)` string and exits immediately, before any other flag is validated. A build made without the Dockerfile's `--build-arg VERSION/COMMIT/DATE` (e.g. a local `go build`) reports `dev`/`none`/`unknown` rather than a misleading guess.
 - **`--dry-run`** validates configuration and (where applicable) live connectivity — Postgres reachability and the `pg_stat_statements` extension for `operator`/`collector`, source-type/address validity for `ingester`, Kubernetes API config resolution for `manager` — then exits with status `0` on success or `1` (with a logged error) on failure, without starting any server. Useful in CI or an init container to fail fast on a bad DSN or typo'd `--source-type` before the real process starts.
+
+## Tuning notes for less-frequently changed collector/operator flags
+
+### `--max-query-text-len`
+
+- **What it does:** Caps the stored query text length per sample before the collector truncates it and computes the fallback fingerprint.
+- **Default / valid values:** `200`; any positive integer number of characters.
+- **When to change it:** Raise it if your workload has long query texts where the distinguishing part often appears after the first 200 characters and you need better alert/debug context.
+- **Caveats:** Setting it very low reduces the amount of text available to the fingerprint fallback described in [Collector Internals](collector-internals.md#queryid-is-not-a-stable-identifier-across-a-deploy). Values below roughly 20 characters materially increase the chance that different queries collapse onto the same truncated prefix and get merged together incorrectly.
+
+### `--capture-plans`
+
+- **What it does:** Enables periodic plan capture so detected regressions can include a short plan-diff summary alongside the latency change.
+- **Default / valid values:** `false`; set to `true` to enable it.
+- **When to change it:** Turn it on when plan context will help an operator quickly tell whether a regression lines up with an index choice, join strategy, or other planner change.
+- **Caveats:** It is a no-op below PostgreSQL 16 (logged once at startup/scrape time) and it adds one extra planner invocation per tracked query per scrape cycle, so leave it off if you do not need the extra diagnostic signal.
+
+### `--changepoint-tolerance`
+
+- **What it does:** Limits how far the detected change point may land from a deploy timestamp and still be attributed to that deploy.
+- **Default / valid values:** `0` (auto), which resolves to 20% of `--window-minutes` with a minimum of 2 minutes; any non-negative Go duration string is accepted.
+- **When to change it:** Increase it for slow rolling deploys or event sources whose timestamps lag the actual traffic shift; decrease it when closely spaced deploys are being merged too aggressively.
+- **Caveats:** Larger tolerances make it easier to attribute a genuine regression to the wrong deploy when multiple changes happen near each other.
+
+### `--state-prune-interval`
+
+- **What it does:** Controls how often the postgres state backend sweeps old samples and deploy events past `--state-retention`.
+- **Default / valid values:** `15m`; Go duration strings, with non-positive values falling back to the default 15-minute sweep interval in the prune loop.
+- **When to change it:** Shorten it if you need expired state cleared sooner to keep the backing tables smaller; lengthen it if you would rather do fewer background deletes and can tolerate stale rows lingering a little longer.
+- **Caveats:** More frequent pruning means more frequent `DELETE ... WHERE recorded_at < now()-retention` work against the state database; less frequent pruning leaves more expired rows behind between sweeps.
 
 ## `PostgresWatch` spec fields
 

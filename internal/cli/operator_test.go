@@ -87,6 +87,17 @@ func TestRunOperator_DryRun_BadAlertFormat(t *testing.T) {
 	}
 }
 
+func TestRunOperator_MaxQueryTextLenMustBePositive(t *testing.T) {
+	t.Parallel()
+	got := cli.RunOperator([]string{
+		"--dsn", unreachableDSN,
+		"--max-query-text-len", "0",
+	})
+	if got != 1 {
+		t.Errorf("RunOperator(--max-query-text-len=0) = %d, want 1", got)
+	}
+}
+
 func TestRunOperator_DryRun_PagerDutyMissingRoutingKey(t *testing.T) {
 	t.Parallel()
 	got := cli.RunOperator([]string{

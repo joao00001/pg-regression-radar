@@ -23,6 +23,8 @@ Per the [PostgreSQL documentation](https://www.postgresql.org/docs/current/pgsta
 
 The collector guards against this by also computing a text-normalized `FingerprintQuery` hash (see `internal/collector/fingerprint.go`) for every sample. When `SamplesInRange(queryID, from, to)` finds few samples directly under `queryID` in range, it additionally merges in same-range samples recorded under any other queryid that currently shares that fingerprint, so a query whose `queryid` rotated mid-window doesn't look like it has "no data" on one side of the rotation. This is fully internal to the collector: the public `SampleSource` interface consumed by `internal/correlation` (`SamplesInRange`/`AllQueryIDs`) is unchanged.
 
+Because the collector truncates `QueryText` to `--max-query-text-len` before fingerprinting, extremely small values for that flag increase the chance that distinct queries share the same truncated prefix and therefore the same fallback fingerprint. The default (`200`) leaves plenty of shape information intact; values below roughly 20 characters are where collision risk becomes materially easier to trigger in practice.
+
 !!! note "Deduplicated at the correlation-engine layer"
     `AllQueryIDs()` still lists the old and new queryids separately, so a rotated query is still analyzed once per queryid, each pulling in the same merged data — but `internal/correlation.Engine.Analyse` now recognizes this by fingerprint and reports it at most once, under whichever queryid most recently received a sample (the "live" identity). See [Detection Algorithm](detection-algorithm.md#deduplicating-a-queryid-rotation) for how.
 
