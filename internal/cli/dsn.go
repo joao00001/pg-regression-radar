@@ -76,9 +76,5 @@ func validatePostgresURI(dsn string) error {
 		return fmt.Errorf("parse Postgres URI: missing host")
 	}
 
-	if _, err := pq.ParseURL(dsn); err != nil {
-		return fmt.Errorf("parse Postgres URI: %w", err)
-	}
-
 	return nil
 }
