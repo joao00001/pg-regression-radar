@@ -41,5 +41,5 @@ import (
 )
 
 func main() {
-	cli.RunIngester(os.Args[1:])
+	os.Exit(cli.RunIngester(os.Args[1:]))
 }
