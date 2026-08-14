@@ -143,7 +143,9 @@ func registerCounterVec(reg prometheus.Registerer, opts prometheus.CounterOpts, 
 			if existing, ok := are.ExistingCollector.(*prometheus.CounterVec); ok {
 				return existing
 			}
+			panic(fmt.Sprintf("alerting: metric %q already registered with unexpected collector type %T", opts.Name, are.ExistingCollector))
 		}
+		panic(fmt.Sprintf("alerting: register metric %q: %v", opts.Name, err))
 	}
 	return cv
 }
@@ -164,8 +166,12 @@ func formatLabel(f Formatter) string {
 }
 
 func triggerLabel(trigger v1alpha1.TriggerType) string {
-	if trigger == v1alpha1.TriggerTypePeriodic {
+	switch trigger {
+	case v1alpha1.TriggerTypePeriodic:
 		return string(v1alpha1.TriggerTypePeriodic)
+	case "", v1alpha1.TriggerTypeDeploy:
+		return string(v1alpha1.TriggerTypeDeploy)
+	default:
+		return string(v1alpha1.TriggerTypeDeploy)
 	}
-	return string(v1alpha1.TriggerTypeDeploy)
 }
