@@ -113,7 +113,7 @@ jobs:
 
       - name: Open or update the release-prep PR
         if: steps.pending.outputs.count != '0'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           # signoff + explicit committer/author satisfy dco.yml's check
           # (it only requires a "Signed-off-by: Name <email>" trailer on
