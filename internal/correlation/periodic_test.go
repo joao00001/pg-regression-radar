@@ -42,6 +42,7 @@ func TestAnalysePeriodic_DetectsRegression(t *testing.T) {
 
 	src := &fakeSampleSource{data: map[int64][]collector.QuerySample{321: append(older, newer...)}}
 	engine := correlation.New(correlation.Config{
+		Namespace:              "production",
 		PeriodicWindowMinutes:  windowMinutes,
 		MinExecutions:          5,
 		LatencyChangeThreshold: 0.20,
@@ -64,6 +65,9 @@ func TestAnalysePeriodic_DetectsRegression(t *testing.T) {
 	}
 	if found.TriggerType != v1alpha1.TriggerTypePeriodic {
 		t.Errorf("expected TriggerType=periodic, got %q", found.TriggerType)
+	}
+	if found.Namespace != "production" {
+		t.Errorf("expected Namespace=production, got %q", found.Namespace)
 	}
 	if found.DeployEventID != "" {
 		t.Errorf("expected empty DeployEventID for a periodic regression, got %q", found.DeployEventID)

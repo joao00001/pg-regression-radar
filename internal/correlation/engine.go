@@ -30,6 +30,10 @@ import (
 
 // Config holds tuning parameters for the correlation engine.
 type Config struct {
+	// Namespace scopes periodic regressions when no DeployEvent exists to
+	// supply one. Deploy-triggered analysis still reports the DeployEvent's
+	// Namespace instead.
+	Namespace string
 	// WindowMinutes — wider windows reduce sensitivity to bursty load.
 	WindowMinutes int
 	// MinExecutions — guards against spurious regressions on rarely-called queries.
@@ -541,6 +545,7 @@ func (e *Engine) evaluatePeriodic(
 ) v1alpha1.PerformanceRegression {
 	base := v1alpha1.PerformanceRegression{
 		Name:        fmt.Sprintf("periodic-q%d-%d", queryID, now.Unix()),
+		Namespace:   e.cfg.Namespace,
 		QueryID:     queryID,
 		QueryText:   queryText(preSamples, postSamples),
 		TriggerType: v1alpha1.TriggerTypePeriodic,
