@@ -249,10 +249,10 @@ func RunManager(args []string) int {
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		if statusClient != nil {
 			statusCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
 			if markErr := reportManagerStartupFailureStatus(statusCtx, statusClient, err); markErr != nil {
 				managerSetupLog.Error(markErr, "unable to report manager startup failure in custom resource status")
 			}
-			cancel()
 		}
 		managerSetupLog.Error(err, "problem running manager")
 		return 1

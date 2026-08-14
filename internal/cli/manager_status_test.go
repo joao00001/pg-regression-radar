@@ -82,8 +82,8 @@ func TestReportManagerStartupFailureStatus_UpdatesExistingResources(t *testing.T
 	if err := c.Get(context.Background(), types.NamespacedName{Name: "webhook-source", Namespace: "default"}, &gotSource); err != nil {
 		t.Fatalf("get deploysource: %v", err)
 	}
-	if gotSource.Status.Phase != radarv1alpha1.DeploySourcePhasePending {
-		t.Fatalf("expected DeploySource phase Pending, got %q", gotSource.Status.Phase)
+	if gotSource.Status.Phase != radarv1alpha1.DeploySourcePhaseFailed {
+		t.Fatalf("expected DeploySource phase Failed, got %q", gotSource.Status.Phase)
 	}
 	if gotSource.Status.ObservedGeneration != source.Generation {
 		t.Fatalf("expected DeploySource observedGeneration %d, got %d", source.Generation, gotSource.Status.ObservedGeneration)

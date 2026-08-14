@@ -75,7 +75,7 @@ func reportDeploySourceStartupFailureStatus(ctx context.Context, c client.Client
 	var errs []error
 	for i := range list.Items {
 		src := &list.Items[i]
-		src.Status.Phase = radarv1alpha1.DeploySourcePhasePending
+		src.Status.Phase = radarv1alpha1.DeploySourcePhaseFailed
 		src.Status.ObservedGeneration = src.Generation
 		src.Status.WebhookPath = ""
 		src.Status.Message = message
