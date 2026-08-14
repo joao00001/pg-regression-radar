@@ -45,6 +45,14 @@ rules:
   # to resolve dsnSecretRef against a remote ("spoke") cluster instead —
   # see docs/multi-cluster.md. Grants no access to any remote cluster
   # itself; that comes entirely from the kubeconfig's own embedded RBAC.
+  #
+  # Cluster-wide and namespace-unscoped by necessity, which on its own
+  # would let anyone able to create a PostgresWatch reference an arbitrary
+  # Secret and have the manager read it on their behalf. Closed in code,
+  # not RBAC: the manager refuses to use either Secret's contents unless
+  # its owner has labeled it
+  # pg-regression-radar.io/allow-postgreswatch-access=true — see
+  # docs/multi-cluster.md#secret-consent-label.
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "list", "watch"]
