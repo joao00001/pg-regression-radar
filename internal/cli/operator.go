@@ -130,6 +130,17 @@ func RunOperator(args []string) int {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	reg := prometheus.NewRegistry()
 
+	if err := validatePostgresDSN(*dsn); err != nil {
+		logger.Error("invalid --dsn", "err", err)
+		return 1
+	}
+	if *stateBackend == "postgres" && *stateDSN != "" {
+		if err := validatePostgresDSN(*stateDSN); err != nil {
+			logger.Error("invalid --state-dsn", "err", err)
+			return 1
+		}
+	}
+
 	// ---- Alerting config (validated below, in --dry-run and for real) ----
 	// --alert-url falls back to the older --slack-url when unset, so
 	// existing --slack-url-only invocations keep working unchanged with the
