@@ -791,3 +791,35 @@ func TestHandler_WebhookSecret_EmptySecretAllowsAll(t *testing.T) {
 		t.Errorf("expected 1 stored event, got %d", len(store.All()))
 	}
 }
+
+// TestHandler_RejectsOversizedBody verifies ServeHTTP bounds how much of the
+// request body it will read (see maxWebhookBodyBytes in ingester.go) instead
+// of handing json.Decode an unbounded io.Reader — a body past the limit must
+// fail cleanly (400, no event stored), not consume unbounded memory.
+func TestHandler_RejectsOversizedBody(t *testing.T) {
+	t.Parallel()
+
+	store := &ingester.Store{}
+	src := v1alpha1.DeploySource{Name: "test", SourceType: "generic"}
+	h := ingester.NewHandler(store, src, nil)
+
+	// A syntactically valid generic payload whose "app" string alone is
+	// well past maxWebhookBodyBytes (1 MiB) in ingester.go, so the decoder
+	// actually has to read deep into the body (and hit the size limit)
+	// rather than failing immediately on a syntax error — a literal size
+	// here since that constant is unexported and this is an external
+	// (_test package) test.
+	oversized := append([]byte(`{"app":"`), bytes.Repeat([]byte("a"), 2*1024*1024)...)
+	oversized = append(oversized, []byte(`"}`)...)
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(oversized))
+	rr := httptest.NewRecorder()
+
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for an oversized body, got %d", rr.Code)
+	}
+	if len(store.All()) != 0 {
+		t.Errorf("expected no event stored for a rejected oversized body, got %d", len(store.All()))
+	}
+}

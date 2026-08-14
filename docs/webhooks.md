@@ -146,6 +146,8 @@ Because there's no webhook payload to read a `cluster` field from, the event's `
 
 This mode needs read-only RBAC on `apps/v1` `deployments`/`statefulsets`, already included in the manager's default `ClusterRole` (see [Configuration Reference](configuration.md)).
 
+Two different `DeploySource`s (each with its own `postgresWatchRef`) can watch the exact same `Deployment`/`StatefulSet` — e.g. two teams independently tracking the same shared workload against two different `PostgresWatch`es. `WorkloadWatchReconciler` reports the rollout to every matching `DeploySource` on the same pass, each getting its own `DeployEvent` with a distinct `id` and `source`; a `PostgresWatch` that isn't registered yet on one of them doesn't block delivery to the others, though the reconcile does retry until every match has been delivered.
+
 ## Webhook authentication
 
 By default the `/webhook` endpoint accepts any POST request that reaches port 8080, which means any process that can route to that port can inject deploy events. To prevent event spoofing — spam alerts, or masking a real regression under noise — configure a shared secret.
@@ -153,6 +155,8 @@ By default the `/webhook` endpoint accepts any POST request that reaches port 80
 ### How it works
 
 Set the `--webhook-secret` flag (operator/ingester binary) or `spec.webhookSecret` (DeploySource CRD). The ingester then requires every POST to `/webhook` to include the secret verbatim in the `X-Webhook-Token` header. Requests without the header, or with a wrong value, are rejected with `401 Unauthorized`. The comparison is constant-time to prevent timing-based secret inference.
+
+The standalone `ingester` binary's `GET /events` route (lists the full deploy-event history — see [Configuration Reference](configuration.md#ingester-flags-cmdingester)) is gated behind this same secret and header once `--webhook-secret` is set; it has no authentication of its own otherwise. `/events` doesn't exist in `operator`/`manager` mode, so this only applies to the standalone `ingester` binary.
 
 ### Operator / standalone ingester
 

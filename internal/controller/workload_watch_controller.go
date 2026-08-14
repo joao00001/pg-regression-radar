@@ -65,14 +65,34 @@ type WorkloadWatchReconciler struct {
 
 	Logger *slog.Logger
 
-	// lastRevision remembers the most recently emitted revision per watched
-	// workload, so a Deployment/StatefulSet that isn't actually rolling out
-	// (e.g. a routine Reconcile triggered by an unrelated status field
-	// update) doesn't re-emit a DeployEvent for a revision already reported.
-	// Cleared when the workload is deleted, so a later recreation under the
-	// same name starts fresh.
+	// lastRevision remembers the most recently emitted revision per
+	// (DeploySource, workload) pair, so a Deployment/StatefulSet that isn't
+	// actually rolling out (e.g. a routine Reconcile triggered by an
+	// unrelated status field update) doesn't re-emit a DeployEvent for a
+	// revision already reported. Cleared for every DeploySource watching a
+	// given workload when that workload is deleted, so a later recreation
+	// under the same name starts fresh.
+	//
+	// Keyed by (DeploySource, workload) rather than just workload: two
+	// different DeploySources (typically feeding two different
+	// PostgresWatches) can legitimately both watch the same
+	// Deployment/StatefulSet, and each needs its own independent
+	// already-reported bookkeeping — see reconcileWorkload.
 	mu           sync.Mutex
-	lastRevision map[types.NamespacedName]string
+	lastRevision map[workloadWatchKey]string
+}
+
+// workloadWatchKey identifies one (DeploySource, workload) pairing for
+// lastRevision's dedup bookkeeping. A bare workload types.NamespacedName is
+// not enough on its own: it collapses two distinct DeploySources watching
+// the same workload into a single dedup entry, so whichever one reconciles
+// first would make the second look like an already-reported repeat instead
+// of a genuinely separate deploy event for a (possibly different)
+// PostgresWatch — see reconcileWorkload's fan-out over every matching
+// DeploySource.
+type workloadWatchKey struct {
+	deploySource types.NamespacedName
+	workload     types.NamespacedName
 }
 
 // SetupWithManager wires this reconciler into mgr, watching both
@@ -115,30 +135,52 @@ func (r *WorkloadWatchReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	// Neither kind exists any more (deleted, or never existed): forget any
-	// cached revision so a future recreation under the same name is treated
-	// as a fresh rollout rather than a no-op repeat.
-	r.mu.Lock()
-	delete(r.lastRevision, req.NamespacedName)
-	r.mu.Unlock()
+	// cached revision (for every DeploySource that had one for this
+	// workload) so a future recreation under the same name is treated as a
+	// fresh rollout rather than a no-op repeat.
+	r.forgetWorkload(req.NamespacedName)
 	return ctrl.Result{}, nil
 }
 
-// reconcileWorkload finds the DeploySource (if any) that watches the named
-// workload and, if its rollout has genuinely completed on a revision not
-// already reported, feeds a synthesised DeployEvent into that DeploySource's
-// PostgresWatch's Store.
+// forgetWorkload clears every cached lastRevision entry for workload,
+// regardless of which DeploySource it was recorded under. lastRevision has
+// no secondary index from workload -> its DeploySource keys, but this map
+// is bounded by (distinct DeploySources) x (distinct kubernetes-watched
+// workloads) in the cluster -- both small, human-managed counts -- so a
+// linear scan on the (rare, deletion-only) path that calls this is not a
+// performance concern.
+func (r *WorkloadWatchReconciler) forgetWorkload(workload types.NamespacedName) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for k := range r.lastRevision {
+		if k.workload == workload {
+			delete(r.lastRevision, k)
+		}
+	}
+}
+
+// reconcileWorkload finds every DeploySource that watches the named
+// workload and, for each one whose rollout has genuinely completed on a
+// revision it hasn't already reported, feeds a synthesised DeployEvent into
+// that DeploySource's own PostgresWatch's Store.
+//
+// It fans out to every match rather than stopping at the first: two
+// different DeploySources (typically feeding two different PostgresWatches)
+// can both legitimately watch the same Deployment/StatefulSet, and each one
+// needs its own DeployEvent — see workloadWatchKey's doc comment for why an
+// earlier version of this method, which used a plain "first match wins"
+// break, silently dropped every match after the first.
 func (r *WorkloadWatchReconciler) reconcileWorkload(ctx context.Context, sources []radarv1alpha1.DeploySource, kind string, key types.NamespacedName, revision string, rolloutComplete bool) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	var matched *radarv1alpha1.DeploySource
+	var matches []*radarv1alpha1.DeploySource
 	for i := range sources {
 		ds := &sources[i]
 		if ds.Spec.SourceType == "kubernetes" && ds.Spec.WorkloadKind == kind && ds.Spec.AppName == key.Name {
-			matched = ds
-			break
+			matches = append(matches, ds)
 		}
 	}
-	if matched == nil {
+	if len(matches) == 0 {
 		// No DeploySource cares about this workload. Common case: most
 		// Deployments/StatefulSets in a cluster have nothing to do with
 		// pg-regression-radar at all.
@@ -149,50 +191,68 @@ func (r *WorkloadWatchReconciler) reconcileWorkload(ctx context.Context, sources
 		// Rollout still in progress, or this kind hasn't been assigned a
 		// revision marker yet (e.g. brand new StatefulSet mid-creation).
 		// Wait for the next status update to re-trigger Reconcile rather
-		// than emitting a DeployEvent for a half-finished rollout.
+		// than emitting a DeployEvent for a half-finished rollout. Applies
+		// equally to every match — none of them have anything to report
+		// yet either.
 		return ctrl.Result{}, nil
 	}
 
-	r.mu.Lock()
-	if r.lastRevision == nil {
-		r.lastRevision = make(map[types.NamespacedName]string)
-	}
-	alreadyReported := r.lastRevision[key] == revision
-	r.mu.Unlock()
-	if alreadyReported {
-		return ctrl.Result{}, nil
+	// Requeue if *any* match's target PostgresWatch isn't ready yet, but
+	// don't let that stop the others (whose PostgresWatch may well already
+	// be ready) from being reported this pass.
+	var needsRequeue bool
+
+	for _, matched := range matches {
+		dsKey := types.NamespacedName{Namespace: matched.Namespace, Name: matched.Name}
+		wwKey := workloadWatchKey{deploySource: dsKey, workload: key}
+
+		r.mu.Lock()
+		if r.lastRevision == nil {
+			r.lastRevision = make(map[workloadWatchKey]string)
+		}
+		alreadyReported := r.lastRevision[wwKey] == revision
+		r.mu.Unlock()
+		if alreadyReported {
+			continue
+		}
+
+		watchKey := types.NamespacedName{Namespace: matched.Namespace, Name: matched.Spec.PostgresWatchRef}
+		rt, ok := r.Registry.Get(watchKey)
+		if !ok {
+			// This match's target PostgresWatch isn't running yet. Retry
+			// later rather than caching this revision as already-emitted
+			// — a workload's status may not change again for a long time
+			// (or ever) after a rollout completes, so there is no
+			// guarantee another Reconcile would come along on its own to
+			// give this a second chance.
+			log.Info("workloadwatch: postgresWatchRef not ready yet, will retry",
+				"deploySource", matched.Name, "workload", key.String(), "kind", kind)
+			needsRequeue = true
+			continue
+		}
+
+		ev := dto.DeployEvent{
+			ID:        fmt.Sprintf("k8s-%s-%s-%s-%s-%s", kind, key.Namespace, key.Name, matched.Name, revision),
+			Source:    matched.Name,
+			App:       key.Name,
+			Cluster:   rt.ClusterName,
+			Namespace: key.Namespace,
+			Revision:  revision,
+			Timestamp: time.Now().UTC(),
+		}
+		rt.Store.Add(ev)
+
+		r.mu.Lock()
+		r.lastRevision[wwKey] = revision
+		r.mu.Unlock()
+
+		log.Info("workloadwatch: deploy event synthesised from native rollout",
+			"kind", kind, "workload", key.String(), "revision", revision, "deploySource", matched.Name)
 	}
 
-	watchKey := types.NamespacedName{Namespace: matched.Namespace, Name: matched.Spec.PostgresWatchRef}
-	rt, ok := r.Registry.Get(watchKey)
-	if !ok {
-		// The target PostgresWatch isn't running yet. Retry later rather
-		// than caching this revision as already-emitted — a workload's
-		// status may not change again for a long time (or ever) after a
-		// rollout completes, so there is no guarantee another Reconcile
-		// would come along on its own to give this a second chance.
-		log.Info("workloadwatch: postgresWatchRef not ready yet, will retry",
-			"deploySource", matched.Name, "workload", key.String(), "kind", kind)
+	if needsRequeue {
 		return ctrl.Result{RequeueAfter: pendingRequeueInterval}, nil
 	}
-
-	ev := dto.DeployEvent{
-		ID:        fmt.Sprintf("k8s-%s-%s-%s-%s", kind, key.Namespace, key.Name, revision),
-		Source:    matched.Name,
-		App:       key.Name,
-		Cluster:   rt.ClusterName,
-		Namespace: key.Namespace,
-		Revision:  revision,
-		Timestamp: time.Now().UTC(),
-	}
-	rt.Store.Add(ev)
-
-	r.mu.Lock()
-	r.lastRevision[key] = revision
-	r.mu.Unlock()
-
-	log.Info("workloadwatch: deploy event synthesised from native rollout",
-		"kind", kind, "workload", key.String(), "revision", revision, "deploySource", matched.Name)
 	return ctrl.Result{}, nil
 }
 

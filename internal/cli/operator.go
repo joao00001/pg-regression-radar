@@ -370,17 +370,48 @@ func runOperator(args []string, logOutput io.Writer) int {
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
+	// Both servers use an explicit *http.Server with conservative timeouts
+	// instead of the bare http.ListenAndServe(addr, mux) package function
+	// this used before: that helper has no way to set ReadTimeout/
+	// ReadHeaderTimeout/WriteTimeout/IdleTimeout, which leaves a slow or
+	// silent client (accidental exposure, or a deliberately slow-loris-style
+	// request) holding a connection open indefinitely with nothing to time
+	// it out.
+	webhookSrv := &http.Server{
+		Addr:              *webhookListen,
+		Handler:           webhookMux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	metricsSrv := &http.Server{
+		Addr:              *metricsListen,
+		Handler:           metricsMux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
 	go func() {
 		logger.Info("operator: webhook server listening", "addr", *webhookListen)
-		if err := http.ListenAndServe(*webhookListen, webhookMux); err != nil && err != http.ErrServerClosed {
+		if err := webhookSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("webhook server error", "err", err)
 		}
 	}()
 	go func() {
 		logger.Info("operator: metrics server listening", "addr", *metricsListen)
-		if err := http.ListenAndServe(*metricsListen, metricsMux); err != nil && err != http.ErrServerClosed {
+		if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("metrics server error", "err", err)
 		}
+	}()
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = webhookSrv.Shutdown(shutdownCtx)
+		_ = metricsSrv.Shutdown(shutdownCtx)
 	}()
 
 	// If a durable SampleStore is configured, mirror newly scraped samples

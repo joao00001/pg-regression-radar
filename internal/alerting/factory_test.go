@@ -110,3 +110,75 @@ func TestBuildNotifier_UnknownFormat(t *testing.T) {
 		t.Fatal("expected an error for an unknown format, got nil")
 	}
 }
+
+// TestBuildNotifier_RejectsSSRFDestinations verifies the SSRF guard in
+// validateWebhookURL is actually wired into BuildNotifier — the one place
+// both real call sites (--dry-run/startup in internal/cli, and
+// PostgresWatchReconciler) go through — for every format that sends
+// cfg.URL as configured (pagerduty is exempt: see
+// TestBuildNotifier_PagerDuty_IgnoresInvalidURL below).
+func TestBuildNotifier_RejectsSSRFDestinations(t *testing.T) {
+	badURLs := []string{
+		"http://127.0.0.1/steal",
+		"http://[::1]/steal",
+		"http://169.254.169.254/latest/meta-data/",
+		"http://metadata.google.internal/computeMetadata/v1/",
+		"ftp://example.invalid/",
+		"file:///etc/passwd",
+		"not-a-url-at-all",
+	}
+	for _, format := range []string{"slack", "teams"} {
+		for _, u := range badURLs {
+			t.Run(format+"/"+u, func(t *testing.T) {
+				if _, err := BuildNotifier(BuildConfig{Format: format, URL: u}, nil, prometheus.NewRegistry()); err == nil {
+					t.Fatalf("expected BuildNotifier to reject url %q, got nil error", u)
+				}
+			})
+		}
+	}
+}
+
+// TestBuildNotifier_AllowsOrdinaryDestinations verifies the SSRF guard
+// doesn't collaterally reject the ordinary case: a public-looking hostname,
+// and (deliberately) an RFC1918 private address, since a self-hosted
+// in-cluster webhook receiver is a legitimate, common destination — see
+// validateWebhookURL's doc comment for why private ranges are out of scope
+// for this check.
+func TestBuildNotifier_AllowsOrdinaryDestinations(t *testing.T) {
+	for _, u := range []string{
+		"https://hooks.slack.example.com/services/T000/B000/XXX",
+		"http://10.0.0.5:9094/webhook",
+		"http://alertmanager.monitoring.svc.cluster.local:9093/webhook",
+	} {
+		t.Run(u, func(t *testing.T) {
+			if _, err := BuildNotifier(BuildConfig{Format: "slack", URL: u}, nil, prometheus.NewRegistry()); err != nil {
+				t.Errorf("expected url %q to be accepted, got error: %v", u, err)
+			}
+		})
+	}
+}
+
+// TestBuildNotifier_PagerDuty_IgnoresInvalidURL verifies the SSRF guard is
+// skipped for format=pagerduty, since its URL is always overridden to the
+// fixed pagerDutyEventsURL constant and never comes from operator input —
+// validating a value that's about to be discarded would only produce a
+// confusing error for URLs that are already ignored.
+func TestBuildNotifier_PagerDuty_IgnoresInvalidURL(t *testing.T) {
+	_, err := BuildNotifier(BuildConfig{
+		Format:              "pagerduty",
+		URL:                 "http://169.254.169.254/latest/meta-data/",
+		PagerDutyRoutingKey: "R0UTE",
+	}, nil, prometheus.NewRegistry())
+	if err != nil {
+		t.Fatalf("expected pagerduty to ignore its (bogus) URL rather than validate it, got error: %v", err)
+	}
+}
+
+// TestValidateWebhookURL_EmptyIsAllowed verifies an unset URL (no alerting
+// destination configured at all) is not itself an SSRF-guard error — there
+// is nothing to validate, and BuildConfig's zero value must keep working.
+func TestValidateWebhookURL_EmptyIsAllowed(t *testing.T) {
+	if err := validateWebhookURL(""); err != nil {
+		t.Errorf("expected an empty URL to be allowed, got error: %v", err)
+	}
+}

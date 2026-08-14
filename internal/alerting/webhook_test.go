@@ -272,6 +272,36 @@ func TestNotify_NonSuccessStatusCode(t *testing.T) {
 	}
 }
 
+// TestNotify_DoesNotFollowRedirects verifies Notify treats a 3xx response
+// from the configured webhook as the final response (and, per
+// TestNotify_NonSuccessStatusCode's >=300 rule, a failure) instead of
+// transparently following the redirect target. An initially-validated
+// destination that later responds with a redirect to an arbitrary,
+// unvalidated location is a classic SSRF bypass — see validateWebhookURL in
+// factory.go for the up-front check this complements.
+func TestNotify_DoesNotFollowRedirects(t *testing.T) {
+	redirectTargetCalled := false
+	redirectTarget := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		redirectTargetCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer redirectTarget.Close()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, redirectTarget.URL, http.StatusFound)
+	}))
+	defer server.Close()
+
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, Registerer: prometheus.NewRegistry()}, nil)
+	err := notifier.Notify(context.Background(), sampleRegression(v1alpha1.StatusDetected))
+	if err == nil {
+		t.Fatal("expected an error for a redirect response, got nil")
+	}
+	if redirectTargetCalled {
+		t.Error("Notify followed the redirect to a second destination; it must not")
+	}
+}
+
 // TestNotify_NetworkError verifies Notify surfaces a genuine transport
 // failure (nothing listening on the target address) as an error rather than
 // panicking or hanging.
