@@ -43,7 +43,13 @@ docker run -d --name pgrr-test -e POSTGRES_PASSWORD=test -p 5432:5432 \
   postgres:16 postgres -c shared_preload_libraries=pg_stat_statements
 export PGRR_TEST_DSN="postgres://postgres:test@localhost:5432/postgres?sslmode=disable"
 go test -tags=integration ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
+```
+> **Note:** `PGRR_TEST_DSN` must be a full PostgreSQL connection URI, for example
+> `******localhost:5432/postgres?sslmode=disable`.
+> The redacted form shown above is for documentation safety only and cannot be used as-is —
+> replace it with your real connection string.
 
+```bash
 # Real kube-apiserver + etcd (internal/controller):
 go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 export KUBEBUILDER_ASSETS="$(setup-envtest use 1.31.0 -p path)"
