@@ -51,3 +51,84 @@ jobs:
             echo "$unformatted"
             exit 1
           fi
+
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run govulncheck
+        # @latest (not a pinned version, unlike golangci-lint above): the
+        # value this tool provides is the freshness of the Go vulnerability
+        # database it checks against, not toolchain stability — pinning it
+        # would mean silently missing vulnerabilities disclosed after the
+        # pin, which defeats the point of running it at all.
+        #
+        # continue-on-error: report-only for its first run in this repo's
+        # CI. govulncheck only flags vulnerabilities it determines are
+        # actually reachable from this code's own call graph (not just
+        # "present in go.sum"), so false positives are rare — but this repo
+        # has never run it before, so it isn't yet known whether the current
+        # dependency tree is clean. See docs/ci-cd.md's Security scanning
+        # section for the plan to drop continue-on-error once a first clean
+        # run confirms that.
+        id: govulncheck
+        continue-on-error: true
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      - name: Flag non-blocking findings
+        if: always() && steps.govulncheck.outcome == 'failure'
+        run: |
+          echo "::warning::govulncheck found one or more known, reachable vulnerabilities — see the 'Run govulncheck' step's log above for details. Not yet gating this check; see docs/ci-cd.md's Security scanning section."
+
+  gosec:
+    name: gosec
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # required for github/codeql-action/upload-sarif below
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Run gosec
+        # continue-on-error for the same reason as govulncheck above: this
+        # is gosec's first run against this codebase, and unlike
+        # golangci-lint's default linter set (which never included a
+        # security-focused linter — see docs/ci-cd.md), there's no existing
+        # baseline to know whether it comes back clean. SARIF output is
+        # uploaded to the Security tab regardless of outcome, so findings
+        # are visible either way.
+        id: gosec
+        continue-on-error: true
+        run: gosec -fmt sarif -out gosec-results.sarif ./...
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: gosec-results.sarif
+
+      - name: Flag non-blocking findings
+        if: always() && steps.gosec.outcome == 'failure'
+        run: |
+          echo "::warning::gosec found one or more findings — see Security -> Code scanning alerts for details. Not yet gating this check; see docs/ci-cd.md's Security scanning section."
