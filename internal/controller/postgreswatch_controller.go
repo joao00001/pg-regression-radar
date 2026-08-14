@@ -404,7 +404,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		// this deprecated field -- see SlackWebhookURL's own doc comment.
 		alertCfg.URL = watch.Spec.SlackWebhookURL
 	}
-	notifier, err := alerting.BuildNotifier(alertCfg, r.Logger)
+	notifier, err := alerting.BuildNotifier(alertCfg, r.Logger, promReg)
 	if err != nil {
 		return nil, fmt.Errorf("build alert notifier: %w", err)
 	}
@@ -523,6 +523,7 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 				}
 
 				notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+				rt.Notifier.ObserveDetectedRegression(res)
 				if err := rt.Notifier.Notify(notifyCtx, res); err != nil {
 					r.Logger.Error("postgreswatch: alert notify failed", "watch", key.String(), "regression", res.Name, "err", err)
 				}
@@ -564,6 +565,7 @@ func (r *PostgresWatchReconciler) periodicPollLoop(ctx context.Context, key type
 				}
 
 				notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+				rt.Notifier.ObserveDetectedRegression(res)
 				if err := rt.Notifier.Notify(notifyCtx, res); err != nil {
 					r.Logger.Error("postgreswatch: periodic alert notify failed", "watch", key.String(), "regression", res.Name, "err", err)
 				}

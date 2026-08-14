@@ -157,7 +157,7 @@ func TestIntegration_PendingSet_RetriesUntilRealDataArrives(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer slackServer.Close()
-	notifier := alerting.NewWebhookNotifier(alerting.WebhookConfig{URL: slackServer.URL, ClusterName: "e2e-test"}, logger)
+	notifier := alerting.NewWebhookNotifier(alerting.WebhookConfig{URL: slackServer.URL, ClusterName: "e2e-test", Registerer: prometheus.NewRegistry()}, logger)
 
 	// --- Tick #2: enough real post-deploy data now exists. ---
 	results := pending.Tick()

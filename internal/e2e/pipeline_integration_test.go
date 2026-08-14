@@ -272,7 +272,7 @@ func TestIntegration_FullPipeline_DetectsRealRegression(t *testing.T) {
 	}))
 	defer webhookServer.Close()
 
-	notifier := alerting.NewWebhookNotifier(alerting.WebhookConfig{URL: webhookServer.URL, ClusterName: "e2e-test"}, logger)
+	notifier := alerting.NewWebhookNotifier(alerting.WebhookConfig{URL: webhookServer.URL, ClusterName: "e2e-test", Registerer: prometheus.NewRegistry()}, logger)
 	if err := notifier.Notify(ctx, *regressedResult); err != nil {
 		t.Fatalf("notifier.Notify: %v", err)
 	}

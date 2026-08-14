@@ -33,6 +33,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
+
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -71,7 +74,7 @@ func TestNotify_NoOpWhenNotDetected(t *testing.T) {
 			}))
 			defer server.Close()
 
-			notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster"}, nil)
+			notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster", Registerer: prometheus.NewRegistry()}, nil)
 			if err := notifier.Notify(context.Background(), sampleRegression(status)); err != nil {
 				t.Fatalf("Notify returned an error for a no-op case: %v", err)
 			}
@@ -102,7 +105,7 @@ func TestNotify_SendsCorrectPayload(t *testing.T) {
 	}))
 	defer server.Close()
 
-	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "prod-east"}, nil)
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "prod-east", Registerer: prometheus.NewRegistry()}, nil)
 	reg := sampleRegression(v1alpha1.StatusDetected)
 	if err := notifier.Notify(context.Background(), reg); err != nil {
 		t.Fatalf("Notify: %v", err)
@@ -164,7 +167,7 @@ func TestNotify_ExternalCauseSuspected(t *testing.T) {
 	}))
 	defer server.Close()
 
-	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster"}, nil)
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster", Registerer: prometheus.NewRegistry()}, nil)
 	reg := sampleRegression(v1alpha1.StatusDetected)
 	reg.ExternalCauseSuspected = true
 	if err := notifier.Notify(context.Background(), reg); err != nil {
@@ -203,7 +206,7 @@ func TestNotify_PlanDiffSummary_IncludedWhenPresent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster"}, nil)
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster", Registerer: prometheus.NewRegistry()}, nil)
 	reg := sampleRegression(v1alpha1.StatusDetected)
 	reg.PlanDiffSummary = "root plan node changed from Index Scan to Seq Scan; estimated cost increased 4.2x"
 	if err := notifier.Notify(context.Background(), reg); err != nil {
@@ -235,7 +238,7 @@ func TestNotify_PlanDiffSummary_OmittedWhenEmpty(t *testing.T) {
 	}))
 	defer server.Close()
 
-	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster"}, nil)
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "test-cluster", Registerer: prometheus.NewRegistry()}, nil)
 	if err := notifier.Notify(context.Background(), sampleRegression(v1alpha1.StatusDetected)); err != nil {
 		t.Fatalf("Notify: %v", err)
 	}
@@ -259,7 +262,7 @@ func TestNotify_NonSuccessStatusCode(t *testing.T) {
 			}))
 			defer server.Close()
 
-			notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL}, nil)
+			notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, Registerer: prometheus.NewRegistry()}, nil)
 			err := notifier.Notify(context.Background(), sampleRegression(v1alpha1.StatusDetected))
 			if err == nil {
 				t.Fatalf("expected an error for status code %d, got nil", code)
@@ -283,7 +286,7 @@ func TestNotify_NetworkError(t *testing.T) {
 		t.Fatalf("close listener: %v", err)
 	}
 
-	notifier := NewWebhookNotifier(WebhookConfig{URL: "http://" + addr}, nil)
+	notifier := NewWebhookNotifier(WebhookConfig{URL: "http://" + addr, Registerer: prometheus.NewRegistry()}, nil)
 	err = notifier.Notify(context.Background(), sampleRegression(v1alpha1.StatusDetected))
 	if err == nil {
 		t.Fatal("expected an error when the webhook endpoint is unreachable, got nil")
@@ -310,7 +313,7 @@ func TestNotify_RespectsConfiguredTimeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, Timeout: timeout}, nil)
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, Timeout: timeout, Registerer: prometheus.NewRegistry()}, nil)
 
 	start := time.Now()
 	err := notifier.Notify(context.Background(), sampleRegression(v1alpha1.StatusDetected))
@@ -333,12 +336,12 @@ func TestNotify_RespectsConfiguredTimeout(t *testing.T) {
 // (not alerting_test) specifically so it can inspect the unexported
 // client field instead of inferring the timeout indirectly from a slow test.
 func TestNewWebhookNotifier_DefaultsTimeout(t *testing.T) {
-	n := NewWebhookNotifier(WebhookConfig{URL: "http://example.invalid"}, nil)
+	n := NewWebhookNotifier(WebhookConfig{URL: "http://example.invalid", Registerer: prometheus.NewRegistry()}, nil)
 	if n.client.Timeout != 10*time.Second {
 		t.Errorf("expected default Timeout=10s, got %s", n.client.Timeout)
 	}
 
-	n2 := NewWebhookNotifier(WebhookConfig{URL: "http://example.invalid", Timeout: 3 * time.Second}, nil)
+	n2 := NewWebhookNotifier(WebhookConfig{URL: "http://example.invalid", Timeout: 3 * time.Second, Registerer: prometheus.NewRegistry()}, nil)
 	if n2.client.Timeout != 3*time.Second {
 		t.Errorf("expected explicit Timeout=3s to be preserved, got %s", n2.client.Timeout)
 	}
@@ -354,11 +357,80 @@ func TestNewWebhookNotifier_NilLoggerDoesNotPanic(t *testing.T) {
 	}))
 	defer server.Close()
 
-	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL}, nil)
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, Registerer: prometheus.NewRegistry()}, nil)
 	if notifier.logger == nil {
 		t.Fatal("expected a non-nil default logger")
 	}
 	if err := notifier.Notify(context.Background(), sampleRegression(v1alpha1.StatusDetected)); err != nil {
 		t.Fatalf("Notify: %v", err)
 	}
+}
+
+func TestNotify_RecordsSuccessMetrics(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	reg := prometheus.NewRegistry()
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "prod-east", Registerer: reg}, nil)
+	regression := sampleRegression(v1alpha1.StatusDetected)
+	regression.TriggerType = v1alpha1.TriggerTypePeriodic
+
+	notifier.ObserveDetectedRegression(regression)
+	if err := notifier.Notify(context.Background(), regression); err != nil {
+		t.Fatalf("Notify: %v", err)
+	}
+
+	if got := counterVecValue(t, notifier.notificationsTotal, "success", "slack"); got != 1 {
+		t.Fatalf("expected notifications_total{status=success,format=slack}=1, got %v", got)
+	}
+	if got := counterVecValue(t, notifier.notificationsTotal, "error", "slack"); got != 0 {
+		t.Fatalf("expected notifications_total{status=error,format=slack}=0, got %v", got)
+	}
+	if got := counterVecValue(t, notifier.regressionsDetectedTotal, "periodic", "prod-east"); got != 1 {
+		t.Fatalf("expected regressions_detected_total{trigger=periodic,cluster=prod-east}=1, got %v", got)
+	}
+}
+
+func TestNotify_RecordsErrorMetrics(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	reg := prometheus.NewRegistry()
+	notifier := NewWebhookNotifier(WebhookConfig{URL: server.URL, ClusterName: "prod-east", Registerer: reg}, nil)
+	regression := sampleRegression(v1alpha1.StatusDetected)
+	regression.TriggerType = v1alpha1.TriggerTypeDeploy
+
+	notifier.ObserveDetectedRegression(regression)
+	err := notifier.Notify(context.Background(), regression)
+	if err == nil {
+		t.Fatal("expected Notify to fail for a non-2xx response")
+	}
+
+	if got := counterVecValue(t, notifier.notificationsTotal, "error", "slack"); got != 1 {
+		t.Fatalf("expected notifications_total{status=error,format=slack}=1, got %v", got)
+	}
+	if got := counterVecValue(t, notifier.notificationsTotal, "success", "slack"); got != 0 {
+		t.Fatalf("expected notifications_total{status=success,format=slack}=0, got %v", got)
+	}
+	if got := counterVecValue(t, notifier.regressionsDetectedTotal, "deploy", "prod-east"); got != 1 {
+		t.Fatalf("expected regressions_detected_total{trigger=deploy,cluster=prod-east}=1, got %v", got)
+	}
+}
+
+func counterVecValue(t *testing.T, cv *prometheus.CounterVec, labelValues ...string) float64 {
+	t.Helper()
+
+	metric, err := cv.GetMetricWithLabelValues(labelValues...)
+	if err != nil {
+		t.Fatalf("GetMetricWithLabelValues(%v): %v", labelValues, err)
+	}
+	m := &dto.Metric{}
+	if err := metric.Write(m); err != nil {
+		t.Fatalf("Write(%v): %v", labelValues, err)
+	}
+	return m.GetCounter().GetValue()
 }
