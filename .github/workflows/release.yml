@@ -127,7 +127,7 @@ jobs:
         # standard part of the documented multi-arch buildx setup in case a
         # future Dockerfile change (an added RUN step in a runtime stage,
         # say) starts needing it — cheap to keep, expensive to silently miss.
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: ${{ matrix.platform }}
 
