@@ -168,7 +168,7 @@ jobs:
         # test that only passes if a 5-second timer happens to cooperate.
         run: |
           # NOTE: The "******" prefix in the DSN below is a placeholder for the
-          # redacted credentials and URI scheme (e.g. ******).
+          # redacted credentials and URI scheme (e.g. postgres://user:pass@host:5432/dbname).
           # Replace the full value with a real PostgreSQL connection URI.
           docker run -d --name "${OPERATOR_CONTAINER}" --network "${NETWORK}" \
             --add-host=host.docker.internal:host-gateway \
