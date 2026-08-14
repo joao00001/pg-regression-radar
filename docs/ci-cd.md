@@ -4,7 +4,20 @@
 
 ## Overview
 
-pg-regression-radar runs ten workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, and [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`.
+pg-regression-radar runs eleven workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, and [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`.
+
+**Security scanning, end to end:** this repo uses only tools that are free for a public repository, spread across the layer each is actually good at — no single tool covers all of these:
+
+| Layer | Tool | Where | Blocking? |
+|---|---|---|---|
+| Go source (semantic SAST) | CodeQL | `codeql.yml` | No — code scanning alerts, by design (see below) |
+| Go source (pattern-based security linter) | gosec | `go-quality.yml` | Not yet — first run, no baseline (see below) |
+| Go dependencies (known, reachable CVEs) | govulncheck | `go-quality.yml` | Not yet — first run, no baseline (see below) |
+| Go dependencies (version currency) | Dependabot | `dependabot.yml` | N/A — opens update PRs, doesn't gate CI |
+| Container base images (version currency) | Dependabot (`docker` ecosystem) | `dependabot.yml` | N/A — opens update PRs, doesn't gate CI |
+| Built container images (known CVEs in OS packages/libraries) | Trivy | `release.yml` | **Yes** — CRITICAL-severity finding fails the `images` job, nothing is pushed |
+
+CodeQL findings are never blocking by design — `github/codeql-action/analyze` only fails the workflow on a tool/build error, never on an actual finding; results surface as Security tab alerts instead, the same UX as Dependabot alerts. gosec and govulncheck, by contrast, *can* fail their own step (`continue-on-error: true` is what's currently absorbing that) — both are first-time additions to this repo with no established clean baseline yet, so they start in report-only mode. Once a run of each comes back clean (or any real findings are triaged and fixed/suppressed), removing `continue-on-error: true` from that job is the one-line change that makes it a real gate. Trivy in `release.yml` predates this and already gates for real, because it was added with a known-clean baseline from the start.
 
 ## `ci.yml` — on every push/PR to `main`
 
@@ -19,8 +32,10 @@ pg-regression-radar runs ten workflows plus Dependabot. This page is a map of wh
 
 | Job | What it proves |
 |---|---|
-| `golangci-lint` | Static analysis beyond `go vet` (pinned version `v2.12.2`, no repo-specific config — runs with the tool's default linter set). |
+| `golangci-lint` | Static analysis beyond `go vet` (pinned version `v2.12.2`, no repo-specific config — runs with the tool's default linter set, which does **not** include a security-focused linter; that's what `gosec` below is for). |
 | `gofmt` | Every tracked `.go` file is `gofmt`-clean. |
+| `govulncheck` | Whether any dependency in `go.sum` has a known vulnerability that's actually reachable from this code's own call graph (not just present in the dependency tree) — see the Security scanning table above for why it's report-only for now. |
+| `gosec` | Pattern-based security static analysis (hardcoded credentials, weak crypto, SQL string concatenation, etc.) — see the Security scanning table above for why it's report-only for now. Findings are uploaded as SARIF to Security -> Code scanning regardless of outcome. |
 
 ## `pr-title.yml` — on PR open/edit/sync
 
@@ -38,6 +53,14 @@ Enforces the "changeset"/news-fragment convention described in [CONTRIBUTING.md]
 | Validate content | Runs `scripts/check_changelog_fragment.py <file>` — a small stdlib-only Python script (no `towncrier` dependency needed for this part) that checks each of the seven content rules independently and fails with the exact rule number and a human-readable reason (e.g. `[3-ends-with-punctuation]`), plus a link back to CONTRIBUTING.md. |
 
 This is a separate workflow from `pr-title.yml` (rather than a job appended to it) because `pr-title.yml` runs on `pull_request_target` (needed so it can comment on forked PRs without leaking secrets), while this check only ever needs to read the PR's own diff and is safer as plain `pull_request`.
+
+## `codeql.yml` — on push/PR to `main`, plus a weekly schedule
+
+Semantic SAST for Go via GitHub's own CodeQL engine — see the Security scanning table above for how this fits alongside `gosec`/`govulncheck`/Trivy. Runs the `security-and-quality` query suite (CodeQL's default, not the broader `security-extended` suite — same "keep signal-to-noise high, no repo-specific config" preference as `golangci-lint`'s default linter set). The weekly schedule (Mondays) catches new findings against unchanged code when CodeQL's own query packs are updated upstream, the same rationale as running Dependabot/`govulncheck` on a cadence rather than push-only.
+
+Findings appear under Security -> Code scanning alerts, never as a failed check — see the Security scanning table above for why that's true of code scanning generically, not a severity threshold that could be tuned.
+
+**One-time manual note:** if this repo ever enables "Default setup" for code scanning in Settings -> Code security, GitHub manages its own CodeQL workflow and this file becomes redundant with it — the two should not both run. No such setup exists yet, so `codeql.yml` is the only CodeQL workflow.
 
 ## `dco.yml` — on every PR to `main`
 
@@ -113,7 +136,9 @@ This used to be one job that redeployed the live site on every push to `main` to
 
 ## Dependabot (`.github/dependabot.yml`)
 
-Weekly update checks for `gomod` and `github-actions` ecosystems, with `chore(deps)` / `ci(deps)` commit-message prefixes matching this project's Conventional Commits convention.
+Weekly update checks for `gomod`, `github-actions`, and `docker` ecosystems, with `chore(deps)` / `ci(deps)` commit-message prefixes matching this project's Conventional Commits convention. The `docker` entry covers the base image(s) in the repo-root Dockerfile's `FROM` lines — the same five-target multi-stage build `release.yml` publishes from — so a base-image security patch shows up as an ordinary Dependabot PR, the same way a vulnerable Go dependency would.
+
+This is version-currency only (opens a PR when a newer version exists); it's not what actually blocks a known-vulnerable dependency or image from shipping — see the Security scanning table above for `govulncheck` (Go deps) and Trivy (built images), which check for actual CVEs rather than just staleness.
 
 ## Branch protection
 

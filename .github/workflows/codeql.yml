@@ -1,0 +1,70 @@
+name: CodeQL
+
+# Semantic static-analysis security scanning (SAST) for Go, via GitHub's own
+# CodeQL engine. Free for this repo specifically because it's a public
+# repository — see docs/ci-cd.md's Security scanning section for the exact
+# free-tier boundaries this and the other jobs added alongside it rely on.
+#
+# Deliberately non-blocking by design, same as Dependabot alerts: findings
+# are uploaded to the repo's Security tab (Security -> Code scanning) as
+# alerts, not surfaced as a failed check on the PR. CodeQL's own action only
+# fails this workflow on a tool/build error, never on finding a result — so
+# there's nothing here to flip to "blocking" later; that's an inherent
+# property of code scanning alerts, not a severity threshold like Trivy's in
+# release.yml.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    # Catches newly-published CodeQL query-pack findings against code that
+    # hasn't changed (a new query added to the standard suite, or a new CWE
+    # coverage area) — the same rationale as running Dependabot/govulncheck
+    # on a schedule rather than push-only: some scanners get smarter without
+    # your code ever changing.
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (Go)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # required for github/codeql-action/upload-sarif
+      actions: read # required to fetch this workflow's own status for the Security tab
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        # CodeQL builds the project itself (compiled languages need a real
+        # build to trace data flow through), so the same toolchain version
+        # every other Go job in this repo uses.
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: go
+          # The default query suite (security-extended would add more
+          # style/lower-confidence queries) — matches this repo's existing
+          # "report real findings, keep signal-to-noise high" preference
+          # already established for golangci-lint (no repo-specific config,
+          # default linter set only).
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:go"
