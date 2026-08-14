@@ -124,8 +124,21 @@ type PostgresWatchSpec struct {
 
 	// slackWebhookURL is a Slack (or Slack-compatible) incoming webhook
 	// used by internal/alerting to notify on detected regressions.
+	//
+	// Deprecated: use alerting instead (leaving format unset, or set to
+	// "slack", is equivalent). Ignored entirely whenever alerting is set —
+	// kept only so watches created before alerting existed keep working
+	// unchanged.
 	// +optional
 	SlackWebhookURL string `json:"slackWebhookUrl,omitempty"`
+
+	// alerting configures how detected regressions are reported and
+	// supersedes slackWebhookUrl. Leave unset to keep using
+	// slackWebhookUrl (or no alerting at all, if that's empty too) exactly
+	// as before this field existed. See docs/alerting.md for the full list
+	// of supported formats and the custom template's available fields.
+	// +optional
+	Alerting *AlertingConfig `json:"alerting,omitempty"`
 
 	// capturePlans enables plan-diff correlation for this watch: around a
 	// detected regression, the Collector captures the query's execution
@@ -172,6 +185,38 @@ type AutoAbortConfig struct {
 	// +optional
 	// +kubebuilder:default="0.99"
 	ConfidenceThreshold string `json:"confidenceThreshold,omitempty"`
+}
+
+// AlertingConfig controls how a detected regression is reported: which
+// payload layout to use, and where to send it. Introduced to replace the
+// original Slack-only integration (see PostgresWatchSpec.SlackWebhookURL)
+// with something that actually works with more than one on-call tool — see
+// docs/alerting.md.
+type AlertingConfig struct {
+	// format selects the notification payload layout. Leave unset (or set
+	// to "slack") for the original Slack-compatible incoming-webhook
+	// payload.
+	// +kubebuilder:validation:Enum=slack;teams;pagerduty;custom
+	// +optional
+	Format string `json:"format,omitempty"`
+
+	// url is the webhook endpoint for the slack, teams, and custom
+	// formats. Ignored for pagerduty, which always posts to PagerDuty's
+	// fixed Events API v2 endpoint instead — see pagerDutyRoutingKey.
+	// +optional
+	URL string `json:"url,omitempty"`
+
+	// pagerDutyRoutingKey is the PagerDuty Events API v2 integration
+	// (routing) key. Required, and only used, when format is "pagerduty".
+	// +optional
+	PagerDutyRoutingKey string `json:"pagerDutyRoutingKey,omitempty"`
+
+	// customTemplate is Go text/template source used to render the
+	// notification body when format is "custom". Required, and only used,
+	// when format is "custom" — see docs/alerting.md#custom-format for the
+	// available template fields and a worked example.
+	// +optional
+	CustomTemplate string `json:"customTemplate,omitempty"`
 }
 
 // SecretKeySelector selects a key of a Secret in the same namespace as the

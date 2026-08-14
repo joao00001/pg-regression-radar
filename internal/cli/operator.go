@@ -72,7 +72,12 @@ func RunOperator(args []string) {
 	scrapeInterval := fs.Duration("scrape-interval", 60*time.Second, "Collector scrape interval")
 	webhookListen := fs.String("webhook-listen", ":8080", "HTTP listen address for deploy webhooks")
 	metricsListen := fs.String("metrics-listen", ":9090", "HTTP listen address for Prometheus metrics")
-	slackURL := fs.String("slack-url", "", "Slack incoming-webhook URL for notifications")
+	slackURL := fs.String("slack-url", "", "Slack incoming-webhook URL for notifications (alias of --alert-url with --alert-format=slack, the default)")
+	alertFormat := fs.String("alert-format", "slack", "Notification payload format: slack, teams, pagerduty, or custom — see docs/alerting.md")
+	alertURL := fs.String("alert-url", "", "Webhook URL for --alert-format=slack/teams/custom; ignored for pagerduty. Falls back to --slack-url when unset")
+	pagerdutyRoutingKey := fs.String("pagerduty-routing-key", "", "PagerDuty Events API v2 routing key; required when --alert-format=pagerduty")
+	alertTemplate := fs.String("alert-template", "", "Go text/template source (inline) for --alert-format=custom — see docs/alerting.md#custom-format. Alternative to --alert-template-file; takes precedence when both are set")
+	alertTemplateFile := fs.String("alert-template-file", "", "Path to a Go text/template file for --alert-format=custom, when passing the source inline via --alert-template isn't convenient")
 	sourceType := fs.String("source-type", "generic", "Deploy source type: argocd, argo-rollouts, flux, generic")
 	webhookSecret := fs.String("webhook-secret", "", "Shared secret for webhook authentication; when set, every POST to /webhook must include this value in the X-Webhook-Token header (401 otherwise). Recommended for internet-facing deployments. Prefer passing this via an environment variable reference rather than a CLI flag to avoid exposure in process listings.")
 	windowMinutes := fs.Int("window-minutes", 30, "Analysis window (minutes before/after deploy)")
@@ -110,6 +115,31 @@ func RunOperator(args []string) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	reg := prometheus.NewRegistry()
 
+	// ---- Alerting config (validated below, in --dry-run and for real) ----
+	// --alert-url falls back to the older --slack-url when unset, so
+	// existing --slack-url-only invocations keep working unchanged with the
+	// default --alert-format=slack.
+	resolvedAlertURL := *alertURL
+	if resolvedAlertURL == "" {
+		resolvedAlertURL = *slackURL
+	}
+	customAlertTemplate := *alertTemplate
+	if customAlertTemplate == "" && *alertTemplateFile != "" {
+		b, err := os.ReadFile(*alertTemplateFile)
+		if err != nil {
+			logger.Error("failed to read --alert-template-file", "err", err)
+			os.Exit(1)
+		}
+		customAlertTemplate = string(b)
+	}
+	alertCfg := alerting.BuildConfig{
+		Format:              *alertFormat,
+		URL:                 resolvedAlertURL,
+		PagerDutyRoutingKey: *pagerdutyRoutingKey,
+		CustomTemplate:      customAlertTemplate,
+		ClusterName:         *clusterName,
+	}
+
 	// ---- Collector ----
 	col, err := collector.New(collector.Config{
 		DSN:               *dsn,
@@ -130,6 +160,10 @@ func RunOperator(args []string) {
 
 		if !ingester.ValidSourceTypes[*sourceType] {
 			logger.Error("--dry-run: unknown --source-type", "value", *sourceType)
+			os.Exit(1)
+		}
+		if _, err := alerting.BuildNotifier(alertCfg, logger); err != nil {
+			logger.Error("--dry-run: invalid alerting configuration", "err", err)
 			os.Exit(1)
 		}
 		if err := col.Ping(ctx); err != nil {
@@ -174,10 +208,11 @@ func RunOperator(args []string) {
 	}, col, logger)
 
 	// ---- Alerting ----
-	notifier := alerting.NewWebhookNotifier(alerting.WebhookConfig{
-		URL:         *slackURL,
-		ClusterName: *clusterName,
-	}, logger)
+	notifier, err := alerting.BuildNotifier(alertCfg, logger)
+	if err != nil {
+		logger.Error("failed to configure alerting", "err", err)
+		os.Exit(1)
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()

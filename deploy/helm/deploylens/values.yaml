@@ -84,9 +84,24 @@ ingester:
   # Strongly recommended for any deployment reachable from outside the cluster.
   webhookSecret: ""
 
-# Alerting settings.
+# Alerting settings. See docs/alerting.md for the full list of supported
+# formats and the custom template's available fields.
 alerting:
+  # Deprecated: use format/url instead (format left empty, or set to
+  # "slack", is equivalent). Ignored whenever format is set.
   slackWebhookUrl: ""
+  # format selects the notification payload layout: "" (same as "slack"),
+  # "teams", "pagerduty", or "custom".
+  format: ""
+  # url is the webhook endpoint for the slack, teams, and custom formats.
+  # Ignored for pagerduty. Falls back to slackWebhookUrl when empty.
+  url: ""
+  # pagerDutyRoutingKey is the PagerDuty Events API v2 routing key, required
+  # (and only used) when format is "pagerduty".
+  pagerDutyRoutingKey: ""
+  # customTemplate is Go text/template source, required (and only used)
+  # when format is "custom".
+  customTemplate: ""
 
 service:
   type: ClusterIP

@@ -61,6 +61,44 @@ spec:
               PostgresWatchReconciler, which translates it into a
               internal/collector.Config and internal/correlation.Config pair.
             properties:
+              alerting:
+                description: |-
+                  alerting configures how detected regressions are reported and
+                  supersedes slackWebhookUrl. Leave unset to keep using
+                  slackWebhookUrl (or no alerting at all, if that's empty too) exactly
+                  as before this field existed. See docs/alerting.md for the full list
+                  of supported formats and the custom template's available fields.
+                properties:
+                  customTemplate:
+                    description: |-
+                      customTemplate is Go text/template source used to render the
+                      notification body when format is "custom". Required, and only used,
+                      when format is "custom" — see docs/alerting.md#custom-format for the
+                      available template fields and a worked example.
+                    type: string
+                  format:
+                    description: |-
+                      format selects the notification payload layout. Leave unset (or set
+                      to "slack") for the original Slack-compatible incoming-webhook
+                      payload.
+                    enum:
+                    - slack
+                    - teams
+                    - pagerduty
+                    - custom
+                    type: string
+                  pagerDutyRoutingKey:
+                    description: |-
+                      pagerDutyRoutingKey is the PagerDuty Events API v2 integration
+                      (routing) key. Required, and only used, when format is "pagerduty".
+                    type: string
+                  url:
+                    description: |-
+                      url is the webhook endpoint for the slack, teams, and custom
+                      formats. Ignored for pagerduty, which always posts to PagerDuty's
+                      fixed Events API v2 endpoint instead — see pagerDutyRoutingKey.
+                    type: string
+                type: object
               autoAbort:
                 description: |-
                   autoAbort optionally closes the loop between detection and
@@ -221,6 +259,11 @@ spec:
                 description: |-
                   slackWebhookURL is a Slack (or Slack-compatible) incoming webhook
                   used by internal/alerting to notify on detected regressions.
+
+                  Deprecated: use alerting instead (leaving format unset, or set to
+                  "slack", is equivalent). Ignored entirely whenever alerting is set —
+                  kept only so watches created before alerting existed keep working
+                  unchanged.
                 type: string
               windowMinutes:
                 default: 30

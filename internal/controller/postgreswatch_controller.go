@@ -371,10 +371,25 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		PValueThreshold:        pValueThreshold,
 	}, col, r.Logger)
 
-	notifier := alerting.NewWebhookNotifier(alerting.WebhookConfig{
-		URL:         watch.Spec.SlackWebhookURL,
-		ClusterName: watch.Spec.ClusterName,
-	}, r.Logger)
+	// spec.alerting supersedes spec.slackWebhookUrl entirely when set (see
+	// AlertingConfig's doc comment) -- there is no field-by-field merge
+	// between the two, to keep this precedence rule unambiguous.
+	alertCfg := alerting.BuildConfig{ClusterName: watch.Spec.ClusterName}
+	if watch.Spec.Alerting != nil {
+		alertCfg.Format = watch.Spec.Alerting.Format
+		alertCfg.URL = watch.Spec.Alerting.URL
+		alertCfg.PagerDutyRoutingKey = watch.Spec.Alerting.PagerDutyRoutingKey
+		alertCfg.CustomTemplate = watch.Spec.Alerting.CustomTemplate
+	} else {
+		//nolint:staticcheck // SA1019: this is the deliberate legacy fallback
+		// read for backward compatibility -- the one intentional reference to
+		// this deprecated field -- see SlackWebhookURL's own doc comment.
+		alertCfg.URL = watch.Spec.SlackWebhookURL
+	}
+	notifier, err := alerting.BuildNotifier(alertCfg, r.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("build alert notifier: %w", err)
+	}
 
 	// AutoAbortEnabled only ever ends up true when both the spec asks for
 	// it AND this reconciler actually has an Aborter to call — see the

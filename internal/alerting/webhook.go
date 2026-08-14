@@ -12,15 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package alerting fires notifications when a PerformanceRegression is detected.
-// The initial implementation targets Slack's incoming-webhook format because
-// it is the lowest-friction integration for on-call workflows.
+// Package alerting fires notifications when a PerformanceRegression is
+// detected. WebhookNotifier owns the HTTP transport (POST, timeout,
+// status-code handling); the actual payload layout is delegated to a
+// Formatter (see formatter.go) — SlackFormatter (this package's original,
+// and still default, format), TeamsFormatter, PagerDutyFormatter, or a
+// user-supplied CustomFormatter. See BuildNotifier for how one is picked
+// from a --alert-format flag or a PostgresWatch's spec.alerting.format.
 package alerting
 
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -29,21 +32,31 @@ import (
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
-// WebhookConfig holds configuration for the generic/Slack webhook notifier.
+// WebhookConfig holds configuration for the webhook notifier.
 type WebhookConfig struct {
 	URL string
-	// Timeout guards against Slack outages blocking the operator goroutine.
+	// Timeout guards against a slow/unreachable destination blocking the
+	// operator/manager goroutine that calls Notify.
 	Timeout     time.Duration
 	ClusterName string
+	// Formatter builds the notification body for each detected regression.
+	// Defaults to SlackFormatter{} when nil, preserving this package's
+	// original (and still most common) behaviour — most callers should
+	// prefer BuildNotifier, which sets this from a --alert-format flag or
+	// spec.alerting.format instead of leaving it to this zero-value default.
+	Formatter Formatter
 }
 
 func (c *WebhookConfig) defaults() {
 	if c.Timeout == 0 {
 		c.Timeout = 10 * time.Second
 	}
+	if c.Formatter == nil {
+		c.Formatter = SlackFormatter{}
+	}
 }
 
-// WebhookNotifier sends Slack-compatible webhook payloads.
+// WebhookNotifier POSTs a Formatter-rendered payload to a webhook endpoint.
 type WebhookNotifier struct {
 	cfg    WebhookConfig
 	client *http.Client
@@ -63,23 +76,6 @@ func NewWebhookNotifier(cfg WebhookConfig, logger *slog.Logger) *WebhookNotifier
 	}
 }
 
-// slackPayload is a minimal Slack incoming-webhook message.
-type slackPayload struct {
-	Text        string            `json:"text"`
-	Attachments []slackAttachment `json:"attachments,omitempty"`
-}
-
-type slackAttachment struct {
-	Color  string       `json:"color"`
-	Fields []slackField `json:"fields"`
-}
-
-type slackField struct {
-	Title string `json:"title"`
-	Value string `json:"value"`
-	Short bool   `json:"short"`
-}
-
 // Notify sends a webhook notification for a detected regression.
 // It is a no-op (returns nil) when r.Status != StatusDetected.
 func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegression) error {
@@ -87,50 +83,16 @@ func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegr
 		return nil
 	}
 
-	payload := slackPayload{
-		Text: fmt.Sprintf(":rotating_light: *pg-regression-radar* — performance regression detected on cluster *%s*", n.cfg.ClusterName),
-		Attachments: []slackAttachment{
-			{
-				Color: "danger",
-				Fields: []slackField{
-					{Title: "Deploy Event", Value: r.DeployEventID, Short: true},
-					{Title: "Query ID", Value: fmt.Sprintf("%d", r.QueryID), Short: true},
-					{Title: "Query (excerpt)", Value: r.QueryText, Short: false},
-					{Title: "Latency Before", Value: fmt.Sprintf("%.2f ms", r.MeanLatencyBefore), Short: true},
-					{Title: "Latency After", Value: fmt.Sprintf("%.2f ms", r.MeanLatencyAfter), Short: true},
-					{Title: "Change Factor", Value: fmt.Sprintf("%.2fx", r.LatencyChangeFactor), Short: true},
-					{Title: "Confidence", Value: fmt.Sprintf("%.0f%%", r.ConfidenceScore*100), Short: true},
-					{Title: "Change Point", Value: r.DetectedChangeAt.Format(time.RFC3339), Short: true},
-				},
-			},
-		},
-	}
-
-	if r.ExternalCauseSuspected {
-		payload.Attachments[0].Color = "warning"
-		payload.Attachments[0].Fields = append(payload.Attachments[0].Fields,
-			slackField{Title: "⚠️ Note", Value: "External cause suspected (CPU/IO also changed).", Short: false})
-	}
-
-	// PlanDiffSummary is only populated when --capture-plans is enabled and
-	// the server is PostgreSQL 16+ (see internal/planner and
-	// docs/detection-algorithm.md); most deployments won't have it, so it's
-	// appended as its own field rather than reserving space for it above.
-	if r.PlanDiffSummary != "" {
-		payload.Attachments[0].Fields = append(payload.Attachments[0].Fields,
-			slackField{Title: "Plan Diff", Value: r.PlanDiffSummary, Short: false})
-	}
-
-	body, err := json.Marshal(payload)
+	body, contentType, err := n.cfg.Formatter.Format(r, n.cfg.ClusterName)
 	if err != nil {
-		return fmt.Errorf("alerting: marshal payload: %w", err)
+		return fmt.Errorf("alerting: format payload: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, n.cfg.URL, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("alerting: create request: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentType)
 
 	resp, err := n.client.Do(req)
 	if err != nil {

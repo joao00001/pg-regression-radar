@@ -16,7 +16,12 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--scrape-interval` | `60s` | How often to read `pg_stat_statements` |
 | `--webhook-listen` | `:8080` | Deploy-event webhook listen address |
 | `--metrics-listen` | `:9090` | Prometheus metrics listen address |
-| `--slack-url` | `` | Slack incoming-webhook URL |
+| `--slack-url` | `` | Slack incoming-webhook URL. Alias of `--alert-url` with `--alert-format=slack` (the default) — kept for backward compatibility |
+| `--alert-format` | `slack` | Notification payload layout: `slack`, `teams`, `pagerduty`, or `custom` — see [Alerting](alerting.md) |
+| `--alert-url` | `` | Webhook URL for `--alert-format=slack`/`teams`/`custom`; ignored for `pagerduty`. Falls back to `--slack-url` when unset |
+| `--pagerduty-routing-key` | `` | PagerDuty Events API v2 routing key; required when `--alert-format=pagerduty` |
+| `--alert-template` | `` | Go `text/template` source, inline; required (or use `--alert-template-file`) when `--alert-format=custom` — see [Alerting: custom format](alerting.md#custom-format) |
+| `--alert-template-file` | `` | Path to a Go `text/template` file — alternative to `--alert-template` when passing the source inline isn't convenient |
 | `--source-type` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic` |
 | `--window-minutes` | `30` | Analysis window (minutes before/after deploy) |
 | `--min-executions` | `10` | Min query executions per window |
@@ -29,7 +34,7 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--state-prune-interval` | `15m` | How often the retention sweep runs against the postgres state backend |
 | `--capture-plans` | `false` | Capture periodic `EXPLAIN (GENERIC_PLAN)` plan snapshots for tracked queries and attach a plan-diff summary to detected regressions. Requires PostgreSQL 16+ (logged once and otherwise a no-op on older servers); adds one extra planner invocation per tracked query per scrape cycle — see [Detection Algorithm](detection-algorithm.md#plan-diff-correlation-optional) |
 | `--version` | `false` | Print version, commit, and build date, then exit — see [Versioning & dry-run](#versioning-dry-run) |
-| `--dry-run` | `false` | Validate `--source-type`, Postgres connectivity, and (if `--state-backend=postgres`) the state DSN, then exit without starting any server — see [Versioning & dry-run](#versioning-dry-run) |
+| `--dry-run` | `false` | Validate `--source-type`, the alerting configuration (`--alert-format` and its format-specific required fields), Postgres connectivity, and (if `--state-backend=postgres`) the state DSN, then exit without starting any server — see [Versioning & dry-run](#versioning-dry-run) |
 
 ## Standalone collector flags (`cmd/collector`)
 
@@ -97,7 +102,11 @@ All four binaries share two flags:
 | `latencyChangeThreshold` | `"0.20"` | Min relative latency increase to flag (e.g. `"0.20"` = 20%) |
 | `pValueThreshold` | `"0.05"` | Welch's t-test significance cutoff |
 | `criticalQueryIDs` | `[]` | Queries that bypass `minExecutions` |
-| `slackWebhookUrl` | `""` | Slack incoming-webhook URL for this watch |
+| `slackWebhookUrl` | `""` | Slack incoming-webhook URL for this watch. **Deprecated**: use `alerting` instead (equivalent to `alerting.format: slack`); ignored entirely whenever `alerting` is set |
+| `alerting.format` | `""` (→ `slack`) | Notification payload layout: `slack`, `teams`, `pagerduty`, or `custom` — see [Alerting](alerting.md) |
+| `alerting.url` | `""` | Webhook URL for `slack`/`teams`/`custom`; ignored for `pagerduty` |
+| `alerting.pagerDutyRoutingKey` | `""` | PagerDuty Events API v2 routing key; required when `alerting.format` is `pagerduty` |
+| `alerting.customTemplate` | `""` | Go `text/template` source; required when `alerting.format` is `custom` — see [Alerting: custom format](alerting.md#custom-format) |
 | `capturePlans` | `false` | Enable plan-diff correlation — see [Detection Algorithm: Plan-diff correlation](detection-algorithm.md#plan-diff-correlation-optional). Populates the resulting `PerformanceRegression`'s `status.planDiffSummary` |
 | `autoAbort.enabled` | `false` | Automatically abort the Argo Rollouts canary behind a high-confidence detected regression instead of only alerting — see [Auto-Abort](auto-abort.md) |
 | `autoAbort.confidenceThreshold` | `"0.99"` | Minimum confidence required before auto-aborting; only meaningful alongside `autoAbort.enabled` — see [Auto-Abort: Confidence threshold](auto-abort.md#confidence-threshold) |

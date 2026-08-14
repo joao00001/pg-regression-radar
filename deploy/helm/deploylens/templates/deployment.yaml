@@ -40,6 +40,18 @@ spec:
             - --webhook-listen=:{{ .Values.service.webhookPort }}
             - --metrics-listen=:{{ .Values.service.metricsPort }}
             - --slack-url=$(SLACK_WEBHOOK_URL)
+            {{- if .Values.alerting.format }}
+            - --alert-format={{ .Values.alerting.format }}
+            {{- end }}
+            {{- if .Values.alerting.url }}
+            - --alert-url=$(ALERT_URL)
+            {{- end }}
+            {{- if .Values.alerting.pagerDutyRoutingKey }}
+            - --pagerduty-routing-key=$(PAGERDUTY_ROUTING_KEY)
+            {{- end }}
+            {{- if .Values.alerting.customTemplate }}
+            - --alert-template=$(ALERT_TEMPLATE)
+            {{- end }}
             - --source-type={{ .Values.ingester.sourceType }}
             {{- if .Values.ingester.webhookSecret }}
             - --webhook-secret=$(WEBHOOK_SECRET)
@@ -64,6 +76,26 @@ spec:
                   name: {{ include "deploylens.fullname" . }}-secret
                   key: slackWebhookUrl
                   optional: true
+            - name: ALERT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: alertUrl
+                  optional: true
+            {{- if .Values.alerting.pagerDutyRoutingKey }}
+            - name: PAGERDUTY_ROUTING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: pagerDutyRoutingKey
+            {{- end }}
+            {{- if .Values.alerting.customTemplate }}
+            - name: ALERT_TEMPLATE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: alertTemplate
+            {{- end }}
             - name: STATE_DSN
               valueFrom:
                 secretKeyRef:
