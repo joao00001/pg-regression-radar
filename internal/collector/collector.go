@@ -821,7 +821,7 @@ func (c *Collector) queryStatStatements() string {
 	return fmt.Sprintf(`
 SELECT
     queryid,
-    LEFT(query, 500)          AS query,
+    LEFT(query, %d)           AS query,
     calls,
     %s                        AS total_exec_time,
     %s                        AS mean_exec_time
@@ -829,5 +829,5 @@ FROM pg_stat_statements
 WHERE query NOT LIKE '%%pg_stat_statements%%'
 ORDER BY %s DESC
 LIMIT 500
-`, execCol, meanCol, execCol)
+`, c.cfg.MaxQueryTextLen+1, execCol, meanCol, execCol)
 }

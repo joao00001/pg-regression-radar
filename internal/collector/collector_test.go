@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -497,6 +498,65 @@ func TestConfig_RetentionDurationOverride(t *testing.T) {
 
 	if cfg.RetentionDuration != 5*time.Minute {
 		t.Fatalf("expected explicit RetentionDuration to be preserved, got %v", cfg.RetentionDuration)
+	}
+}
+
+func TestCollector_QueryStatStatements_UsesConfiguredMaxQueryTextLen(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      Config
+		legacy   bool
+		wantLeft string
+		wantExec string
+		wantMean string
+	}{
+		{
+			name:     "defaults to configured budget plus one",
+			cfg:      Config{},
+			wantLeft: "LEFT(query, 201)",
+			wantExec: "total_exec_time",
+			wantMean: "mean_exec_time",
+		},
+		{
+			name:     "uses explicit short budget plus one",
+			cfg:      Config{MaxQueryTextLen: 50},
+			wantLeft: "LEFT(query, 51)",
+			wantExec: "total_exec_time",
+			wantMean: "mean_exec_time",
+		},
+		{
+			name:     "respects budgets above previous hard cap",
+			cfg:      Config{MaxQueryTextLen: 800},
+			wantLeft: "LEFT(query, 801)",
+			wantExec: "total_exec_time",
+			wantMean: "mean_exec_time",
+		},
+		{
+			name:     "keeps legacy timing columns",
+			cfg:      Config{MaxQueryTextLen: 75},
+			legacy:   true,
+			wantLeft: "LEFT(query, 76)",
+			wantExec: "total_time",
+			wantMean: "mean_time",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			col := newTestCollector(t, tt.cfg)
+			col.legacyTimingColumns = tt.legacy
+
+			got := col.queryStatStatements()
+			if !strings.Contains(got, tt.wantLeft) {
+				t.Fatalf("expected SQL to contain %q, got:\n%s", tt.wantLeft, got)
+			}
+			if !strings.Contains(got, tt.wantExec+"                        AS total_exec_time") {
+				t.Fatalf("expected SQL to select %q as total_exec_time, got:\n%s", tt.wantExec, got)
+			}
+			if !strings.Contains(got, tt.wantMean+"                        AS mean_exec_time") {
+				t.Fatalf("expected SQL to select %q as mean_exec_time, got:\n%s", tt.wantMean, got)
+			}
+		})
 	}
 }
 
