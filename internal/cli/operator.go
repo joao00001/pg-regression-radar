@@ -41,6 +41,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -66,6 +67,10 @@ import (
 // Alerting components into a single process suitable for running in
 // Kubernetes as a Deployment. See docs/getting-started.md for full usage.
 func RunOperator(args []string) int {
+	return runOperator(args, os.Stdout)
+}
+
+func runOperator(args []string, logOutput io.Writer) int {
 	fs := flag.NewFlagSet("operator", flag.ContinueOnError)
 	dsn := fs.String("dsn", "", "Postgres DSN (required)")
 	clusterName := fs.String("cluster-name", "default", "CloudNativePG cluster name label")
@@ -127,8 +132,19 @@ func RunOperator(args []string) int {
 		return 1
 	}
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewJSONHandler(logOutput, nil))
 	reg := prometheus.NewRegistry()
+
+	if err := validatePostgresDSN(*dsn); err != nil {
+		logger.Error("invalid --dsn", "err", err)
+		return 1
+	}
+	if *stateBackend == "postgres" && *stateDSN != "" {
+		if err := validatePostgresDSN(*stateDSN); err != nil {
+			logger.Error("invalid --state-dsn", "err", err)
+			return 1
+		}
+	}
 
 	// ---- Alerting config (validated below, in --dry-run and for real) ----
 	// --alert-url falls back to the older --slack-url when unset, so
