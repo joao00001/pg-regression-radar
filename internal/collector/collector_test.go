@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -497,6 +499,76 @@ func TestConfig_RetentionDurationOverride(t *testing.T) {
 
 	if cfg.RetentionDuration != 5*time.Minute {
 		t.Fatalf("expected explicit RetentionDuration to be preserved, got %v", cfg.RetentionDuration)
+	}
+}
+
+func TestCollector_QueryStatStatements_UsesConfiguredMaxQueryTextLen(t *testing.T) {
+	tests := []struct {
+		name     string
+		cfg      Config
+		legacy   bool
+		wantLeft string
+		wantExec string
+		wantMean string
+	}{
+		{
+			name:     "zero-value config falls back to default budget",
+			cfg:      Config{},
+			wantLeft: "LEFT(query, 201)",
+			wantExec: "total_exec_time",
+			wantMean: "mean_exec_time",
+		},
+		{
+			name:     "uses explicit short budget plus one",
+			cfg:      Config{MaxQueryTextLen: 50},
+			wantLeft: "LEFT(query, 51)",
+			wantExec: "total_exec_time",
+			wantMean: "mean_exec_time",
+		},
+		{
+			name:     "respects budgets above previous hard cap",
+			cfg:      Config{MaxQueryTextLen: 800},
+			wantLeft: "LEFT(query, 801)",
+			wantExec: "total_exec_time",
+			wantMean: "mean_exec_time",
+		},
+		{
+			name:     "keeps legacy timing columns",
+			cfg:      Config{MaxQueryTextLen: 75},
+			legacy:   true,
+			wantLeft: "LEFT(query, 76)",
+			wantExec: "total_time",
+			wantMean: "mean_time",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			col := newTestCollector(t, tt.cfg)
+			col.legacyTimingColumns = tt.legacy
+
+			got := col.queryStatStatements()
+			if !strings.Contains(got, tt.wantLeft) {
+				t.Fatalf("expected SQL to contain %q, got:\n%s", tt.wantLeft, got)
+			}
+			if !regexp.MustCompile(regexp.QuoteMeta(tt.wantExec) + `\s+AS total_exec_time`).MatchString(got) {
+				t.Fatalf("expected SQL to select %q as total_exec_time, got:\n%s", tt.wantExec, got)
+			}
+			if !regexp.MustCompile(regexp.QuoteMeta(tt.wantMean) + `\s+AS mean_exec_time`).MatchString(got) {
+				t.Fatalf("expected SQL to select %q as mean_exec_time, got:\n%s", tt.wantMean, got)
+			}
+		})
+	}
+}
+
+func TestCollector_QueryStatStatements_ZeroValueCollectorFallsBackToDefaultBudget(t *testing.T) {
+	// queryStatStatements is only called on Collectors built through New() in
+	// production, but keeping the helper safe on a truly zero-value Collector
+	// avoids brittle tests and future direct callers accidentally generating
+	// LEFT(query, 1).
+	got := (&Collector{}).queryStatStatements()
+	if !strings.Contains(got, "LEFT(query, 201)") {
+		t.Fatalf("expected zero-value collector SQL to fall back to the default budget, got:\n%s", got)
 	}
 }
 

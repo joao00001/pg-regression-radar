@@ -43,6 +43,8 @@ import (
 // internal/planner.Diff is ever asked to make.
 const planHistorySize = 5
 
+const defaultMaxQueryTextLen = 200
+
 // QuerySample is one observation of a query's runtime statistics from pg_stat_statements.
 type QuerySample struct {
 	QueryID         int64
@@ -136,7 +138,7 @@ func (c *Config) defaults() {
 		c.ScrapeInterval = 60 * time.Second
 	}
 	if c.MaxQueryTextLen == 0 {
-		c.MaxQueryTextLen = 200
+		c.MaxQueryTextLen = defaultMaxQueryTextLen
 	}
 	if c.RetentionDuration == 0 {
 		c.RetentionDuration = defaultRetentionDuration
@@ -818,10 +820,14 @@ func (c *Collector) queryStatStatements() string {
 	if c.legacyTimingColumns {
 		execCol, meanCol = "total_time", "mean_time"
 	}
+	maxQueryTextLen := c.cfg.MaxQueryTextLen
+	if maxQueryTextLen == 0 {
+		maxQueryTextLen = defaultMaxQueryTextLen
+	}
 	return fmt.Sprintf(`
 SELECT
     queryid,
-    LEFT(query, 500)          AS query,
+    LEFT(query, %d)           AS query,
     calls,
     %s                        AS total_exec_time,
     %s                        AS mean_exec_time
@@ -829,5 +835,5 @@ FROM pg_stat_statements
 WHERE query NOT LIKE '%%pg_stat_statements%%'
 ORDER BY %s DESC
 LIMIT 500
-`, execCol, meanCol, execCol)
+`, maxQueryTextLen+1, execCol, meanCol, execCol)
 }
