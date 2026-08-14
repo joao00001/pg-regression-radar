@@ -561,7 +561,11 @@ func TestCollector_QueryStatStatements_UsesConfiguredMaxQueryTextLen(t *testing.
 	}
 }
 
-func TestCollector_QueryStatStatements_FallsBackToDefaultBudgetWhenUnset(t *testing.T) {
+func TestCollector_QueryStatStatements_ZeroValueCollectorFallsBackToDefaultBudget(t *testing.T) {
+	// queryStatStatements is only called on Collectors built through New() in
+	// production, but keeping the helper safe on a truly zero-value Collector
+	// avoids brittle tests and future direct callers accidentally generating
+	// LEFT(query, 1).
 	got := (&Collector{}).queryStatStatements()
 	if !strings.Contains(got, "LEFT(query, 201)") {
 		t.Fatalf("expected zero-value collector SQL to fall back to the default budget, got:\n%s", got)
