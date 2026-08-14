@@ -31,8 +31,32 @@ serviceAccount:
   name: ""
 
 podAnnotations: {}
-podSecurityContext: {}
-securityContext: {}
+
+# Defaults here match how every image this chart deploys already runs
+# in practice: all five binaries (operator/manager/collector/ingester/cli)
+# build on gcr.io/distroless/static-debian12:nonroot (see the Dockerfile),
+# which already sets USER nonroot:nonroot (UID/GID 65532) and has no shell,
+# package manager, or writable filesystem tooling at all. None of the four
+# server binaries write to the local filesystem (no log files, no on-disk
+# cache/temp files -- logging goes to stdout via slog), so
+# readOnlyRootFilesystem causes no loss of function; it just makes the
+# already-true "this container doesn't write to disk" property enforced by
+# the kubelet instead of merely true by accident. Override either value
+# (e.g. back to {}) only for an environment with an admission policy that
+# conflicts with these fields, or a fork that adds local file I/O.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
 
 # Postgres connection string for the collector.
 # Override this with a secret reference in production.

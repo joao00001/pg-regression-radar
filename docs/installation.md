@@ -175,6 +175,12 @@ helm install pg-regression-radar ./pg-regression-radar/deploy/helm/deploylens \
 
 See [Getting Started](getting-started.md#deploy-on-kubernetes-via-helm) for the full set of values, including switching to `manager` mode.
 
+### Pod/container security defaults
+
+`podSecurityContext`/`securityContext` default to `runAsNonRoot: true` (UID/GID `65532`), `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, `capabilities.drop: [ALL]`, and `seccompProfile: RuntimeDefault` — matching how every image this chart deploys already runs regardless (all five binaries build on `gcr.io/distroless/static-debian12:nonroot`, which sets `USER nonroot:nonroot` and has no writable-filesystem tooling to begin with), just enforced by Kubernetes instead of merely true by accident. None of the binaries write to the local filesystem, so `readOnlyRootFilesystem` costs nothing. Override either value back to `{}` only if your environment's own admission policy conflicts with these fields.
+
+If `ingester.webhookSecret` is left empty, `helm install`/`helm upgrade` prints a warning that the deploy-event webhook (and, in `mode: operator`, `GET /events`) are unauthenticated — see [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication). That's expected and fine as long as the Service stays cluster-internal (the default `service.type` is `ClusterIP`); set the secret before exposing it further.
+
 ## See also
 
 - [Getting Started](getting-started.md) — running each of these once installed.

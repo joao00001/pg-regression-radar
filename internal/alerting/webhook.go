@@ -82,8 +82,24 @@ func NewWebhookNotifier(cfg WebhookConfig, logger *slog.Logger) *WebhookNotifier
 		reg = prometheus.DefaultRegisterer
 	}
 	return &WebhookNotifier{
-		cfg:    cfg,
-		client: &http.Client{Timeout: cfg.Timeout},
+		cfg: cfg,
+		client: &http.Client{
+			Timeout: cfg.Timeout,
+			// Never follow redirects. An alert destination is either
+			// validated up front (see validateWebhookURL, called from
+			// BuildNotifier) or, for a caller that constructs a
+			// WebhookNotifier directly, explicitly trusted by that caller.
+			// Following a redirect would let an initially-valid destination
+			// hand the request off to an arbitrary, unvalidated one on
+			// every single delivery -- the classic SSRF-via-redirect
+			// bypass. CheckRedirect returning an error makes client.Do
+			// return the redirect response itself (3xx) instead of
+			// silently chasing it, which Notify already treats as a
+			// delivery failure via its resp.StatusCode >= 300 check below.
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
 		logger: logger,
 		notificationsTotal: registerCounterVec(reg, prometheus.CounterOpts{
 			Name: "pg_regression_radar_notifications_total",

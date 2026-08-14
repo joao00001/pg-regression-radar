@@ -16,6 +16,7 @@ package cli
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -26,6 +27,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
@@ -93,6 +95,22 @@ func RunIngester(args []string) int {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		// /events returns the full, unfiltered deploy-event history, which
+		// can include application names, namespaces, cluster identities,
+		// revisions, and timestamps -- gate it behind the same shared
+		// secret as /webhook rather than leaving it open whenever one is
+		// configured. When --webhook-secret is unset, this route is
+		// unauthenticated exactly as before (see docs/configuration.md's
+		// warning against exposing it beyond a trusted network in that
+		// case).
+		if *webhookSecret != "" {
+			got := r.Header.Get("X-Webhook-Token")
+			if subtle.ConstantTimeCompare([]byte(got), []byte(*webhookSecret)) != 1 {
+				logger.Warn("ingester: rejected /events request with invalid or missing token", "remote_addr", r.RemoteAddr)
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(store.All()); err != nil {
 			logger.Error("events handler: encode", "err", err)
@@ -102,7 +120,19 @@ func RunIngester(args []string) int {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	srv := &http.Server{Addr: *listen, Handler: mux}
+	// An explicit *http.Server with conservative timeouts, rather than a
+	// bare &http.Server{Addr, Handler} with everything else left at zero
+	// (meaning "no timeout at all") -- see internal/ingester.ServeHTTP's
+	// MaxBytesReader-based body limit for the complementary per-request
+	// size cap; this covers slow/stalled connections instead.
+	srv := &http.Server{
+		Addr:              *listen,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()

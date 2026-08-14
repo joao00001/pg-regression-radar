@@ -63,6 +63,20 @@ spec:
 
 **Helm chart:** the `alerting.*` values (`format`, `url`, `pagerDutyRoutingKey`, `customTemplate`, alongside the pre-existing `slackWebhookUrl`) feed both `mode: operator` (as CLI flags, via a Secret) and `mode: manager` (as `spec.alerting` on the default `PostgresWatch`) — see [Installation](installation.md).
 
+## Destination validation (SSRF hardening)
+
+`--alert-url`/`spec.alerting.url` (and the deprecated `--slack-url`/`spec.slackWebhookUrl`) are free-text: whoever can pass the flag or edit the `PostgresWatch` controls where every detected regression's payload gets sent. Since that payload can include query text and, with `--capture-plans`/`spec.capturePlans` on, plan-diff content, an unvalidated destination is both a spoofing/notification-injection risk and a potential exfiltration/SSRF path. `BuildNotifier` (the one place both the CLI and the `manager` controller construct a notifier from that configuration) rejects a configured URL outright, before ever making a request, when it:
+
+- uses a scheme other than `http`/`https` (rules out `file://`, `ftp://`, `gopher://`, and similar);
+- is a literal loopback or link-local address — this covers `127.0.0.1`/`::1` and, notably, `169.254.169.254`, the cloud instance-metadata address shared by AWS, GCP, Azure, DigitalOcean, and Alibaba, which can hand back the node's own cloud credentials to whatever reaches it; or
+- targets a well-known cloud metadata hostname (`metadata.google.internal`, etc.).
+
+Separately, `WebhookNotifier` never follows HTTP redirects — a `3xx` response from the configured endpoint is treated as a delivery failure rather than a hop to a second, unvalidated destination, closing the usual way around an up-front check like the one above.
+
+This check is intentionally narrow, not a complete SSRF defence: it validates the URL's literal host, not whatever address it eventually resolves to (so it doesn't defend against DNS rebinding), and it does **not** block ordinary private (RFC1918) addresses, since a self-hosted, in-cluster webhook receiver — an internal Alertmanager, a homegrown relay — legitimately lives at exactly one of those addresses, and blocking them by default would break that deployment shape rather than an attack. If your environment needs a stricter guarantee than this (e.g. only alerting to a pre-approved allowlist of hosts), enforce that with an admission policy in front of `PostgresWatch`/the operator's flags — the same scoping this project uses for the Secret-consent-label and kubeconfig restrictions documented in [Multi-Cluster (Fleet) Mode](multi-cluster.md).
+
+`pagerduty` is exempt from all of the above: its destination is always PagerDuty's own fixed Events API endpoint, never the configured URL.
+
 ## Custom format
 
 `--alert-format=custom` / `spec.alerting.format: custom` renders the notification body from a Go [`text/template`](https://pkg.go.dev/text/template) you supply, for any destination that isn't Slack/Teams/PagerDuty-shaped — a generic HTTP endpoint, an internal on-call tool, an n8n/Zapier relay, or anything else with its own expected JSON (or non-JSON) body.
