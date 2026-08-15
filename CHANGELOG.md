@@ -32,6 +32,22 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.4.0 - 2026-08-15
+
+### Features
+
+- Added a sample Kyverno `ClusterPolicy` for restricting who can apply the `pg-regression-radar.io/allow-postgreswatch-access` consent label, and documented it as a recommended hardening control for multi-tenant clusters. (#122)
+
+### Fixes
+
+- Replaced bare `http.ListenAndServe` in the collector metrics server with a timeout-aware `*http.Server` (setting `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, and `IdleTimeout`) and added graceful shutdown on context cancellation, resolving gosec G114 / CWE-676. Also added the same timeout fields to `httpRunnable` in the operator manager, resolving the companion G112 / CWE-400 finding. (#108)
+- `CaptureGenericPlan` and `CapturePlan` now accept a `NormalizedQueryText` value instead of a bare `string`, enforcing at compile time that only text originating from `pg_stat_statements` reaches the `EXPLAIN` statement. This closes the SQL-injection path (CWE-089 / CodeQL `go/sql-injection` alert #3) reported against `internal/planner/genericplan.go`. (#109)
+- The Helm chart Secret template now includes the `pg-regression-radar.io/allow-postgreswatch-access: "true"` consent label, fixing out-of-the-box breakage where the controller rejected the chart-created Secret on every reconciliation loop. (#110)
+- Added the `pg-regression-radar.io/allow-postgreswatch-access: "true"` consent label to the Helm chart's Secret template so a default `mode: manager` install works without manual post-install patching. (#115)
+- Added an opt-in alerting destination allowlist for operator and manager mode, and clarified that the built-in webhook URL validation is only a best-effort SSRF mitigation that should be paired with stricter network or admission controls in multi-tenant clusters. (#119)
+- BuildNotifier now treats an empty webhook URL as alerting disabled, returning a no-op notifier and rejecting empty URLs during direct webhook validation. (#125)
+
+
 ## v1.3.1 - 2026-08-15
 
 ### Fixes
