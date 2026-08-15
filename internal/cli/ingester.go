@@ -86,39 +86,7 @@ func RunIngester(args []string) int {
 		WebhookSecret:    *webhookSecret,
 	}
 
-	handler := ingester.NewHandler(store, source, logger)
-
-	mux := http.NewServeMux()
-	mux.Handle("/webhook", handler)
-	mux.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		// /events returns the full, unfiltered deploy-event history, which
-		// can include application names, namespaces, cluster identities,
-		// revisions, and timestamps -- gate it behind the same shared
-		// secret as /webhook rather than leaving it open whenever one is
-		// configured. When --webhook-secret is unset, this route is
-		// unauthenticated exactly as before (see docs/configuration.md's
-		// warning against exposing it beyond a trusted network in that
-		// case).
-		if *webhookSecret != "" {
-			got := r.Header.Get("X-Webhook-Token")
-			if subtle.ConstantTimeCompare([]byte(got), []byte(*webhookSecret)) != 1 {
-				logger.Warn("ingester: rejected /events request with invalid or missing token", "remote_addr", r.RemoteAddr)
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
-			}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(store.All()); err != nil {
-			logger.Error("events handler: encode", "err", err)
-		}
-	})
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
+	mux := newIngesterMux(store, source, *webhookSecret, logger)
 
 	// httpserver.New sets conservative timeouts on every server in the
 	// project, preventing slow or stalled clients from holding connections
@@ -139,4 +107,43 @@ func RunIngester(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// newIngesterMux builds the HTTP mux for the ingester. It is separated from
+// RunIngester so that tests can construct a mux and exercise its routes with
+// httptest without starting a real listener.
+//
+// /events is only registered when webhookSecret is non-empty. Without a
+// secret the route does not exist (404), preventing accidental exposure of
+// the full event history when no authentication is in place.
+func newIngesterMux(store *ingester.Store, source v1alpha1.DeploySource, webhookSecret string, logger *slog.Logger) *http.ServeMux {
+	if logger == nil {
+		logger = slog.Default()
+	}
+	handler := ingester.NewHandler(store, source, logger)
+
+	mux := http.NewServeMux()
+	mux.Handle("/webhook", handler)
+	if webhookSecret != "" {
+		mux.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+			got := r.Header.Get("X-Webhook-Token")
+			if subtle.ConstantTimeCompare([]byte(got), []byte(webhookSecret)) != 1 {
+				logger.Warn("ingester: rejected /events request with invalid or missing token", "remote_addr", r.RemoteAddr)
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			if r.Method != http.MethodGet {
+				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(store.All()); err != nil {
+				logger.Error("events handler: encode", "err", err)
+			}
+		})
+	}
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	return mux
 }
