@@ -121,6 +121,8 @@ func TestBuildNotifier_RejectsSSRFDestinations(t *testing.T) {
 	badURLs := []string{
 		"http://127.0.0.1/steal",
 		"http://[::1]/steal",
+		"http://localhost/steal",
+		"http://relay.localhost/steal",
 		"http://169.254.169.254/latest/meta-data/",
 		"http://metadata.google.internal/computeMetadata/v1/",
 		"ftp://example.invalid/",
@@ -244,6 +246,7 @@ func TestValidateWebhookURL_EmptyIsAllowed(t *testing.T) {
 func TestValidateAllowedDestinations(t *testing.T) {
 	t.Run("accepts hostnames ips and cidrs", func(t *testing.T) {
 		if err := ValidateAllowedDestinations([]string{
+			"alertmanager",
 			"hooks.slack.example.com",
 			"10.0.0.0/8",
 			"203.0.113.10",

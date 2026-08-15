@@ -138,6 +138,7 @@ var blockedAlertDestinationHosts = map[string]bool{
 	"metadata.google.internal": true, // GCP
 	"metadata.internal":        true, // GCP (short form some images alias)
 	"metadata.azure.com":       true, // Azure IMDS is normally reached via 169.254.169.254 directly, but block the hostname too
+	"localhost":                true, // RFC 6761: resolves to loopback
 }
 
 // validateWebhookURL rejects the alert-destination shapes that have no
@@ -183,8 +184,8 @@ func validateWebhookURL(rawURL string, allowedDestinations []string) error {
 	if host == "" {
 		return fmt.Errorf("alerting: webhook url %q has no host", rawURL)
 	}
-	if blockedAlertDestinationHosts[strings.ToLower(host)] {
-		return fmt.Errorf("alerting: webhook url %q targets a well-known cloud metadata hostname, which is never a valid alert destination", rawURL)
+	if isBlockedAlertDestinationHost(host) {
+		return fmt.Errorf("alerting: webhook url %q targets a blocked metadata or loopback hostname, which is never a valid alert destination", rawURL)
 	}
 	if ip := net.ParseIP(strings.Trim(host, "[]")); ip != nil {
 		if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
@@ -249,6 +250,10 @@ func isValidAllowedHostname(host string) bool {
 	if host == "" || strings.Contains(host, "://") || strings.ContainsAny(host, "/[]") {
 		return false
 	}
+	// Bare names are allowed intentionally: in-cluster alert receivers are
+	// often addressed as a short Service DNS name ("alertmanager") rather than
+	// an FQDN. Safety-sensitive single-label names like "localhost" are still
+	// rejected by the ordinary URL blocklist above.
 	labels := strings.Split(host, ".")
 	for _, label := range labels {
 		if label == "" || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
@@ -262,4 +267,9 @@ func isValidAllowedHostname(host string) bool {
 		}
 	}
 	return true
+}
+
+func isBlockedAlertDestinationHost(host string) bool {
+	lowerHost := strings.ToLower(host)
+	return blockedAlertDestinationHosts[lowerHost] || strings.HasSuffix(lowerHost, ".localhost")
 }
