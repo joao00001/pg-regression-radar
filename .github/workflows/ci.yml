@@ -34,6 +34,9 @@ jobs:
       - name: Run consent-label render test
         run: bash deploy/helm/deploylens/tests/consent-label.sh
 
+      - name: Run security-context render test
+        run: bash deploy/helm/deploylens/tests/security-context.sh
+
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
