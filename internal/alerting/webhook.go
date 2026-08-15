@@ -123,9 +123,15 @@ func (n *WebhookNotifier) ObserveDetectedRegression(r v1alpha1.PerformanceRegres
 }
 
 // Notify sends a webhook notification for a detected regression.
-// It is a no-op (returns nil) when r.Status != StatusDetected.
+// It is a no-op (returns nil) when r.Status != StatusDetected or when no
+// webhook URL is configured.
 func (n *WebhookNotifier) Notify(ctx context.Context, r v1alpha1.PerformanceRegression) error {
 	if r.Status != v1alpha1.StatusDetected {
+		return nil
+	}
+	if n.cfg.URL == "" {
+		n.logger.Info("alerting: notification skipped; webhook url is not configured",
+			"regression", r.Name)
 		return nil
 	}
 
