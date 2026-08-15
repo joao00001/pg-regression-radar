@@ -104,8 +104,19 @@ func TestEnvtest_PostgresWatch_RemoteClusterSecretRef_FetchesDSNFromRemoteAPISer
 
 	const remoteDSN = "postgres://remote-user:remote-pass@remote-postgres.example:5432/app?sslmode=disable"
 	remoteDSNSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "remote-dsn", Namespace: "default"},
-		Data:       map[string][]byte{"dsn": []byte(remoteDSN)},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "remote-dsn",
+			Namespace: "default",
+			// checkSecretConsent (see secret_consent.go) now requires this
+			// label on any Secret a PostgresWatch resolves via
+			// dsnSecretRef/remoteClusterSecretRef, including one fetched
+			// from a remote/spoke cluster like this envtest apiserver
+			// stands in for here — without it, resolveDSN refuses to read
+			// the Secret at all and this test's reconcile never reaches
+			// PhaseRunning.
+			Labels: map[string]string{secretConsentLabel: secretConsentValue},
+		},
+		Data: map[string][]byte{"dsn": []byte(remoteDSN)},
 	}
 	if err := remoteAdmin.Create(ctx, remoteDSNSecret); err != nil {
 		t.Fatalf("create DSN secret on remote apiserver: %v", err)
