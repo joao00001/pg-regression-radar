@@ -16,8 +16,6 @@ package controller
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"strings"
 	"testing"
 	"time"
