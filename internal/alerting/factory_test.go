@@ -15,9 +15,12 @@
 package alerting
 
 import (
+	"context"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
 // TestBuildNotifier_DefaultsToSlack verifies an empty Format behaves
@@ -48,6 +51,43 @@ func TestBuildNotifier_Teams(t *testing.T) {
 	}
 	if n.cfg.URL != "http://example.invalid" {
 		t.Errorf("expected URL to be passed through for teams, got %q", n.cfg.URL)
+	}
+}
+
+// TestBuildNotifier_EmptyURLDisablesAlerting verifies the documented
+// "no URL = no alerting configured" contract is enforced at construction
+// time for URL-backed formats, so Notify becomes a no-op instead of failing
+// later on an empty destination string.
+func TestBuildNotifier_EmptyURLDisablesAlerting(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		cfg  BuildConfig
+	}{
+		{name: "default-slack", cfg: BuildConfig{ClusterName: "test"}},
+		{name: "teams", cfg: BuildConfig{Format: "teams", ClusterName: "test"}},
+		{name: "custom", cfg: BuildConfig{Format: "custom", ClusterName: "test"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			n, err := BuildNotifier(tc.cfg, nil, prometheus.NewRegistry())
+			if err != nil {
+				t.Fatalf("BuildNotifier: %v", err)
+			}
+			if n == nil {
+				t.Fatal("expected a disabled notifier, got nil")
+			}
+			if n.cfg.URL != "" {
+				t.Fatalf("expected disabled notifier to keep an empty URL, got %q", n.cfg.URL)
+			}
+			if n.cfg.Formatter == nil {
+				t.Fatal("expected disabled notifier to keep a non-nil formatter")
+			}
+			if err := n.Notify(context.Background(), v1alpha1.PerformanceRegression{
+				Name:   "regression-1",
+				Status: v1alpha1.StatusDetected,
+			}); err != nil {
+				t.Fatalf("expected disabled notifier to no-op, got error: %v", err)
+			}
+		})
 	}
 }
 
@@ -174,11 +214,11 @@ func TestBuildNotifier_PagerDuty_IgnoresInvalidURL(t *testing.T) {
 	}
 }
 
-// TestValidateWebhookURL_EmptyIsAllowed verifies an unset URL (no alerting
-// destination configured at all) is not itself an SSRF-guard error — there
-// is nothing to validate, and BuildConfig's zero value must keep working.
-func TestValidateWebhookURL_EmptyIsAllowed(t *testing.T) {
-	if err := validateWebhookURL(""); err != nil {
-		t.Errorf("expected an empty URL to be allowed, got error: %v", err)
+// TestValidateWebhookURL_RejectsEmpty verifies validateWebhookURL only accepts
+// concrete destinations; the empty-string/no-alerting-configured case is
+// handled earlier by BuildNotifier as an explicit disabled path.
+func TestValidateWebhookURL_RejectsEmpty(t *testing.T) {
+	if err := validateWebhookURL(""); err == nil {
+		t.Fatal("expected an empty URL to be rejected, got nil")
 	}
 }
