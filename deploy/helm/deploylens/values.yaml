@@ -133,6 +133,11 @@ alerting:
   # url is the webhook endpoint for the slack, teams, and custom formats.
   # Ignored for pagerduty. Falls back to slackWebhookUrl when empty.
   url: ""
+  # allowedDestinations enables a stricter, opt-in allowlist for alert
+  # destinations in both operator and manager mode: comma-separated exact
+  # hostnames, IPs, or CIDRs. Leave empty to keep the default best-effort
+  # SSRF mitigation only.
+  allowedDestinations: ""
   # pagerDutyRoutingKey is the PagerDuty Events API v2 routing key, required
   # (and only used) when format is "pagerduty".
   pagerDutyRoutingKey: ""

@@ -31,11 +31,14 @@ pg-regression-radar operator \
 |---|---|---|
 | `--alert-format` | `slack` | `slack`, `teams`, `pagerduty`, or `custom` |
 | `--alert-url` | `` | Webhook URL for `slack`/`teams`/`custom`; ignored for `pagerduty`. Falls back to `--slack-url` when unset |
+| `--alerting-allowed-destinations` | `` | Optional strict allowlist: comma-separated exact hostnames, IPs, or CIDRs. When set, the alert destination must match one of them |
 | `--pagerduty-routing-key` | `` | Required when `--alert-format=pagerduty` |
 | `--alert-template` | `` | Go `text/template` source, inline; required (or use `--alert-template-file`) when `--alert-format=custom` |
 | `--alert-template-file` | `` | Path to a template file — alternative to `--alert-template` |
 
 `--dry-run` validates the alerting configuration (unknown format, missing routing key, unparseable template) before touching Postgres, so a typo'd `--alert-format` fails immediately instead of on the first detected regression.
+
+`cmd/manager` accepts the same `--alerting-allowed-destinations` flag and applies it cluster-wide to the `spec.alerting.url` / legacy `spec.slackWebhookUrl` values taken from every `PostgresWatch`.
 
 **CRD (`PostgresWatch.spec.alerting`, `cmd/manager`):**
 
@@ -73,7 +76,15 @@ spec:
 
 Separately, `WebhookNotifier` never follows HTTP redirects — a `3xx` response from the configured endpoint is treated as a delivery failure rather than a hop to a second, unvalidated destination, closing the usual way around an up-front check like the one above.
 
-This check is intentionally narrow, not a complete SSRF defence: it validates the URL's literal host, not whatever address it eventually resolves to (so it doesn't defend against DNS rebinding), and it does **not** block ordinary private (RFC1918) addresses, since a self-hosted, in-cluster webhook receiver — an internal Alertmanager, a homegrown relay — legitimately lives at exactly one of those addresses, and blocking them by default would break that deployment shape rather than an attack. If your environment needs a stricter guarantee than this (e.g. only alerting to a pre-approved allowlist of hosts), enforce that with an admission policy in front of `PostgresWatch`/the operator's flags — the same scoping this project uses for the Secret-consent-label and kubeconfig restrictions documented in [Multi-Cluster (Fleet) Mode](multi-cluster.md).
+This check is intentionally narrow, not a complete SSRF defence: it validates the URL's literal host, not whatever address it eventually resolves to (so it doesn't defend against DNS rebinding), it still permits plain `http://` destinations, and it does **not** block ordinary private (RFC1918) addresses, since a self-hosted, in-cluster webhook receiver — an internal Alertmanager, a homegrown relay — legitimately lives at exactly one of those addresses, and blocking them by default would break that deployment shape rather than an attack.
+
+For clusters where untrusted users can create or edit `PostgresWatch` objects, treat the built-in validation as a **best-effort mitigation for obvious targets, not an authoritative SSRF control**. Use one or more of:
+
+- `--alerting-allowed-destinations` on `operator` or `manager` to enforce a strict, opt-in allowlist of approved hostnames/IPs/CIDRs;
+- a NetworkPolicy that only allows egress to your approved alert receivers; and/or
+- an admission policy (AdmissionWebhook, Kyverno, Gatekeeper, etc.) that rejects unapproved `spec.alerting.url` / `spec.slackWebhookUrl` values before they ever reach the controller.
+
+The allowlist is evaluated in addition to the static blocklist above — it narrows what is accepted, but it does not make hostname-based destinations immune to DNS TOCTOU/rebinding on its own.
 
 `pagerduty` is exempt from all of the above: its destination is always PagerDuty's own fixed Events API endpoint, never the configured URL.
 

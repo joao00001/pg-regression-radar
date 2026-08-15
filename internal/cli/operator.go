@@ -82,6 +82,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 	slackURL := fs.String("slack-url", "", "Slack incoming-webhook URL for notifications (alias of --alert-url with --alert-format=slack, the default)")
 	alertFormat := fs.String("alert-format", "slack", "Notification payload format: slack, teams, pagerduty, or custom — see docs/alerting.md")
 	alertURL := fs.String("alert-url", "", "Webhook URL for --alert-format=slack/teams/custom; ignored for pagerduty. Falls back to --slack-url when unset")
+	alertAllowedDestinations := fs.String("alerting-allowed-destinations", "", "Optional strict allowlist for alert destinations: comma-separated exact hostnames, IPs, or CIDRs. When set, --alert-url/--slack-url must target one of these destinations")
 	pagerdutyRoutingKey := fs.String("pagerduty-routing-key", "", "PagerDuty Events API v2 routing key; required when --alert-format=pagerduty")
 	alertTemplate := fs.String("alert-template", "", "Go text/template source (inline) for --alert-format=custom — see docs/alerting.md#custom-format. Alternative to --alert-template-file; takes precedence when both are set")
 	alertTemplateFile := fs.String("alert-template-file", "", "Path to a Go text/template file for --alert-format=custom, when passing the source inline via --alert-template isn't convenient")
@@ -172,9 +173,14 @@ func runOperator(args []string, logOutput io.Writer) int {
 	alertCfg := alerting.BuildConfig{
 		Format:              *alertFormat,
 		URL:                 resolvedAlertURL,
+		AllowedDestinations: splitCommaSeparatedValues(*alertAllowedDestinations),
 		PagerDutyRoutingKey: *pagerdutyRoutingKey,
 		CustomTemplate:      customAlertTemplate,
 		ClusterName:         *clusterName,
+	}
+	if err := alerting.ValidateAllowedDestinations(alertCfg.AllowedDestinations); err != nil {
+		logger.Error("invalid --alerting-allowed-destinations", "err", err)
+		return 1
 	}
 
 	// ---- Collector ----

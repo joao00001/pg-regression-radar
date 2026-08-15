@@ -161,6 +161,8 @@ func TestBuildNotifier_RejectsSSRFDestinations(t *testing.T) {
 	badURLs := []string{
 		"http://127.0.0.1/steal",
 		"http://[::1]/steal",
+		"http://localhost/steal",
+		"http://relay.localhost/steal",
 		"http://169.254.169.254/latest/meta-data/",
 		"http://metadata.google.internal/computeMetadata/v1/",
 		"ftp://example.invalid/",
@@ -214,11 +216,88 @@ func TestBuildNotifier_PagerDuty_IgnoresInvalidURL(t *testing.T) {
 	}
 }
 
+func TestBuildNotifier_StrictAllowlist(t *testing.T) {
+	t.Run("accepts exact hostnames and cidrs", func(t *testing.T) {
+		for _, tc := range []struct {
+			name  string
+			url   string
+			allow []string
+		}{
+			{
+				name:  "hostname",
+				url:   "https://hooks.slack.example.com/services/T000/B000/XXX",
+				allow: []string{"hooks.slack.example.com"},
+			},
+			{
+				name:  "cidr",
+				url:   "http://10.0.0.5:9094/webhook",
+				allow: []string{"10.0.0.0/8"},
+			},
+			{
+				name:  "literal ip",
+				url:   "https://203.0.113.10/webhook",
+				allow: []string{"203.0.113.10"},
+			},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				if _, err := BuildNotifier(BuildConfig{
+					Format:              "slack",
+					URL:                 tc.url,
+					AllowedDestinations: tc.allow,
+				}, nil, prometheus.NewRegistry()); err != nil {
+					t.Fatalf("expected %q to be accepted by allowlist %v, got %v", tc.url, tc.allow, err)
+				}
+			})
+		}
+	})
+
+	t.Run("rejects destinations outside allowlist", func(t *testing.T) {
+		_, err := BuildNotifier(BuildConfig{
+			Format:              "slack",
+			URL:                 "https://hooks.slack.example.com/services/T000/B000/XXX",
+			AllowedDestinations: []string{"pagerduty.com", "203.0.113.0/24"},
+		}, nil, prometheus.NewRegistry())
+		if err == nil {
+			t.Fatal("expected non-allowlisted destination to be rejected, got nil")
+		}
+	})
+
+	t.Run("does not override existing SSRF blocklist", func(t *testing.T) {
+		_, err := BuildNotifier(BuildConfig{
+			Format:              "slack",
+			URL:                 "http://127.0.0.1/steal",
+			AllowedDestinations: []string{"127.0.0.1", "127.0.0.0/8"},
+		}, nil, prometheus.NewRegistry())
+		if err == nil {
+			t.Fatal("expected loopback destination to stay blocked even if allowlisted, got nil")
+		}
+	})
+}
+
 // TestValidateWebhookURL_RejectsEmpty verifies validateWebhookURL only accepts
 // concrete destinations; the empty-string/no-alerting-configured case is
 // handled earlier by BuildNotifier as an explicit disabled path.
 func TestValidateWebhookURL_RejectsEmpty(t *testing.T) {
-	if err := validateWebhookURL(""); err == nil {
+	if err := validateWebhookURL("", nil); err == nil {
 		t.Fatal("expected an empty URL to be rejected, got nil")
 	}
+}
+
+func TestValidateAllowedDestinations(t *testing.T) {
+	t.Run("accepts hostnames ips and cidrs", func(t *testing.T) {
+		if err := ValidateAllowedDestinations([]string{
+			"alertmanager",
+			"hooks.slack.example.com",
+			"10.0.0.0/8",
+			"203.0.113.10",
+		}); err != nil {
+			t.Fatalf("expected allowlist to validate, got %v", err)
+		}
+	})
+
+	t.Run("rejects malformed entries", func(t *testing.T) {
+		if err := ValidateAllowedDestinations([]string{"https://example.com/webhook"}); err == nil {
+			t.Fatal("expected malformed allowlist entry to be rejected, got nil")
+		}
+	})
 }
