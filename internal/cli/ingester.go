@@ -27,9 +27,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
+	"github.com/joao00001/pg-regression-radar/internal/httpserver"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
@@ -120,19 +120,10 @@ func RunIngester(args []string) int {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	// An explicit *http.Server with conservative timeouts, rather than a
-	// bare &http.Server{Addr, Handler} with everything else left at zero
-	// (meaning "no timeout at all") -- see internal/ingester.ServeHTTP's
-	// MaxBytesReader-based body limit for the complementary per-request
-	// size cap; this covers slow/stalled connections instead.
-	srv := &http.Server{
-		Addr:              *listen,
-		Handler:           mux,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       60 * time.Second,
-	}
+	// httpserver.New sets conservative timeouts on every server in the
+	// project, preventing slow or stalled clients from holding connections
+	// open indefinitely (Slowloris-style exhaustion).
+	srv := httpserver.New(*listen, mux)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
