@@ -46,7 +46,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -557,18 +556,4 @@ func runOperator(args []string, logOutput io.Writer) int {
 		return 1
 	}
 	return 0
-}
-
-func splitCommaSeparatedValues(raw string) []string {
-	if raw == "" {
-		return nil
-	}
-	parts := strings.Split(raw, ",")
-	values := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if trimmed := strings.TrimSpace(part); trimmed != "" {
-			values = append(values, trimmed)
-		}
-	}
-	return values
 }
