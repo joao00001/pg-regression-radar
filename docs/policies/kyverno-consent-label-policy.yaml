@@ -11,9 +11,13 @@ spec:
           - resources:
               kinds:
                 - Secret
-              operations:
-                - CREATE
-                - UPDATE
+      preconditions:
+        all:
+          - key: "{{ request.operation }}"
+            operator: In
+            value:
+              - CREATE
+              - UPDATE
       validate:
         message: >-
           Only approved identities may set
@@ -26,6 +30,7 @@ spec:
                 value: "true"
               - key: "{{ request.userInfo.username }}"
                 operator: NotIn
+                # Replace these with identities approved to set the consent label.
                 value:
                   - "system:serviceaccount:platform-security:secret-consent-labeler"
                   - "system:serviceaccount:platform-security:secret-consent-labeler-breakglass"
