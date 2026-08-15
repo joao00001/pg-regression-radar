@@ -117,7 +117,9 @@ to a given component.
 - **Tests.** New behavior needs a test; bug fixes should include a test
   that fails without the fix. `go build ./... && go vet ./... && go test
   ./...` must pass — CI will run this plus the real-infrastructure suites
-  automatically.
+  automatically. When using `t.Logf` or `internal/testlogger`, never log
+  sensitive data (forbidden examples and redaction guidance are documented
+  in `internal/testlogger` package docs).
 - **Docs.** If you change a flag, a CRD field, or user-facing behavior,
   update the relevant page under [`docs/`](docs/) in the same PR (see
   [`docs/TEMPLATE.md`](docs/TEMPLATE.md) for the structure every page

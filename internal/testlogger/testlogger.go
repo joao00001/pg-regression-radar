@@ -27,6 +27,11 @@
 // reconciler, collector, or ingester actually did leading up to that
 // failure. New closes that gap without adding noise to the common (test
 // passes) case.
+//
+// Security/logging convention: do not log full webhook payloads, raw query
+// text, authentication headers, DSN credentials, or binary plan content via
+// t.Logf or this package. Use synthetic/anonymized data in tests, or redact
+// before logging.
 package testlogger
 
 import (
