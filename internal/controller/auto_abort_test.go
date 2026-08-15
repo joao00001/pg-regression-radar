@@ -17,8 +17,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"io"
-	"log/slog"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -67,7 +66,7 @@ func TestReconcile_AutoAbortPropagatesToRuntime(t *testing.T) {
 		Client:   c,
 		Scheme:   s,
 		Registry: NewRegistry(),
-		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:   testlogger.New(t),
 		Aborter:  aborter,
 	}
 
@@ -133,7 +132,7 @@ func TestReconcile_AutoAbortDefaultsFalse(t *testing.T) {
 		Client:   c,
 		Scheme:   s,
 		Registry: NewRegistry(),
-		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:   testlogger.New(t),
 		Aborter:  &stubAborter{},
 	}
 
@@ -178,7 +177,7 @@ func TestMaybeAutoAbort_TriggersForArgoRolloutsSource(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(s).WithObjects(src).Build()
 
 	aborter := &stubAborter{}
-	r := &PostgresWatchReconciler{Client: c, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	r := &PostgresWatchReconciler{Client: c, Logger: testlogger.New(t)}
 	rt := &WatchRuntime{Aborter: aborter}
 	ev := dto.DeployEvent{Source: "rollouts-src", App: "checkout", Namespace: "default"}
 	res := &dto.PerformanceRegression{ConfidenceScore: 0.995, QueryID: 1}
@@ -210,7 +209,7 @@ func TestMaybeAutoAbort_SkipsNonArgoRolloutsSource(t *testing.T) {
 		c := fake.NewClientBuilder().WithScheme(s).WithObjects(src).Build()
 
 		aborter := &stubAborter{}
-		r := &PostgresWatchReconciler{Client: c, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+		r := &PostgresWatchReconciler{Client: c, Logger: testlogger.New(t)}
 		rt := &WatchRuntime{Aborter: aborter}
 		ev := dto.DeployEvent{Source: "other-src", App: "checkout", Namespace: "default"}
 		res := &dto.PerformanceRegression{ConfidenceScore: 0.995, QueryID: 1}
@@ -234,7 +233,7 @@ func TestMaybeAutoAbort_SkipsMissingDeploySource(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(s).Build() // no DeploySource at all
 
 	aborter := &stubAborter{}
-	r := &PostgresWatchReconciler{Client: c, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	r := &PostgresWatchReconciler{Client: c, Logger: testlogger.New(t)}
 	rt := &WatchRuntime{Aborter: aborter}
 	ev := dto.DeployEvent{Source: "does-not-exist", App: "checkout", Namespace: "default"}
 	res := &dto.PerformanceRegression{ConfidenceScore: 0.995, QueryID: 1}
@@ -259,7 +258,7 @@ func TestMaybeAutoAbort_RecordsAbortError(t *testing.T) {
 	c := fake.NewClientBuilder().WithScheme(s).WithObjects(src).Build()
 
 	aborter := &stubAborter{err: errors.New("rollouts.argoproj.io \"checkout\" not found")}
-	r := &PostgresWatchReconciler{Client: c, Logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	r := &PostgresWatchReconciler{Client: c, Logger: testlogger.New(t)}
 	rt := &WatchRuntime{Aborter: aborter}
 	ev := dto.DeployEvent{Source: "rollouts-src", App: "checkout", Namespace: "default"}
 	res := &dto.PerformanceRegression{ConfidenceScore: 0.995, QueryID: 1}

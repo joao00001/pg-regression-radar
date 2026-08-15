@@ -16,8 +16,6 @@ package controller
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -31,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -70,7 +69,7 @@ func newTestReconciler(t *testing.T, objs ...client.Object) (*PostgresWatchRecon
 		Client:   c,
 		Scheme:   s,
 		Registry: NewRegistry(),
-		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:   testlogger.New(t),
 	}
 	return r, c
 }

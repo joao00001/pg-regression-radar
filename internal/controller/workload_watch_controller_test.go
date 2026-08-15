@@ -16,8 +16,6 @@ package controller
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -30,6 +28,7 @@ import (
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 )
 
 func newWorkloadWatchReconciler(t *testing.T, registry *Registry, objs ...client.Object) *WorkloadWatchReconciler {
@@ -39,7 +38,7 @@ func newWorkloadWatchReconciler(t *testing.T, registry *Registry, objs ...client
 	return &WorkloadWatchReconciler{
 		Client:   c,
 		Registry: registry,
-		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:   testlogger.New(t),
 	}
 }
 

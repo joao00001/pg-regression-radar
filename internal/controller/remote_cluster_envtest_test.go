@@ -16,8 +16,6 @@ package controller
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 )
 
 // TestEnvtest_PostgresWatch_RemoteClusterSecretRef_FetchesDSNFromRemoteAPIServer
@@ -134,7 +133,7 @@ func TestEnvtest_PostgresWatch_RemoteClusterSecretRef_FetchesDSNFromRemoteAPISer
 		Client:   hub,
 		Scheme:   s,
 		Registry: NewRegistry(),
-		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:   testlogger.New(t),
 	}
 
 	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: watch.Name, Namespace: watch.Namespace}}
