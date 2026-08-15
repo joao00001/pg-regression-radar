@@ -15,6 +15,7 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--namespace` | `default` | Kubernetes namespace label |
 | `--scrape-interval` | `60s` | How often to read `pg_stat_statements` |
 | `--webhook-listen` | `:8080` | Deploy-event webhook listen address |
+| `--webhook-secret` | `` | Shared secret for webhook authentication. When set, every `POST /webhook` must include this value in the `X-Webhook-Token` header (constant-time comparison), or the request is rejected with `401`. Recommended for internet-facing deployments — see [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication) |
 | `--metrics-listen` | `:9090` | Prometheus metrics listen address |
 | `--slack-url` | `` | Slack incoming-webhook URL. Alias of `--alert-url` with `--alert-format=slack` (the default) — kept for backward compatibility |
 | `--alert-format` | `slack` | Notification payload layout: `slack`, `teams`, `pagerduty`, or `custom` — see [Alerting](alerting.md) |
@@ -68,6 +69,7 @@ The `ingester` binary runs the deploy-event webhook receiver on its own, without
 | `--postgres-watch-ref` | `` | `PostgresWatch` to associate events with |
 | `--app-name` | `` (all apps) | Filter events to a specific application name |
 | `--cluster-name` | `` | Cluster identity stamped on `DeployEvent`s when the webhook payload doesn't carry one (e.g. Argo Rollouts, Flux without `eventMetadata`) |
+| `--webhook-secret` | `` | Shared secret for webhook authentication. When set, every `POST /webhook` must include this value in the `X-Webhook-Token` header (constant-time comparison), or the request is rejected with `401`. Recommended for internet-facing deployments — see [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication) |
 | `--version` | `false` | Print version, commit, and build date, then exit |
 | `--dry-run` | `false` | Validate `--source-type` and that `--listen` is a resolvable address, then exit without starting the webhook server |
 
@@ -157,6 +159,18 @@ All four binaries share two flags:
 | `sourceType` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic`, `kubernetes` — see [Deploy Sources & Webhooks: Native Kubernetes watch](webhooks.md#native-kubernetes-watch-no-webhook) for `kubernetes` |
 | `appName` | `""` (all apps) | Narrow correlation to a single application. When `sourceType` is `kubernetes`, this is the Deployment/StatefulSet's name and is required |
 | `workloadKind` | `""` | `Deployment` or `StatefulSet`. Only meaningful (and required) when `sourceType` is `kubernetes` |
+| `webhookSecret` | `""` | Shared secret for this source's webhook, equivalent to `--webhook-secret` above. Not meaningful when `sourceType` is `kubernetes` (that mode has no webhook route to protect). Store the value in a Secret and reference it with `valueFrom.secretKeyRef` rather than inlining it — see [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication) |
+
+## Source-type capabilities by mode
+
+`sourceType` / `--source-type` means different things depending on which binary or field is reading it, and the two don't accept the same set of values:
+
+| Where it's set | Accepted values | Accepts `kubernetes`? |
+|---|---|---|
+| `operator --source-type` / `ingester --source-type` (CLI flag, validated by `--dry-run`) | `argocd`, `argo-rollouts`, `flux`, `generic` | No — `kubernetes` isn't in `ValidSourceTypes`, so `--dry-run` rejects it outright, and without `--dry-run` it would silently fall through to generic-style webhook parsing instead of doing anything kubernetes-specific |
+| `DeploySource.spec.sourceType` (CRD field, `manager` mode only) | `argocd`, `argo-rollouts`, `flux`, `generic`, `kubernetes` | Yes — this is the only place `kubernetes` is meaningful. It skips webhook route registration entirely and instead watches the Deployment/StatefulSet named in `appName` directly — see [Deploy Sources & Webhooks: Native Kubernetes watch](webhooks.md#native-kubernetes-watch-no-webhook) |
+
+In short: if you're running the standalone `operator`/`ingester` binaries, `kubernetes` is not a valid `--source-type` no matter what — that capability only exists behind the `manager`/CRD path.
 
 ## See also
 
