@@ -4,7 +4,6 @@ metadata:
   name: restrict-postgreswatch-consent-label
 spec:
   validationFailureAction: Enforce
-  background: false
   rules:
     - name: restrict-consent-label-application
       match:
@@ -26,5 +25,7 @@ spec:
                 operator: Equals
                 value: "true"
               - key: "{{ request.userInfo.username }}"
-                operator: NotEquals
-                value: "system:serviceaccount:platform-security:secret-consent-labeler"
+                operator: NotIn
+                value:
+                  - "system:serviceaccount:platform-security:secret-consent-labeler"
+                  - "system:serviceaccount:platform-security:secret-consent-labeler-breakglass"

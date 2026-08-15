@@ -112,7 +112,7 @@ kubectl label secret prod-eu-west-app-superuser \
 
 This is a namespace-local decision the Secret's own owner makes (labeling a Secret requires the same `patch`/`update` permission on that Secret that creating it did), independent of whatever RBAC governs who can create `PostgresWatch` CRs — it doesn't replace narrowing that RBAC or the ClusterRole above where you can, it closes the gap for installations where you can't (or haven't yet).
 
-For **multi-tenant clusters**, treat that label as a privileged capability: add an admission policy so only approved identities can set it. A ready-to-adapt Kyverno example lives at [`docs/policies/kyverno-consent-label-policy.yaml`](policies/kyverno-consent-label-policy.yaml).
+For **multi-tenant clusters**, treat that label as a privileged capability: add an admission policy so only approved identities can set it. A ready-to-adapt Kyverno example (edit its allowed-identity list for your environment) lives at [`docs/policies/kyverno-consent-label-policy.yaml`](policies/kyverno-consent-label-policy.yaml).
 
 ## Kubeconfig restrictions
 
