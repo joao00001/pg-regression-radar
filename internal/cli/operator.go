@@ -53,6 +53,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
+	"github.com/joao00001/pg-regression-radar/internal/httpserver"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 	"github.com/joao00001/pg-regression-radar/internal/planner"
 	"github.com/joao00001/pg-regression-radar/internal/storage"
@@ -370,29 +371,11 @@ func runOperator(args []string, logOutput io.Writer) int {
 	metricsMux := http.NewServeMux()
 	metricsMux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 
-	// Both servers use an explicit *http.Server with conservative timeouts
-	// instead of the bare http.ListenAndServe(addr, mux) package function
-	// this used before: that helper has no way to set ReadTimeout/
-	// ReadHeaderTimeout/WriteTimeout/IdleTimeout, which leaves a slow or
-	// silent client (accidental exposure, or a deliberately slow-loris-style
-	// request) holding a connection open indefinitely with nothing to time
-	// it out.
-	webhookSrv := &http.Server{
-		Addr:              *webhookListen,
-		Handler:           webhookMux,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       60 * time.Second,
-	}
-	metricsSrv := &http.Server{
-		Addr:              *metricsListen,
-		Handler:           metricsMux,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      10 * time.Second,
-		IdleTimeout:       60 * time.Second,
-	}
+	// httpserver.New sets conservative timeouts on every server in the
+	// project, preventing slow or stalled clients from holding connections
+	// open indefinitely (Slowloris-style exhaustion).
+	webhookSrv := httpserver.New(*webhookListen, webhookMux)
+	metricsSrv := httpserver.New(*metricsListen, metricsMux)
 
 	go func() {
 		logger.Info("operator: webhook server listening", "addr", *webhookListen)

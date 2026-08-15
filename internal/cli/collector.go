@@ -28,6 +28,7 @@ import (
 
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
+	"github.com/joao00001/pg-regression-radar/internal/httpserver"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -103,14 +104,7 @@ func RunCollector(args []string) int {
 		mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
-		srv := &http.Server{
-			Addr:              *listen,
-			Handler:           mux,
-			ReadHeaderTimeout: 10 * time.Second,
-			ReadTimeout:       30 * time.Second,
-			WriteTimeout:      30 * time.Second,
-			IdleTimeout:       120 * time.Second,
-		}
+		srv := httpserver.New(*listen, mux)
 		logger.Info("collector: metrics server listening", "addr", *listen)
 		errCh := make(chan error, 1)
 		go func() {
