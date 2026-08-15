@@ -28,6 +28,9 @@ spec:
               - key: "{{ request.object.metadata.labels.\"pg-regression-radar.io/allow-postgreswatch-access\" || '' }}"
                 operator: Equals
                 value: "true"
+              - key: "{{ request.oldObject.metadata.labels.\"pg-regression-radar.io/allow-postgreswatch-access\" || '' }}"
+                operator: NotEquals
+                value: "true"
               - key: "{{ request.userInfo.username }}"
                 operator: NotIn
                 # Replace these with identities approved to set the consent label.
