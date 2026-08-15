@@ -25,6 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -217,10 +218,25 @@ func hashKubeconfig(kubeconfig []byte) string {
 // time the returned client is actually used (e.g. resolveDSN's Get call),
 // which is what causes markFailed / backoff to kick in rather than this
 // function.
+//
+// Parses via clientcmd.Load first (rather than going straight to
+// clientcmd.RESTConfigFromKubeConfig, which does the same parse internally
+// but never hands the intermediate *clientcmdapi.Config back to the
+// caller) specifically so validateKubeconfigAuth below can inspect it
+// before any REST config — let alone any real client — is built from
+// content a PostgresWatch's owner supplied, not the manager operator.
 func buildRemoteClient(kubeconfig []byte) (client.Client, error) {
-	restConfig, err := clientcmd.RESTConfigFromKubeConfig(kubeconfig)
+	rawConfig, err := clientcmd.Load(kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("parse kubeconfig: %w", err)
+	}
+	if err := validateKubeconfigAuth(rawConfig); err != nil {
+		return nil, err
+	}
+
+	restConfig, err := clientcmd.NewDefaultClientConfig(*rawConfig, &clientcmd.ConfigOverrides{}).ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("build rest config from kubeconfig: %w", err)
 	}
 
 	cl, err := client.New(restConfig, client.Options{Scheme: remoteClientScheme})
@@ -228,4 +244,46 @@ func buildRemoteClient(kubeconfig []byte) (client.Client, error) {
 		return nil, fmt.Errorf("build client for remote cluster: %w", err)
 	}
 	return cl, nil
+}
+
+// validateKubeconfigAuth rejects a remoteClusterSecretRef kubeconfig that
+// would hand the manager process more capability than "talk to a remote
+// API server with a static credential" — specifically:
+//
+//   - exec-based credential plugins (users[].exec): the kubeconfig format
+//     lets an AuthInfo delegate obtaining credentials to an arbitrary
+//     local command, which client-go will then actually execute inside
+//     the manager's own pod, on the manager's own filesystem, every time
+//     the resulting client authenticates. A kubeconfig supplied via a
+//     tenant-writable Secret is untrusted input; treating it as containing
+//     a data-only credential (a token or client cert) rather than
+//     something that can cause process execution is the whole point of
+//     this check.
+//   - the deprecated authProvider mechanism, which has the same
+//     "plugin decides how to authenticate" shape as exec (some
+//     implementations shell out too) and is being phased out of
+//     client-go's own supported surface anyway.
+//   - a cluster entry's proxy-url, which would route this manager's API
+//     traffic for that cluster through an operator-controlled proxy
+//     endpoint — a network egress redirection the referencer chooses, not
+//     the cluster operator.
+//
+// Static-credential kubeconfigs (bearer token, client-certificate,
+// username/password) are unaffected — those are exactly the shapes
+// docs/multi-cluster.md already recommends.
+func validateKubeconfigAuth(cfg *clientcmdapi.Config) error {
+	for name, ai := range cfg.AuthInfos {
+		if ai.Exec != nil {
+			return fmt.Errorf("kubeconfig user %q uses an exec-based credential plugin, which is not allowed for remoteClusterSecretRef (client-go would execute it as a local process in the manager pod) — use a static bearer token or client-certificate credential instead; see docs/multi-cluster.md#kubeconfig-restrictions", name)
+		}
+		if ai.AuthProvider != nil {
+			return fmt.Errorf("kubeconfig user %q uses the deprecated auth-provider mechanism, which is not allowed for remoteClusterSecretRef — use a static bearer token or client-certificate credential instead; see docs/multi-cluster.md#kubeconfig-restrictions", name)
+		}
+	}
+	for name, c := range cfg.Clusters {
+		if c.ProxyURL != "" {
+			return fmt.Errorf("kubeconfig cluster %q sets proxy-url, which is not allowed for remoteClusterSecretRef (it would route the manager's API traffic through an attacker-chosen proxy) — remove proxy-url from the kubeconfig; see docs/multi-cluster.md#kubeconfig-restrictions", name)
+		}
+	}
+	return nil
 }
