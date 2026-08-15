@@ -70,9 +70,22 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 	}
 
 	url := cfg.URL
-	var formatter Formatter
-	disabled := format != "pagerduty" && url == ""
+	if format != "pagerduty" && url == "" {
+		switch format {
+		case "slack", "teams", "custom":
+			return NewWebhookNotifier(WebhookConfig{
+				URL:         "",
+				Timeout:     cfg.Timeout,
+				ClusterName: cfg.ClusterName,
+				Formatter:   noopFormatter{},
+				Registerer:  reg,
+			}, logger), nil
+		default:
+			return nil, fmt.Errorf("alerting: unknown format %q (want slack, teams, pagerduty, or custom)", format)
+		}
+	}
 
+	var formatter Formatter
 	switch format {
 	case "slack":
 		formatter = SlackFormatter{}
@@ -85,9 +98,6 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 		formatter = NewPagerDutyFormatter(cfg.PagerDutyRoutingKey)
 		url = pagerDutyEventsURL
 	case "custom":
-		if disabled {
-			break
-		}
 		if cfg.CustomTemplate == "" {
 			return nil, fmt.Errorf("alerting: format=custom requires a template (--alert-template-file, or spec.alerting.customTemplate)")
 		}
@@ -98,16 +108,6 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 		formatter = cf
 	default:
 		return nil, fmt.Errorf("alerting: unknown format %q (want slack, teams, pagerduty, or custom)", format)
-	}
-
-	if disabled {
-		return NewWebhookNotifier(WebhookConfig{
-			URL:         "",
-			Timeout:     cfg.Timeout,
-			ClusterName: cfg.ClusterName,
-			Formatter:   formatter,
-			Registerer:  reg,
-		}, logger), nil
 	}
 
 	// pagerduty's url is always the fixed pagerDutyEventsURL constant above,

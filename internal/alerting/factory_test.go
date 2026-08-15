@@ -78,6 +78,9 @@ func TestBuildNotifier_EmptyURLDisablesAlerting(t *testing.T) {
 			if n.cfg.URL != "" {
 				t.Fatalf("expected disabled notifier to keep an empty URL, got %q", n.cfg.URL)
 			}
+			if n.cfg.Formatter == nil {
+				t.Fatal("expected disabled notifier to keep a non-nil formatter")
+			}
 			if err := n.Notify(context.Background(), v1alpha1.PerformanceRegression{
 				Name:   "regression-1",
 				Status: v1alpha1.StatusDetected,

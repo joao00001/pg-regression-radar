@@ -33,3 +33,9 @@ import (
 type Formatter interface {
 	Format(r v1alpha1.PerformanceRegression, clusterName string) (body []byte, contentType string, err error)
 }
+
+type noopFormatter struct{}
+
+func (noopFormatter) Format(v1alpha1.PerformanceRegression, string) ([]byte, string, error) {
+	return []byte("{}"), "application/json", nil
+}
