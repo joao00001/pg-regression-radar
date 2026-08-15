@@ -274,7 +274,14 @@ type httpRunnable struct {
 
 // Start implements manager.Runnable.
 func (h *httpRunnable) Start(ctx context.Context) error {
-	srv := &http.Server{Addr: h.addr, Handler: h.handler}
+	srv := &http.Server{
+		Addr:              h.addr,
+		Handler:           h.handler,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
