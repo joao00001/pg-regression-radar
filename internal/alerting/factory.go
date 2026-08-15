@@ -61,7 +61,8 @@ type BuildConfig struct {
 // an error describing exactly which required field is missing/invalid —
 // surfaced at startup (operator flag parsing, or the first reconcile of a
 // PostgresWatch) rather than silently failing the first time a regression is
-// actually detected.
+// actually detected. For non-PagerDuty formats, an empty URL disables
+// alert delivery and returns a notifier whose Notify method is a no-op.
 func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Registerer) (*WebhookNotifier, error) {
 	format := cfg.Format
 	if format == "" {
@@ -70,6 +71,7 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 
 	url := cfg.URL
 	var formatter Formatter
+	disabled := format != "pagerduty" && url == ""
 
 	switch format {
 	case "slack":
@@ -83,6 +85,9 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 		formatter = NewPagerDutyFormatter(cfg.PagerDutyRoutingKey)
 		url = pagerDutyEventsURL
 	case "custom":
+		if disabled {
+			break
+		}
 		if cfg.CustomTemplate == "" {
 			return nil, fmt.Errorf("alerting: format=custom requires a template (--alert-template-file, or spec.alerting.customTemplate)")
 		}
@@ -93,6 +98,16 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 		formatter = cf
 	default:
 		return nil, fmt.Errorf("alerting: unknown format %q (want slack, teams, pagerduty, or custom)", format)
+	}
+
+	if disabled {
+		return NewWebhookNotifier(WebhookConfig{
+			URL:         "",
+			Timeout:     cfg.Timeout,
+			ClusterName: cfg.ClusterName,
+			Formatter:   formatter,
+			Registerer:  reg,
+		}, logger), nil
 	}
 
 	// pagerduty's url is always the fixed pagerDutyEventsURL constant above,
@@ -151,11 +166,7 @@ var blockedAlertDestinationHosts = map[string]bool{
 // docs/multi-cluster.md.
 func validateWebhookURL(rawURL string) error {
 	if rawURL == "" {
-		// No URL configured -- BuildConfig's zero value. Nothing to
-		// validate; the empty-URL/no-alerting-configured behaviour that
-		// falls out of this is a separate, lower-severity, pre-existing
-		// question (see the audit's F-09) that this fix doesn't change.
-		return nil
+		return fmt.Errorf("alerting: webhook url is empty")
 	}
 	u, err := url.Parse(rawURL)
 	if err != nil {
