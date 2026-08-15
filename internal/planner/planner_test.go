@@ -101,7 +101,7 @@ func TestCapturePlan_ExtensionNotInstalled_FallsBackToGenericPlan(t *testing.T) 
 	}
 
 	// The facade should transparently fall back to generic_plan.
-	snap, err := CapturePlan(context.Background(), db, 7, "SELECT 1")
+	snap, err := CapturePlan(context.Background(), db, 7, NormalizeQueryText("SELECT 1"))
 	if err != nil {
 		t.Fatalf("CapturePlan: unexpected error: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestCapturePlan_ComputeQueryIDOff_FallsBackToGenericPlan(t *testing.T) {
 		t.Fatalf("CapturePlanFromStorePlans error = %v, want ErrQueryIDUnreliable", err)
 	}
 
-	snap, err := CapturePlan(context.Background(), db, 9, "SELECT 1")
+	snap, err := CapturePlan(context.Background(), db, 9, NormalizeQueryText("SELECT 1"))
 	if err != nil {
 		t.Fatalf("CapturePlan: unexpected error: %v", err)
 	}
@@ -150,7 +150,7 @@ func TestCapturePlan_OldExtensionVersion_FallsBackToGenericPlan(t *testing.T) {
 		t.Errorf("error message should explain the version mismatch, got: %v", err)
 	}
 
-	snap, err := CapturePlan(context.Background(), db, 3, "SELECT 1")
+	snap, err := CapturePlan(context.Background(), db, 3, NormalizeQueryText("SELECT 1"))
 	if err != nil {
 		t.Fatalf("CapturePlan: unexpected error: %v", err)
 	}
@@ -166,13 +166,13 @@ func TestCapturePlan_NothingAvailable_UnsupportedVersionPropagates(t *testing.T)
 	}))
 
 	// CaptureGenericPlan alone, in isolation.
-	if _, err := CaptureGenericPlan(context.Background(), db, 1, "SELECT 1"); !errors.Is(err, ErrUnsupportedVersion) {
+	if _, err := CaptureGenericPlan(context.Background(), db, 1, NormalizeQueryText("SELECT 1")); !errors.Is(err, ErrUnsupportedVersion) {
 		t.Fatalf("CaptureGenericPlan error = %v, want ErrUnsupportedVersion", err)
 	}
 
 	// The facade: neither source available, error should still let a
 	// caller identify ErrUnsupportedVersion via errors.Is.
-	_, err := CapturePlan(context.Background(), db, 1, "SELECT 1")
+	_, err := CapturePlan(context.Background(), db, 1, NormalizeQueryText("SELECT 1"))
 	if err == nil {
 		t.Fatal("CapturePlan: expected an error when neither source is available")
 	}
@@ -307,7 +307,7 @@ func TestCapturePlan_UnreachableServer_ReturnsConnectionError_NotVersionError(t 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	_, err = CapturePlan(ctx, db, 1, "SELECT 1")
+	_, err = CapturePlan(ctx, db, 1, NormalizeQueryText("SELECT 1"))
 	if err == nil {
 		t.Fatal("expected an error against an unreachable server, got nil")
 	}

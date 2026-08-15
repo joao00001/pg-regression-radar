@@ -53,8 +53,8 @@ func pgMajorVersion(ctx context.Context, db *sql.DB) (int, error) {
 // snapshot is meant to help explain. Prefer CapturePlanFromStorePlans (via
 // the CapturePlan facade, which does this automatically) whenever
 // pg_store_plans is installed and trustworthy — see package doc comment.
-func CaptureGenericPlan(ctx context.Context, db *sql.DB, queryID int64, queryText string) (*PlanSnapshot, error) {
-	if strings.TrimSpace(queryText) == "" {
+func CaptureGenericPlan(ctx context.Context, db *sql.DB, queryID int64, queryText NormalizedQueryText) (*PlanSnapshot, error) {
+	if strings.TrimSpace(queryText.String()) == "" {
 		return nil, fmt.Errorf("planner: CaptureGenericPlan: empty query text for queryid %d", queryID)
 	}
 
@@ -75,7 +75,7 @@ func CaptureGenericPlan(ctx context.Context, db *sql.DB, queryID int64, queryTex
 	// unvalidated user input — the same trust boundary
 	// internal/collector already relies on when it reads query text back
 	// out of pg_stat_statements.
-	stmt := fmt.Sprintf("EXPLAIN (FORMAT JSON, GENERIC_PLAN) %s", queryText)
+	stmt := fmt.Sprintf("EXPLAIN (FORMAT JSON, GENERIC_PLAN) %s", queryText.String())
 
 	var planText string
 	if err := db.QueryRowContext(ctx, stmt).Scan(&planText); err != nil {

@@ -547,7 +547,7 @@ type trackedQuery struct {
 // runtime.
 func (c *Collector) capturePlans(ctx context.Context, tracked []trackedQuery) {
 	for _, q := range tracked {
-		snap, err := planner.CapturePlan(ctx, c.db, q.queryID, q.queryText)
+		snap, err := planner.CapturePlan(ctx, c.db, q.queryID, planner.NormalizeQueryText(q.queryText))
 		if err != nil {
 			if errors.Is(err, planner.ErrUnsupportedVersion) {
 				c.planVersionWarnOnce.Do(func() {
