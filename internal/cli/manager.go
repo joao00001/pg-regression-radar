@@ -24,6 +24,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/joao00001/pg-regression-radar/internal/alerting"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -73,6 +74,7 @@ func RunManager(args []string) int {
 	var webhookAddr string
 	var enableLeaderElection bool
 	var leaderElectionNamespace string
+	var alertAllowedDestinations string
 	var versionFlag bool
 	var dryRun bool
 
@@ -94,6 +96,8 @@ func RunManager(args []string) int {
 	fs.StringVar(&leaderElectionNamespace, "leader-election-namespace", "",
 		"Namespace the leader election Lease is created in. Defaults to the manager's own "+
 			"namespace when running in-cluster (via the downward API / in-cluster config).")
+	fs.StringVar(&alertAllowedDestinations, "alerting-allowed-destinations", "",
+		"Optional strict allowlist for PostgresWatch alert destinations: comma-separated exact hostnames, IPs, or CIDRs. When set, spec.alerting.url/spec.slackWebhookUrl must target one of these destinations.")
 	fs.BoolVar(&versionFlag, "version", false, "Print version information and exit")
 	fs.BoolVar(&dryRun, "dry-run", false,
 		"Validate that a Kubernetes API server config can be resolved (in-cluster or via "+
@@ -114,6 +118,11 @@ func RunManager(args []string) int {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	parsedAllowedDestinations := splitCommaSeparatedValues(alertAllowedDestinations)
+	if err := alerting.ValidateAllowedDestinations(parsedAllowedDestinations); err != nil {
+		logger.Error("invalid --alerting-allowed-destinations", "err", err)
+		return 1
+	}
 
 	cfg, err := ctrl.GetConfig()
 	if err != nil {
@@ -179,11 +188,12 @@ func RunManager(args []string) int {
 	}
 
 	if err := (&controller.PostgresWatchReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Registry: registry,
-		Logger:   logger,
-		Aborter:  aborter,
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		Registry:                 registry,
+		Logger:                   logger,
+		AllowedAlertDestinations: parsedAllowedDestinations,
+		Aborter:                  aborter,
 	}).SetupWithManager(mgr); err != nil {
 		managerSetupLog.Error(err, "unable to create controller", "controller", "PostgresWatch")
 		return 1

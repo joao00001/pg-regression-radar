@@ -46,6 +46,9 @@ spec:
             {{- if .Values.alerting.url }}
             - --alert-url=$(ALERT_URL)
             {{- end }}
+            {{- if .Values.alerting.allowedDestinations }}
+            - {{ printf "--alerting-allowed-destinations=%s" .Values.alerting.allowedDestinations | quote }}
+            {{- end }}
             {{- if .Values.alerting.pagerDutyRoutingKey }}
             - --pagerduty-routing-key=$(PAGERDUTY_ROUTING_KEY)
             {{- end }}

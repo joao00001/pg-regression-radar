@@ -119,6 +119,13 @@ type PostgresWatchReconciler struct {
 	// reconciler starts.
 	Logger *slog.Logger
 
+	// AllowedAlertDestinations is the manager-wide strict allowlist for
+	// outbound alert destinations, populated from the manager's
+	// --alerting-allowed-destinations flag. When empty, the existing
+	// best-effort SSRF hardening remains in effect without the stricter
+	// host/CIDR gate.
+	AllowedAlertDestinations []string
+
 	// remoteClients caches controller-runtime clients built from
 	// remoteClusterSecretRef kubeconfigs, keyed by kubeconfig content (see
 	// remote_client.go). It is initialised lazily via remoteClientsOnce so
@@ -410,7 +417,10 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	// spec.alerting supersedes spec.slackWebhookUrl entirely when set (see
 	// AlertingConfig's doc comment) -- there is no field-by-field merge
 	// between the two, to keep this precedence rule unambiguous.
-	alertCfg := alerting.BuildConfig{ClusterName: watch.Spec.ClusterName}
+	alertCfg := alerting.BuildConfig{
+		ClusterName:         watch.Spec.ClusterName,
+		AllowedDestinations: r.AllowedAlertDestinations,
+	}
 	if watch.Spec.Alerting != nil {
 		alertCfg.Format = watch.Spec.Alerting.Format
 		alertCfg.URL = watch.Spec.Alerting.URL

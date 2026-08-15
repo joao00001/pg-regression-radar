@@ -53,6 +53,13 @@ type BuildConfig struct {
 	// Format == "custom" (defaults to application/json).
 	CustomContentType string
 
+	// AllowedDestinations enables a stricter, opt-in destination allowlist:
+	// when non-empty, the webhook URL's host must match one of these exact
+	// hostnames/IPs or fall inside one of these CIDRs. This is intended for
+	// multi-tenant clusters where only a fixed set of alert receivers should be
+	// reachable from PostgresWatch-driven alerting.
+	AllowedDestinations []string
+
 	ClusterName string
 	Timeout     time.Duration
 }
@@ -63,6 +70,10 @@ type BuildConfig struct {
 // PostgresWatch) rather than silently failing the first time a regression is
 // actually detected.
 func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Registerer) (*WebhookNotifier, error) {
+	if err := ValidateAllowedDestinations(cfg.AllowedDestinations); err != nil {
+		return nil, err
+	}
+
 	format := cfg.Format
 	if format == "" {
 		format = "slack"
@@ -104,7 +115,7 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 	// call sites (internal/cli.RunOperator's --dry-run and startup path, and
 	// PostgresWatchReconciler's reconcile) get the same check for free.
 	if format != "pagerduty" {
-		if err := validateWebhookURL(url); err != nil {
+		if err := validateWebhookURL(url, cfg.AllowedDestinations); err != nil {
 			return nil, err
 		}
 	}
@@ -133,7 +144,9 @@ var blockedAlertDestinationHosts = map[string]bool{
 // legitimate use as a Slack/Teams/custom webhook target and are the classic
 // SSRF payloads: non-HTTP(S) schemes, loopback/link-local literal IPs (which
 // covers the 169.254.169.254 cloud metadata address shared by AWS/GCP/Azure/
-// DigitalOcean/Alibaba), and known cloud metadata hostnames.
+// DigitalOcean/Alibaba), and known cloud metadata hostnames. When
+// allowedDestinations is non-empty, it additionally requires the webhook
+// target's host to match an explicit hostname/IP/CIDR allowlist.
 //
 // This is a deliberately narrow, static check, not a complete SSRF defence:
 // it does not resolve hostnames (so it cannot catch DNS rebinding, where a
@@ -149,7 +162,7 @@ var blockedAlertDestinationHosts = map[string]bool{
 // of PostgresWatch/DeploySource, the same scoping this project uses for the
 // Secret-consent-label and kubeconfig-restriction controls in
 // docs/multi-cluster.md.
-func validateWebhookURL(rawURL string) error {
+func validateWebhookURL(rawURL string, allowedDestinations []string) error {
 	if rawURL == "" {
 		// No URL configured -- BuildConfig's zero value. Nothing to
 		// validate; the empty-URL/no-alerting-configured behaviour that
@@ -178,5 +191,75 @@ func validateWebhookURL(rawURL string) error {
 			return fmt.Errorf("alerting: webhook url %q targets a loopback or link-local address (this includes the 169.254.169.254 cloud metadata address), which is never a valid alert destination", rawURL)
 		}
 	}
+	if len(allowedDestinations) > 0 && !matchesAllowedDestination(host, allowedDestinations) {
+		return fmt.Errorf("alerting: webhook url %q host %q is not in the configured alerting destination allowlist", rawURL, host)
+	}
 	return nil
+}
+
+// ValidateAllowedDestinations checks the syntax of the stricter, opt-in alert
+// destination allowlist used by BuildNotifier and the operator/manager CLI
+// flags. Entries must be exact hostnames, exact IP addresses, or CIDRs.
+func ValidateAllowedDestinations(allowedDestinations []string) error {
+	for _, raw := range allowedDestinations {
+		entry := strings.TrimSpace(raw)
+		if entry == "" {
+			continue
+		}
+		if _, _, err := net.ParseCIDR(entry); err == nil {
+			continue
+		}
+		if ip := net.ParseIP(entry); ip != nil {
+			continue
+		}
+		if !isValidAllowedHostname(entry) {
+			return fmt.Errorf("alerting: invalid allowed destination %q (want an exact hostname, IP, or CIDR)", raw)
+		}
+	}
+	return nil
+}
+
+func matchesAllowedDestination(host string, allowedDestinations []string) bool {
+	hostIP := net.ParseIP(strings.Trim(host, "[]"))
+	for _, raw := range allowedDestinations {
+		entry := strings.TrimSpace(raw)
+		if entry == "" {
+			continue
+		}
+		if _, cidr, err := net.ParseCIDR(entry); err == nil {
+			if hostIP != nil && cidr.Contains(hostIP) {
+				return true
+			}
+			continue
+		}
+		if ip := net.ParseIP(entry); ip != nil {
+			if hostIP != nil && hostIP.Equal(ip) {
+				return true
+			}
+			continue
+		}
+		if strings.EqualFold(host, entry) {
+			return true
+		}
+	}
+	return false
+}
+
+func isValidAllowedHostname(host string) bool {
+	if host == "" || strings.Contains(host, "://") || strings.ContainsAny(host, "/[]") {
+		return false
+	}
+	labels := strings.Split(host, ".")
+	for _, label := range labels {
+		if label == "" || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, r := range label {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' {
+				continue
+			}
+			return false
+		}
+	}
+	return true
 }

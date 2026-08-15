@@ -42,6 +42,9 @@ spec:
             - --pg-metrics-bind-address=:{{ .Values.manager.ports.pgMetrics }}
             - --metrics-bind-address=:{{ .Values.manager.ports.ctrlMetrics }}
             - --health-probe-bind-address=:{{ .Values.manager.ports.healthProbe }}
+            {{- if .Values.alerting.allowedDestinations }}
+            - {{ printf "--alerting-allowed-destinations=%s" .Values.alerting.allowedDestinations | quote }}
+            {{- end }}
           ports:
             - name: webhook
               containerPort: {{ .Values.manager.ports.webhook }}

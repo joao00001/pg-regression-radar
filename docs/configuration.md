@@ -20,6 +20,7 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--slack-url` | `` | Slack incoming-webhook URL. Alias of `--alert-url` with `--alert-format=slack` (the default) — kept for backward compatibility |
 | `--alert-format` | `slack` | Notification payload layout: `slack`, `teams`, `pagerduty`, or `custom` — see [Alerting](alerting.md) |
 | `--alert-url` | `` | Webhook URL for `--alert-format=slack`/`teams`/`custom`; ignored for `pagerduty`. Falls back to `--slack-url` when unset |
+| `--alerting-allowed-destinations` | `` | Optional strict allowlist: comma-separated exact hostnames, IPs, or CIDRs. When set, `--alert-url` / `--slack-url` must match one of them |
 | `--pagerduty-routing-key` | `` | PagerDuty Events API v2 routing key; required when `--alert-format=pagerduty` |
 | `--alert-template` | `` | Go `text/template` source, inline; required (or use `--alert-template-file`) when `--alert-format=custom` — see [Alerting: custom format](alerting.md#custom-format) |
 | `--alert-template-file` | `` | Path to a Go `text/template` file — alternative to `--alert-template` when passing the source inline isn't convenient |
@@ -84,6 +85,7 @@ Exposed routes once running: `POST /webhook` (receives deploy events), `GET /eve
 | `--metrics-bind-address` | `0` (disabled) | controller-runtime's own reconcile/workqueue metrics |
 | `--pg-metrics-bind-address` | `:9090` | Aggregated `pg_stat_statements`-derived metrics (leader only) |
 | `--webhook-bind-address` | `:8080` | Deploy-event webhooks, one route per `DeploySource` CR (leader only) |
+| `--alerting-allowed-destinations` | `` | Optional strict allowlist: comma-separated exact hostnames, IPs, or CIDRs. When set, every `PostgresWatch` alert destination must match one of them — see [Alerting](alerting.md) |
 | `--health-probe-bind-address` | `:8081` | `/healthz` and `/readyz` |
 | `--version` | `false` | Print version, commit, and build date, then exit |
 | `--dry-run` | `false` | Validate that a Kubernetes API server config can be resolved (in-cluster or via kubeconfig), then exit without starting the manager |
