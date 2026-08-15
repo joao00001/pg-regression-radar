@@ -1,0 +1,30 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-postgreswatch-consent-label
+spec:
+  validationFailureAction: Enforce
+  background: false
+  rules:
+    - name: restrict-consent-label-application
+      match:
+        any:
+          - resources:
+              kinds:
+                - Secret
+              operations:
+                - CREATE
+                - UPDATE
+      validate:
+        message: >-
+          Only approved identities may set
+          pg-regression-radar.io/allow-postgreswatch-access=true.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.metadata.labels.\"pg-regression-radar.io/allow-postgreswatch-access\" || '' }}"
+                operator: Equals
+                value: "true"
+              - key: "{{ request.userInfo.username }}"
+                operator: NotEquals
+                value: "system:serviceaccount:platform-security:secret-consent-labeler"
