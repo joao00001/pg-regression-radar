@@ -103,9 +103,32 @@ func RunCollector(args []string) int {
 		mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
+		srv := &http.Server{
+			Addr:              *listen,
+			Handler:           mux,
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       30 * time.Second,
+			WriteTimeout:      30 * time.Second,
+			IdleTimeout:       120 * time.Second,
+		}
 		logger.Info("collector: metrics server listening", "addr", *listen)
-		if err := http.ListenAndServe(*listen, mux); err != nil && err != http.ErrServerClosed {
-			logger.Error("metrics server error", "err", err)
+		errCh := make(chan error, 1)
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				errCh <- err
+			}
+		}()
+		select {
+		case <-ctx.Done():
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				logger.Error("metrics server shutdown error", "err", err)
+			}
+		case err := <-errCh:
+			if err != nil {
+				logger.Error("metrics server error", "err", err)
+			}
 		}
 	}()
 
