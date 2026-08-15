@@ -278,7 +278,7 @@ LIMIT 1
 // An error is returned only if BOTH sources fail; it wraps the
 // CaptureGenericPlan error (via %w, so errors.Is(err, ErrUnsupportedVersion)
 // still works) and includes the pg_store_plans failure as context.
-func CapturePlan(ctx context.Context, db *sql.DB, queryID int64, queryText string) (*PlanSnapshot, error) {
+func CapturePlan(ctx context.Context, db *sql.DB, queryID int64, queryText NormalizedQueryText) (*PlanSnapshot, error) {
 	snap, storeErr := CapturePlanFromStorePlans(ctx, db, queryID)
 	if storeErr == nil {
 		return snap, nil
