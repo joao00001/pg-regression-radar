@@ -5,7 +5,7 @@ metadata:
 spec:
   validationFailureAction: Enforce
   rules:
-    - name: restrict-consent-label-application
+    - name: restrict-consent-label-application-on-create
       match:
         any:
           - resources:
@@ -14,10 +14,35 @@ spec:
       preconditions:
         all:
           - key: "{{ request.operation }}"
-            operator: In
-            value:
-              - CREATE
-              - UPDATE
+            operator: Equals
+            value: CREATE
+      validate:
+        message: >-
+          Only approved identities may set
+          pg-regression-radar.io/allow-postgreswatch-access=true.
+        deny:
+          conditions:
+            all:
+              - key: "{{ request.object.metadata.labels.\"pg-regression-radar.io/allow-postgreswatch-access\" || '' }}"
+                operator: Equals
+                value: "true"
+              - key: "{{ request.userInfo.username }}"
+                operator: NotIn
+                # Replace these with identities approved to set the consent label.
+                value:
+                  - "system:serviceaccount:platform-security:secret-consent-labeler"
+                  - "system:serviceaccount:platform-security:secret-consent-labeler-breakglass"
+    - name: restrict-consent-label-application-on-update
+      match:
+        any:
+          - resources:
+              kinds:
+                - Secret
+      preconditions:
+        all:
+          - key: "{{ request.operation }}"
+            operator: Equals
+            value: UPDATE
       validate:
         message: >-
           Only approved identities may set
