@@ -10,6 +10,30 @@ permissions:
   contents: read
 
 jobs:
+  helm-render-test:
+    name: Helm render tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Helm
+        uses: azure/setup-helm@v5
+
+      - name: Install yq
+        # ubuntu-latest runners ship yq; pin to a known-good release to
+        # guard against unexpected version changes.
+        run: |
+          YQ_VERSION=4.44.6
+          sudo curl -fsSL "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_amd64" \
+            -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Run consent-label render test
+        run: bash deploy/helm/deploylens/tests/consent-label.sh
+
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
