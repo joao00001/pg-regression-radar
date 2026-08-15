@@ -32,6 +32,14 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.3.1 - 2026-08-15
+
+### Fixes
+
+- PostgresWatch now requires Secrets referenced by dsnSecretRef or remoteClusterSecretRef to carry an explicit consent label before the manager will read them, closing a confused-deputy path. Remote kubeconfigs using exec-based or auth-provider credential plugins, or setting proxy-url, are now rejected outright instead of being trusted. (#94)
+- Alert webhook URLs are now validated against SSRF-prone destinations, deploy-event HTTP servers enforce request-size and timeout limits, the standalone ingester can gate /events behind the same webhook secret, the Helm chart runs pods with hardened non-root security defaults, and the Kubernetes-native watcher no longer drops events when multiple DeploySources target the same workload. (#96)
+
+
 ## v1.3.0 - 2026-08-14
 
 ### Features
