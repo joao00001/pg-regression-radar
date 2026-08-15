@@ -21,8 +21,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -35,6 +33,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -88,7 +87,7 @@ func TestIntegration_FullPipeline_DetectsRegressionFromRealWebhookSources(t *tes
 		t.Fatalf("CREATE EXTENSION pg_stat_statements: %v", err)
 	}
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := testlogger.New(t)
 
 	const samplesPerPhase = 8
 

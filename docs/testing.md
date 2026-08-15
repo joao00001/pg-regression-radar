@@ -56,6 +56,20 @@ export KUBEBUILDER_ASSETS="$(setup-envtest use 1.31.0 -p path)"
 go test ./internal/controller/... -run TestEnvtest -v
 ```
 
+### Diagnosing a failure: `internal/testlogger`
+
+Every test in this section (plus the envtest suite and the rest of `internal/controller`'s reconciler-backed tests) builds its `*slog.Logger` via `testlogger.New(t)` instead of constructing one directly. It behaves exactly like a discarded logger while a test passes — nothing extra printed, no change to the fast path — but if the test fails, `t.Cleanup` dumps everything the code under test logged during that test through `t.Log`, right next to the failing assertion:
+
+```
+--- FAIL: TestEnvtest_PostgresWatch_RemoteClusterSecretRef_FetchesDSNFromRemoteAPIServer (4.07s)
+    remote_cluster_envtest_test.go:142: reconcile: dsn secret default/remote-dsn is missing the required consent label ...
+    testlogger.go:78: --- captured application logs (only shown because this test failed) ---
+    testlogger.go:79: time=... level=INFO msg="resolving dsn secret" secret=default/remote-dsn
+                      time=... level=ERROR msg="secret consent check failed" secret=default/remote-dsn
+```
+
+Before this, a failing integration/envtest test's only diagnostic output was whatever single line its own `t.Fatalf`/`t.Errorf` happened to include — the reconciler's, collector's, or ingester's own logging was silently thrown away unconditionally, on both success and failure. If you're writing a new integration or `internal/controller` test, use `testlogger.New(t)` rather than reaching for `slog.New(slog.NewTextHandler(io.Discard, nil))` directly.
+
 ### Why `internal/e2e` exists
 
 Every *other* test in this project stops short of proving the full detection pipeline works:

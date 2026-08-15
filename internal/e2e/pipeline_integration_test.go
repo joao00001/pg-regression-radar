@@ -49,7 +49,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -63,6 +62,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/alerting"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -134,7 +134,7 @@ func TestIntegration_FullPipeline_DetectsRealRegression(t *testing.T) {
 		t.Fatalf("pg_stat_statements_reset: %v", err)
 	}
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := testlogger.New(t)
 	reg := prometheus.NewRegistry()
 	col, err := collector.New(collector.Config{DSN: dsn, ClusterName: "e2e-test", Namespace: "default"}, logger, reg)
 	if err != nil {

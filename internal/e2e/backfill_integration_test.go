@@ -19,8 +19,6 @@ package e2e
 import (
 	"context"
 	"database/sql"
-	"io"
-	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -32,6 +30,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 	"github.com/joao00001/pg-regression-radar/internal/storage/postgres"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -109,7 +108,7 @@ func TestIntegration_Backfill_RestartRestoresStateAndCursor(t *testing.T) {
 	pgSamples := postgres.NewSampleStore(stateDB)
 	pgEvents := postgres.NewEventStore(stateDB)
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := testlogger.New(t)
 
 	// ==================== "Process 1" (pre-restart) ====================
 	reg1 := prometheus.NewRegistry()

@@ -19,8 +19,6 @@ package e2e
 import (
 	"context"
 	"database/sql"
-	"io"
-	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -31,6 +29,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/planner"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -129,7 +128,7 @@ func TestIntegration_FullPipeline_PlanDiffSummaryReflectsRealPlanChange(t *testi
 		t.Fatalf("analyze: %v", err)
 	}
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := testlogger.New(t)
 	reg := prometheus.NewRegistry()
 	col, err := collector.New(collector.Config{
 		DSN:          dsn,

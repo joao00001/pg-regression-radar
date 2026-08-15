@@ -16,8 +16,6 @@ package controller
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,6 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 )
 
 // TestEnvtest_PostgresWatchLifecycle exercises PostgresWatchReconciler
@@ -86,7 +85,7 @@ func TestEnvtest_PostgresWatchLifecycle(t *testing.T) {
 		Client:   k8sClient,
 		Scheme:   s,
 		Registry: NewRegistry(),
-		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:   testlogger.New(t),
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

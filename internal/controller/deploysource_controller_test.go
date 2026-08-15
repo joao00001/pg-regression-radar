@@ -17,8 +17,6 @@ package controller
 import (
 	"bytes"
 	"context"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,6 +29,7 @@ import (
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 )
 
 func newDeploySourceReconciler(t *testing.T, registry *Registry, mux *DynamicMux, objs ...client.Object) *DeploySourceReconciler {
@@ -46,7 +45,7 @@ func newDeploySourceReconciler(t *testing.T, registry *Registry, mux *DynamicMux
 		Client:   c,
 		Registry: registry,
 		Mux:      mux,
-		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger:   testlogger.New(t),
 	}
 }
 
