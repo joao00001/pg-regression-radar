@@ -45,6 +45,14 @@ var ValidSourceTypes = map[string]bool{
 	"generic":       true,
 }
 
+// maxWebhookBodyBytes bounds how much of an incoming webhook request body
+// ServeHTTP will read before giving up. None of the four payload shapes it
+// parses are anywhere close to this size in practice; the limit exists so a
+// hostile or malfunctioning sender (a huge body, or a chunked request that
+// never ends) can't force unbounded memory growth via json.Decode, which
+// otherwise reads its io.Reader to completion with no size cap of its own.
+const maxWebhookBodyBytes = 1 << 20 // 1 MiB
+
 // Store keeps an in-memory ordered list of deploy events.
 type Store struct {
 	mu     sync.RWMutex
@@ -214,6 +222,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	// Bound how much body a single request can make json.Decode read,
+	// regardless of source type — see maxWebhookBodyBytes.
+	r.Body = http.MaxBytesReader(w, r.Body, maxWebhookBodyBytes)
 
 	var ev v1alpha1.DeployEvent
 	var err error

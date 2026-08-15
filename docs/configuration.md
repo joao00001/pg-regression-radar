@@ -73,9 +73,7 @@ The `ingester` binary runs the deploy-event webhook receiver on its own, without
 | `--version` | `false` | Print version, commit, and build date, then exit |
 | `--dry-run` | `false` | Validate `--source-type` and that `--listen` is a resolvable address, then exit without starting the webhook server |
 
-Exposed routes once running: `POST /webhook` (receives deploy events; protected by `--webhook-secret` when set — see above), `GET /events` (lists **every** event ingested so far, as JSON, unfiltered and unpaginated), `GET /healthz`.
-
-**`/events` has no authentication of its own** — `--webhook-secret` only protects the `POST /webhook` write path. Anyone who can reach the ingester's listen address can read the full deploy-event history, which may include application names, namespaces, cluster identities, revisions, and timestamps. Don't expose this route beyond a trusted network; if you need external access to event history, put it behind your own authenticating proxy rather than relying on this binary.
+Exposed routes once running: `POST /webhook` (receives deploy events), `GET /events` (lists everything ingested so far, as JSON), `GET /healthz`. When `--webhook-secret` is set, `GET /events` requires the same `X-Webhook-Token` header as `POST /webhook` — see [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication). Leaving `--webhook-secret` unset leaves both routes unauthenticated, so don't expose this binary beyond a trusted network in that case.
 
 ## Manager flags (`cmd/manager`)
 

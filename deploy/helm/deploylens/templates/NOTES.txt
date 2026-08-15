@@ -1,0 +1,13 @@
+{{ include "deploylens.fullname" . }} deployed in {{ .Values.mode }} mode.
+
+{{- if not .Values.ingester.webhookSecret }}
+
+WARNING: ingester.webhookSecret is empty. The deploy-event webhook endpoint
+(POST /webhook) -- and, only in mode: operator, the standalone ingester's
+GET /events, which lists the full deploy-event history -- accept
+unauthenticated requests. This is fine as long as this Service stays
+cluster-internal (the default service.type is ClusterIP). Set
+ingester.webhookSecret via --set or your own values.yaml override before
+exposing it through an Ingress, LoadBalancer, or NodePort. See
+docs/webhooks.md#webhook-authentication.
+{{- end }}
