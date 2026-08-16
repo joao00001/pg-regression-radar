@@ -35,7 +35,7 @@ Supported:
 - Teams may create `PostgresWatch`/`DeploySource` only in their own namespace.
 - Only approved identities may apply the Secret consent label (`pg-regression-radar.io/allow-postgreswatch-access=true`).
 - Remote-cluster references are allowed only for platform-approved kubeconfig Secrets.
-- Alert destinations should be restricted with `--alerting-allowed-destinations` and egress policy.
+- Alert destinations are restricted with `--alerting-allowed-destinations` and the `allowlist` destination policy. Set `--alerting-destination-policy=allowlist` alongside a non-empty `--alerting-allowed-destinations` so every reconciled watch fails fast if its URL is not pre-approved — see [Alerting: destination policies](alerting.md#destination-policies).
 
 Practical example:
 
@@ -57,6 +57,7 @@ Not supported (by contract):
 Practical example:
 
 - A regulated environment routes all alerts through an internal relay service; teams cannot point `alerting.url` to internet endpoints and cannot attach remote kubeconfigs to watches.
+- Configure the manager with `--alerting-destination-policy=relay-only --alerting-destination-policy-relay-url=https://relay.example.com/webhook`. Any `destinationPolicy` or `url` set in a `PostgresWatch` spec is ignored; all alert traffic flows through the single relay. The manager fails at startup if the relay URL is empty, catching misconfigurations before any watches are reconciled — see [Alerting: destination policies](alerting.md#destination-policies).
 
 ## Trust model
 

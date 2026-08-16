@@ -125,3 +125,66 @@ Example — a minimal generic JSON body:
 The rendered body is sent with `Content-Type: application/json` by default; a non-JSON template (plain text, form-encoded, etc.) can pass a different content type — the CRD/CLI surface doesn't expose this today (it defaults to `application/json`), since every destination worth templating for accepts JSON.
 
 A broken template (bad `text/template` syntax) is rejected at construction time — `--dry-run`, or the first reconcile of a `PostgresWatch` with a bad `customTemplate` — rather than only failing the first time a regression is actually detected.
+
+## Destination policies
+
+By default any webhook URL that passes the static SSRF blocklist (no loopback, no link-local, no cloud-metadata hostnames) is accepted. Two additional, opt-in policies let operators lock down where alerts can be sent — useful in shared or multi-tenant clusters.
+
+### `permissive` (default)
+
+The URL configured in `spec.alerting.url` (or via `--alert-url` / `--slack-url` in the standalone operator) must only clear the built-in SSRF blocklist. No other restriction applies. This is the default and is fully backward-compatible.
+
+```yaml
+# No explicit destinationPolicy — permissive is implied.
+spec:
+  alerting:
+    format: slack
+    url: https://hooks.slack.com/services/T000/B000/XXX
+```
+
+### `allowlist`
+
+The webhook URL's host must also appear in the manager-level `--alerting-allowed-destinations` list (comma-separated hostnames, IPs, or CIDRs). Reconciliation of a `PostgresWatch` whose URL's host is not in the list fails immediately with a clear error message.
+
+Use this when only a pre-approved set of alert receivers should be reachable from any watch in the cluster.
+
+Manager flag:
+
+```
+--alerting-destination-policy=allowlist
+--alerting-allowed-destinations=hooks.slack.com,alertmanager.monitoring.svc.cluster.local
+```
+
+Or per-watch, when running the standalone operator:
+
+```
+--alerting-destination-policy=allowlist
+--alerting-allowed-destinations=hooks.slack.com
+--alert-url=https://hooks.slack.com/services/T000/B000/XXX
+```
+
+CRD — the `destinationPolicy` field is honoured when no manager-level policy is configured:
+
+```yaml
+spec:
+  alerting:
+    format: slack
+    url: https://hooks.slack.com/services/T000/B000/XXX
+    destinationPolicy: allowlist
+```
+
+### `relay-only`
+
+The CRD-level URL (`spec.alerting.url`) is ignored entirely. All alerts from every watch are forwarded to a single, centrally configured relay endpoint supplied via `--alerting-destination-policy-relay-url`. Reconciliation fails if that flag is empty.
+
+Use this when you want a single egress point that individual watch owners cannot override.
+
+Manager flags:
+
+```
+--alerting-destination-policy=relay-only
+--alerting-destination-policy-relay-url=https://relay.example.com/webhook
+```
+
+Startup validation ensures the relay URL is set before the manager starts.
+

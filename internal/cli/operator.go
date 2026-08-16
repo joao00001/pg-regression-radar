@@ -83,6 +83,8 @@ func runOperator(args []string, logOutput io.Writer) int {
 	alertFormat := fs.String("alert-format", "slack", "Notification payload format: slack, teams, pagerduty, or custom — see docs/alerting.md")
 	alertURL := fs.String("alert-url", "", "Webhook URL for --alert-format=slack/teams/custom; ignored for pagerduty. Falls back to --slack-url when unset")
 	alertAllowedDestinations := fs.String("alerting-allowed-destinations", "", "Optional strict allowlist for alert destinations: comma-separated exact hostnames, IPs, or CIDRs. When set, --alert-url/--slack-url must target one of these destinations")
+	alertingDestinationPolicy := fs.String("alerting-destination-policy", "permissive", "Destination validation policy for outbound alerts: permissive (default, SSRF blocklist only), allowlist (URL host must appear in --alerting-allowed-destinations), or relay-only (ignore --alert-url, always send to --alerting-destination-policy-relay-url).")
+	alertingDestinationPolicyRelayUrl := fs.String("alerting-destination-policy-relay-url", "", "Fixed relay endpoint used when --alerting-destination-policy=relay-only. Must be a valid http/https URL. Required when the policy is relay-only.")
 	pagerdutyRoutingKey := fs.String("pagerduty-routing-key", "", "PagerDuty Events API v2 routing key; required when --alert-format=pagerduty")
 	alertTemplate := fs.String("alert-template", "", "Go text/template source (inline) for --alert-format=custom — see docs/alerting.md#custom-format. Alternative to --alert-template-file; takes precedence when both are set")
 	alertTemplateFile := fs.String("alert-template-file", "", "Path to a Go text/template file for --alert-format=custom, when passing the source inline via --alert-template isn't convenient")
@@ -177,9 +179,15 @@ func runOperator(args []string, logOutput io.Writer) int {
 		PagerDutyRoutingKey: *pagerdutyRoutingKey,
 		CustomTemplate:      customAlertTemplate,
 		ClusterName:         *clusterName,
+		DestinationPolicy:   alerting.DestinationPolicy(*alertingDestinationPolicy),
+		RelayUrl:            *alertingDestinationPolicyRelayUrl,
 	}
 	if err := alerting.ValidateAllowedDestinations(alertCfg.AllowedDestinations); err != nil {
 		logger.Error("invalid --alerting-allowed-destinations", "err", err)
+		return 1
+	}
+	if err := alerting.ValidateDestinationPolicy(alertCfg.DestinationPolicy, alertCfg.RelayUrl); err != nil {
+		logger.Error("invalid alerting destination policy configuration", "err", err)
 		return 1
 	}
 

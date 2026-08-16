@@ -126,6 +126,16 @@ type PostgresWatchReconciler struct {
 	// host/CIDR gate.
 	AllowedAlertDestinations []string
 
+	// AlertingDestinationPolicy is the manager-wide destination validation
+	// strategy, populated from --alerting-destination-policy. Defaults to
+	// "permissive" when empty.
+	AlertingDestinationPolicy alerting.DestinationPolicy
+
+	// AlertingDestinationPolicyRelayUrl is the fixed relay endpoint used
+	// when AlertingDestinationPolicy is "relay-only", populated from
+	// --alerting-destination-policy-relay-url.
+	AlertingDestinationPolicyRelayUrl string
+
 	// remoteClients caches controller-runtime clients built from
 	// remoteClusterSecretRef kubeconfigs, keyed by kubeconfig content (see
 	// remote_client.go). It is initialised lazily via remoteClientsOnce so
@@ -420,12 +430,21 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	alertCfg := alerting.BuildConfig{
 		ClusterName:         watch.Spec.ClusterName,
 		AllowedDestinations: r.AllowedAlertDestinations,
+		DestinationPolicy:   r.AlertingDestinationPolicy,
+		RelayUrl:            r.AlertingDestinationPolicyRelayUrl,
 	}
 	if watch.Spec.Alerting != nil {
 		alertCfg.Format = watch.Spec.Alerting.Format
 		alertCfg.URL = watch.Spec.Alerting.URL
 		alertCfg.PagerDutyRoutingKey = watch.Spec.Alerting.PagerDutyRoutingKey
 		alertCfg.CustomTemplate = watch.Spec.Alerting.CustomTemplate
+		// spec-level destinationPolicy is honoured only when the manager has
+		// not set its own global policy; this preserves the manager-as-enforcer
+		// model while still making the CRD field meaningful for single-cluster
+		// operator deployments.
+		if alertCfg.DestinationPolicy == "" && watch.Spec.Alerting.DestinationPolicy != "" {
+			alertCfg.DestinationPolicy = alerting.DestinationPolicy(watch.Spec.Alerting.DestinationPolicy)
+		}
 	} else {
 		//nolint:staticcheck // SA1019: this is the deliberate legacy fallback
 		// read for backward compatibility -- the one intentional reference to

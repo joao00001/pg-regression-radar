@@ -228,6 +228,32 @@ type AlertingConfig struct {
 	// available template fields and a worked example.
 	// +optional
 	CustomTemplate string `json:"customTemplate,omitempty"`
+
+	// destinationPolicy controls how the alerting destination URL is
+	// validated and resolved. Three modes are supported:
+	//
+	// "permissive" (default): the URL is accepted as long as it passes the
+	// static SSRF blocklist (no loopback, no link-local, no cloud-metadata
+	// hostnames). This matches the pre-existing behaviour and is
+	// backward-compatible with all existing installations.
+	//
+	// "allowlist": the URL's host must also appear in the
+	// --alerting-allowed-destinations list configured at the operator or
+	// manager level. Reconciliation fails with a clear message if the host
+	// is not in the list. Use this in multi-tenant clusters where only a
+	// pre-approved set of receivers should be reachable.
+	//
+	// "relay-only": the CRD-level URL is ignored entirely; the notifier
+	// always sends to the relay URL supplied via
+	// --alerting-destination-policy-relay-url. Reconciliation fails if
+	// that flag is empty. Use this when you want a single, centrally
+	// controlled egress point that individual watch owners cannot override.
+	//
+	// Leave unset to get "permissive" behaviour — no breaking change for
+	// existing installations.
+	// +kubebuilder:validation:Enum=permissive;allowlist;relay-only
+	// +optional
+	DestinationPolicy string `json:"destinationPolicy,omitempty"`
 }
 
 // PeriodicDetectionConfig controls deploy-independent regression detection:
