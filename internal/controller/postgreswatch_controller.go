@@ -63,14 +63,15 @@ const pollInterval = 5 * time.Second
 // +kubebuilder:rbac:groups=radar.pgregressionradar.io,resources=postgreswatches/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=radar.pgregressionradar.io,resources=performanceregressions,verbs=get;list;watch;create;update;patch
 // +kubebuilder:rbac:groups=radar.pgregressionradar.io,resources=performanceregressions/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=radar.pgregressionradar.io,resources=postgresradarclusters,verbs=get;list;watch
 //
 // This Secret RBAC covers both spec.dsnSecretRef (read directly, hub
-// cluster) and spec.remoteClusterSecretRef (the kubeconfig Secret used to
-// reach a remote cluster's DSN Secret instead — see dsnSecretClient below
-// and docs/multi-cluster.md). It does NOT grant any access to remote
-// clusters themselves: that access comes entirely from whatever RBAC is
-// embedded in the kubeconfig a remoteClusterSecretRef Secret points at,
-// which is operator-managed and out of this manager's control by design.
+// cluster) and the kubeconfig Secrets used to reach remote clusters — both
+// via the registry (spec.remoteClusterRef -> PostgresRadarCluster) and via
+// the deprecated direct-Secret path (spec.remoteClusterSecretRef). It does
+// NOT grant any access to remote clusters themselves: that access comes
+// entirely from whatever RBAC is embedded in the kubeconfig those Secrets
+// hold, which is operator-managed and out of this manager's control by design.
 //
 // This grant is cluster-wide and namespace-unscoped by necessity (the
 // remote path can't know which namespace it needs to reach until a
@@ -135,6 +136,14 @@ type PostgresWatchReconciler struct {
 	// when AlertingDestinationPolicy is "relay-only", populated from
 	// --alerting-destination-policy-relay-url.
 	AlertingDestinationPolicyRelayURL string
+
+	// SecurityProfile controls how strictly the manager enforces the cluster
+	// registry when a PostgresWatch references a remote cluster. When empty
+	// (the zero value), SecurityProfileControlled is assumed: both the new
+	// remoteClusterRef path and the deprecated remoteClusterSecretRef path
+	// are accepted, with a deprecation warning logged for the old path. Set
+	// to SecurityProfileHardened to reject remoteClusterSecretRef outright.
+	SecurityProfile radarv1alpha1.SecurityProfile
 
 	// remoteClients caches controller-runtime clients built from
 	// remoteClusterSecretRef kubeconfigs, keyed by kubeconfig content (see
@@ -314,10 +323,11 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 // the watch's own namespace otherwise (the pre-existing "same name on both
 // sides" convention, still the default because it matches how
 // CloudNativePG's own generated credential Secrets are named). A
-// remoteNamespace set without remoteClusterSecretRef has no effect — it
-// only means anything once there's a remote cluster to look in.
+// remoteNamespace set without any remote cluster reference has no effect —
+// it only means anything once there's a remote cluster to look in.
 func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch) string {
-	if watch.Spec.RemoteClusterSecretRef != nil && watch.Spec.RemoteNamespace != "" {
+	hasRemote := watch.Spec.RemoteClusterRef != "" || watch.Spec.RemoteClusterSecretRef != nil
+	if hasRemote && watch.Spec.RemoteNamespace != "" {
 		return watch.Spec.RemoteNamespace
 	}
 	return watch.Namespace
@@ -325,26 +335,95 @@ func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch) string {
 
 // dsnSecretClient returns the client.Client to use when reading
 // watch.Spec.DSNSecretRef: the reconciler's own (hub) client by default, or
-// a client built from a remote cluster's kubeconfig when
-// watch.Spec.RemoteClusterSecretRef is set — in which case the raw
-// kubeconfig bytes are also returned (nil in the hub-client case) so
-// resolveDSN can evict this exact cache entry if the client goes on to fail
-// a real request.
+// a client built from a remote cluster's kubeconfig when either
+// watch.Spec.RemoteClusterRef (preferred, registry-backed) or
+// watch.Spec.RemoteClusterSecretRef (deprecated, direct Secret reference) is
+// set. The raw kubeconfig bytes are returned alongside the remote client (nil
+// in the hub-client case) so resolveDSN can evict this exact cache entry if
+// the client goes on to fail a real request.
+//
+// Resolution order:
+//  1. remoteClusterRef — look up the named PostgresRadarCluster and read its
+//     kubeconfig Secret from the hub cluster. Always allowed.
+//  2. remoteClusterSecretRef — read the kubeconfig Secret named directly by
+//     the watch. Allowed in SecurityProfileControlled (the default, with a
+//     deprecation warning); rejected in SecurityProfileHardened.
+//  3. Neither — use the hub client directly.
 //
 // The kubeconfig Secret itself is always read via the hub client — it must
-// live in the hub cluster, in the watch's namespace, precisely so the
-// manager's existing "get;list;watch Secrets" RBAC (see the kubebuilder
-// marker above Reconcile) is sufficient to reach it. The DSN Secret it then
-// unlocks access to is looked up by dsnSecretNamespace — the *same*
-// namespace name on the remote cluster by default (mirroring the
-// convention CloudNativePG itself uses for generated-credential Secrets),
-// or spec.remoteNamespace when the fleet's hub/spoke naming doesn't line up
-// 1:1 (see docs/multi-cluster.md).
+// live in the hub cluster precisely so the manager's existing
+// "get;list;watch Secrets" RBAC (see the kubebuilder marker above Reconcile)
+// is sufficient to reach it.
 func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, []byte, error) {
-	if watch.Spec.RemoteClusterSecretRef == nil {
-		return r.Client, nil, nil
+	log := logf.FromContext(ctx)
+
+	// Path 1: registry-backed cluster reference (new, preferred).
+	if watch.Spec.RemoteClusterRef != "" {
+		return r.dsnSecretClientFromRegistry(ctx, watch)
 	}
 
+	// Path 2: direct kubeconfig Secret reference (deprecated).
+	if watch.Spec.RemoteClusterSecretRef != nil {
+		profile := r.SecurityProfile
+		if profile == "" {
+			profile = radarv1alpha1.SecurityProfileControlled
+		}
+		if profile == radarv1alpha1.SecurityProfileHardened {
+			return nil, nil, fmt.Errorf(
+				"remoteClusterSecretRef is not allowed in hardened security-profile mode — "+
+					"register the cluster as a PostgresRadarCluster and use remoteClusterRef instead; "+
+					"see docs/multi-cluster.md#migration",
+			)
+		}
+		// Controlled mode: allow with a deprecation warning.
+		log.Info("remoteClusterSecretRef is deprecated; "+
+			"register the cluster as a PostgresRadarCluster and use remoteClusterRef instead",
+			"watch", watch.Name,
+			"namespace", watch.Namespace,
+			"see", "docs/multi-cluster.md#migration",
+		)
+		return r.dsnSecretClientFromSecret(ctx, watch)
+	}
+
+	// Path 3: hub cluster only.
+	return r.Client, nil, nil
+}
+
+// dsnSecretClientFromRegistry looks up the PostgresRadarCluster named by
+// watch.Spec.RemoteClusterRef, reads the kubeconfig Secret it points at, and
+// returns a remote client built from that kubeconfig.
+func (r *PostgresWatchReconciler) dsnSecretClientFromRegistry(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, []byte, error) {
+	var cluster radarv1alpha1.PostgresRadarCluster
+	clusterKey := types.NamespacedName{Name: watch.Spec.RemoteClusterRef}
+	if err := r.Get(ctx, clusterKey, &cluster); err != nil {
+		return nil, nil, fmt.Errorf("fetch registered cluster %q (PostgresRadarCluster): %w", watch.Spec.RemoteClusterRef, err)
+	}
+
+	sel := cluster.Spec.KubeconfigSecretRef
+	secretKey := types.NamespacedName{Namespace: sel.Namespace, Name: sel.Name}
+	var kubeconfigSecret corev1.Secret
+	if err := r.Get(ctx, secretKey, &kubeconfigSecret); err != nil {
+		return nil, nil, fmt.Errorf("fetch kubeconfig secret %s for cluster %q: %w", secretKey, watch.Spec.RemoteClusterRef, err)
+	}
+	if err := checkSecretConsent(&kubeconfigSecret, "registered cluster kubeconfig secret"); err != nil {
+		return nil, nil, err
+	}
+	kubeconfig, ok := kubeconfigSecret.Data[sel.Key]
+	if !ok {
+		return nil, nil, fmt.Errorf("kubeconfig secret %s for cluster %q has no key %q", secretKey, watch.Spec.RemoteClusterRef, sel.Key)
+	}
+
+	remoteClient, err := r.getRemoteClients().get(kubeconfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("build client for registered cluster %q from secret %s: %w", watch.Spec.RemoteClusterRef, secretKey, err)
+	}
+	return remoteClient, kubeconfig, nil
+}
+
+// dsnSecretClientFromSecret handles the deprecated remoteClusterSecretRef
+// path: the kubeconfig Secret is named directly by the watch, in the watch's
+// own namespace.
+func (r *PostgresWatchReconciler) dsnSecretClientFromSecret(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, []byte, error) {
 	var kubeconfigSecret corev1.Secret
 	key := types.NamespacedName{Namespace: watch.Namespace, Name: watch.Spec.RemoteClusterSecretRef.Name}
 	if err := r.Get(ctx, key, &kubeconfigSecret); err != nil {
@@ -776,6 +855,7 @@ func hashPostgresWatchSpec(spec radarv1alpha1.PostgresWatchSpec, resolvedDSN str
 	spec.DSN = resolvedDSN
 	spec.DSNSecretRef = nil
 	spec.RemoteClusterSecretRef = nil
+	spec.RemoteClusterRef = ""
 	b, _ := json.Marshal(spec)
 	sum := sha256.Sum256(b)
 	return hex.EncodeToString(sum[:])

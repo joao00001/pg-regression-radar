@@ -1,17 +1,52 @@
 # Multi-Cluster (Fleet) Mode
 
-*How one `cmd/manager` in a hub cluster watches Postgres/CloudNativePG clusters living in other ("spoke") Kubernetes clusters, and what's still missing to call it complete.*
+*How one `cmd/manager` in a hub cluster watches Postgres/CloudNativePG clusters living in other ("spoke") Kubernetes clusters.*
 
 ## Overview
 
-`cmd/manager` has always been able to reconcile any number of `PostgresWatch` CRs at once, each with its own `Collector`/`Engine`/`Notifier`/`ingester.Store` (see [Architecture Overview](architecture.md) and `internal/controller/registry.go`) — that part of "multi-cluster support" predates this page. What it could not do until now is reach a Postgres cluster whose CloudNativePG-generated DSN Secret lives in a *different* Kubernetes cluster than the one the manager itself runs in. This page covers `spec.remoteClusterSecretRef`, the field that closes that gap, the hub-spoke model it implements, and the security/RBAC split that comes with it.
+`cmd/manager` can reconcile any number of `PostgresWatch` CRs at once, each with its own `Collector`/`Engine`/`Notifier`/`ingester.Store` (see [Architecture Overview](architecture.md) and `internal/controller/registry.go`). When a Postgres cluster's DSN Secret lives in a *different* Kubernetes cluster than the manager, the fleet mode described on this page applies.
 
-## The hub-spoke model
+Two approaches are supported:
 
-- **Hub cluster**: where `cmd/manager` (the Deployment, its ServiceAccount, and its RBAC) actually runs. This is the only cluster the manager's own Kubernetes client (`r.Client` in `internal/controller/postgreswatch_controller.go`) can talk to.
-- **Spoke cluster(s)**: any number of other Kubernetes clusters, each typically running its own CloudNativePG installation and Postgres cluster(s). The manager never runs anything in a spoke cluster; it only reads one Secret from it.
+| Approach | Field | When to use |
+|---|---|---|
+| **Cluster registry** (recommended) | `spec.remoteClusterRef` | An administrator pre-registers the cluster; watch creators pick from the approved list. |
+| **Direct Secret reference** (deprecated) | `spec.remoteClusterSecretRef` | Backward compatibility — still works in `controlled` security-profile mode, rejected in `hardened` mode. |
 
-A `PostgresWatch` created in the hub cluster opts into fleet mode by setting two things:
+## Cluster registry
+
+### Registering a cluster
+
+An administrator creates a `PostgresRadarCluster` resource (cluster-scoped) for each remote cluster. Only users with create/update/delete access to `PostgresRadarCluster` can add or change cluster registrations — watch creators have no say in which clusters are reachable.
+
+```yaml
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: PostgresRadarCluster
+metadata:
+  name: prod-eu-west
+spec:
+  kubeconfigSecretRef:
+    namespace: pg-radar-system   # namespace of the kubeconfig Secret in the HUB cluster
+    name: prod-eu-west-kubeconfig
+    key: kubeconfig
+  namespace: postgres            # optional: default namespace on the remote cluster for DSN Secrets
+```
+
+The kubeconfig Secret must carry the [consent label](#secret-consent-label) and must contain only static credentials (bearer token or client certificate). See [Kubeconfig restrictions](#kubeconfig-restrictions) for what is rejected and why.
+
+```bash
+kubectl create secret generic prod-eu-west-kubeconfig \
+  --from-file=kubeconfig=./spoke-scoped.kubeconfig \
+  -n pg-radar-system
+
+kubectl label secret prod-eu-west-kubeconfig \
+  pg-regression-radar.io/allow-postgreswatch-access=true \
+  -n pg-radar-system
+```
+
+### Referencing a registered cluster
+
+A `PostgresWatch` references a registered cluster by name via `spec.remoteClusterRef`:
 
 ```yaml
 apiVersion: radar.pgregressionradar.io/v1alpha1
@@ -21,27 +56,53 @@ metadata:
   namespace: default
 spec:
   clusterName: prod-eu-west
+  remoteClusterRef: prod-eu-west     # must match a PostgresRadarCluster name
   dsnSecretRef:
-    name: prod-eu-west-app-superuser  # a Secret name, looked up in the SPOKE cluster
-    key: uri                          # CloudNativePG's generated key for the connection URI
-  remoteClusterSecretRef:
-    name: prod-eu-west-kubeconfig     # a Secret in the HUB cluster, in this same namespace
-    key: kubeconfig
+    name: prod-eu-west-app-superuser # Secret name on the SPOKE cluster
+    key: uri
 ```
 
-This is the same shape Cluster API, Argo CD's cluster Secrets, and Open Cluster Management all converge on for "let a central controller reach a remote cluster's resources": a kubeconfig, stored as a Secret in the controller's own cluster, is the sole credential needed to act as if the controller were running inside the remote cluster.
+If the named `PostgresRadarCluster` does not exist, reconciliation fails with `status.phase: Failed` and a clear error message, exactly like any other DSN resolution failure.
+
+### Security profiles {#security-profiles}
+
+The manager and operator support a `--security-profile` flag that controls whether the deprecated `remoteClusterSecretRef` path is still accepted:
+
+- **`controlled`** (default): both `remoteClusterRef` and `remoteClusterSecretRef` work. A deprecation warning is logged whenever the old field is used. This is the backward-compatible default for existing installations.
+- **`hardened`**: `remoteClusterSecretRef` is rejected outright with a clear error. Only the cluster registry path (`remoteClusterRef`) is allowed.
+
+Use `hardened` in new installations and in clusters where you want to enforce that only pre-registered clusters are reachable.
+
+### RBAC for cluster administrators
+
+Only bind `create`/`update`/`delete` on `postgresradarclusters` to administrators — watch creators need no write access to this resource. The Helm chart creates a `ClusterRole` for this purpose:
+
+```bash
+kubectl create clusterrolebinding pg-radar-cluster-admins \
+  --clusterrole=<release>-cluster-registry-admin \
+  --group=cluster-admins
+```
+
+The manager's own `ServiceAccount` only needs `get;list;watch` on `postgresradarclusters` (already included in the generated `ClusterRole`).
+
+---
+
+## The hub-spoke model
+
+- **Hub cluster**: where `cmd/manager` (the Deployment, its ServiceAccount, and its RBAC) actually runs. This is the only cluster the manager's own Kubernetes client (`r.Client` in `internal/controller/postgreswatch_controller.go`) can talk to.
+- **Spoke cluster(s)**: any number of other Kubernetes clusters, each typically running its own CloudNativePG installation and Postgres cluster(s). The manager never runs anything in a spoke cluster; it only reads one Secret from it.
 
 ## What actually happens on reconcile
 
 `PostgresWatchReconciler.resolveDSN` → `dsnSecretClient` (`internal/controller/postgreswatch_controller.go`) decide, on every reconcile, which Kubernetes API server to read `spec.dsnSecretRef` from:
 
-1. **`remoteClusterSecretRef` unset (default):** read the DSN Secret with the manager's own client, exactly as before this feature existed. Zero behavior change, zero new RBAC needed.
-2. **`remoteClusterSecretRef` set:**
-   a. Read the kubeconfig Secret it names — **in the hub cluster**, in the `PostgresWatch`'s own namespace — using the manager's own client (the same "get;list;watch Secrets" RBAC it already needs for `dsnSecretRef` covers this; see below).
-   b. Build (or reuse a cached) `client.Client` from that kubeconfig — after rejecting it outright if it doesn't meet the restrictions below — via `clientcmd.Load` + `validateKubeconfigAuth` + `client.New` (`internal/controller/remote_client.go`).
-   c. Read `spec.dsnSecretRef` **through that remote client**, against the Secret of the same name, in the namespace `spec.remoteNamespace` names — or, when `remoteNamespace` is unset, **a namespace of the same name** as the `PostgresWatch`'s own namespace, mirroring the convention CloudNativePG itself uses for its generated credential Secrets. Set `remoteNamespace` when your fleet's hub/spoke namespace naming doesn't line up 1:1.
+1. **`remoteClusterRef` set (recommended):** look up the named `PostgresRadarCluster`, read its kubeconfig Secret (from the hub cluster, in whatever namespace the `PostgresRadarCluster.spec.kubeconfigSecretRef.namespace` specifies), build (or reuse a cached) `client.Client`, and read `spec.dsnSecretRef` through that remote client. The `PostgresRadarCluster` must exist; if it doesn't, `Reconcile` marks the watch `Failed` immediately.
+2. **`remoteClusterSecretRef` set (deprecated):** read the kubeconfig Secret it names — **in the hub cluster**, in the `PostgresWatch`'s own namespace — then follow the same build/cache/read path as above. Accepted in `controlled` profile (default), rejected in `hardened` profile.
+3. **Neither set (default):** read the DSN Secret with the manager's own (hub) client, exactly as before fleet mode existed. Zero behavior change, zero new RBAC needed.
 
-Any failure in that chain — the kubeconfig Secret doesn't exist, its key is missing, the kubeconfig is malformed, or the remote API server is unreachable/rejects the request — is treated exactly like any other DSN resolution failure: `Reconcile` calls `markFailed`, which sets `status.phase = Failed`, `status.message` to the underlying error, and returns the error so controller-runtime's rate limiter retries with backoff. There is no special-cased fleet error path; a broken remote cluster looks, to an operator running `kubectl get postgreswatch`, exactly like a broken DSN.
+In all cases, `spec.remoteNamespace` (if set alongside a remote cluster path) overrides which namespace on the remote cluster is used to look up the DSN Secret — see the `remoteNamespace` field in the [Configuration Reference](configuration.md).
+
+Any failure in that chain — the `PostgresRadarCluster` doesn't exist, its kubeconfig Secret is missing, the kubeconfig is malformed, or the remote API server is unreachable — is treated exactly like any other DSN resolution failure: `Reconcile` calls `markFailed`, setting `status.phase: Failed`, `status.message` to the error, and returning it so controller-runtime's rate limiter retries with backoff.
 
 ## Generating and storing the kubeconfig Secret
 
@@ -135,8 +196,61 @@ This feature closes the "Postgres lives in a different Kubernetes cluster" gap, 
 - **The CloudNativePG `Cluster` resource itself is not read remotely.** Only the generated DSN Secret is fetched from the spoke cluster; nothing here reads spoke-side `Cluster`/`Pooler`/etc. custom resources to, say, auto-discover DSN Secret names or validate the target actually exists. `clusterName` remains a free-text label, not a live cross-cluster reference.
 - **Not validated against a real second Kubernetes cluster.** Testing here uses `sigs.k8s.io/controller-runtime/pkg/client/fake` for the hub-side Secret reads, and a syntactically valid kubeconfig pointing at an address nothing listens on to exercise the "unreachable remote cluster" failure path (see `internal/controller/postgreswatch_controller_test.go` and `remote_client_test.go`) — the same sandboxed-CI constraint noted elsewhere in [the roadmap](roadmap.md#known-robustness-gaps) for real-`kind`-cluster validation applies doubly here, since it would need *two* real clusters.
 
+## Migration from `remoteClusterSecretRef` to `remoteClusterRef` {#migration}
+
+The `remoteClusterSecretRef` field on `PostgresWatch` is deprecated. It continues to work in `controlled` security-profile mode (the default), but will be rejected in `hardened` mode. Migrating is a two-step process:
+
+**Step 1 — Register the cluster as a `PostgresRadarCluster`.**
+
+Move the kubeconfig Secret to the administrator-managed namespace (e.g. `pg-radar-system`) if it isn't there already, and create the `PostgresRadarCluster`:
+
+```bash
+# Move the kubeconfig Secret if needed (or create a new one in the admin namespace)
+kubectl create secret generic prod-eu-west-kubeconfig \
+  --from-file=kubeconfig=./spoke-scoped.kubeconfig \
+  -n pg-radar-system
+
+kubectl label secret prod-eu-west-kubeconfig \
+  pg-regression-radar.io/allow-postgreswatch-access=true \
+  -n pg-radar-system
+
+# Create the PostgresRadarCluster
+kubectl apply -f - <<EOF
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: PostgresRadarCluster
+metadata:
+  name: prod-eu-west
+spec:
+  kubeconfigSecretRef:
+    namespace: pg-radar-system
+    name: prod-eu-west-kubeconfig
+    key: kubeconfig
+EOF
+```
+
+**Step 2 — Update each `PostgresWatch` to use `remoteClusterRef`.**
+
+```bash
+kubectl patch postgreswatch prod-eu-west \
+  --type=merge \
+  -p '{"spec":{"remoteClusterRef":"prod-eu-west","remoteClusterSecretRef":null}}'
+```
+
+Or apply a new manifest replacing `remoteClusterSecretRef` with `remoteClusterRef`:
+
+```yaml
+spec:
+  remoteClusterRef: prod-eu-west    # replaces remoteClusterSecretRef
+  dsnSecretRef:
+    name: prod-eu-west-app-superuser
+    key: uri
+```
+
+After migration, the old kubeconfig Secret in the watch's namespace can be removed (once no other watch references it).
+
 ## See also
 
 - [Architecture Overview](architecture.md) — how `cmd/manager` reconciles many `PostgresWatch` CRs today, hub-spoke or not.
-- [Configuration Reference](configuration.md) — the full `PostgresWatch` spec field table, including `remoteClusterSecretRef`.
+- [Configuration Reference](configuration.md) — the full `PostgresWatch` spec field table, including `remoteClusterRef` and the deprecated `remoteClusterSecretRef`.
 - [Roadmap](roadmap.md) — where fleet/multi-cluster support sits against the rest of the version roadmap.
+

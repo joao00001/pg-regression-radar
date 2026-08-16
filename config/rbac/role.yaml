@@ -45,6 +45,7 @@ rules:
   resources:
   - deploysources
   - postgreswatches
+  - postgresradarclusters
   verbs:
   - get
   - list

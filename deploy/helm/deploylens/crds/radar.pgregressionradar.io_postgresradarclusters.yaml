@@ -1,0 +1,130 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
+  name: postgresradarclusters.radar.pgregressionradar.io
+spec:
+  group: radar.pgregressionradar.io
+  names:
+    kind: PostgresRadarCluster
+    listKind: PostgresRadarClusterList
+    plural: postgresradarclusters
+    shortNames:
+    - pgrc
+    singular: postgresradarcluster
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.ready
+      name: Ready
+      type: boolean
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          PostgresRadarCluster represents a remote ("spoke") Kubernetes cluster
+          registered by a cluster administrator. PostgresWatch resources reference
+          these by name via spec.remoteClusterRef instead of pointing directly at
+          arbitrary kubeconfig Secrets — administrators control which clusters are
+          reachable, and watch creators can only choose from the pre-registered set.
+
+          This is a cluster-scoped resource; only administrators should be allowed
+          to create or modify it (see config/rbac).
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              PostgresRadarClusterSpec describes a remote ("spoke") Kubernetes cluster
+              whose kubeconfig is managed by a cluster administrator. Only
+              administrators should be granted create/update/delete access to this
+              resource — see config/rbac for the expected ClusterRole bindings.
+            properties:
+              kubeconfigSecretRef:
+                description: |-
+                  kubeconfigSecretRef points at a Secret, in the hub cluster, whose
+                  named key holds the kubeconfig (raw YAML or JSON, identical to the
+                  output of `kubectl config view --raw`) for this remote cluster.
+
+                  The Secret must carry the consent label
+                  pg-regression-radar.io/allow-postgreswatch-access=true so that the
+                  manager can read it; the manager refuses to load kubeconfigs from
+                  unlabelled Secrets. Only static credentials (bearer token, client
+                  certificate) are allowed in the kubeconfig — exec-based plugins,
+                  auth-providers, and proxy-url settings are rejected to prevent
+                  execution of untrusted code in the manager pod.
+                properties:
+                  key:
+                    description: key within the Secret's Data map that holds the kubeconfig bytes.
+                    minLength: 1
+                    type: string
+                  name:
+                    description: name of the Secret.
+                    minLength: 1
+                    type: string
+                  namespace:
+                    description: namespace of the Secret in the hub cluster.
+                    minLength: 1
+                    type: string
+                required:
+                - key
+                - name
+                - namespace
+                type: object
+              namespace:
+                description: |-
+                  namespace is the default namespace on the remote cluster in which
+                  dsnSecretRef objects are looked up. When a PostgresWatch sets
+                  remoteClusterRef but does not set remoteNamespace, this field is
+                  used. When both this field and remoteNamespace are empty, the
+                  watch's own namespace (the hub namespace) is used — the convention
+                  CloudNativePG follows for generated-credential Secrets.
+                type: string
+            required:
+            - kubeconfigSecretRef
+            type: object
+          status:
+            description: |-
+              PostgresRadarClusterStatus reflects the observed state of the registered
+              cluster, as last verified by the controller during reconciliation.
+            properties:
+              message:
+                description: |-
+                  message carries a human-readable explanation, populated when ready
+                  is false.
+                type: string
+              observedGeneration:
+                description: observedGeneration is the .metadata.generation last reconciled.
+                format: int64
+                type: integer
+              ready:
+                description: |-
+                  ready is true when the kubeconfig was last read and validated
+                  successfully.
+                type: boolean
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
