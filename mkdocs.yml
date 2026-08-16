@@ -97,6 +97,7 @@ nav:
   - Get Started:
       - Installation: installation.md
       - Getting Started: getting-started.md
+      - Supply Chain Verification: supply-chain.md
   - Architecture:
       - architecture.md
       - Detection Algorithm: detection-algorithm.md
