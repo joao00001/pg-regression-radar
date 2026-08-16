@@ -14,6 +14,12 @@
 # 3) Verify:
 #    kubectl get validatingadmissionpolicy restrict-postgreswatch-consent-label
 #    kubectl get validatingadmissionpolicybinding restrict-postgreswatch-consent-label
+#
+# Identity model note:
+# - This policy allowlist matches exact `request.userInfo.username` values such
+#   as `system:serviceaccount:<namespace>:<name>`.
+# - If you prefer group-based authorization, adapt the expressions to inspect
+#   `request.userInfo.groups` and keep the same least-privilege RBAC controls.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
@@ -45,6 +51,7 @@ spec:
         !has(object.metadata.labels) ||
         object.metadata.labels['pg-regression-radar.io/allow-postgreswatch-access'] != 'true' ||
         (has(oldObject.metadata.labels) &&
+        'pg-regression-radar.io/allow-postgreswatch-access' in oldObject.metadata.labels &&
         oldObject.metadata.labels['pg-regression-radar.io/allow-postgreswatch-access'] == 'true') ||
         request.userInfo.username in [
           'system:serviceaccount:platform-security:secret-consent-labeler',
@@ -60,5 +67,17 @@ metadata:
   name: restrict-postgreswatch-consent-label
 spec:
   policyName: restrict-postgreswatch-consent-label
+  # Scope intentionally excludes common system namespaces to avoid accidental
+  # interference with control-plane Secret operations. Remove or adjust this
+  # selector if you need cluster-wide enforcement including system namespaces.
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system
+            - kube-public
+            - kube-node-lease
   validationActions:
     - Deny

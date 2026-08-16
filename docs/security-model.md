@@ -201,35 +201,56 @@ Use these policy examples to ensure tenants cannot self-approve Secret access by
 - Use a dedicated identity for labeling (`docs/policies/rbac-consent-labeler-example.yaml`).
 - Keep tenant `PostgresWatch` authors in roles that exclude Secret mutation (`create`, `update`, `patch`, `delete` on Secrets).
 - Treat break-glass labeler identities as audited, short-lived operational paths.
+- Policy allowlists in examples match exact Kubernetes usernames (`system:serviceaccount:<namespace>:<name>`); adapt to group-based checks if your platform standard prefers groups.
 
 ### Validate policy behavior with `kubectl --dry-run=server`
 
 > Replace `<ns>` with a namespace where your policy applies.
 
-Attempt without consent label (should be denied by your policy stack):
+Attempt without consent label (should be admitted; controller will still refuse to use it):
 
 ```bash
-kubectl -n <ns> create secret generic denied-without-consent \
-  --from-literal=dsn='postgres://example' \
-  --dry-run=server -o yaml
+cat <<'EOF' | kubectl apply -n <ns> --dry-run=server -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dry-run-without-consent
+type: Opaque
+stringData:
+  dsn: postgres://example
+EOF
 ```
 
 Attempt with consent label as unauthorized identity (should be denied):
 
 ```bash
-kubectl -n <ns> create secret generic denied-unauthorized-labeler \
-  --from-literal=dsn='postgres://example' \
-  --label pg-regression-radar.io/allow-postgreswatch-access=true \
-  --dry-run=server -o yaml
+cat <<'EOF' | kubectl apply -n <ns> --as=system:serviceaccount:team-a:app-operator --dry-run=server -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dry-run-unauthorized-labeler
+  labels:
+    pg-regression-radar.io/allow-postgreswatch-access: "true"
+type: Opaque
+stringData:
+  dsn: postgres://example
+EOF
 ```
 
 Attempt with consent label as approved labeler identity (should succeed):
 
 ```bash
-kubectl -n <ns> create secret generic allowed-authorized-labeler \
-  --from-literal=dsn='postgres://example' \
-  --label pg-regression-radar.io/allow-postgreswatch-access=true \
-  --dry-run=server -o yaml
+cat <<'EOF' | kubectl apply -n <ns> --as=system:serviceaccount:platform-security:secret-consent-labeler --dry-run=server -f -
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dry-run-authorized-labeler
+  labels:
+    pg-regression-radar.io/allow-postgreswatch-access: "true"
+type: Opaque
+stringData:
+  dsn: postgres://example
+EOF
 ```
 
 ### Troubleshooting common misconfigurations

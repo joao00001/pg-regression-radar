@@ -26,6 +26,12 @@
 #   - Verify identity is listed in the NotIn exception list below.
 # - Need emergency path:
 #   - Keep a dedicated break-glass identity in the allowlist and audit its use.
+#
+# Identity model note:
+# - The allowlist below uses exact Kubernetes usernames
+#   (`system:serviceaccount:<namespace>:<name>`).
+# - If your platform standard is group-based authorization, update the policy to
+#   match `request.userInfo.groups` instead of usernames.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:

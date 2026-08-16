@@ -20,7 +20,13 @@ metadata:
   namespace: platform-security
 ---
 # ClusterRole granted only to approved consent-labeling identities.
-# Keep this role narrowly scoped to Secret mutation permissions.
+# Scope note: this grants Secret mutation cluster-wide. In stricter environments,
+# replace with namespace-scoped Role/RoleBinding pairs per tenant namespace.
+# Keep the granted verbs narrowly scoped to what the labeler needs.
+# Trust note: `update`/`patch` also permit Secret data mutation, not only labels.
+# Mitigations:
+# - Use namespace-scoped Role/RoleBinding where possible.
+# - Optionally add `resourceNames` to allow only specific Secret names.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -28,7 +34,7 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "watch", "update", "patch"]
+    verbs: ["update", "patch"]
 ---
 # Bind the consent-labeling ClusterRole only to the dedicated labeler ServiceAccount.
 apiVersion: rbac.authorization.k8s.io/v1
