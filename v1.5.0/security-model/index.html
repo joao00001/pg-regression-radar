@@ -2442,7 +2442,6 @@
 </tbody>
 </table>
 <h2 id="permission-matrix-security-contract">Permission matrix (security contract)<a class="headerlink" href="#permission-matrix-security-contract" title="Permanent link">&para;</a></h2>
-<p>Legend: ✅ allowed by profile contract; ⚠️ allowed only for approved identities/policies; ❌ disallowed by profile contract.</p>
 <table>
 <thead>
 <tr>
@@ -2455,27 +2454,27 @@
 <tbody>
 <tr>
 <td>Create <code>PostgresWatch</code> resource</td>
-<td>✅ Cluster admin, team lead</td>
-<td>✅ Team lead in own namespace; cluster admin</td>
-<td>✅ Team lead in own namespace; cluster admin</td>
+<td>✓ Cluster admin, Team lead</td>
+<td>✓ Team lead in own namespace; Cluster admin</td>
+<td>✓ Team lead in own namespace; Cluster admin</td>
 </tr>
 <tr>
 <td>Create/modify <code>DeploySource</code> resource</td>
-<td>✅ Cluster admin, team lead, app developer (team policy)</td>
-<td>⚠️ Team lead/app developer in own namespace only, with stricter admission</td>
-<td>⚠️ Team lead/app developer in own namespace only, often templated via platform workflow</td>
+<td>✓ Cluster admin, Team lead, App developer (team policy)</td>
+<td>⚠ Team lead/App developer in own namespace only, with stricter admission</td>
+<td>⚠ Team lead/App developer in own namespace only, often templated via platform workflow</td>
 </tr>
 <tr>
 <td>Manager reads DSN Secret (<code>spec.dsnSecretRef</code>)</td>
-<td>✅ If Secret is consent-labeled</td>
-<td>✅ If Secret is consent-labeled and label assignment is restricted</td>
-<td>⚠️ Prefer platform-managed relay/credentials; direct reads only for explicitly approved Secrets</td>
+<td>✓ If Secret is consent-labeled</td>
+<td>✓ If Secret is consent-labeled and label assignment is restricted</td>
+<td>⚠ Prefer platform-managed relay/credentials; direct reads only for explicitly approved Secrets</td>
 </tr>
 <tr>
 <td>Configure remote cluster reference (<code>spec.remoteClusterRef</code> or deprecated <code>spec.remoteClusterSecretRef</code>)</td>
-<td>✅ Trusted team operators or cluster admin</td>
-<td>⚠️ Platform-approved identities only; tenant use gated by policy</td>
-<td>❌ Tenant-managed remote references; break-glass platform admin only</td>
+<td>✓ Trusted team operators or Cluster admin</td>
+<td>⚠ Platform-approved identities only; tenant use gated by policy</td>
+<td>✗ Tenant-managed remote references; break-glass platform admin only</td>
 </tr>
 </tbody>
 </table>
