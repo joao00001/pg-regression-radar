@@ -9,8 +9,11 @@ name: Docs
 #              anything.
 #   `deploy` — publish a new, permanently versioned copy of the site to
 #              GitHub Pages via [mike](https://github.com/jimporter/mike).
-#              Runs ONLY on a real `vX.Y.Z` tag push (or a manual re-run of
-#              one), never on an ordinary push to main.
+#              Runs ONLY on a real `vX.Y.Z` tag push (or a manual run that
+#              targets one), never on an ordinary push to main. The manual
+#              path also supports rebuilding a tagged docs version from a
+#              newer ref (e.g. main) when a docs-only fix was merged after the
+#              tag was cut, without moving the tag or re-triggering release.yml.
 #
 # That split exists on purpose: this workflow used to redeploy the live
 # site on every push to main that touched docs/**, which meant the public
@@ -69,11 +72,29 @@ on:
     inputs:
       tag:
         description: >-
-          Existing vX.Y.Z tag to (re-)deploy docs for (e.g. after a failed
-          run). Checks out that tag explicitly rather than whatever ref
-          the workflow happens to be run from, so a manual run can never
-          accidentally publish an unreleased/untagged version of the site.
+          Select the existing vX.Y.Z tag to (re-)deploy docs for.
         required: true
+        type: choice
+        options:
+          - v1.5.0
+          - v1.4.0
+          - v1.3.1
+          - v1.3.0
+          - v1.2.0
+          - v1.1.0
+          - v1.0.2
+          - v1.0.1
+          - v1.0.0
+          - v1.0.0-rc1
+      ref:
+        description: >-
+          Git ref (branch, SHA, or tag) to check out for the build.
+          Defaults to the tag above. Use a branch name (e.g. "main")
+          when the docs fix was merged to main after the tag was cut —
+          this lets you redeploy a tagged version with a hotfix without
+          moving the tag or retriggering the release workflow.
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -134,7 +155,7 @@ jobs:
       - name: Checkout the tag
         uses: actions/checkout@v7
         with:
-          ref: refs/tags/${{ steps.tag.outputs.tag }}
+          ref: ${{ inputs.ref != '' && inputs.ref || format('refs/tags/{0}', steps.tag.outputs.tag) }}
           # mike needs real branch history to commit on top of (a shallow,
           # single-ref checkout has none) — see the explicit `git fetch
           # origin gh-pages` step below, which needs this to not be a
