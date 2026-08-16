@@ -97,6 +97,9 @@ nav:
   - Get Started:
       - Installation: installation.md
       - Getting Started: getting-started.md
+      - Quickstart Validation: quickstart-validation.md
+      - Regression Scenario Example: examples/regression-scenario.md
+      - Alerting Example: examples/alerting-example.md
       - Supply Chain Verification: supply-chain.md
   - Architecture:
       - architecture.md

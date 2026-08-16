@@ -37,7 +37,7 @@ pg-regression-radar operator \
 
 Or, from a clone: `go run ./cmd/operator --dsn ... --cluster-name ... --source-type argocd`.
 
-See **[Installation](https://joao00001.github.io/pg-regression-radar/installation/)** for every install option (Go install, source, Docker, Helm), **[Getting Started](https://joao00001.github.io/pg-regression-radar/getting-started/)** for the CRD-driven (`manager`, HA) and Helm-based paths, and **[Configuration Reference](https://joao00001.github.io/pg-regression-radar/configuration/)** for every flag.
+See **[Installation](https://joao00001.github.io/pg-regression-radar/installation/)** for every install option (Go install, source, Docker, Helm), **[Getting Started](https://joao00001.github.io/pg-regression-radar/getting-started/)** for the CRD-driven (`manager`, HA) and Helm-based paths, **[Quickstart Validation](https://joao00001.github.io/pg-regression-radar/quickstart-validation/)** for an end-to-end external-user validation flow, and **[Configuration Reference](https://joao00001.github.io/pg-regression-radar/configuration/)** for every flag.
 
 ## Documentation
 

@@ -8,6 +8,8 @@ pg-regression-radar ships two runnable entrypoints (`operator` and `manager`) pl
 
 The commands below use `go run ./cmd/operator`/`go run ./cmd/manager`, which assume a clone of the repo. If you installed the unified CLI instead (see [Installation, option 1](installation.md#option-1-go-install-one-command-one-binary-recommended)), replace `go run ./cmd/operator` with `pg-regression-radar operator` and `go run ./cmd/manager` with `pg-regression-radar manager` — every flag below is identical either way.
 
+If your goal is to prove end-to-end behavior (regression detection + deployment attribution) instead of only bringing services up, follow [Quickstart Validation](quickstart-validation.md) and [Example regression scenario](examples/regression-scenario.md) after startup.
+
 ## Prerequisites
 
 - Go 1.22+ (only needed to build from source; the [Dockerfile](https://github.com/joao00001/pg-regression-radar/blob/main/Dockerfile) needs no local Go install)
@@ -130,6 +132,24 @@ curl -X POST http://localhost:8080/webhook \
 
 That payload matches the `generic` source type (the default), which accepts a `DeployEvent` shape directly — see [API Reference](api-reference.md).
 
+## What "detecting a regression" looks like
+
+In practice, successful detection means more than "the process stayed running." You should eventually observe:
+
+- a specific query identified as regressed,
+- measurable before/after latency change,
+- deploy metadata (app/namespace/revision/image) attached to the same finding.
+
+Depending on mode and configuration, this appears in logs, in `PerformanceRegression` resources (manager mode), and/or in alert destinations (for example Slack). For a reproducible validation flow with expected outcomes, follow [Quickstart Validation](quickstart-validation.md).
+
+## Troubleshooting common setup issues
+
+- **No deploy events are being ingested:** verify your webhook URL/path (`/webhook`), source type, and authentication header if `--webhook-secret` is enabled.
+- **No regression detected yet:** increase traffic volume for the target query, verify `pg_stat_statements` is enabled, and check detection thresholds (`windowMinutes`, `minExecutions`, latency threshold).
+- **Manager mode does not produce resources:** confirm CRDs are installed and check namespace-scoped `PostgresWatch`/`DeploySource` reconciliation status.
+- **Helm manager mode seems missing CRDs on upgrade:** Helm installs `crds/` only on initial install; apply updated CRDs manually as noted above.
+- **Alerts not delivered:** validate webhook destination config and any egress/destination policy restrictions.
+
 ## See also
 
 - [Installation](installation.md) — obtaining the binaries, container image, or Helm chart used above.
@@ -137,3 +157,6 @@ That payload matches the `generic` source type (the default), which accepts a `D
 - [Configuration Reference](configuration.md) — every flag and CRD field used above.
 - [Support Matrix](support-matrix.md) — officially supported PostgreSQL versions and distributions.
 - [Deploy Sources & Webhooks](webhooks.md) — wiring up real ArgoCD/Rollouts/Flux webhooks instead of the simulated one above.
+- [Quickstart Validation](quickstart-validation.md) — end-to-end external-user validation checklist across operator, manager, and Helm.
+- [Example regression scenario](examples/regression-scenario.md) — reproducible slowdown + deploy-event attribution walkthrough.
+- [Alerting example](examples/alerting-example.md) — concrete alert destination configuration and interpretation.
