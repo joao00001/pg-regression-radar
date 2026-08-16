@@ -64,7 +64,7 @@ func TestIntegration_CapturePlan_RealPostgres16(t *testing.T) {
 	}
 
 	t.Run("trivial query", func(t *testing.T) {
-		snap, err := planner.CapturePlan(ctx, db, 1, "SELECT 1")
+		snap, err := planner.CapturePlan(ctx, db, 1, planner.NormalizeQueryText("SELECT 1"))
 		if err != nil {
 			t.Fatalf("CapturePlan: %v", err)
 		}
@@ -101,7 +101,7 @@ func TestIntegration_CapturePlan_RealPostgres16(t *testing.T) {
 		// `SELECT val FROM pgrr_planner_test_probe WHERE id = 42` — already
 		// normalized to a "$1" placeholder, which is precisely what
 		// GENERIC_PLAN exists to handle.
-		snap, err := planner.CapturePlan(ctx, db, 2, "SELECT val FROM pgrr_planner_test_probe WHERE id = $1")
+		snap, err := planner.CapturePlan(ctx, db, 2, planner.NormalizeQueryText("SELECT val FROM pgrr_planner_test_probe WHERE id = $1"))
 		if err != nil {
 			t.Fatalf("CapturePlan: %v", err)
 		}
@@ -119,7 +119,7 @@ func TestIntegration_CapturePlan_RealPostgres16(t *testing.T) {
 		// snapshots of the same query whose plan shape changed, without
 		// depending on planner cost-estimate specifics that could shift
 		// between PostgreSQL point releases.
-		snapSeq, err := planner.CapturePlan(ctx, db, 3, "SELECT val FROM pgrr_planner_test_probe WHERE val = $1")
+		snapSeq, err := planner.CapturePlan(ctx, db, 3, planner.NormalizeQueryText("SELECT val FROM pgrr_planner_test_probe WHERE val = $1"))
 		if err != nil {
 			t.Fatalf("CapturePlan (seq scan variant): %v", err)
 		}
