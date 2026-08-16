@@ -373,7 +373,7 @@ func TestDestinationPolicy_Allowlist(t *testing.T) {
 }
 
 // TestDestinationPolicy_RelayOnly verifies that relay-only ignores the
-// CRD-level URL entirely and always uses RelayUrl, and rejects empty relay.
+// CRD-level URL entirely and always uses RelayURL, and rejects empty relay.
 func TestDestinationPolicy_RelayOnly(t *testing.T) {
 	const relay = "https://relay.example.com/webhook"
 
@@ -382,7 +382,7 @@ func TestDestinationPolicy_RelayOnly(t *testing.T) {
 			Format:            "slack",
 			URL:               "https://crd-url-should-be-ignored.invalid/hook",
 			DestinationPolicy: DestinationPolicyRelayOnly,
-			RelayUrl:          relay,
+			RelayURL:          relay,
 		}, nil, prometheus.NewRegistry())
 		if err != nil {
 			t.Fatalf("expected relay-only policy to succeed, got error: %v", err)
@@ -399,7 +399,7 @@ func TestDestinationPolicy_RelayOnly(t *testing.T) {
 			DestinationPolicy: DestinationPolicyRelayOnly,
 		}, nil, prometheus.NewRegistry())
 		if err == nil {
-			t.Fatal("expected relay-only policy to fail when RelayUrl is empty, got nil")
+			t.Fatal("expected relay-only policy to fail when RelayURL is empty, got nil")
 		}
 	})
 
@@ -407,7 +407,7 @@ func TestDestinationPolicy_RelayOnly(t *testing.T) {
 		_, err := BuildNotifier(BuildConfig{
 			Format:            "slack",
 			DestinationPolicy: DestinationPolicyRelayOnly,
-			RelayUrl:          "http://169.254.169.254/latest/meta-data/",
+			RelayURL:          "http://169.254.169.254/latest/meta-data/",
 		}, nil, prometheus.NewRegistry())
 		if err == nil {
 			t.Fatal("expected SSRF-blocked relay url to be rejected, got nil")

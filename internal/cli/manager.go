@@ -76,7 +76,7 @@ func RunManager(args []string) int {
 	var leaderElectionNamespace string
 	var alertAllowedDestinations string
 	var alertingDestinationPolicy string
-	var alertingDestinationPolicyRelayUrl string
+	var alertingDestinationPolicyRelayURL string
 	var versionFlag bool
 	var dryRun bool
 
@@ -102,7 +102,7 @@ func RunManager(args []string) int {
 		"Optional strict allowlist for PostgresWatch alert destinations: comma-separated exact hostnames, IPs, or CIDRs. When set, spec.alerting.url/spec.slackWebhookUrl must target one of these destinations.")
 	fs.StringVar(&alertingDestinationPolicy, "alerting-destination-policy", "permissive",
 		"Destination validation policy for outbound alerts: permissive (default, SSRF blocklist only), allowlist (URL host must appear in --alerting-allowed-destinations), or relay-only (ignore CRD URL, always send to --alerting-destination-policy-relay-url).")
-	fs.StringVar(&alertingDestinationPolicyRelayUrl, "alerting-destination-policy-relay-url", "",
+	fs.StringVar(&alertingDestinationPolicyRelayURL, "alerting-destination-policy-relay-url", "",
 		"Fixed relay endpoint used when --alerting-destination-policy=relay-only. Must be a valid http/https URL. Required when the policy is relay-only.")
 	fs.BoolVar(&versionFlag, "version", false, "Print version information and exit")
 	fs.BoolVar(&dryRun, "dry-run", false,
@@ -129,7 +129,7 @@ func RunManager(args []string) int {
 		logger.Error("invalid --alerting-allowed-destinations", "err", err)
 		return 1
 	}
-	if err := alerting.ValidateDestinationPolicy(alerting.DestinationPolicy(alertingDestinationPolicy), alertingDestinationPolicyRelayUrl); err != nil {
+	if err := alerting.ValidateDestinationPolicy(alerting.DestinationPolicy(alertingDestinationPolicy), alertingDestinationPolicyRelayURL); err != nil {
 		logger.Error("invalid alerting destination policy configuration", "err", err)
 		return 1
 	}
@@ -204,7 +204,7 @@ func RunManager(args []string) int {
 		Logger:                            logger,
 		AllowedAlertDestinations:          parsedAllowedDestinations,
 		AlertingDestinationPolicy:         alerting.DestinationPolicy(alertingDestinationPolicy),
-		AlertingDestinationPolicyRelayUrl: alertingDestinationPolicyRelayUrl,
+		AlertingDestinationPolicyRelayURL: alertingDestinationPolicyRelayURL,
 		Aborter:                           aborter,
 	}).SetupWithManager(mgr); err != nil {
 		managerSetupLog.Error(err, "unable to create controller", "controller", "PostgresWatch")

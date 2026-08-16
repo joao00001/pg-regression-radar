@@ -40,7 +40,7 @@ type BuildConfig struct {
 	// URL is the webhook endpoint for the slack, teams, and custom formats.
 	// Ignored (and overridden with pagerDutyEventsURL) for pagerduty, which
 	// has no per-integration URL — see PagerDutyFormatter.
-	// In relay-only mode this field is also ignored; RelayUrl is used instead.
+	// In relay-only mode this field is also ignored; RelayURL is used instead.
 	URL string
 
 	// PagerDutyRoutingKey is required when Format == "pagerduty".
@@ -67,9 +67,9 @@ type BuildConfig struct {
 	// docs/alerting.md#destination-policies.
 	DestinationPolicy DestinationPolicy
 
-	// RelayUrl is the fixed relay endpoint used when DestinationPolicy is
+	// RelayURL is the fixed relay endpoint used when DestinationPolicy is
 	// "relay-only". Ignored for all other policies.
-	RelayUrl string
+	RelayURL string
 
 	ClusterName string
 	Timeout     time.Duration
@@ -174,15 +174,15 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 //   - allowlist: returns cfg.URL unchanged but guarantees AllowedDestinations
 //     is non-empty; if the list is empty the caller's
 //     --alerting-allowed-destinations was missing, which is a misconfiguration.
-//   - relay-only: returns cfg.RelayUrl, ignoring cfg.URL entirely; returns an
-//     error when RelayUrl is empty because the policy is meaningless without it.
+//   - relay-only: returns cfg.RelayURL, ignoring cfg.URL entirely; returns an
+//     error when RelayURL is empty because the policy is meaningless without it.
 func resolveDestinationURL(cfg BuildConfig) (string, error) {
 	switch cfg.DestinationPolicy {
 	case DestinationPolicyRelayOnly:
-		if cfg.RelayUrl == "" {
+		if cfg.RelayURL == "" {
 			return "", fmt.Errorf("alerting: destination policy %q requires --alerting-destination-policy-relay-url to be set", DestinationPolicyRelayOnly)
 		}
-		return cfg.RelayUrl, nil
+		return cfg.RelayURL, nil
 	case DestinationPolicyAllowlist:
 		if len(cfg.AllowedDestinations) == 0 {
 			return "", fmt.Errorf("alerting: destination policy %q requires --alerting-allowed-destinations to be non-empty", DestinationPolicyAllowlist)
@@ -220,7 +220,6 @@ func ValidateDestinationPolicy(policy DestinationPolicy, relayUrl string) error 
 		return fmt.Errorf("alerting: unknown destination policy %q (want permissive, allowlist, or relay-only)", policy)
 	}
 }
-
 
 // hostnames -- the single highest-value SSRF target, since a request that
 // reaches one of these from inside a cloud VM/pod can return the node's own

@@ -131,10 +131,10 @@ type PostgresWatchReconciler struct {
 	// "permissive" when empty.
 	AlertingDestinationPolicy alerting.DestinationPolicy
 
-	// AlertingDestinationPolicyRelayUrl is the fixed relay endpoint used
+	// AlertingDestinationPolicyRelayURL is the fixed relay endpoint used
 	// when AlertingDestinationPolicy is "relay-only", populated from
 	// --alerting-destination-policy-relay-url.
-	AlertingDestinationPolicyRelayUrl string
+	AlertingDestinationPolicyRelayURL string
 
 	// remoteClients caches controller-runtime clients built from
 	// remoteClusterSecretRef kubeconfigs, keyed by kubeconfig content (see
@@ -431,7 +431,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		ClusterName:         watch.Spec.ClusterName,
 		AllowedDestinations: r.AllowedAlertDestinations,
 		DestinationPolicy:   r.AlertingDestinationPolicy,
-		RelayUrl:            r.AlertingDestinationPolicyRelayUrl,
+		RelayURL:            r.AlertingDestinationPolicyRelayURL,
 	}
 	if watch.Spec.Alerting != nil {
 		alertCfg.Format = watch.Spec.Alerting.Format

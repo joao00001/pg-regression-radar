@@ -33,7 +33,7 @@ const (
 
 	// DestinationPolicyRelayOnly ignores the CRD-level URL entirely and
 	// always sends alerts to the relay URL supplied in
-	// BuildConfig.RelayUrl. BuildNotifier returns an error when RelayUrl is
+	// BuildConfig.RelayURL. BuildNotifier returns an error when RelayURL is
 	// empty.
 	DestinationPolicyRelayOnly DestinationPolicy = "relay-only"
 )
