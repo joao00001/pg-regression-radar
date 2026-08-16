@@ -151,7 +151,7 @@ func TestDSNSecretClient_RemoteClusterRef_TakesPrecedenceOverSecretRef(t *testin
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
 	watch.Spec.RemoteClusterRef = "prod-spoke"
 	// Also set legacy field — it should be ignored in favour of remoteClusterRef.
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "does-not-exist", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "does-not-exist", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	r, _ := newTestReconciler(t, watch, cluster, registrySecret)
 
@@ -328,7 +328,7 @@ func TestDSNSecretClient_HardenedProfile_RejectsLegacyRef(t *testing.T) {
 	watch := samplePostgresWatch("watch-hardened", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", validTestKubeconfig)
 
@@ -362,7 +362,7 @@ func TestDSNSecretClient_ControlledProfile_AllowsLegacyRef(t *testing.T) {
 	watch := samplePostgresWatch("watch-controlled", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", validTestKubeconfig)
 
