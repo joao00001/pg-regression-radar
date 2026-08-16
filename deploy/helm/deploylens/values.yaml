@@ -158,6 +158,64 @@ resources:
     cpu: 50m
     memory: 64Mi
 
+# Optional NetworkPolicy resources (off by default). When enabled, the chart
+# renders mode-specific default-deny + explicit allow rules for ingress and
+# egress.
+networkPolicy:
+  enabled: false
+  # Optional source CIDR allowed to reach webhook/metrics ports. Leave empty to
+  # allow from any source.
+  ingressCIDR: ""
+  egress:
+    # CIDRs allowed for PostgreSQL connections (typically your DB service CIDR
+    # or a narrow pod/network range).
+    postgresCIDRs: []
+    postgresPorts:
+      - 5432
+    # CIDRs for Kubernetes API servers (hub and/or remote clusters) reachable
+    # by manager mode.
+    apiServerCIDRs: []
+    apiServerPorts:
+      - 443
+    # CIDRs for outbound alert relays or webhook receivers.
+    alertRelayCIDRs: []
+    alertRelayPorts:
+      - 443
+    # DNS access (CoreDNS / kube-dns) for service discovery.
+    dns:
+      # If set false, ensure at least one other egress destination is allowed
+      # (postgresCIDRs, apiServerCIDRs, alertRelayCIDRs) or egress remains
+      # fully denied by the default-deny policy.
+      enabled: true
+      namespace: kube-system
+      port: 53
+
+# Optional namespace-level ResourceQuota rendered by this chart.
+resourceQuota:
+  enabled: false
+  hard:
+    requests.cpu: "2"
+    requests.memory: "1Gi"
+    limits.cpu: "4"
+    limits.memory: "2Gi"
+    pods: "20"
+
+# Optional namespace-level LimitRange rendered by this chart.
+limitRange:
+  enabled: false
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+
+# Optional PodSecurityPolicy support for legacy clusters only (policy/v1beta1).
+podSecurityPolicy:
+  enabled: false
+
 # manager-specific settings; only relevant when mode: manager.
 manager:
   replicaCount: 2

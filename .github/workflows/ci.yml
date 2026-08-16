@@ -37,6 +37,9 @@ jobs:
       - name: Run security-context render test
         run: bash deploy/helm/deploylens/tests/security-context.sh
 
+      - name: Run security-hardening render test
+        run: bash deploy/helm/deploylens/tests/security-hardening.sh
+
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
