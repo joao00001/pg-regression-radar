@@ -1,8 +1,15 @@
 mode: manager
+serviceAccount:
+  # manager needs in-cluster API access (reconciliation + leader election)
+  automountServiceAccountToken: true
 postgres:
   dsn: "<replace-with-your-postgres-dsn>"
   clusterName: production-cluster
   namespace: database
+
+alerting:
+  destinationPolicy: allowlist
+  allowedDestinations: "alertmanager.monitoring.svc.cluster.local"
 
 resources:
   requests:

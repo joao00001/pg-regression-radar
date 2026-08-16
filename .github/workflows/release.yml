@@ -84,6 +84,7 @@ jobs:
       contents: read
       packages: write # docker push / helm push to ghcr.io
       id-token: write # cosign keyless signing (OIDC token exchange with Fulcio)
+      attestations: write # GitHub/SLSA provenance attestations
     strategy:
       fail-fast: false
       matrix:
@@ -297,6 +298,13 @@ jobs:
         # lose track of.
         run: cosign attest --yes --predicate "sbom-${{ matrix.target }}-${{ env.ARCH }}.spdx.json" --type spdxjson "${{ steps.push.outputs.image }}@${{ steps.push.outputs.digest }}"
 
+      - name: Attest image build provenance (SLSA)
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ steps.push.outputs.image }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
   manifests:
     # Combines each target's linux/amd64 and linux/arm64 images (pushed
     # above as ":<version>-amd64"/":<version>-arm64") into the single
@@ -317,6 +325,7 @@ jobs:
       contents: read
       packages: write # docker push (imagetools create) to ghcr.io
       id-token: write # cosign keyless signing (OIDC token exchange with Fulcio)
+      attestations: write # GitHub/SLSA provenance attestations
     strategy:
       matrix:
         target: [cli, operator, manager, collector, ingester]
@@ -360,6 +369,13 @@ jobs:
         # without needing to know either per-arch digest first.
         run: cosign sign --yes "${{ steps.create.outputs.image }}@${{ steps.create.outputs.digest }}"
 
+      - name: Attest manifest provenance (SLSA)
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ steps.create.outputs.image }}
+          subject-digest: ${{ steps.create.outputs.digest }}
+          push-to-registry: true
+
   helm-chart:
     name: Helm chart (OCI)
     runs-on: ubuntu-latest
@@ -368,6 +384,7 @@ jobs:
       contents: read
       packages: write # helm push to ghcr.io
       id-token: write # cosign keyless signing (OIDC token exchange with Fulcio)
+      attestations: write # GitHub/SLSA provenance attestations
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -471,6 +488,13 @@ jobs:
         # See docs/installation.md's "Verify the chart's signature" section
         # for the exact `cosign verify` command this repo documents for it.
         run: cosign sign --yes "${{ steps.push.outputs.ref }}@${{ steps.push.outputs.digest }}"
+
+      - name: Attest Helm chart provenance (SLSA)
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ${{ steps.push.outputs.ref }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
 
   release-notes:
     name: Publish GitHub Release notes

@@ -27,6 +27,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "deploylens.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -45,6 +46,20 @@ spec:
             {{- if .Values.alerting.allowedDestinations }}
             - {{ printf "--alerting-allowed-destinations=%s" .Values.alerting.allowedDestinations | quote }}
             {{- end }}
+            {{- if .Values.alerting.destinationPolicy }}
+            - {{ printf "--alerting-destination-policy=%s" .Values.alerting.destinationPolicy | quote }}
+            {{- end }}
+            {{- if .Values.alerting.destinationPolicyRelayUrl }}
+            - --alerting-destination-policy-relay-url=$(ALERTING_DESTINATION_POLICY_RELAY_URL)
+            {{- end }}
+          {{- if .Values.alerting.destinationPolicyRelayUrl }}
+          env:
+            - name: ALERTING_DESTINATION_POLICY_RELAY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: alertingDestinationPolicyRelayUrl
+          {{- end }}
           ports:
             - name: webhook
               containerPort: {{ .Values.manager.ports.webhook }}

@@ -32,13 +32,15 @@ pg-regression-radar operator \
 | `--alert-format` | `slack` | `slack`, `teams`, `pagerduty`, or `custom` |
 | `--alert-url` | `` | Webhook URL for `slack`/`teams`/`custom`; ignored for `pagerduty`. Falls back to `--slack-url` when unset |
 | `--alerting-allowed-destinations` | `` | Optional strict allowlist: comma-separated exact hostnames, IPs, or CIDRs. When set, the alert destination must match one of them |
+| `--alerting-destination-policy` | `permissive` | Destination strategy: `permissive` (default), `allowlist`, or `relay-only` |
+| `--alerting-destination-policy-relay-url` | `` | Fixed relay endpoint required when `--alerting-destination-policy=relay-only` |
 | `--pagerduty-routing-key` | `` | Required when `--alert-format=pagerduty` |
 | `--alert-template` | `` | Go `text/template` source, inline; required (or use `--alert-template-file`) when `--alert-format=custom` |
 | `--alert-template-file` | `` | Path to a template file — alternative to `--alert-template` |
 
 `--dry-run` validates the alerting configuration (unknown format, missing routing key, unparseable template) before touching Postgres, so a typo'd `--alert-format` fails immediately instead of on the first detected regression.
 
-`cmd/manager` accepts the same `--alerting-allowed-destinations` flag and applies it cluster-wide to the `spec.alerting.url` / legacy `spec.slackWebhookUrl` values taken from every `PostgresWatch`.
+`cmd/manager` accepts `--alerting-allowed-destinations`, `--alerting-destination-policy`, and `--alerting-destination-policy-relay-url` and applies them cluster-wide to every reconciled `PostgresWatch`.
 
 **CRD (`PostgresWatch.spec.alerting`, `cmd/manager`):**
 
@@ -64,7 +66,7 @@ spec:
 
 `spec.alerting` supersedes `spec.slackWebhookUrl` entirely when set — there is no field-by-field merge between the two. Leave `alerting` unset to keep using `slackWebhookUrl` (or no alerting at all, if that's empty too) exactly as before this field existed.
 
-**Helm chart:** the `alerting.*` values (`format`, `url`, `pagerDutyRoutingKey`, `customTemplate`, alongside the pre-existing `slackWebhookUrl`) feed both `mode: operator` (as CLI flags, via a Secret) and `mode: manager` (as `spec.alerting` on the default `PostgresWatch`) — see [Installation](installation.md).
+**Helm chart:** the `alerting.*` values (`format`, `url`, `allowedDestinations`, `destinationPolicy`, `destinationPolicyRelayUrl`, `pagerDutyRoutingKey`, `customTemplate`, alongside the pre-existing `slackWebhookUrl`) feed both `mode: operator` (as CLI flags) and `mode: manager` (as manager flags plus `spec.alerting` on the default `PostgresWatch`) — see [Installation](installation.md).
 
 ## Destination validation (SSRF hardening)
 
@@ -187,4 +189,3 @@ Manager flags:
 ```
 
 Startup validation ensures the relay URL is set before the manager starts.
-

@@ -2,7 +2,7 @@
 
 *How to confirm that a pg-regression-radar artifact you downloaded matches what was built from the source commit you expect.*
 
-Every artifact published by a release — container images, Helm chart, and attached SBOMs — is cryptographically signed and traceable back to the exact source commit and GitHub Actions run that produced it. This page explains the trust model and gives the exact commands to verify each artifact type.
+Every artifact published by a release — container images, Helm chart, and attached SBOM/provenance attestations — is cryptographically signed and traceable back to the exact source commit and GitHub Actions run that produced it. This page explains the trust model and gives the exact commands to verify each artifact type.
 
 ## Trust model
 
@@ -21,14 +21,14 @@ What this does **not** guarantee:
 
 ## Artifact inventory
 
-| Artifact | Registry path | Signed? | SBOM? |
-|---|---|---|---|
-| `cli` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/cli:<tag>` | ✓ keyless | ✓ SPDX attached |
-| `operator` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/operator:<tag>` | ✓ keyless | ✓ SPDX attached |
-| `manager` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/manager:<tag>` | ✓ keyless | ✓ SPDX attached |
-| `collector` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/collector:<tag>` | ✓ keyless | ✓ SPDX attached |
-| `ingester` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/ingester:<tag>` | ✓ keyless | ✓ SPDX attached |
-| Helm chart (OCI) | `ghcr.io/joao00001/charts/pg-regression-radar:<chart-version>` | ✓ keyless | — |
+| Artifact | Registry path | Signed? | SBOM? | Provenance? |
+|---|---|---|---|---|
+| `cli` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/cli:<tag>` | ✓ keyless | ✓ SPDX attached | ✓ SLSA attestation |
+| `operator` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/operator:<tag>` | ✓ keyless | ✓ SPDX attached | ✓ SLSA attestation |
+| `manager` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/manager:<tag>` | ✓ keyless | ✓ SPDX attached | ✓ SLSA attestation |
+| `collector` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/collector:<tag>` | ✓ keyless | ✓ SPDX attached | ✓ SLSA attestation |
+| `ingester` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/ingester:<tag>` | ✓ keyless | ✓ SPDX attached | ✓ SLSA attestation |
+| Helm chart (OCI) | `ghcr.io/joao00001/charts/pg-regression-radar:<chart-version>` | ✓ keyless | — | ✓ SLSA attestation |
 
 Per-architecture images (`:v1.2.3-amd64`, `:v1.2.3-arm64`) are signed individually during the build job. The multi-arch manifest lists (`:v1.2.3`, `:latest`) are additionally signed after assembly — so `cosign verify` works whether you pin the multi-arch tag or a specific arch digest.
 
@@ -121,6 +121,26 @@ cosign verify-attestation "$IMAGE" \
 ```
 
 SBOM files are also uploaded as GitHub Actions artifacts during the release run and attached to the GitHub Release for offline inspection (named `sbom-<target>-<arch>-<version>.spdx.json`).
+
+## Verifying provenance attestations (SLSA)
+
+Releases also publish provenance attestations via `actions/attest-build-provenance`. Verify them with:
+
+```bash
+IMAGE=ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+
+gh attestation verify "$IMAGE" \
+  --owner joao00001
+```
+
+For the Helm chart OCI artifact:
+
+```bash
+CHART=ghcr.io/joao00001/charts/pg-regression-radar:1.2.3
+
+gh attestation verify "$CHART" \
+  --owner joao00001
+```
 
 ## Scanning locally for vulnerabilities
 
