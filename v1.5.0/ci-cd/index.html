@@ -1,0 +1,2278 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/v1.5.0/ci-cd/">
+      
+      
+        <link rel="prev" href="../testing/">
+      
+      
+        <link rel="next" href="../branch-protection/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>CI/CD - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#cicd" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are not viewing the latest version of these docs.
+  <a href="../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CI/CD
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../installation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../configuration/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../testing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression Scenario Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply Chain Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection Algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cluster (Fleet) Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model & Threat Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Security (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Versioning & Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy Sources & Webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-Abort (Argo Rollouts)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic (Deploy-Independent) Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ciyml-on-every-pushpr-to-main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ci.yml — on every push/PR to main
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#go-qualityyml-on-every-pushpr-to-main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        go-quality.yml — on every push/PR to main
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pr-titleyml-on-pr-openeditsync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pr-title.yml — on PR open/edit/sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changelog-fragment-checkyml-on-pr-openeditsync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        changelog-fragment-check.yml — on PR open/edit/sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#codeqlyml-on-pushpr-to-main-plus-a-weekly-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        codeql.yml — on push/PR to main, plus a weekly schedule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dcoyml-on-every-pr-to-main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dco.yml — on every PR to main
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-prepyml-on-push-to-main-touching-changelogd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        release-prep.yml — on push to main touching changelog.d/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#e2e-manualyml-manual-only-workflow_dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e2e-manual.yml — manual only (workflow_dispatch)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#e2e-kindyml-manual-only-workflow_dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e2e-kind.yml — manual only (workflow_dispatch)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#releaseyml-on-pushing-a-v-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        release.yml — on pushing a v* tag
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docsyml-two-independent-jobs-check-every-prpush-and-deploy-only-on-a-release-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        docs.yml — two independent jobs: check (every PR/push) and deploy (only on a release tag)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependabot-githubdependabotyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependabot (.github/dependabot.yml)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#branch-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Branch protection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch Protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ciyml-on-every-pushpr-to-main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ci.yml — on every push/PR to main
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#go-qualityyml-on-every-pushpr-to-main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        go-quality.yml — on every push/PR to main
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pr-titleyml-on-pr-openeditsync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pr-title.yml — on PR open/edit/sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#changelog-fragment-checkyml-on-pr-openeditsync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        changelog-fragment-check.yml — on PR open/edit/sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#codeqlyml-on-pushpr-to-main-plus-a-weekly-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        codeql.yml — on push/PR to main, plus a weekly schedule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dcoyml-on-every-pr-to-main" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dco.yml — on every PR to main
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-prepyml-on-push-to-main-touching-changelogd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        release-prep.yml — on push to main touching changelog.d/
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#e2e-manualyml-manual-only-workflow_dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e2e-manual.yml — manual only (workflow_dispatch)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#e2e-kindyml-manual-only-workflow_dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        e2e-kind.yml — manual only (workflow_dispatch)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#releaseyml-on-pushing-a-v-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        release.yml — on pushing a v* tag
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docsyml-two-independent-jobs-check-every-prpush-and-deploy-only-on-a-release-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        docs.yml — two independent jobs: check (every PR/push) and deploy (only on a release tag)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependabot-githubdependabotyml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependabot (.github/dependabot.yml)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#branch-protection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Branch protection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/ci-cd.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="cicd">CI/CD<a class="headerlink" href="#cicd" title="Permanent link">&para;</a></h1>
+<p><em>Every GitHub Actions workflow in this repo, what it checks, and when it runs.</em></p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>pg-regression-radar runs eleven workflows plus Dependabot. This page is a map of what each one does; see <a href="../testing/">Testing</a> for how to reproduce the test-related ones locally, and <a href="../branch-protection/">Branch Protection</a> for how (and whether) they're actually enforced as required checks on <code>main</code>.</p>
+<p><strong>Security scanning, end to end:</strong> this repo uses only tools that are free for a public repository, spread across the layer each is actually good at — no single tool covers all of these:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Tool</th>
+<th>Where</th>
+<th>Blocking?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Go source (semantic SAST)</td>
+<td>CodeQL</td>
+<td><code>codeql.yml</code></td>
+<td>No — code scanning alerts, by design (see below)</td>
+</tr>
+<tr>
+<td>Go source (pattern-based security linter)</td>
+<td>gosec</td>
+<td><code>go-quality.yml</code></td>
+<td>Not yet — first run, no baseline (see below)</td>
+</tr>
+<tr>
+<td>Go dependencies (known, reachable CVEs)</td>
+<td>govulncheck</td>
+<td><code>go-quality.yml</code></td>
+<td>Not yet — first run, no baseline (see below)</td>
+</tr>
+<tr>
+<td>Go dependencies (version currency)</td>
+<td>Dependabot</td>
+<td><code>dependabot.yml</code></td>
+<td>N/A — opens update PRs, doesn't gate CI</td>
+</tr>
+<tr>
+<td>Container base images (version currency)</td>
+<td>Dependabot (<code>docker</code> ecosystem)</td>
+<td><code>dependabot.yml</code></td>
+<td>N/A — opens update PRs, doesn't gate CI</td>
+</tr>
+<tr>
+<td>Built container images (known CVEs in OS packages/libraries)</td>
+<td>Trivy</td>
+<td><code>release.yml</code></td>
+<td><strong>Yes</strong> — CRITICAL-severity finding fails the <code>images</code> job, nothing is pushed</td>
+</tr>
+</tbody>
+</table>
+<p>CodeQL findings are never blocking by design — <code>github/codeql-action/analyze</code> only fails the workflow on a tool/build error, never on an actual finding; results surface as Security tab alerts instead, the same UX as Dependabot alerts. gosec and govulncheck, by contrast, <em>can</em> fail their own step (<code>continue-on-error: true</code> is what's currently absorbing that) — both are first-time additions to this repo with no established clean baseline yet, so they start in report-only mode. Once a run of each comes back clean (or any real findings are triaged and fixed/suppressed), removing <code>continue-on-error: true</code> from that job is the one-line change that makes it a real gate. Trivy in <code>release.yml</code> predates this and already gates for real, because it was added with a known-clean baseline from the start.</p>
+<h2 id="ciyml-on-every-pushpr-to-main"><code>ci.yml</code> — on every push/PR to <code>main</code><a class="headerlink" href="#ciyml-on-every-pushpr-to-main" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Job</th>
+<th>What it proves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Build &amp; Test</code></td>
+<td><code>go build ./...</code>, <code>go vet ./...</code>, <code>go test -race ./...</code> against fakes/mocks — no external services.</td>
+</tr>
+<tr>
+<td><code>Integration tests (real PostgreSQL)</code></td>
+<td>A <code>postgres-version: [16, 17, 18]</code> matrix — runs the <code>integration</code>-tagged tests in <code>internal/storage/postgres</code>, <code>internal/collector</code>, and <code>internal/e2e</code> against a real <code>postgres:16</code>/<code>postgres:17</code>/<code>postgres:18</code> container (one job per version) with <code>pg_stat_statements</code> preloaded. See <a href="../support-matrix/#officially-supported-postgresql-versions">Support Matrix</a> for why 16 is the floor.</td>
+</tr>
+<tr>
+<td><code>Integration tests (EDB Postgres)</code></td>
+<td>Same integration test suite, run against EDB Postgres Advanced Server and EDB Postgres Extended Server images — but only when the <code>EDB_SUBSCRIPTION_TOKEN</code> repository secret is configured (those images live behind a private, authenticated registry), and with <code>continue-on-error: true</code> so an absent secret or a real failure here can't break CI for anyone else. See <a href="../support-matrix/#ci-coverage-for-edb-distributions">Support Matrix</a> for the full rationale.</td>
+</tr>
+<tr>
+<td><code>Controller tests (real kube-apiserver)</code></td>
+<td>Runs <code>internal/controller</code>'s <code>TestEnvtest_*</code> suite against a real, locally-provisioned kube-apiserver + etcd via controller-runtime's envtest.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="go-qualityyml-on-every-pushpr-to-main"><code>go-quality.yml</code> — on every push/PR to <code>main</code><a class="headerlink" href="#go-qualityyml-on-every-pushpr-to-main" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Job</th>
+<th>What it proves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>golangci-lint</code></td>
+<td>Static analysis beyond <code>go vet</code> (pinned version <code>v2.12.2</code>, no repo-specific config — runs with the tool's default linter set, which does <strong>not</strong> include a security-focused linter; that's what <code>gosec</code> below is for).</td>
+</tr>
+<tr>
+<td><code>gofmt</code></td>
+<td>Every tracked <code>.go</code> file is <code>gofmt</code>-clean.</td>
+</tr>
+<tr>
+<td><code>govulncheck</code></td>
+<td>Whether any dependency in <code>go.sum</code> has a known vulnerability that's actually reachable from this code's own call graph (not just present in the dependency tree) — see the Security scanning table above for why it's report-only for now.</td>
+</tr>
+<tr>
+<td><code>gosec</code></td>
+<td>Pattern-based security static analysis (hardcoded credentials, weak crypto, SQL string concatenation, etc.) — see the Security scanning table above for why it's report-only for now. Findings are uploaded as SARIF to Security -&gt; Code scanning regardless of outcome.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="pr-titleyml-on-pr-openeditsync"><code>pr-title.yml</code> — on PR open/edit/sync<a class="headerlink" href="#pr-titleyml-on-pr-openeditsync" title="Permanent link">&para;</a></h2>
+<p>Validates the PR title against <a href="https://www.conventionalcommits.org/">Conventional Commits</a> using the exact types/scopes documented in <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md#commit-messages-conventional-commits">CONTRIBUTING.md</a> — the title becomes the squash-merge commit message on <code>main</code>, so it's enforced the same way a commit message would be.</p>
+<h2 id="changelog-fragment-checkyml-on-pr-openeditsync"><code>changelog-fragment-check.yml</code> — on PR open/edit/sync<a class="headerlink" href="#changelog-fragment-checkyml-on-pr-openeditsync" title="Permanent link">&para;</a></h2>
+<p>Enforces the "changeset"/news-fragment convention described in <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md#release-notes--changeset-fragments">CONTRIBUTING.md</a>: any PR whose title's Conventional Commits type is <code>feat</code>, <code>fix</code>, or <code>perf</code> must add exactly one file to <code>changelog.d/</code> named <code>&lt;PR-number&gt;.&lt;type&gt;.md</code>, and that file's content must pass seven format rules (single paragraph, capitalized, ends in <code>.</code>/<code>!</code>/<code>?</code>, no heading, no code block, doesn't repeat the type prefix, 20-400 characters). PRs of any other type (<code>docs</code>, <code>test</code>, <code>refactor</code>, <code>chore</code>, <code>ci</code>) are exempt — they don't describe anything an end user would see in release notes.</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Determine PR type</td>
+<td>Parses the PR title with the same type vocabulary <code>pr-title.yml</code>'s <code>types:</code> list uses (kept manually in sync — see the comment in both files).</td>
+</tr>
+<tr>
+<td>Gate</td>
+<td>Only <code>feat</code>/<code>fix</code>/<code>perf</code> require a fragment; anything else short-circuits with a no-op pass.</td>
+</tr>
+<tr>
+<td>Find the fragment</td>
+<td>Diffs the PR against its base ref for added files under <code>changelog.d/</code>, and fails with a specific message if none, more than one, or a wrongly-named file was added.</td>
+</tr>
+<tr>
+<td>Validate content</td>
+<td>Runs <code>scripts/check_changelog_fragment.py &lt;file&gt;</code> — a small stdlib-only Python script (no <code>towncrier</code> dependency needed for this part) that checks each of the seven content rules independently and fails with the exact rule number and a human-readable reason (e.g. <code>[3-ends-with-punctuation]</code>), plus a link back to CONTRIBUTING.md.</td>
+</tr>
+</tbody>
+</table>
+<p>This is a separate workflow from <code>pr-title.yml</code> (rather than a job appended to it) because <code>pr-title.yml</code> runs on <code>pull_request_target</code> (needed so it can comment on forked PRs without leaking secrets), while this check only ever needs to read the PR's own diff and is safer as plain <code>pull_request</code>.</p>
+<h2 id="codeqlyml-on-pushpr-to-main-plus-a-weekly-schedule"><code>codeql.yml</code> — on push/PR to <code>main</code>, plus a weekly schedule<a class="headerlink" href="#codeqlyml-on-pushpr-to-main-plus-a-weekly-schedule" title="Permanent link">&para;</a></h2>
+<p>Semantic SAST for Go via GitHub's own CodeQL engine — see the Security scanning table above for how this fits alongside <code>gosec</code>/<code>govulncheck</code>/Trivy. Runs the <code>security-and-quality</code> query suite (CodeQL's default, not the broader <code>security-extended</code> suite — same "keep signal-to-noise high, no repo-specific config" preference as <code>golangci-lint</code>'s default linter set). The weekly schedule (Mondays) catches new findings against unchanged code when CodeQL's own query packs are updated upstream, the same rationale as running Dependabot/<code>govulncheck</code> on a cadence rather than push-only.</p>
+<p>Findings appear under Security -&gt; Code scanning alerts, never as a failed check — see the Security scanning table above for why that's true of code scanning generically, not a severity threshold that could be tuned.</p>
+<p><strong>One-time manual note:</strong> if this repo ever enables "Default setup" for code scanning in Settings -&gt; Code security, GitHub manages its own CodeQL workflow and this file becomes redundant with it — the two should not both run. No such setup exists yet, so <code>codeql.yml</code> is the only CodeQL workflow.</p>
+<h2 id="dcoyml-on-every-pr-to-main"><code>dco.yml</code> — on every PR to <code>main</code><a class="headerlink" href="#dcoyml-on-every-pr-to-main" title="Permanent link">&para;</a></h2>
+<p>Verifies every commit in the PR carries a <code>Signed-off-by:</code> trailer (DCO), via a hand-rolled <code>git</code>/<code>grep</code> check rather than a third-party Action — DCO enforcement is simple enough that pulling in an external dependency for it isn't worth the supply-chain surface.</p>
+<h2 id="release-prepyml-on-push-to-main-touching-changelogd"><code>release-prep.yml</code> — on push to <code>main</code> touching <code>changelog.d/</code><a class="headerlink" href="#release-prepyml-on-push-to-main-touching-changelogd" title="Permanent link">&para;</a></h2>
+<p>Automates the one manual step the <code>changelog.d/</code> fragment system was always meant to make possible to automate: building <code>CHANGELOG.md</code>. On every push to <code>main</code> that touches <code>changelog.d/</code> (and via <code>workflow_dispatch</code> on demand), it checks whether any real fragment is pending (anything besides <code>changelog.d/README.md</code>), and if so:</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Compute next version</td>
+<td>Reads the most recent <code>vX.Y.Z</code> tag and bumps it: any pending <code>*.feat.md</code> fragment means a minor bump (patch resets to <code>0</code>); <code>fix</code>/<code>perf</code>-only fragments mean a patch bump. Same convention as semantic-release/Conventional Commits — the highest-impact pending fragment type decides the bump. There's no major-bump case, since this repo's fragment vocabulary (<code>towncrier.toml</code>) has no "breaking" type yet.</td>
+</tr>
+<tr>
+<td>Build <code>CHANGELOG.md</code></td>
+<td><code>towncrier build --version vX.Y.Z --yes</code> — the exact command the repo owner used to run by hand.</td>
+</tr>
+<tr>
+<td>Open or update a PR</td>
+<td><a href="https://github.com/peter-evans/create-pull-request"><code>peter-evans/create-pull-request</code></a> pushes the result to a reused <code>release-prep</code> branch and opens (or updates, if one's already open) a PR titled <code>ci: prepare release vX.Y.Z</code>, signed off as <code>github-actions[bot]</code> so <code>dco.yml</code> passes it.</td>
+</tr>
+</tbody>
+</table>
+<p>If another <code>feat</code>/<code>fix</code>/<code>perf</code> PR merges while the release-prep PR is still open, the next run recomputes the version and content from scratch and updates the <em>same</em> PR — there is never more than one open at a time (<code>concurrency: group: release-prep</code> also prevents two runs from racing to push it).</p>
+<p>This automates <em>building</em> the changelog, not <em>deciding when to release</em>: a person still reviews the compiled <code>CHANGELOG.md</code> diff like any other PR, merges it, and only then tags — see <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md#release-notes--changeset-fragments">CONTRIBUTING.md</a>. Full auto-tagging (building the changelog <em>and</em> creating/pushing the <code>vX.Y.Z</code> tag with no review step) was deliberately not chosen: it would need CI to either force-push a moved tag or bypass this repo's own branch protection to push straight to <code>main</code>, both of which trade away the review step for not much real benefit — the changelog-building half was the actual repetitive manual work, and this workflow already removes exactly that.</p>
+<p><strong>One-time manual prerequisite</strong>, same shape as <code>release.yml</code>'s GHCR note: Settings → Actions → General → Workflow permissions must allow "Read and write permissions", <strong>and</strong> "Allow GitHub Actions to create and approve pull requests" must be checked — without the latter, <code>create-pull-request</code> fails to open the PR even though this workflow's own <code>permissions:</code> block is otherwise sufficient.</p>
+<h2 id="e2e-manualyml-manual-only-workflow_dispatch"><code>e2e-manual.yml</code> — manual only (<code>workflow_dispatch</code>)<a class="headerlink" href="#e2e-manualyml-manual-only-workflow_dispatch" title="Permanent link">&para;</a></h2>
+<p>The containerized, real-artifact end-to-end smoke test — see <a href="../testing/#manual-e2e-real-container">Testing</a> for the full description. Deliberately not wired to push/PR: it spins up multiple long-lived containers and sleeps through real wall-clock windows, so it's opt-in rather than adding minutes to every PR.</p>
+<h2 id="e2e-kindyml-manual-only-workflow_dispatch"><code>e2e-kind.yml</code> — manual only (<code>workflow_dispatch</code>)<a class="headerlink" href="#e2e-kindyml-manual-only-workflow_dispatch" title="Permanent link">&para;</a></h2>
+<p>The real-Kubernetes end-to-end test for the CRD-driven mode (<code>cmd/manager</code>) — see <a href="../testing/#e2e-kind-cloudnativepg">Testing</a> for the full description. Creates a real <code>kind</code> cluster, installs the real CloudNativePG operator and a real <code>Cluster</code>, installs pg-regression-radar via the Helm chart, and asserts a real <code>PerformanceRegression</code> CR is created. Real ArgoCD and <code>pg_store_plans</code> are deliberately out of scope for this first pass — see <a href="../roadmap/">Roadmap</a>. Same opt-in reasoning as <code>e2e-manual.yml</code>: this is even heavier (a full cluster plus two operators), so it's <code>workflow_dispatch</code>-only too.</p>
+<h2 id="releaseyml-on-pushing-a-v-tag"><code>release.yml</code> — on pushing a <code>v*</code> tag<a class="headerlink" href="#releaseyml-on-pushing-a-v-tag" title="Permanent link">&para;</a></h2>
+<p>Publishes a release: builds, scans, signs, and pushes every artifact this repo ships, gated on pushing a tag matching <code>v*</code> (e.g. <code>git tag v0.3.0 &amp;&amp; git push origin v0.3.0</code>) — never on an ordinary merge to <code>main</code>, so there is no continuously-updated "edge" image, only real tagged releases. See <a href="../installation/#option-3-pull-or-build-the-container-image">Installation</a> for the resulting pull/install commands.</p>
+<table>
+<thead>
+<tr>
+<th>Job</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>images</code> (matrix: <code>cli</code>/<code>operator</code>/<code>manager</code>/<code>collector</code>/<code>ingester</code> × <code>linux/amd64</code>/<code>linux/arm64</code>)</td>
+<td>For each of the Dockerfile's five <code>--target</code> values, on each platform: builds the arch-specific image (loaded into the runner's local Docker daemon, not yet pushed — cross-compiled via the Dockerfile's <code>--platform=$BUILDPLATFORM</code> build stage + <code>GOARCH=$TARGETARCH</code>, not run under QEMU emulation, though <a href="https://github.com/docker/setup-qemu-action"><code>docker/setup-qemu-action</code></a> is still registered defensively), generates an SPDX SBOM with <a href="https://github.com/anchore/sbom-action"><code>anchore/sbom-action</code></a> (Syft under the hood — retried once automatically on failure, since this step's syft download from github.com's Releases CDN has hit a transient connection failure in a real release run before; a second consecutive failure still fails the job for real), scans it with <a href="https://github.com/aquasecurity/trivy-action"><code>aquasecurity/trivy-action</code></a> and <strong>fails the job on any CRITICAL-severity finding</strong> (nothing is pushed if this fails), then — only once the scan passes — pushes it under an arch-specific tag, <code>ghcr.io/joao00001/pg-regression-radar/&lt;target&gt;:&lt;tag&gt;-&lt;arch&gt;</code> (never directly as <code>:&lt;tag&gt;</code>/<code>:latest</code> — see <code>manifests</code> below), signs that digest keylessly with <a href="https://github.com/sigstore/cosign"><code>cosign</code></a>, attaches the SBOM as a signed in-toto attestation (<code>cosign attest</code>), and publishes build provenance attestations via <code>actions/attest-build-provenance</code> (SLSA format).</td>
+</tr>
+<tr>
+<td><code>manifests</code> (needs <code>images</code>; matrix: <code>cli</code>/<code>operator</code>/<code>manager</code>/<code>collector</code>/<code>ingester</code>)</td>
+<td>Combines each target's two already-pushed, already-scanned arch-specific images into the single multi-arch <code>:&lt;tag&gt;</code> and <code>:latest</code> tags everything else in this repo actually references, via <code>docker buildx imagetools create</code> — a registry-side operation with no rebuilding, re-pulling, or re-scanning. Also cosign-signs the resulting manifest-list digest and publishes a provenance attestation for that digest, so both signature and SLSA provenance verification work directly against the plain <code>:&lt;tag&gt;</code>/<code>:latest</code> tag most people pull.</td>
+</tr>
+<tr>
+<td><code>helm-chart</code> (needs <code>manifests</code>)</td>
+<td>Packages <code>deploy/helm/deploylens</code> with <code>--version</code>/<code>--app-version</code> derived from the pushed tag (chart version strips the tag's leading <code>v</code> for SemVer compliance; <code>appVersion</code> keeps it, matching the image tags), pushes it as an OCI artifact to <code>oci://ghcr.io/joao00001/charts</code>, parses the digest out of <code>helm push</code>'s own <code>Digest: sha256:...</code> output line, signs that digest keylessly with <code>cosign</code>, and publishes a provenance attestation for that digest. Runs after <code>manifests</code> so a chart is never published pointing at images that failed to build/scan/publish/combine.</td>
+</tr>
+<tr>
+<td><code>release-notes</code> (needs <code>images</code>, <code>manifests</code>, <code>helm-chart</code>)</td>
+<td>Extracts the section of <code>CHANGELOG.md</code> matching the pushed tag (from its <code>## vX.Y.Z - &lt;date&gt;</code> heading up to, but not including, the next <code>##</code> heading, via a small <code>awk</code> script) and publishes it as the body of a GitHub Release via <a href="https://github.com/softprops/action-gh-release"><code>softprops/action-gh-release</code></a>. That section only exists because <code>release-prep.yml</code> (below) built it and it was merged to <code>main</code> <em>before</em> the tag was pushed — this job fails loudly (rather than publishing an empty release) if no matching section is found. Runs last, after every other artifact-publishing job, so a release is never announced before its images/manifests/chart actually exist.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Release notes are <code>CHANGELOG.md</code>-derived, not generated from commit history in this workflow.</strong> An earlier draft of this workflow considered generating release notes directly from commit messages via <a href="https://git-cliff.org/"><code>git-cliff</code></a> (with a checked-in <code>cliff.toml</code>), but that never actually landed on <code>main</code>, and the <code>changelog.d/</code> fragment system above supersedes it: fragments are written by a human in user-facing language and enforced per-PR in CI (<code>changelog-fragment-check.yml</code>), which a commit-message-driven changelog can't guarantee. There is no <code>git-cliff</code> usage or <code>cliff.toml</code> anywhere in this repo.</p>
+<p><strong>Supply chain and signing:</strong> every artifact published by this workflow is cryptographically signed with <a href="https://github.com/sigstore/cosign">Cosign</a> using keyless signing — the runner exchanges its own GitHub Actions OIDC token for a short-lived certificate from <a href="https://github.com/sigstore/fulcio">Sigstore Fulcio</a>, and the signature is recorded in the public <a href="https://github.com/sigstore/rekor">Rekor</a> transparency log. No stored private key is needed or used. Signing covers: each per-arch image digest (in the <code>images</code> job), each multi-arch manifest-list digest (in the <code>manifests</code> job), and the Helm OCI artifact digest (in the <code>helm-chart</code> job). Each per-arch image also carries an SPDX-JSON SBOM attached as a signed in-toto attestation via <code>cosign attest</code>, and release artifacts now also receive build provenance attestations via <code>actions/attest-build-provenance</code> (SLSA format). The SBOM is generated by <a href="https://github.com/anchore/sbom-action"><code>anchore/sbom-action</code></a> (Syft) from the locally-built image before it is pushed; a persistent generation failure (after one automatic retry) fails the job and blocks the release. See <a href="../supply-chain/">Supply Chain Verification</a> for the verification commands.</p>
+<p><strong>Permissions:</strong> <code>packages: write</code> (<code>images</code>, <code>manifests</code>, and <code>helm-chart</code>, to push to <code>ghcr.io</code>), <code>id-token: write</code> (<code>images</code>, <code>manifests</code>, and <code>helm-chart</code>, for cosign's OIDC-to-Fulcio exchange), and <code>contents: write</code> (<code>release-notes</code> only, for <code>softprops/action-gh-release</code> to create the Release). All three are satisfied entirely by the built-in <code>GITHUB_TOKEN</code> — no registry credential secret is configured or needed, since GHCR is free for public repositories and accepts <code>GITHUB_TOKEN</code> directly.</p>
+<p><strong>One-time manual prerequisite:</strong> GHCR pushes need Settings → Actions → General → Workflow permissions set to "Read and write permissions" on this repository — that setting can't be applied from workflow YAML, and without it every push in this workflow fails with 403 regardless of the <code>permissions:</code> block above. See the workflow's own top comment.</p>
+<p><strong>Chart versioning:</strong> <code>deploy/helm/deploylens/Chart.yaml</code>'s checked-in <code>version</code>/<code>appVersion</code> are development-time placeholders only — <code>helm package --version --app-version</code> overrides both unconditionally from the pushed git tag at release time, so they never need editing in lockstep with a release. This is a deliberate design choice, not a gap.</p>
+<p><strong>Proven against real releases:</strong> this workflow has run for real against <code>v1.0.0</code> and <code>v1.0.1</code> — real pushes to <code>ghcr.io</code>, real keyless signing via GitHub's OIDC-to-Fulcio exchange, and a real Helm OCI chart push all succeeded, including the <code>linux/arm64</code> cross-compilation. The one real failure found so far was in <code>v1.0.0</code>'s <code>helm-chart</code> job: <code>cosign sign</code> failed with <code>UNAUTHORIZED</code> because <code>helm registry login</code> writes credentials to a different config file than cosign's default keychain reads. Fixed in <code>v1.0.1</code> by adding a separate <code>docker/login-action</code> step before the cosign step. Not independently confirmed: an actual <code>arm64</code> machine pulling and running the resulting multi-arch image, as opposed to the cross-platform build itself succeeding.</p>
+<h2 id="docsyml-two-independent-jobs-check-every-prpush-and-deploy-only-on-a-release-tag"><code>docs.yml</code> — two independent jobs: <code>check</code> (every PR/push) and <code>deploy</code> (only on a release tag)<a class="headerlink" href="#docsyml-two-independent-jobs-check-every-prpush-and-deploy-only-on-a-release-tag" title="Permanent link">&para;</a></h2>
+<p>Builds this documentation site with MkDocs Material and publishes a <strong>permanently versioned</strong> copy of it to GitHub Pages at <a href="https://joao00001.github.io/pg-regression-radar/">https://joao00001.github.io/pg-regression-radar/</a> using <a href="https://github.com/jimporter/mike">mike</a> — every tag gets its own browsable, never-overwritten copy of the site, a version selector renders in the header (Material's native mike integration, see <code>mkdocs.yml</code>'s <code>extra.version</code> block), and a <code>latest</code> alias always points at the newest <em>stable</em> release.</p>
+<p>This used to be one job that redeployed the live site on every push to <code>main</code> touching <code>docs/**</code>. That meant the public site could describe a <code>feat</code> that had merged but not shipped in any tagged image yet — nothing enforced "the docs you're reading match something you can actually install." It's now split into two jobs specifically to close that gap:</p>
+<table>
+<thead>
+<tr>
+<th>Job</th>
+<th>Trigger</th>
+<th>Publishes?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>check</code></td>
+<td>Push or PR to <code>main</code> (PRs path-filtered to <code>docs/**</code>/<code>mkdocs.yml</code>/<code>hooks.py</code>/<code>requirements-docs.txt</code>; plain pushes to <code>main</code> unconditionally, matching <code>ci.yml</code>'s own pattern)</td>
+<td>No — <code>mkdocs build --strict</code> only, same broken-link/nav gate as before, just never publishes anything.</td>
+</tr>
+<tr>
+<td><code>deploy</code></td>
+<td>Push of a <code>v*</code> tag, or <code>workflow_dispatch</code> with an explicit <code>tag</code> input (for re-running a failed deploy — it checks out that exact tag, never whatever ref the workflow happens to run from)</td>
+<td>Yes — via <code>mike deploy</code>/<code>mike set-default</code>, straight to the <code>gh-pages</code> branch.</td>
+</tr>
+</tbody>
+</table>
+<p><code>deploy</code> runs unconditionally on every tag push, with no path filter (mirroring <code>release.yml</code>'s own tag-triggered, always-runs behavior) — a release always gets a matching docs deploy, even when that specific tag's commit didn't touch anything under <code>docs/</code>.</p>
+<p><strong>Stable vs. pre-release tags:</strong> a tag containing a <code>-</code> (this repo's existing release-candidate convention, e.g. <code>v1.0.0-rc1</code>) is deployed as its own permanent, linkable version but never becomes the <code>latest</code> alias — only a tag with no <code>-</code> (a real <code>vX.Y.Z</code> release) moves <code>latest</code>, and with it, what a visitor sees by default at the site's root.</p>
+<p><strong>One-time manual prerequisite:</strong> Settings → Pages → Source must be "Deploy from a branch", branch <code>gh-pages</code>, folder <code>/ (root)</code> — <strong>not</strong> "GitHub Actions". mike commits the built site directly to the <code>gh-pages</code> branch itself (see <a href="https://github.com/jimporter/mike#how-it-works">mike's own "How It Works"</a>); there's no artifact-upload step here for the old "GitHub Actions" Pages source to serve.</p>
+<p><strong>Changelog, on the site itself:</strong> <code>docs/changelog.md</code> isn't a real file in the repo — <code>hooks.py</code>'s <code>on_pre_build</code> hook copies the root <code>CHANGELOG.md</code> into it at build time (rewriting the two relative links that would otherwise break a directory level deeper: <code>CONTRIBUTING.md</code> → an absolute GitHub blob URL, <code>docs/roadmap.md</code> → <code>roadmap.md</code>) and it's listed in <code>mkdocs.yml</code>'s <code>nav</code> as a top-level "Changelog" page. Because it's built fresh per version, each mike-deployed version of the site shows <code>CHANGELOG.md</code> exactly as it existed at that tag — a real per-release changelog, not just a link out to GitHub.</p>
+<p><strong>Version indicator:</strong> <code>docs/installation.md</code>'s image-tag examples remain illustrative placeholders (e.g. <code>:v0.3.0</code>) with an explicit "substitute the actual latest tag" note — deliberately not kept in lockstep with the mike version selector, to avoid a second place that goes stale. The version a visitor is actually looking at is shown by Material's version selector itself (top of every page), sourced from mike's <code>versions.json</code>, not hand-maintained anywhere.</p>
+<p><strong>Outdated-version warning banner:</strong> <code>overrides/main.html</code> (wired in via <code>mkdocs.yml</code>'s <code>theme.custom_dir: overrides</code>) overrides Material's <code>outdated</code> block so a visitor browsing any version other than the one aliased <code>latest</code> sees a banner above the header linking back to the site root — see <a href="https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#version-warning">Material's version-warning docs</a>. The banner's markup is baked into every version's build identically; Material's own client-side JS decides at page-load time (by comparing the current version against <code>versions.json</code>) whether to actually unhide it, so this needs no per-version build logic of its own.</p>
+<h2 id="dependabot-githubdependabotyml">Dependabot (<code>.github/dependabot.yml</code>)<a class="headerlink" href="#dependabot-githubdependabotyml" title="Permanent link">&para;</a></h2>
+<p>Weekly update checks for <code>gomod</code>, <code>github-actions</code>, and <code>docker</code> ecosystems, with <code>chore(deps)</code> / <code>ci(deps)</code> commit-message prefixes matching this project's Conventional Commits convention. The <code>docker</code> entry covers the base image(s) in the repo-root Dockerfile's <code>FROM</code> lines — the same five-target multi-stage build <code>release.yml</code> publishes from — so a base-image security patch shows up as an ordinary Dependabot PR, the same way a vulnerable Go dependency would.</p>
+<p>This is version-currency only (opens a PR when a newer version exists); it's not what actually blocks a known-vulnerable dependency or image from shipping — see the Security scanning table above for <code>govulncheck</code> (Go deps) and Trivy (built images), which check for actual CVEs rather than just staleness.</p>
+<h2 id="branch-protection">Branch protection<a class="headerlink" href="#branch-protection" title="Permanent link">&para;</a></h2>
+<p>None of the above has real effect unless <code>main</code>'s ruleset/branch protection actually requires each check by name — see <a href="../branch-protection/">Branch Protection</a> for the exact check names and which settings are worth enabling alongside them.</p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../testing/">Testing</a> — reproducing the test-related jobs locally.</li>
+<li><a href="../installation/">Installation</a> — pulling/verifying the images and Helm chart <code>release.yml</code> publishes.</li>
+<li><a href="../supply-chain/">Supply Chain Verification</a> — operator commands to verify artifact signatures, SBOMs, and provenance.</li>
+<li><a href="../support-matrix/">Support Matrix</a> — officially supported PostgreSQL versions/distributions and exactly which of them each CI job verifies.</li>
+<li><a href="../branch-protection/">Branch Protection</a> — whether these checks actually block anything.</li>
+<li><a href="../roadmap/">Roadmap</a> — CI/CD items still open (branch protection review, Discussions link, <code>release.yml</code> follow-ups).</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/nav-data.js"></script>
+      
+        <script src="../javascripts/nav-flyout.js"></script>
+      
+        <script src="../javascripts/version-flyout.js"></script>
+      
+    
+  </body>
+</html>

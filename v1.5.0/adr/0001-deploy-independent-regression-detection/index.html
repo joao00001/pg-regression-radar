@@ -1,0 +1,2026 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/v1.5.0/adr/0001-deploy-independent-regression-detection/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>ADR-0001: Deploy-independent regression detection - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adr-0001-deploy-independent-regression-detection" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are not viewing the latest version of these docs.
+  <a href="../../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ADR-0001: Deploy-independent regression detection
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../installation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../configuration/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../testing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression Scenario Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply Chain Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection Algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cluster (Fleet) Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model & Threat Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Security (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Versioning & Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy Sources & Webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-Abort (Argo Rollouts)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic (Deploy-Independent) Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch Protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#options-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Options Considered
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Options Considered">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#baseline-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Baseline strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Baseline strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-split-window-chosen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: Split-window (chosen)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-recent-vs-longer-trailing-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: Recent vs. longer trailing baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-c-time-of-dayday-of-week-baseline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option C: Time-of-day/day-of-week baseline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alert-suppression" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alert suppression
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Alert suppression">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-fixed-cooldown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: Fixed cooldown
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-re-arm-state-machine-chosen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: Re-arm state machine (chosen)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-cli-first-crd-later" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: CLI first, CRD later
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-cli-crd-together-chosen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: CLI + CRD together (chosen)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trade-off-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trade-off Analysis
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequences
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#action-items" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Action Items
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/adr/0001-deploy-independent-regression-detection.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="adr-0001-deploy-independent-regression-detection">ADR-0001: Deploy-independent regression detection<a class="headerlink" href="#adr-0001-deploy-independent-regression-detection" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Accepted
+<strong>Date:</strong> 2026-08-13
+<strong>Deciders:</strong> Joao</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>pg-regression-radar's Correlation Engine (<code>internal/correlation</code>) only ever runs in response to a <code>DeployEvent</code>: <code>Engine.Analyse(ev)</code> builds a window symmetric around <code>ev.Timestamp</code>, and a detected regression is only confirmed when the E-divisive change point it finds lies within <code>ChangePointTolerance</code> of that timestamp. <code>PendingSet</code> exists purely to retry <code>Analyse</code> against the same event until its post-deploy window closes.</p>
+<p>This hard-couples the tool's actual value (statistically confirming a real, significant latency shift) to one specific cause (a tracked Kubernetes deploy). Most real-world Postgres regressions have no deploy behind them at all — autovacuum falling behind, index/table bloat, stale planner statistics, organic data growth, a connection-pool/traffic-pattern change. None of those are detectable today, and the requirement to wire up a <code>DeploySource</code> (ArgoCD/Flux/Rollouts/native-K8s/generic webhook) is also the main reason the tool reads as Kubernetes-specific and narrow, even though the standalone <code>operator</code>/<code>collector</code> CLI binaries already work against any reachable Postgres DSN, no Kubernetes required.</p>
+<p>This ADR is the first of three follow-ups from a broader "how do we make this tool matter to more people" discussion (see conversation history); the other two (a friction-free non-Kubernetes onboarding path, and prescriptive causes alongside detection) are out of scope here and will get their own ADRs.</p>
+<p>Decisions on the three open questions below were made via direct discussion before writing this ADR (not re-litigated here, just recorded):</p>
+<ul>
+<li><strong>Baseline strategy:</strong> split-window (recent half vs. previous half of a single rolling window), not a longer trailing baseline or a time-of-day/day-of-week model.</li>
+<li><strong>Alert suppression:</strong> a re-arm state machine per query (alert once, stay "in regression" until latency recovers below threshold, then re-arm), not a fixed cooldown.</li>
+<li><strong>Scope:</strong> both the CLI (<code>cmd/operator</code>) and the CRD (<code>cmd/manager</code>, <code>PostgresWatch</code>) get this in the same effort, not staged.</li>
+</ul>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p>Add a second, independent trigger path — periodic detection — that runs the existing E-divisive + Welch's t-test machinery on a rolling schedule, per tracked query, with no <code>DeployEvent</code> involved. It is <strong>additive, not a replacement</strong>: deploy-correlated detection (<code>Analyse</code>/<code>PendingSet</code>) keeps working exactly as today, unaffected by whether periodic detection is enabled. A <code>PostgresWatch</code> (or the CLI) can have either, both, or neither active.</p>
+<p>Concretely:</p>
+<ol>
+<li><strong>Engine refactor.</strong> Extract the part of <code>evaluateQuery</code> that is genuinely deploy-agnostic (stage-0 mean pre-filter, stage-1 E-divisive, stage-2 Welch's t-test) from the part that is not (the <code>ChangePointTolerance</code>-to-<code>ev.Timestamp</code> check, and populating <code>DeployEventID</code>/<code>Namespace</code> from <code>ev</code>). Deploy-triggered <code>Analyse</code> keeps the tolerance check; a new <code>AnalysePeriodic</code> skips it entirely — for a self-contained window with no external anchor, the change point <em>is</em> the finding, wherever it falls.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="c1">// engine.go — shape, not final code</span>
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">Engine</span><span class="p">)</span><span class="w"> </span><span class="nx">Analyse</span><span class="p">(</span><span class="nx">ev</span><span class="w"> </span><span class="nx">v1alpha1</span><span class="p">.</span><span class="nx">DeployEvent</span><span class="p">)</span><span class="w"> </span><span class="p">[]</span><span class="nx">v1alpha1</span><span class="p">.</span><span class="nx">PerformanceRegression</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// ... unchanged: builds window around ev.Timestamp, calls evaluateSeries,</span>
+<span class="w">    </span><span class="c1">// then rejects if the change point isn&#39;t within ChangePointTolerance of ev.Timestamp.</span>
+<span class="p">}</span>
+
+<span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">Engine</span><span class="p">)</span><span class="w"> </span><span class="nx">AnalysePeriodic</span><span class="p">(</span><span class="nx">now</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Time</span><span class="p">)</span><span class="w"> </span><span class="p">[]</span><span class="nx">v1alpha1</span><span class="p">.</span><span class="nx">PerformanceRegression</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// window = [now - 2*PeriodicWindowMinutes, now], split at the midpoint</span>
+<span class="w">    </span><span class="c1">// into &quot;before&quot;/&quot;after&quot; halves; same evaluateSeries core; no</span>
+<span class="w">    </span><span class="c1">// deploy-timestamp proximity check at all.</span>
+<span class="p">}</span>
+</code></pre></div>
+<ol>
+<li>
+<p><strong>New config knob:</strong> <code>PeriodicWindowMinutes</code> (default 60 — deliberately double the deploy-mode default of 30, since there is no deploy prior narrowing where to look, so a shorter window would be noisier). Independent from <code>WindowMinutes</code> so tuning one never silently affects the other.</p>
+</li>
+<li>
+<p><strong>Re-arm state machine.</strong> Deploy-correlated detection's dedup (<code>PendingSet.notified map[int64]struct{}</code>) is scoped to one deploy event's lifetime — it doesn't need to survive across events. Periodic detection has no such natural boundary, so it needs its own per-query state, kept for the life of the watch:</p>
+</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="c1">// correlation package — shape, not final code</span>
+<span class="kd">type</span><span class="w"> </span><span class="nx">periodicState</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">inRegression</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">int64</span><span class="p">]</span><span class="kt">bool</span><span class="w"> </span><span class="c1">// queryID -&gt; currently alerting (won&#39;t re-fire until recovered)</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>A query transitions <code>false -&gt; true</code> (fires once) when <code>AnalysePeriodic</code> reports <code>Detected</code>; it stays <code>true</code> (suppressed) on every subsequent tick where the <em>recent</em> half is still significantly worse than a fresh baseline; it transitions back to <code>false</code> once a tick shows recent-half latency has recovered to within <code>LatencyChangeThreshold</code> of baseline, so a future regression can fire again. This needs a lightweight recovery check on every tick regardless of whether a new regression fires — effectively "is the query still bad" as well as "did it just become bad."</p>
+<ol>
+<li><strong>CRD additions</strong> (<code>PostgresWatchSpec</code>):</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="nt">periodicDetection</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">          </span><span class="c1"># default off; opt-in per watch, mirrors autoAbort&#39;s own opt-in pattern</span>
+<span class="w">  </span><span class="nt">windowMinutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span><span class="w">        </span><span class="c1"># optional; falls back to a 60m default</span>
+<span class="w">  </span><span class="nt">intervalMinutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span><span class="w">      </span><span class="c1"># how often a full pass over tracked queries runs</span>
+</code></pre></div>
+<ol>
+<li>
+<p><strong>CLI additions</strong> (<code>cmd/operator</code>): <code>--periodic-detection</code> (bool), <code>--periodic-window-minutes</code>, <code>--periodic-interval-minutes</code> — same shape as the existing <code>--window-minutes</code>/<code>--min-executions</code> flags.</p>
+</li>
+<li>
+<p><strong>New poll path</strong>, separate from the existing deploy-triggered one in both <code>internal/cli/operator.go</code> and <code>internal/controller/postgreswatch_controller.go</code>: a ticker firing every <code>intervalMinutes</code>, calling <code>AnalysePeriodic(time.Now())</code>, running results through the re-arm state machine, then through the <em>same</em> <code>alerting.Notifier</code>/<code>recordRegression</code> paths already in place — no changes needed to alerting or to <code>PerformanceRegression</code> persistence beyond one new field (see below).</p>
+</li>
+<li>
+<p><strong><code>PerformanceRegression</code> gets one new field:</strong> <code>TriggerType</code> (<code>"deploy"</code> | <code>"periodic"</code>), so alerts/CRs make it obvious which detection path fired, and <code>DeployEventID</code> is simply empty for a periodic-triggered regression (it's already an optional-shaped string field, not a required one — no schema break).</p>
+</li>
+</ol>
+<h2 id="options-considered">Options Considered<a class="headerlink" href="#options-considered" title="Permanent link">&para;</a></h2>
+<h3 id="baseline-strategy">Baseline strategy<a class="headerlink" href="#baseline-strategy" title="Permanent link">&para;</a></h3>
+<h4 id="option-a-split-window-chosen">Option A: Split-window (chosen)<a class="headerlink" href="#option-a-split-window-chosen" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Assessment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Complexity</td>
+<td>Low — reuses <code>evaluateQuery</code>'s existing core almost unchanged</td>
+</tr>
+<tr>
+<td>False-positive risk</td>
+<td>Real, but bounded by using a longer default window (60m) than deploy mode and a conservative <code>LatencyChangeThreshold</code>/<code>PValueThreshold</code> to start</td>
+</tr>
+<tr>
+<td>Data/retention cost</td>
+<td>None beyond what deploy-mode already needs</td>
+</tr>
+<tr>
+<td>Time to ship</td>
+<td>Fastest of the three</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pros:</strong> minimal new code, no new retention requirements, directly reuses the statistically-validated E-divisive/Welch's-t-test core as-is.
+<strong>Cons:</strong> genuinely vulnerable to ordinary daily/weekly traffic-pattern shifts producing a "detected" result with nothing wrong — start-of-business-hours load ramps are the obvious failure case. Mitigated only by tuning (window size, thresholds), not eliminated.</p>
+<h4 id="option-b-recent-vs-longer-trailing-baseline">Option B: Recent vs. longer trailing baseline<a class="headerlink" href="#option-b-recent-vs-longer-trailing-baseline" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Assessment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Complexity</td>
+<td>Medium — needs a second, longer-lived sample store (hours, not the ~180m default retention)</td>
+</tr>
+<tr>
+<td>False-positive risk</td>
+<td>Lower — a real trailing average/stddev absorbs some daily variation</td>
+</tr>
+<tr>
+<td>Data/retention cost</td>
+<td>Meaningful — likely forces the postgres state backend rather than memory-only for anyone using this</td>
+</tr>
+<tr>
+<td>Time to ship</td>
+<td>Slower</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pros:</strong> meaningfully more robust to daily variation than Option A without the full complexity of Option C.
+<strong>Cons:</strong> retention-cost implications ripple into <code>internal/storage</code>, <code>--retention-minutes</code> defaults, and the memory-vs-postgres backend story — a bigger blast radius than this ADR's scope.</p>
+<h4 id="option-c-time-of-dayday-of-week-baseline">Option C: Time-of-day/day-of-week baseline<a class="headerlink" href="#option-c-time-of-dayday-of-week-baseline" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Assessment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Complexity</td>
+<td>High — needs weeks of retained history and a seasonality model</td>
+</tr>
+<tr>
+<td>False-positive risk</td>
+<td>Lowest of the three, by design</td>
+</tr>
+<tr>
+<td>Data/retention cost</td>
+<td>Highest — weeks of samples, not hours</td>
+</tr>
+<tr>
+<td>Time to ship</td>
+<td>Slowest — realistically its own multi-ADR effort</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pros:</strong> the only option that actually solves seasonality rather than working around it.
+<strong>Cons:</strong> scope of a standalone project, not a follow-up ADR item.</p>
+<h3 id="alert-suppression">Alert suppression<a class="headerlink" href="#alert-suppression" title="Permanent link">&para;</a></h3>
+<h4 id="option-a-fixed-cooldown">Option A: Fixed cooldown<a class="headerlink" href="#option-a-fixed-cooldown" title="Permanent link">&para;</a></h4>
+<p><strong>Pros:</strong> trivial to implement and reason about (a timestamp + duration check).
+<strong>Cons:</strong> semantically wrong for a persisting condition — either re-alerts on a schedule while nothing changed (noisy), or, if the cooldown is long, stays silent well past the point a human already fixed and then broke it again.</p>
+<h4 id="option-b-re-arm-state-machine-chosen">Option B: Re-arm state machine (chosen)<a class="headerlink" href="#option-b-re-arm-state-machine-chosen" title="Permanent link">&para;</a></h4>
+<p><strong>Pros:</strong> matches what an operator actually wants — one alert per distinct episode of regression, re-firing only for a genuinely new episode, not a timer.
+<strong>Cons:</strong> needs an explicit recovery check every tick (not just a "did it get worse" check), and per-query state that must survive restarts as gracefully as the rest of this project's in-memory-by-default state does (i.e., accepted to reset on restart, matching <code>PendingSet</code>'s and the Collector's own existing behavior, unless the postgres state backend is in use).</p>
+<h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
+<h4 id="option-a-cli-first-crd-later">Option A: CLI first, CRD later<a class="headerlink" href="#option-a-cli-first-crd-later" title="Permanent link">&para;</a></h4>
+<p><strong>Pros:</strong> smaller first PR, faster feedback loop, matches the "low-friction non-K8s onboarding" thread from the same discussion.
+<strong>Cons:</strong> temporary feature gap between the two run modes.</p>
+<h4 id="option-b-cli-crd-together-chosen">Option B: CLI + CRD together (chosen)<a class="headerlink" href="#option-b-cli-crd-together-chosen" title="Permanent link">&para;</a></h4>
+<p><strong>Pros:</strong> no temporary gap; the re-arm state machine and engine refactor are shared code regardless, so the CRD wiring on top is comparatively small once the CLI side works.
+<strong>Cons:</strong> larger single PR/review; <code>PostgresWatchSpec</code> schema, deepcopy, Helm chart, and RBAC (none needed here, unlike auto-abort — periodic detection touches nothing outside Postgres/CRD-status) all need updating in the same pass.</p>
+<h2 id="trade-off-analysis">Trade-off Analysis<a class="headerlink" href="#trade-off-analysis" title="Permanent link">&para;</a></h2>
+<p>The central trade-off is Option A vs. B/C on baseline strategy: A ships fastest and reuses the most existing, already-trusted code, but is the most exposed to false positives from ordinary traffic variation — exactly the failure mode that would erode trust in the tool fastest if it fires on "the store opened for the day" instead of "someone shipped a bad plan." B and C reduce that risk but pull in retention/storage changes this ADR deliberately keeps out of scope. Given this is genuinely new, unvalidated territory (unlike the alerting/actuation work, there's no existing production usage pattern to lean on yet), shipping A first — with conservative defaults and this ADR's own re-arm suppression softening the blast radius of a false positive to "one alert, then silence until it actually changes again" — is the right sequencing: validate the core mechanic against real traffic before paying for B/C's added retention cost.</p>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Detecting a regression no longer requires wiring up a <code>DeploySource</code> at all — the tool's addressable use case grows from "Postgres + Kubernetes + a tracked deploy tool" to "any Postgres with <code>pg_stat_statements</code>."</li>
+<li><code>PerformanceRegression.TriggerType</code> becomes a new, permanent field every consumer (Slack/Teams/PagerDuty/custom formatters, <code>kubectl get performanceregression -o yaml</code>, the docs) needs to account for, even though none of the alerting work needs to change to support it (it's just one more piece of context in the same payload).</li>
+<li>Periodic detection's false-positive risk is real and will need real tuning against real traffic once this ships — the initial defaults (60m window, existing <code>LatencyChangeThreshold</code>/<code>PValueThreshold</code>) are a starting point, not a validated answer, and should be called out as such in the docs.</li>
+<li>A future ADR (Option B or C above) becomes the natural place to revisit baseline strategy if false positives prove to be a real adoption blocker — this ADR does not close that door, it deliberately defers it.</li>
+<li>The re-arm state (<code>periodicState</code>) is in-memory by default, same as the rest of this project's runtime state (<code>Collector</code>, <code>PendingSet</code>) — it resets on restart, which means a regression already "in progress" at restart time will re-fire once rather than staying silently suppressed. This matches the project's existing "memory is the default, postgres backend is opt-in for durability" pattern (<code>internal/storage</code>) rather than introducing a new one.</li>
+</ul>
+<h2 id="action-items">Action Items<a class="headerlink" href="#action-items" title="Permanent link">&para;</a></h2>
+<ol>
+<li>[ ] <code>internal/correlation/engine.go</code>: extract the deploy-agnostic core of <code>evaluateQuery</code> into a shared helper; add <code>AnalysePeriodic(now time.Time)</code> and <code>PeriodicWindowMinutes</code> to <code>Config</code>.</li>
+<li>[ ] <code>internal/correlation</code>: new re-arm state type (<code>periodicState</code> or similar) with a recovery check, unit-tested for both the "fire once" and "recover, then re-fire" transitions.</li>
+<li>[ ] <code>pkg/apis/v1alpha1</code> + <code>api/v1alpha1</code>: add <code>PerformanceRegression.TriggerType</code>; add <code>PostgresWatchSpec.PeriodicDetection</code> (<code>Enabled</code>, <code>WindowMinutes</code>, <code>IntervalMinutes</code>) with hand-edited deepcopy, mirrored CRD YAML (<code>config/crd/bases</code> + Helm copy).</li>
+<li>[ ] <code>internal/cli/operator.go</code>: <code>--periodic-detection</code>/<code>--periodic-window-minutes</code>/<code>--periodic-interval-minutes</code> flags, a new ticker-driven poll loop parallel to the existing deploy-triggered one, <code>--dry-run</code> validation.</li>
+<li>[ ] <code>internal/controller/postgreswatch_controller.go</code>: mirror the same poll loop into <code>WatchRuntime</code>/<code>pollLoop</code>, gated on <code>spec.periodicDetection.enabled</code>.</li>
+<li>[ ] Helm chart: <code>analysis.periodicDetection.*</code> values wired into both operator and manager mode, matching the <code>autoAbort</code>/<code>alerting</code> precedent.</li>
+<li>[ ] Docs: new <code>docs/periodic-detection.md</code> (mirroring <code>docs/auto-abort.md</code>'s structure) explicitly documenting the false-positive caveat from Consequences above; <code>docs/configuration.md</code> field/flag tables; <code>mkdocs.yml</code> nav entry.</li>
+<li>[ ] Tests: engine-level (split-window detection, no-tolerance-check behavior), re-arm state machine (fire/suppress/recover/re-fire), CLI dry-run validation, controller reconcile wiring — following this session's existing pattern of fake-client/httptest-based unit tests plus real-Postgres integration coverage where the existing <code>internal/e2e</code> suite already does so for deploy-triggered detection.</li>
+<li>[ ] <code>changelog.d/&lt;PR&gt;.feat.md</code> fragment once a PR number is known.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/nav-data.js"></script>
+      
+        <script src="../../javascripts/nav-flyout.js"></script>
+      
+        <script src="../../javascripts/version-flyout.js"></script>
+      
+    
+  </body>
+</html>

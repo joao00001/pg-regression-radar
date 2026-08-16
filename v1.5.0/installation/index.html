@@ -1,0 +1,2056 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/v1.5.0/installation/">
+      
+      
+        <link rel="prev" href="../changelog/">
+      
+      
+        <link rel="next" href="../getting-started/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Installation - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#installation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are not viewing the latest version of these docs.
+  <a href="../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Installation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../configuration/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../testing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-least-privilege-postgres-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a least-privilege Postgres role
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#option-1-go-install-one-command-one-binary-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Go install — one command, one binary (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#option-2-build-from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Build from source
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#option-3-pull-or-build-the-container-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Pull or build the container image
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#option-4-install-the-helm-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 4: Install the Helm chart
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Option 4: Install the Helm chart">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#podcontainer-security-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pod/container security defaults
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression Scenario Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply Chain Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection Algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cluster (Fleet) Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model & Threat Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Security (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Versioning & Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy Sources & Webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-Abort (Argo Rollouts)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic (Deploy-Independent) Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch Protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-least-privilege-postgres-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a least-privilege Postgres role
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#option-1-go-install-one-command-one-binary-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Go install — one command, one binary (recommended)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#option-2-build-from-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Build from source
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#option-3-pull-or-build-the-container-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Pull or build the container image
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#option-4-install-the-helm-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 4: Install the Helm chart
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Option 4: Install the Helm chart">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#podcontainer-security-defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pod/container security defaults
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/installation.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
+<p><em>How to obtain the binaries, the container image, or the Helm chart.</em></p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>Every tagged release (<code>git tag vX.Y.Z</code>, matching <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a>'s <code>release.yml</code> workflow) publishes five container images and one Helm chart to <code>ghcr.io/joao00001</code> — see <a href="#option-3-pull-or-build-the-container-image">Option 3</a> and <a href="#option-4-install-the-helm-chart">Option 4</a> below. Building from source (cloning the repo, or <code>go install</code> directly from the module proxy) still works exactly as before and is the only option for anything unreleased. This page covers <em>obtaining</em> pg-regression-radar; see <a href="../getting-started/">Getting Started</a> for actually running it once installed.</p>
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Go 1.22+ (to build from source)</li>
+<li>Docker (to build the container image)</li>
+<li>A Postgres cluster with <code>pg_stat_statements</code> enabled — see <a href="../support-matrix/">Support Matrix</a> for officially supported PostgreSQL versions (16, 17, 18) and distributions (community, CloudNativePG, EDB Postgres Advanced/Extended Server)</li>
+<li><code>kubectl</code> and/or <code>helm</code> (only for the Kubernetes-deployed paths)</li>
+</ul>
+<h2 id="creating-a-least-privilege-postgres-role">Creating a least-privilege Postgres role<a class="headerlink" href="#creating-a-least-privilege-postgres-role" title="Permanent link">&para;</a></h2>
+<p>pg-regression-radar only needs to read <code>pg_stat_statements</code> and a handful of catalog views — it never writes to user data. <strong>Do not use a superuser or a role with broad privileges for <code>--dsn</code>.</strong> If the connection string is ever leaked (e.g. via a misrouted Secret), the blast radius should be limited to read-only statistics access.</p>
+<p>Create a dedicated role before installing pg-regression-radar:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Create the role with login but no superuser privileges.</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">pgrr_monitor</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="n">LOGIN</span><span class="w"> </span><span class="n">PASSWORD</span><span class="w"> </span><span class="s1">&#39;change-me&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Built-in role that grants read access to pg_stat_statements, pg_stat_*</span>
+<span class="c1">-- views, and other monitoring functions — exactly what pg-regression-radar needs.</span>
+<span class="k">GRANT</span><span class="w"> </span><span class="n">pg_monitor</span><span class="w"> </span><span class="k">TO</span><span class="w"> </span><span class="n">pgrr_monitor</span><span class="p">;</span>
+
+<span class="c1">-- If pg_stat_statements is installed in a non-public schema, also grant USAGE.</span>
+<span class="c1">-- GRANT USAGE ON SCHEMA extensions TO pgrr_monitor;</span>
+</code></pre></div>
+<p>Then use that role in your DSN:</p>
+<div class="highlight"><pre><span></span><code>******host:5432/mydb?sslmode=require
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Never pass a superuser or application-owner connection string. A leaked DSN with superuser access gives an attacker full control of the database; a <code>pg_monitor</code> DSN limits exposure to read-only statistics.</p>
+</div>
+<h2 id="option-1-go-install-one-command-one-binary-recommended">Option 1: Go install — one command, one binary (recommended)<a class="headerlink" href="#option-1-go-install-one-command-one-binary-recommended" title="Permanent link">&para;</a></h2>
+<p>The simplest way to get pg-regression-radar: a single unified CLI, <code>pg-regression-radar</code>, with each run mode as a subcommand. No clone needed — <code>go install</code> resolves the tagged release directly from the repository's tags via the Go module proxy:</p>
+<div class="highlight"><pre><span></span><code>go<span class="w"> </span>install<span class="w"> </span>github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@latest
+<span class="c1"># or pin a release: @v0.1.0</span>
+</code></pre></div>
+<p>This places a single <code>pg-regression-radar</code> binary in <code>$(go env GOPATH)/bin</code>. From there:</p>
+<div class="highlight"><pre><span></span><code>pg-regression-radar<span class="w"> </span>operator<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">&quot;postgres://user:pass@host:5432/dbname?sslmode=disable&quot;</span>
+pg-regression-radar<span class="w"> </span>manager<span class="w"> </span>--leader-elect<span class="o">=</span><span class="nb">true</span>
+pg-regression-radar<span class="w"> </span>collector<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">&quot;...&quot;</span>
+pg-regression-radar<span class="w"> </span>ingester<span class="w"> </span>--source-type<span class="w"> </span>argocd
+pg-regression-radar<span class="w"> </span>version
+pg-regression-radar<span class="w"> </span><span class="nb">help</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> The DSN values above are placeholders. Replace them with a full PostgreSQL connection URI
+of the form <code>postgres://username:password@host:5432/dbname?sslmode=disable</code>.
+Every example in this documentation that shows <code>******</code> in place of credentials is for
+documentation safety only and cannot be used as-is — supply your real connection string.</p>
+</blockquote>
+<p>Every subcommand accepts its own <code>--help</code>, <code>--version</code>, and (except <code>manager</code>) <code>--dry-run</code> — see <a href="../configuration/#versioning-dry-run">Configuration Reference</a>.</p>
+<p>If you'd rather have four separate binaries (e.g. to match the container images described in Option 3), the same code is also available as four standalone commands:</p>
+<div class="highlight"><pre><span></span><code>go<span class="w"> </span>install<span class="w"> </span>github.com/joao00001/pg-regression-radar/cmd/operator@latest
+go<span class="w"> </span>install<span class="w"> </span>github.com/joao00001/pg-regression-radar/cmd/manager@latest
+go<span class="w"> </span>install<span class="w"> </span>github.com/joao00001/pg-regression-radar/cmd/collector@latest
+go<span class="w"> </span>install<span class="w"> </span>github.com/joao00001/pg-regression-radar/cmd/ingester@latest
+</code></pre></div>
+<p>Both forms run identical code (<code>internal/cli</code>) — <code>pg-regression-radar operator ...</code> and the standalone <code>operator ...</code> behave the same way.</p>
+<h2 id="option-2-build-from-source">Option 2: Build from source<a class="headerlink" href="#option-2-build-from-source" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/joao00001/pg-regression-radar.git
+<span class="nb">cd</span><span class="w"> </span>pg-regression-radar
+go<span class="w"> </span>build<span class="w"> </span>-o<span class="w"> </span>bin/pg-regression-radar<span class="w"> </span>./cmd/pg-regression-radar
+<span class="c1"># or the four standalone binaries individually:</span>
+go<span class="w"> </span>build<span class="w"> </span>-o<span class="w"> </span>bin/operator<span class="w">  </span>./cmd/operator
+go<span class="w"> </span>build<span class="w"> </span>-o<span class="w"> </span>bin/manager<span class="w">   </span>./cmd/manager
+go<span class="w"> </span>build<span class="w"> </span>-o<span class="w"> </span>bin/collector<span class="w"> </span>./cmd/collector
+go<span class="w"> </span>build<span class="w"> </span>-o<span class="w"> </span>bin/ingester<span class="w">  </span>./cmd/ingester
+</code></pre></div>
+<p>Useful if you want to build against an unreleased commit, or need the CRD manifests and Helm chart alongside the binaries (both live in the same clone — see options 3 and 4).</p>
+<h2 id="option-3-pull-or-build-the-container-image">Option 3: Pull or build the container image<a class="headerlink" href="#option-3-pull-or-build-the-container-image" title="Permanent link">&para;</a></h2>
+<p><strong>Pull a published release</strong> (every <code>vX.Y.Z</code> tag publishes all five images — see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a>):</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0
+docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/manager:v0.3.0
+docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/collector:v0.3.0
+docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/ingester:v0.3.0
+docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/cli:v0.3.0
+</code></pre></div>
+<p>Substitute the actual latest tag from the <a href="https://github.com/joao00001/pg-regression-radar/releases">Releases page</a>, or use <code>:latest</code> for the most recent release (there is no rolling/"edge" image — every published tag corresponds to a real <code>vX.Y.Z</code> release). <code>docker run ghcr.io/joao00001/pg-regression-radar/cli:v0.3.0 operator --dsn ...</code> runs the unified CLI image; the other four are single-mode images matching the Dockerfile's other <code>--target</code> values.</p>
+<p><strong>Verify the signature and SBOM before trusting a pulled image.</strong> Every published image is keyless-signed with <a href="https://github.com/sigstore/cosign">cosign</a> using the publishing GitHub Actions run's own OIDC identity (no shared private key to leak or rotate), and carries an attached SBOM attestation:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Verify the image was signed by this repo&#39;s release.yml workflow, specifically</span>
+<span class="c1"># (not just &quot;signed by someone with a GitHub account&quot;).</span>
+cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
+
+<span class="c1"># Fetch and inspect the attached SPDX SBOM attestation.</span>
+cosign<span class="w"> </span>verify-attestation<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--type<span class="w"> </span>spdxjson<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.payload | @base64d | fromjson | .predicate&#39;</span>
+</code></pre></div>
+<p>Every image is also scanned with <a href="https://github.com/aquasecurity/trivy">Trivy</a> at release time and the release job fails outright on any CRITICAL-severity finding (see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a>) — a published image never carries a known CRITICAL CVE as of its release date, though new CVEs can of course be disclosed later against the same fixed image bytes.</p>
+<p><strong>Build locally</strong>, e.g. to test an unreleased commit:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/joao00001/pg-regression-radar.git
+<span class="nb">cd</span><span class="w"> </span>pg-regression-radar
+docker<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>operator<span class="w"> </span>-t<span class="w"> </span>pg-regression-radar/operator<span class="w"> </span>.
+docker<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>manager<span class="w">  </span>-t<span class="w"> </span>pg-regression-radar/manager<span class="w">  </span>.
+</code></pre></div>
+<p>See the <a href="https://github.com/joao00001/pg-regression-radar/blob/main/Dockerfile">Dockerfile</a> for the other <code>--target</code> values (<code>collector</code>, <code>ingester</code>, and <code>cli</code> for an image running the unified <code>pg-regression-radar</code> binary).</p>
+<h2 id="option-4-install-the-helm-chart">Option 4: Install the Helm chart<a class="headerlink" href="#option-4-install-the-helm-chart" title="Permanent link">&para;</a></h2>
+<p><strong>From the published OCI chart</strong> (published alongside the images by every release — see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a>):</p>
+<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>oci://ghcr.io/joao00001/charts/pg-regression-radar<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.3.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">&quot;postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>cnpg-cluster<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>alerting.slackWebhookUrl<span class="o">=</span>https://hooks.slack.com/services/XXX/YYY/ZZZ
+</code></pre></div>
+<blockquote>
+<p><strong>Note:</strong> The <code>postgres.dsn</code> value above is a placeholder. Replace it with a full PostgreSQL
+connection URI, for example <code>postgres://username:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable</code>.
+Redacted DSN examples are shown for documentation safety only and cannot be used as-is.</p>
+</blockquote>
+<p><code>--version</code> here is the chart's SemVer version (the release tag <em>without</em> its leading <code>v</code> — release <code>v0.3.0</code> publishes chart version <code>0.3.0</code>; see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a> for why the two differ by that one character). No <code>helm repo add</code> is needed for an OCI registry — <code>helm install</code>/<code>helm pull</code> reference <code>oci://</code> URLs directly. The chart's <code>image.tag</code> values default to the chart's own <code>appVersion</code> (the release tag <em>with</em> the <code>v</code>, e.g. <code>v0.3.0</code>), which already matches the images published in the same release, so you don't need to set <code>image.tag</code>/<code>manager.image.tag</code> explicitly unless you want to run a different image tag than the chart's own release.</p>
+<p>The chart also exposes alert destination-policy controls used by both entrypoints:</p>
+<ul>
+<li><code>alerting.destinationPolicy</code>: <code>""</code> (default permissive), <code>allowlist</code>, or <code>relay-only</code></li>
+<li><code>alerting.allowedDestinations</code>: manager/operator allowlist used by <code>allowlist</code> policy</li>
+<li><code>alerting.destinationPolicyRelayUrl</code>: required when policy is <code>relay-only</code></li>
+</ul>
+<p>Example (<code>mode=manager</code>, force all alerts through a relay):</p>
+<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>pg-regression-radar<span class="w"> </span>oci://ghcr.io/joao00001/charts/pg-regression-radar<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.3.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span><span class="nv">mode</span><span class="o">=</span>manager<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>alerting.destinationPolicy<span class="o">=</span>relay-only<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>alerting.destinationPolicyRelayUrl<span class="o">=</span>https://relay.example.com/webhook
+</code></pre></div>
+<p><strong>Verify the chart's signature before trusting it</strong>, the same way as the container images above — the published Helm OCI artifact is keyless-signed with cosign too, using the chart's SemVer version as the tag (same one <code>--version</code> above installs):</p>
+<div class="highlight"><pre><span></span><code>cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/charts/pg-regression-radar:0.3.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
+</code></pre></div>
+<p><strong>From a local clone</strong>, e.g. to test unreleased chart changes:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/joao00001/pg-regression-radar.git
+helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./pg-regression-radar/deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">&quot;postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>cnpg-cluster<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>alerting.slackWebhookUrl<span class="o">=</span>https://hooks.slack.com/services/XXX/YYY/ZZZ
+</code></pre></div>
+<p>See <a href="../getting-started/#deploy-on-kubernetes-via-helm">Getting Started</a> for the full set of values, including switching to <code>manager</code> mode.</p>
+<h3 id="podcontainer-security-defaults">Pod/container security defaults<a class="headerlink" href="#podcontainer-security-defaults" title="Permanent link">&para;</a></h3>
+<p><code>podSecurityContext</code>/<code>securityContext</code> default to <code>runAsNonRoot: true</code> (UID/GID <code>65532</code>), <code>allowPrivilegeEscalation: false</code>, <code>readOnlyRootFilesystem: true</code>, <code>capabilities.drop: [ALL]</code>, and <code>seccompProfile: RuntimeDefault</code> — matching how every image this chart deploys already runs regardless (all five binaries build on <code>gcr.io/distroless/static-debian12:nonroot</code>, which sets <code>USER nonroot:nonroot</code> and has no writable-filesystem tooling to begin with), just enforced by Kubernetes instead of merely true by accident. None of the binaries write to the local filesystem, so <code>readOnlyRootFilesystem</code> costs nothing. Override either value back to <code>{}</code> only if your environment's own admission policy conflicts with these fields.</p>
+<p><code>serviceAccount.automountServiceAccountToken</code> defaults to <code>true</code> for backward compatibility. Keep it <code>true</code> in <code>mode: manager</code> (the manager talks to the Kubernetes API for leader election and reconciliation). In <code>mode: operator</code>, you can safely set it to <code>false</code> when you do not need in-cluster API access.</p>
+<p>If <code>ingester.webhookSecret</code> is left empty, <code>helm install</code>/<code>helm upgrade</code> prints a warning that the deploy-event webhook (and, in <code>mode: operator</code>, <code>GET /events</code>) are unauthenticated — see <a href="../webhooks/#webhook-authentication">Deploy Sources &amp; Webhooks: Webhook authentication</a>. That's expected and fine as long as the Service stays cluster-internal (the default <code>service.type</code> is <code>ClusterIP</code>); set the secret before exposing it further.</p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../getting-started/">Getting Started</a> — running each of these once installed.</li>
+<li><a href="../configuration/">Configuration Reference</a> — every flag and CRD field.</li>
+<li><a href="../support-matrix/">Support Matrix</a> — officially supported PostgreSQL versions and distributions.</li>
+<li><a href="../ci-cd/">CI/CD</a> — how <code>release.yml</code> builds, scans, signs, and publishes every image and the Helm chart.</li>
+<li><a href="../roadmap/">Roadmap</a> — remaining operational follow-ups.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/nav-data.js"></script>
+      
+        <script src="../javascripts/nav-flyout.js"></script>
+      
+        <script src="../javascripts/version-flyout.js"></script>
+      
+    
+  </body>
+</html>

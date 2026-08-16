@@ -1,0 +1,2758 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/v1.5.0/security-model/">
+      
+      
+        <link rel="prev" href="../multi-cluster/">
+      
+      
+        <link rel="next" href="../deployment-security/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Security Model & Threat Model - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#security-model-threat-model" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are not viewing the latest version of these docs.
+  <a href="../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Security Model & Threat Model
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../installation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../configuration/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../testing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression Scenario Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply Chain Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection Algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cluster (Fleet) Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model & Threat Model
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model & Threat Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security profiles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security profiles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#controlled-profile-single-tenant-trusted-teams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        controlled profile (single-tenant, trusted teams)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardened-profile-multi-team-sensitive-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hardened profile (multi-team, sensitive production)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relay-only-profile-highly-restricted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        relay-only profile (highly restricted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trust-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trust model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#actors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Actors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protected-assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protected assets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trust-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operator-responsibilities-vs-kubernetes-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operator responsibilities vs Kubernetes responsibilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#permission-matrix-security-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Permission matrix (security contract)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Permission matrix (security contract)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-secrets-may-be-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which Secrets may be read
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#where-the-manager-may-connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the manager may connect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-scenarios-and-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported scenarios and limitations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported scenarios and limitations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#namespace-isolation-assumptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Namespace isolation assumptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-tenancy-restrictions-by-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-tenancy restrictions by profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-limits-of-this-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope limits of this model
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#existing-security-controls-and-where-they-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing security controls and where they live
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hardened-mode-deployment-admission-rbac-for-consent-labeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardened-mode deployment: admission + RBAC for consent labeling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hardened-mode deployment: admission + RBAC for consent labeling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-kyverno-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: Kyverno policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-kubernetes-validatingadmissionpolicy-cel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: Kubernetes ValidatingAdmissionPolicy (CEL)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rbac-strategy-least-privilege" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBAC strategy (least privilege)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validate-policy-behavior-with-kubectl-dry-runserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate policy behavior with kubectl --dry-run=server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting-common-misconfigurations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting common misconfigurations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Security (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Versioning & Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy Sources & Webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-Abort (Argo Rollouts)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic (Deploy-Independent) Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch Protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security profiles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security profiles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#controlled-profile-single-tenant-trusted-teams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        controlled profile (single-tenant, trusted teams)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hardened-profile-multi-team-sensitive-production" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hardened profile (multi-team, sensitive production)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relay-only-profile-highly-restricted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        relay-only profile (highly restricted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#trust-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Trust model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#actors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Actors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protected-assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protected assets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trust-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trust boundaries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operator-responsibilities-vs-kubernetes-responsibilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operator responsibilities vs Kubernetes responsibilities
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#permission-matrix-security-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Permission matrix (security contract)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Permission matrix (security contract)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-secrets-may-be-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which Secrets may be read
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#where-the-manager-may-connect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the manager may connect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-scenarios-and-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported scenarios and limitations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported scenarios and limitations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#namespace-isolation-assumptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Namespace isolation assumptions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-tenancy-restrictions-by-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-tenancy restrictions by profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-limits-of-this-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope limits of this model
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#existing-security-controls-and-where-they-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing security controls and where they live
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hardened-mode-deployment-admission-rbac-for-consent-labeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hardened-mode deployment: admission + RBAC for consent labeling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hardened-mode deployment: admission + RBAC for consent labeling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-a-kyverno-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option A: Kyverno policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-b-kubernetes-validatingadmissionpolicy-cel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option B: Kubernetes ValidatingAdmissionPolicy (CEL)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rbac-strategy-least-privilege" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBAC strategy (least privilege)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validate-policy-behavior-with-kubectl-dry-runserver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate policy behavior with kubectl --dry-run=server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting-common-misconfigurations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting common misconfigurations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/security-model.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="security-model-threat-model">Security Model &amp; Threat Model<a class="headerlink" href="#security-model-threat-model" title="Permanent link">&para;</a></h1>
+<p><em>Formal threat model and security contract for who may configure pg-regression-radar, which Secrets it may read, and where it may connect in each supported security profile.</em></p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>This page defines the security contract for <code>cmd/manager</code> mode: trust assumptions, protected assets, authorization boundaries, and profile-specific operational rules. It is intentionally concrete: an administrator should be able to answer (a) who can create each CRD, (b) which Secrets may be read, (c) where the manager may connect, and (d) what changes between <code>controlled</code>, <code>hardened</code>, and <code>relay-only</code>.</p>
+<p>The model applies to the Kubernetes/CRD deployment path (<code>PostgresWatch</code> + <code>DeploySource</code>), including fleet mode via <code>spec.remoteClusterRef</code> (and deprecated <code>spec.remoteClusterSecretRef</code> for backward compatibility). It does <strong>not</strong> cover host/OS hardening, cloud IAM design outside Kubernetes, or arbitrary third-party webhook endpoints beyond the controls listed here.</p>
+<h2 id="security-profiles">Security profiles<a class="headerlink" href="#security-profiles" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Profile</th>
+<th>Intended environment</th>
+<th>Trust assumption</th>
+<th>Tenancy model</th>
+<th>Default recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>controlled</code></td>
+<td>Single-tenant cluster or one trusted platform team</td>
+<td>People with namespace write access are trusted operators</td>
+<td>Single team or tightly coordinated teams</td>
+<td>Good baseline when operational simplicity matters most</td>
+</tr>
+<tr>
+<td><code>hardened</code></td>
+<td>Shared cluster with multiple teams and sensitive production workloads</td>
+<td>CRD authors are <strong>not</strong> automatically trusted to select any Secret/destination</td>
+<td>Multi-team, namespace-isolated</td>
+<td>Recommended for most production shared clusters</td>
+</tr>
+<tr>
+<td><code>relay-only</code></td>
+<td>Highly restricted environments (regulated or strict network controls)</td>
+<td>Manager should not be used as a direct cross-cluster credential broker</td>
+<td>Multi-team with central integration point</td>
+<td>Use when direct DB Secret access by manager is not acceptable</td>
+</tr>
+</tbody>
+</table>
+<h3 id="controlled-profile-single-tenant-trusted-teams"><code>controlled</code> profile (single-tenant, trusted teams)<a class="headerlink" href="#controlled-profile-single-tenant-trusted-teams" title="Permanent link">&para;</a></h3>
+<p>Supported:</p>
+<ul>
+<li><code>PostgresWatch</code> and <code>DeploySource</code> can be created by trusted team operators in their namespace.</li>
+<li><code>spec.remoteClusterRef</code> is preferred; deprecated <code>spec.remoteClusterSecretRef</code> is allowed only when the same trusted team also owns the remote-cluster kubeconfig lifecycle.</li>
+<li>Alert destinations may be team-defined, still subject to built-in URL checks.</li>
+</ul>
+<p>Practical example:</p>
+<ul>
+<li>A single platform team runs one cluster, owns all namespaces, and uses one manager instance to watch multiple Postgres clusters (including one remote spoke) using team-managed kubeconfig Secrets.</li>
+</ul>
+<h3 id="hardened-profile-multi-team-sensitive-production"><code>hardened</code> profile (multi-team, sensitive production)<a class="headerlink" href="#hardened-profile-multi-team-sensitive-production" title="Permanent link">&para;</a></h3>
+<p>Supported:</p>
+<ul>
+<li>Teams may create <code>PostgresWatch</code>/<code>DeploySource</code> only in their own namespace.</li>
+<li>Only approved identities may apply the Secret consent label (<code>pg-regression-radar.io/allow-postgreswatch-access=true</code>).</li>
+<li>Remote-cluster references are allowed only for platform-approved kubeconfig Secrets.</li>
+<li>Alert destinations are restricted with <code>--alerting-allowed-destinations</code> and the <code>allowlist</code> destination policy. Set <code>--alerting-destination-policy=allowlist</code> alongside a non-empty <code>--alerting-allowed-destinations</code> so every reconciled watch fails fast if its URL is not pre-approved — see <a href="../alerting/#destination-policies">Alerting: destination policies</a>.</li>
+</ul>
+<p>Practical example:</p>
+<ul>
+<li>Team A can create a <code>PostgresWatch</code>, but cannot force the manager to read Team B's Secret because unlabeled Secrets are rejected and consent labeling is centrally restricted by admission policy.</li>
+</ul>
+<h3 id="relay-only-profile-highly-restricted"><code>relay-only</code> profile (highly restricted)<a class="headerlink" href="#relay-only-profile-highly-restricted" title="Permanent link">&para;</a></h3>
+<p>Supported:</p>
+<ul>
+<li>Teams may define correlation intent (<code>PostgresWatch</code> + <code>DeploySource</code>) through platform-approved templates/policies, but should not manage remote-cluster references directly.</li>
+<li>Tenant-managed remote-cluster references (<code>spec.remoteClusterRef</code>/deprecated <code>spec.remoteClusterSecretRef</code>) are disallowed by policy (admission/RBAC convention) unless approved as break-glass by platform admins.</li>
+<li>Manager network egress is restricted to approved alert relays and required in-cluster APIs.</li>
+</ul>
+<p>Not supported (by contract):</p>
+<ul>
+<li>Tenant-managed direct remote-cluster kubeconfig usage.</li>
+<li>Arbitrary tenant-defined external alert endpoints.</li>
+</ul>
+<p>Practical example:</p>
+<ul>
+<li>A regulated environment routes all alerts through an internal relay service; teams cannot point <code>alerting.url</code> to internet endpoints and cannot attach remote kubeconfigs to watches.</li>
+<li>Configure the manager with <code>--alerting-destination-policy=relay-only --alerting-destination-policy-relay-url=https://relay.example.com/webhook</code>. Any <code>destinationPolicy</code> or <code>url</code> set in a <code>PostgresWatch</code> spec is ignored; all alert traffic flows through the single relay. The manager fails at startup if the relay URL is empty, catching misconfigurations before any watches are reconciled — see <a href="../alerting/#destination-policies">Alerting: destination policies</a>.</li>
+</ul>
+<h2 id="trust-model">Trust model<a class="headerlink" href="#trust-model" title="Permanent link">&para;</a></h2>
+<h3 id="actors">Actors<a class="headerlink" href="#actors" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Actor</th>
+<th>Typical identity</th>
+<th>Trusted for</th>
+<th>Not trusted for (without extra controls)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cluster administrator</td>
+<td>Cluster-admin / platform SRE</td>
+<td>Cluster-wide RBAC, admission policy, namespace boundaries</td>
+<td>Day-to-day app release intent in every team</td>
+</tr>
+<tr>
+<td>Team lead</td>
+<td>Namespace admin role</td>
+<td>Creating team-scoped watches/sources, selecting approved Secrets</td>
+<td>Global Secret brokering across namespaces/teams</td>
+</tr>
+<tr>
+<td>Application developer</td>
+<td>CI/CD or developer role with limited namespace write</td>
+<td>Proposing <code>DeploySource</code> changes for owned app</td>
+<td>Choosing privileged Secrets or remote kubeconfigs</td>
+</tr>
+<tr>
+<td>Operator (manager ServiceAccount)</td>
+<td><code>manager-role</code> ClusterRole binding</td>
+<td>Reading referenced Secrets and reconciling CRDs within granted RBAC</td>
+<td>Making trust decisions beyond configured labels/RBAC/policies</td>
+</tr>
+</tbody>
+</table>
+<h3 id="protected-assets">Protected assets<a class="headerlink" href="#protected-assets" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Asset</th>
+<th>Why sensitive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PostgreSQL DSN credentials (<code>dsnSecretRef</code>)</td>
+<td>Direct database access; may include high-privilege roles</td>
+</tr>
+<tr>
+<td>Remote-cluster kubeconfig Secrets (<code>remoteClusterRef</code> registry entry or deprecated <code>remoteClusterSecretRef</code>)</td>
+<td>Delegates Kubernetes API access to spoke clusters</td>
+</tr>
+<tr>
+<td>Alert destination configuration (<code>alerting.url</code>, webhook targets)</td>
+<td>Potential data exfiltration/SSRF route</td>
+</tr>
+<tr>
+<td>Deployment metadata (<code>DeployEvent</code>, app/revision/cluster mapping)</td>
+<td>Operational intelligence about release cadence and topology</td>
+</tr>
+</tbody>
+</table>
+<h3 id="trust-boundaries">Trust boundaries<a class="headerlink" href="#trust-boundaries" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Boundary</th>
+<th>Crossing event</th>
+<th>Main risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tenant authoring CRDs -&gt; manager reading Secrets</td>
+<td>A <code>PostgresWatch</code> references <code>dsnSecretRef</code> plus <code>remoteClusterRef</code>/deprecated <code>remoteClusterSecretRef</code></td>
+<td>Confused deputy (manager reads Secrets broader than author's own rights)</td>
+<td>Secret consent label check before use (<a href="../multi-cluster/#secret-consent-label">Multi-Cluster: Secret consent label</a>)</td>
+</tr>
+<tr>
+<td>Hub cluster -&gt; spoke cluster Kubernetes API</td>
+<td>Kubeconfig from <code>remoteClusterRef</code> registry (or deprecated <code>remoteClusterSecretRef</code>) is used to build remote client</td>
+<td>Credential/plugin abuse, proxy-based traffic redirection</td>
+<td>Kubeconfig auth restrictions (<code>exec</code>, <code>auth-provider</code>, <code>proxy-url</code> rejected) (<a href="../multi-cluster/#kubeconfig-restrictions">Multi-Cluster: Kubeconfig restrictions</a>)</td>
+</tr>
+<tr>
+<td>Manager -&gt; external alert endpoint</td>
+<td>Notifier sends payloads to configured destination</td>
+<td>SSRF/data exfiltration to unsafe endpoints</td>
+<td>URL validation + optional strict allowlist (<a href="../alerting/#destination-validation-ssrf-hardening">Alerting: Destination validation</a>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="operator-responsibilities-vs-kubernetes-responsibilities">Operator responsibilities vs Kubernetes responsibilities<a class="headerlink" href="#operator-responsibilities-vs-kubernetes-responsibilities" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Kubernetes platform is responsible for</th>
+<th>pg-regression-radar operator is responsible for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Who can create/modify CRDs</td>
+<td>RBAC/admission for <code>PostgresWatch</code> and <code>DeploySource</code></td>
+<td>Respecting CRD intent, not bypassing API authorization</td>
+</tr>
+<tr>
+<td>Secret ownership and eligibility</td>
+<td>Secret creation rights, namespace isolation, consent-label policy</td>
+<td>Refusing unlabeled Secrets before reading contents</td>
+</tr>
+<tr>
+<td>Remote cluster access scope</td>
+<td>Issuing least-privilege kubeconfigs in spoke clusters</td>
+<td>Rejecting unsafe kubeconfig auth/proxy mechanisms</td>
+</tr>
+<tr>
+<td>Network destination control</td>
+<td>NetworkPolicy, egress firewall, DNS policy</td>
+<td>Rejecting obviously unsafe alert destinations; honoring allowlist config</td>
+</tr>
+</tbody>
+</table>
+<h2 id="permission-matrix-security-contract">Permission matrix (security contract)<a class="headerlink" href="#permission-matrix-security-contract" title="Permanent link">&para;</a></h2>
+<p>Legend: ✅ allowed by profile contract; ⚠️ allowed only for approved identities/policies; ❌ disallowed by profile contract.</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th><code>controlled</code></th>
+<th><code>hardened</code></th>
+<th><code>relay-only</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Create <code>PostgresWatch</code> resource</td>
+<td>✅ Cluster admin, team lead</td>
+<td>✅ Team lead in own namespace; cluster admin</td>
+<td>✅ Team lead in own namespace; cluster admin</td>
+</tr>
+<tr>
+<td>Create/modify <code>DeploySource</code> resource</td>
+<td>✅ Cluster admin, team lead, app developer (team policy)</td>
+<td>⚠️ Team lead/app developer in own namespace only, with stricter admission</td>
+<td>⚠️ Team lead/app developer in own namespace only, often templated via platform workflow</td>
+</tr>
+<tr>
+<td>Manager reads DSN Secret (<code>spec.dsnSecretRef</code>)</td>
+<td>✅ If Secret is consent-labeled</td>
+<td>✅ If Secret is consent-labeled and label assignment is restricted</td>
+<td>⚠️ Prefer platform-managed relay/credentials; direct reads only for explicitly approved Secrets</td>
+</tr>
+<tr>
+<td>Configure remote cluster reference (<code>spec.remoteClusterRef</code> or deprecated <code>spec.remoteClusterSecretRef</code>)</td>
+<td>✅ Trusted team operators or cluster admin</td>
+<td>⚠️ Platform-approved identities only; tenant use gated by policy</td>
+<td>❌ Tenant-managed remote references; break-glass platform admin only</td>
+</tr>
+</tbody>
+</table>
+<h3 id="which-secrets-may-be-read">Which Secrets may be read<a class="headerlink" href="#which-secrets-may-be-read" title="Permanent link">&para;</a></h3>
+<p>The manager may read only Secrets that satisfy <strong>all</strong> of the following:</p>
+<ol>
+<li>Are reachable through manager RBAC in the hub cluster (<code>config/rbac/role.yaml</code> for hub reads).</li>
+<li>Are explicitly consent-labeled: <code>pg-regression-radar.io/allow-postgreswatch-access=true</code>.</li>
+<li>When remote-cluster mode is used, are reachable by the kubeconfig identity in the spoke cluster.</li>
+</ol>
+<p>In short: label consent is required, RBAC scope still applies, and remote access is additionally constrained by spoke-side RBAC.</p>
+<h3 id="where-the-manager-may-connect">Where the manager may connect<a class="headerlink" href="#where-the-manager-may-connect" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Connection target</th>
+<th><code>controlled</code></th>
+<th><code>hardened</code></th>
+<th><code>relay-only</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hub Kubernetes API</td>
+<td>Required</td>
+<td>Required</td>
+<td>Required</td>
+</tr>
+<tr>
+<td>Spoke Kubernetes API via <code>remoteClusterRef</code> (or deprecated <code>remoteClusterSecretRef</code>)</td>
+<td>Allowed</td>
+<td>Allowed only for platform-approved references</td>
+<td>Disallowed by default</td>
+</tr>
+<tr>
+<td>PostgreSQL endpoint from DSN</td>
+<td>Allowed per referenced Secret</td>
+<td>Allowed per approved Secret + tighter namespace policy</td>
+<td>Usually via approved internal path only</td>
+</tr>
+<tr>
+<td>Alert endpoints (<code>alerting.url</code>)</td>
+<td>Team-defined with built-in validation</td>
+<td>Restricted allowlist + network egress controls</td>
+<td>Internal relay destinations only</td>
+</tr>
+</tbody>
+</table>
+<h2 id="supported-scenarios-and-limitations">Supported scenarios and limitations<a class="headerlink" href="#supported-scenarios-and-limitations" title="Permanent link">&para;</a></h2>
+<h3 id="namespace-isolation-assumptions">Namespace isolation assumptions<a class="headerlink" href="#namespace-isolation-assumptions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>PostgresWatch</code> and <code>DeploySource</code> are namespace-scoped resources; this model assumes teams do <strong>not</strong> get arbitrary write across other teams' namespaces.</li>
+<li>In fleet mode, default remote Secret lookup uses the same namespace name as the watch unless <code>remoteNamespace</code> is explicitly set (<a href="../multi-cluster/#what-actually-happens-on-reconcile">Multi-Cluster: What actually happens on reconcile</a>).</li>
+</ul>
+<h3 id="multi-tenancy-restrictions-by-profile">Multi-tenancy restrictions by profile<a class="headerlink" href="#multi-tenancy-restrictions-by-profile" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>controlled</code>: relies mostly on trust and process; technical controls are still present but may be less restrictive operationally.</li>
+<li><code>hardened</code>: requires admission/RBAC reinforcement around consent label use and remote reference ownership.</li>
+<li><code>relay-only</code>: intentionally removes tenant-controlled remote references and external destination freedom.</li>
+</ul>
+<h3 id="scope-limits-of-this-model">Scope limits of this model<a class="headerlink" href="#scope-limits-of-this-model" title="Permanent link">&para;</a></h3>
+<p>This document defines the contract for CRD-driven access mediation and manager connection surfaces. It does not guarantee:</p>
+<ul>
+<li>host-level compromise resistance,</li>
+<li>protection from all DNS rebinding variants,</li>
+<li>automatic remote kubeconfig credential rotation,</li>
+<li>full policy examples for every admission controller product.</li>
+</ul>
+<h2 id="existing-security-controls-and-where-they-live">Existing security controls and where they live<a class="headerlink" href="#existing-security-controls-and-where-they-live" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Control</th>
+<th>Purpose</th>
+<th>Documented in</th>
+<th>Implemented in</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Secret consent label (<code>pg-regression-radar.io/allow-postgreswatch-access=true</code>)</td>
+<td>Prevent confused-deputy Secret reads from arbitrary references</td>
+<td><a href="../multi-cluster/#secret-consent-label">Multi-Cluster: Secret consent label</a>, <a href="../configuration/#postgreswatch-spec-fields">Configuration Reference</a></td>
+<td><code>internal/controller/secret_consent.go</code>, enforced in <code>internal/controller/postgreswatch_controller.go</code></td>
+</tr>
+<tr>
+<td>Optional admission policy restricting consent label setters</td>
+<td>Ensure only approved identities can opt Secrets in</td>
+<td><a href="../policies/kyverno-consent-label-policy.yaml"><code>docs/policies/kyverno-consent-label-policy.yaml</code></a></td>
+<td>Cluster admission engine (example policy file in repo)</td>
+</tr>
+<tr>
+<td>Kubeconfig restrictions for remote cluster refs</td>
+<td>Block <code>exec</code> plugins, <code>auth-provider</code>, and <code>proxy-url</code> in tenant-supplied kubeconfigs</td>
+<td><a href="../multi-cluster/#kubeconfig-restrictions">Multi-Cluster: Kubeconfig restrictions</a></td>
+<td><code>internal/controller/remote_client.go</code> (<code>validateKubeconfigAuth</code>)</td>
+</tr>
+<tr>
+<td>Alert destination validation and allowlist support</td>
+<td>Reduce SSRF/exfiltration risk for alerting destinations</td>
+<td><a href="../alerting/#destination-validation-ssrf-hardening">Alerting: Destination validation</a></td>
+<td><code>internal/alerting</code> notifier construction and destination validation path</td>
+</tr>
+<tr>
+<td>Webhook shared-secret authentication</td>
+<td>Prevent unauthenticated deploy-event injection</td>
+<td><a href="../webhooks/#webhook-authentication">Deploy Sources &amp; Webhooks: Webhook authentication</a></td>
+<td><code>internal/cli/ingester.go</code> (<code>X-Webhook-Token</code> constant-time check)</td>
+</tr>
+<tr>
+<td>Manager RBAC split (hub Secrets vs spoke kubeconfig rights)</td>
+<td>Clarify and constrain what manager SA can do in hub cluster</td>
+<td><a href="../multi-cluster/#rbac-two-separate-concerns">Multi-Cluster: RBAC</a></td>
+<td><code>config/rbac/role.yaml</code> + spoke-cluster RBAC provided by kubeconfig owner</td>
+</tr>
+</tbody>
+</table>
+<h2 id="hardened-mode-deployment-admission-rbac-for-consent-labeling">Hardened-mode deployment: admission + RBAC for consent labeling<a class="headerlink" href="#hardened-mode-deployment-admission-rbac-for-consent-labeling" title="Permanent link">&para;</a></h2>
+<p>Use these policy examples to ensure tenants cannot self-approve Secret access by setting
+<code>pg-regression-radar.io/allow-postgreswatch-access=true</code> themselves.</p>
+<h3 id="option-a-kyverno-policy">Option A: Kyverno policy<a class="headerlink" href="#option-a-kyverno-policy" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Apply RBAC example identities:
+   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/rbac-consent-labeler-example.yaml
+</code></pre></div></li>
+<li>Apply Kyverno policy:
+   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/kyverno-consent-label-policy.yaml
+</code></pre></div></li>
+<li>Verify enforcement:
+   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>cpol<span class="w"> </span>restrict-postgreswatch-consent-label
+kubectl<span class="w"> </span>describe<span class="w"> </span>cpol<span class="w"> </span>restrict-postgreswatch-consent-label
+</code></pre></div></li>
+</ol>
+<h3 id="option-b-kubernetes-validatingadmissionpolicy-cel">Option B: Kubernetes ValidatingAdmissionPolicy (CEL)<a class="headerlink" href="#option-b-kubernetes-validatingadmissionpolicy-cel" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Ensure your cluster supports ValidatingAdmissionPolicy (Kubernetes 1.26+ with feature enabled).</li>
+<li>Apply RBAC example identities:
+   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/rbac-consent-labeler-example.yaml
+</code></pre></div></li>
+<li>Apply CEL policy + binding:
+   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/validating-admission-policy-consent-label.yaml
+</code></pre></div></li>
+<li>Verify enforcement:
+   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy<span class="w"> </span>restrict-postgreswatch-consent-label
+kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicybinding<span class="w"> </span>restrict-postgreswatch-consent-label
+</code></pre></div></li>
+</ol>
+<h3 id="rbac-strategy-least-privilege">RBAC strategy (least privilege)<a class="headerlink" href="#rbac-strategy-least-privilege" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Use a dedicated identity for labeling (<code>docs/policies/rbac-consent-labeler-example.yaml</code>).</li>
+<li>Keep tenant <code>PostgresWatch</code> authors in roles that exclude Secret mutation (<code>create</code>, <code>update</code>, <code>patch</code>, <code>delete</code> on Secrets).</li>
+<li>Treat break-glass labeler identities as audited, short-lived operational paths.</li>
+<li>Policy allowlists in examples match exact Kubernetes usernames (<code>system:serviceaccount:&lt;namespace&gt;:&lt;name&gt;</code>); adapt to group-based checks if your platform standard prefers groups.</li>
+</ul>
+<h3 id="validate-policy-behavior-with-kubectl-dry-runserver">Validate policy behavior with <code>kubectl --dry-run=server</code><a class="headerlink" href="#validate-policy-behavior-with-kubectl-dry-runserver" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Replace <code>&lt;ns&gt;</code> with a namespace where your policy applies.</p>
+</blockquote>
+<p>Attempt without consent label (should be admitted; controller will still refuse to use it):</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -n &lt;ns&gt; --dry-run=server -f -</span>
+<span class="s">apiVersion: v1</span>
+<span class="s">kind: Secret</span>
+<span class="s">metadata:</span>
+<span class="s">  name: dry-run-without-consent</span>
+<span class="s">type: Opaque</span>
+<span class="s">stringData:</span>
+<span class="s">  dsn: postgres://example</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<p>Attempt with consent label as unauthorized identity (should be denied):</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:team-a:app-operator --dry-run=server -f -</span>
+<span class="s">apiVersion: v1</span>
+<span class="s">kind: Secret</span>
+<span class="s">metadata:</span>
+<span class="s">  name: dry-run-unauthorized-labeler</span>
+<span class="s">  labels:</span>
+<span class="s">    pg-regression-radar.io/allow-postgreswatch-access: &quot;true&quot;</span>
+<span class="s">type: Opaque</span>
+<span class="s">stringData:</span>
+<span class="s">  dsn: postgres://example</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<p>Attempt with consent label as approved labeler identity (should succeed):</p>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:platform-security:secret-consent-labeler --dry-run=server -f -</span>
+<span class="s">apiVersion: v1</span>
+<span class="s">kind: Secret</span>
+<span class="s">metadata:</span>
+<span class="s">  name: dry-run-authorized-labeler</span>
+<span class="s">  labels:</span>
+<span class="s">    pg-regression-radar.io/allow-postgreswatch-access: &quot;true&quot;</span>
+<span class="s">type: Opaque</span>
+<span class="s">stringData:</span>
+<span class="s">  dsn: postgres://example</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<h3 id="troubleshooting-common-misconfigurations">Troubleshooting common misconfigurations<a class="headerlink" href="#troubleshooting-common-misconfigurations" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Policy appears inactive:</strong> ensure Kyverno is healthy (<code>kubectl -n kyverno get pods</code>) or that ValidatingAdmissionPolicy feature is enabled on API server.</li>
+<li><strong>Unexpected deny:</strong> confirm caller identity (<code>kubectl auth whoami</code>) and compare to the allowlist in the policy file.</li>
+<li><strong>Unauthorized users can still label:</strong> verify their RBAC grants do not include Secret mutation verbs.</li>
+<li><strong>Manager still rejects a Secret:</strong> confirm exact label key/value is present:
+  <code>pg-regression-radar.io/allow-postgreswatch-access=true</code>.</li>
+</ul>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../multi-cluster/">Multi-Cluster (Fleet) Mode</a> — remote-cluster kubeconfig flow, trust boundaries, and known gaps.</li>
+<li><a href="../configuration/">Configuration Reference</a> — <code>PostgresWatch</code> and <code>DeploySource</code> fields used in this contract.</li>
+<li><a href="../alerting/">Alerting</a> — destination validation, allowlist behavior, and SSRF caveats.</li>
+<li><a href="../webhooks/">Deploy Sources &amp; Webhooks</a> — webhook authentication and source integration surface.</li>
+<li><a href="../roadmap/">Roadmap</a> — where this formal model fits in the security roadmap.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/nav-data.js"></script>
+      
+        <script src="../javascripts/nav-flyout.js"></script>
+      
+        <script src="../javascripts/version-flyout.js"></script>
+      
+    
+  </body>
+</html>

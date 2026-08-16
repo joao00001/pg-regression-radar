@@ -1,0 +1,2254 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/v1.5.0/webhooks/">
+      
+      
+        <link rel="prev" href="../persistence/">
+      
+      
+        <link rel="next" href="../alerting/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Deploy Sources & Webhooks - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#deploy-sources-webhooks" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are not viewing the latest version of these docs.
+  <a href="../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Deploy Sources & Webhooks
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../installation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../configuration/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../testing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression Scenario Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply Chain Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection Algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cluster (Fleet) Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model & Threat Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Security (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Versioning & Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy Sources & Webhooks
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy Sources & Webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cluster-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cluster attribution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cluster attribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#argocd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ArgoCD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#argo-rollouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Argo Rollouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flux
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-kubernetes-watch-no-webhook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native Kubernetes watch (no webhook)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#webhook-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Webhook authentication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Webhook authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operator-standalone-ingester" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operator / standalone ingester
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#helm-chart-mode-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helm chart (mode: operator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuring-argocd-argo-rollouts-flux-to-send-the-header" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuring ArgoCD / Argo Rollouts / Flux to send the header
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verifying-the-token-with-curl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verifying the token with curl
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-Abort (Argo Rollouts)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic (Deploy-Independent) Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch Protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cluster-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cluster attribution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cluster attribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#argocd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ArgoCD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#argo-rollouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Argo Rollouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flux" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flux
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#native-kubernetes-watch-no-webhook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native Kubernetes watch (no webhook)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#webhook-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Webhook authentication
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Webhook authentication">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operator-standalone-ingester" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operator / standalone ingester
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#helm-chart-mode-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Helm chart (mode: operator)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuring-argocd-argo-rollouts-flux-to-send-the-header" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuring ArgoCD / Argo Rollouts / Flux to send the header
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verifying-the-token-with-curl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verifying the token with curl
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/webhooks.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="deploy-sources-webhooks">Deploy Sources &amp; Webhooks<a class="headerlink" href="#deploy-sources-webhooks" title="Permanent link">&para;</a></h1>
+<p><em>How to wire ArgoCD, Argo Rollouts, Flux, or a custom system into the Deploy Event Ingester, including cluster attribution per source.</em></p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The Ingester (<code>internal/ingester</code>) normalises webhook payloads from four source types into a single <code>DeployEvent</code> — see <a href="../api-reference/">API Reference</a> for that shape. Every <code>DeployEvent</code> carries a <code>cluster</code> field so multi-cluster setups can tell deploys apart; this page covers how each source populates it.</p>
+<p>A fifth source, <strong>Kubernetes-native watch</strong>, doesn't send a webhook at all — see <a href="#native-kubernetes-watch-no-webhook">below</a> — and is only available in <code>manager</code> mode (CRD-driven), not via the standalone <code>operator</code>/<code>ingester</code> binaries' <code>--source-type</code> flag. See <a href="../configuration/#source-type-capabilities-by-mode">Configuration Reference: Source-type capabilities by mode</a> for the full accepted-values comparison.</p>
+<h2 id="supported-sources">Supported sources<a class="headerlink" href="#supported-sources" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Trigger</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ArgoCD</strong></td>
+<td><code>on-sync-succeeded</code> notification</td>
+<td>Configure in ArgoCD Notifications</td>
+</tr>
+<tr>
+<td><strong>Argo Rollouts</strong></td>
+<td>Rollout promotion webhook</td>
+<td>Set <code>--source-type argo-rollouts</code></td>
+</tr>
+<tr>
+<td><strong>Flux</strong></td>
+<td>Notification Controller event</td>
+<td>Set <code>--source-type flux</code></td>
+</tr>
+<tr>
+<td><strong>Generic</strong></td>
+<td>Any JSON matching <code>DeployEvent</code> schema</td>
+<td>Useful for custom CI systems</td>
+</tr>
+<tr>
+<td><strong>Kubernetes-native</strong></td>
+<td>Deployment/StatefulSet rollout completes</td>
+<td><code>manager</code> mode only; <code>sourceType: kubernetes</code> on a <code>DeploySource</code> CR — no webhook, no GitOps tool required</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cluster-attribution">Cluster attribution<a class="headerlink" href="#cluster-attribution" title="Permanent link">&para;</a></h2>
+<p>Always run each ingester (or the <code>operator</code> binary) with <code>--cluster-name &lt;name&gt;</code> set to the identity of the Kubernetes cluster it's watching — this is the fallback used whenever the source payload itself doesn't carry destination-cluster identity. Where the source tool <em>can</em> report the target cluster in its webhook payload, the ingester prefers that value over the flag.</p>
+<h3 id="argocd">ArgoCD<a class="headerlink" href="#argocd" title="Permanent link">&para;</a></h3>
+<p>The notification template is a Go template you control (see <a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/templates/">Notifications templates</a>), and every template has access to the full <code>Application</code> object as <code>.app</code>, including <code>.app.spec.destination.name</code> / <code>.app.spec.destination.server</code> — the actual target cluster of the sync. Configure your <code>argocd-notifications-cm</code> webhook template to include it:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ConfigMap</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">argocd-notifications-cm</span>
+<span class="nt">data</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">template.on-sync-succeeded-webhook</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">webhook:</span>
+<span class="w">      </span><span class="no">pg-regression-radar:</span>
+<span class="w">        </span><span class="no">method: POST</span>
+<span class="w">        </span><span class="no">body: |</span>
+<span class="w">          </span><span class="no">{</span>
+<span class="w">            </span><span class="no">&quot;app&quot;: {</span>
+<span class="w">              </span><span class="no">&quot;metadata&quot;: {</span>
+<span class="w">                </span><span class="no">&quot;name&quot;: &quot;{{.app.metadata.name}}&quot;,</span>
+<span class="w">                </span><span class="no">&quot;namespace&quot;: &quot;{{.app.metadata.namespace}}&quot;</span>
+<span class="w">              </span><span class="no">},</span>
+<span class="w">              </span><span class="no">&quot;spec&quot;: {</span>
+<span class="w">                </span><span class="no">&quot;destination&quot;: {</span>
+<span class="w">                  </span><span class="no">&quot;name&quot;: &quot;{{.app.spec.destination.name}}&quot;,</span>
+<span class="w">                  </span><span class="no">&quot;server&quot;: &quot;{{.app.spec.destination.server}}&quot;</span>
+<span class="w">                </span><span class="no">}</span>
+<span class="w">              </span><span class="no">},</span>
+<span class="w">              </span><span class="no">&quot;status&quot;: {</span>
+<span class="w">                </span><span class="no">&quot;sync&quot;: {&quot;revision&quot;: &quot;{{.app.status.sync.revision}}&quot;},</span>
+<span class="w">                </span><span class="no">&quot;summary&quot;: {&quot;images&quot;: {{toJson .app.status.summary.images}}}</span>
+<span class="w">              </span><span class="no">}</span>
+<span class="w">            </span><span class="no">}</span>
+<span class="w">          </span><span class="no">}</span>
+<span class="w">  </span><span class="nt">trigger.on-sync-succeeded</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">- when: app.status.operationState.phase in [&#39;Succeeded&#39;]</span>
+<span class="w">      </span><span class="no">send: [on-sync-succeeded-webhook]</span>
+</code></pre></div>
+<p>The ingester reads <code>app.spec.destination.name</code> first and falls back to <code>app.spec.destination.server</code> (the API server URL) if the destination is addressed by server instead of by registered cluster name. If your ConfigMap doesn't populate <code>spec.destination</code> at all, the <code>--cluster-name</code> fallback is used instead.</p>
+<h3 id="argo-rollouts">Argo Rollouts<a class="headerlink" href="#argo-rollouts" title="Permanent link">&para;</a></h3>
+<p>A <code>Rollout</code> is not a cross-cluster deploy pointer the way an ArgoCD <code>Application</code> is: the controller and the Rollout it manages always live in the same cluster, so there is no destination/cluster field on the object to read (notification templates only expose <code>.rollout</code> and <code>.recipient</code>; see <a href="https://argo-rollouts.readthedocs.io/en/latest/features/notifications/">Argo Rollouts notifications</a>).</p>
+<p>If a single ingester fronts Rollouts from more than one cluster and you need to disambiguate per event rather than per ingester instance, add a top-level <code>"cluster"</code> field to your <code>argo-rollouts-notification-configmap</code> webhook body template (the same way this project already asks you to add <code>imageTag</code>, which also isn't a stock Rollout field):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ConfigMap</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">argo-rollouts-notification-configmap</span>
+<span class="nt">data</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">template.pg-regression-radar-webhook</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">    </span><span class="no">webhook:</span>
+<span class="w">      </span><span class="no">pg-regression-radar:</span>
+<span class="w">        </span><span class="no">method: POST</span>
+<span class="w">        </span><span class="no">body: |</span>
+<span class="w">          </span><span class="no">{</span>
+<span class="w">            </span><span class="no">&quot;rollout&quot;: {</span>
+<span class="w">              </span><span class="no">&quot;metadata&quot;: {</span>
+<span class="w">                </span><span class="no">&quot;name&quot;: &quot;{{.rollout.metadata.name}}&quot;,</span>
+<span class="w">                </span><span class="no">&quot;namespace&quot;: &quot;{{.rollout.metadata.namespace}}&quot;</span>
+<span class="w">              </span><span class="no">},</span>
+<span class="w">              </span><span class="no">&quot;status&quot;: {&quot;currentPodHash&quot;: &quot;{{.rollout.status.currentPodHash}}&quot;}</span>
+<span class="w">            </span><span class="no">},</span>
+<span class="w">            </span><span class="no">&quot;cluster&quot;: &quot;{{index .rollout.metadata.labels &quot;cluster&quot;}}&quot;</span>
+<span class="w">          </span><span class="no">}</span>
+</code></pre></div>
+<p>Otherwise, just rely on <code>--cluster-name</code>.</p>
+<h3 id="flux">Flux<a class="headerlink" href="#flux" title="Permanent link">&para;</a></h3>
+<p>The notification-controller's <code>Event</code> payload (<a href="https://fluxcd.io/flux/components/notification/events/">API reference</a>) is a fixed Go struct, not a customizable template, and has no cluster/destination field either — Flux is installed per-cluster with no built-in notion of a remote target. However, the <code>Alert</code> resource lets you merge static key/value pairs into every event it forwards via <code>spec.eventMetadata</code> (<a href="https://fluxcd.io/flux/components/notification/alerts/#event-metadata">docs</a>). Set a <code>cluster</code> key there and the ingester will pick it up automatically:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notification.toolkit.fluxcd.io/v1beta3</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Alert</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pg-regression-radar</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">flux-system</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">providerRef</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pg-regression-radar-webhook</span>
+<span class="w">  </span><span class="nt">eventMetadata</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-cluster-1</span>
+<span class="w">  </span><span class="nt">eventSources</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kustomization</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;*&#39;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HelmRelease</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;*&#39;</span>
+</code></pre></div>
+<p>Without <code>eventMetadata.cluster</code>, the <code>--cluster-name</code> fallback is used.</p>
+<h3 id="generic">Generic<a class="headerlink" href="#generic" title="Permanent link">&para;</a></h3>
+<p>Set <code>cluster</code> directly in the JSON body; it is taken as-is and never overwritten by the fallback. This is also the source type used by the <a href="../testing/#manual-e2e-real-container">manual e2e workflow</a> precisely because it accepts an explicit <code>timestamp</code> field, avoiding a race against the ingester's poll loop.</p>
+<h3 id="native-kubernetes-watch-no-webhook">Native Kubernetes watch (no webhook)<a class="headerlink" href="#native-kubernetes-watch-no-webhook" title="Permanent link">&para;</a></h3>
+<p>Every other source in this table exists to receive a webhook from something that already knows a deploy happened. If nothing in your cluster sends that webhook — no ArgoCD, no Argo Rollouts, no Flux, just plain <code>kubectl apply</code> or a CI pipeline rolling a <code>Deployment</code>/<code>StatefulSet</code> forward directly — there was previously no way to feed this project anything at all.</p>
+<p><code>sourceType: kubernetes</code> closes that gap by watching the workload itself instead of waiting for a notification about it. Set it on a <code>DeploySource</code> CR (manager mode only):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DeploySource</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkout-native</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">postgresWatchRef</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-db</span>
+<span class="w">  </span><span class="nt">sourceType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kubernetes</span>
+<span class="w">  </span><span class="nt">workloadKind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span><span class="w">   </span><span class="c1"># or StatefulSet</span>
+<span class="w">  </span><span class="nt">appName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkout</span><span class="w">          </span><span class="c1"># the Deployment/StatefulSet&#39;s own name</span>
+</code></pre></div>
+<p><code>WorkloadWatchReconciler</code> watches <code>apps/v1</code> <code>Deployment</code> and <code>StatefulSet</code> objects cluster-wide and, whenever the one named <code>appName</code> (in the same namespace as this <code>DeploySource</code>) finishes rolling out to a new revision, synthesises a <code>DeployEvent</code> exactly as if a webhook had arrived — <code>revision</code> is the Deployment's <code>deployment.kubernetes.io/revision</code> annotation, or the StatefulSet's <code>status.updateRevision</code>. "Finishes rolling out" means the full <code>kubectl rollout status</code> completion signal, not just "the spec changed" — a half-finished rollout never gets reported, since that would mix two revisions' data in the correlation engine's before/after windows.</p>
+<p>Because there's no webhook payload to read a <code>cluster</code> field from, the event's <code>cluster</code> always comes from the owning <code>PostgresWatch</code>'s <code>spec.clusterName</code>.</p>
+<p>This mode needs read-only RBAC on <code>apps/v1</code> <code>deployments</code>/<code>statefulsets</code>, already included in the manager's default <code>ClusterRole</code> (see <a href="../configuration/">Configuration Reference</a>).</p>
+<p>Two different <code>DeploySource</code>s (each with its own <code>postgresWatchRef</code>) can watch the exact same <code>Deployment</code>/<code>StatefulSet</code> — e.g. two teams independently tracking the same shared workload against two different <code>PostgresWatch</code>es. <code>WorkloadWatchReconciler</code> reports the rollout to every matching <code>DeploySource</code> on the same pass, each getting its own <code>DeployEvent</code> with a distinct <code>id</code> and <code>source</code>; a <code>PostgresWatch</code> that isn't registered yet on one of them doesn't block delivery to the others, though the reconcile does retry until every match has been delivered.</p>
+<h2 id="webhook-authentication">Webhook authentication<a class="headerlink" href="#webhook-authentication" title="Permanent link">&para;</a></h2>
+<p>By default the <code>/webhook</code> endpoint accepts any POST request that reaches port 8080, which means any process that can route to that port can inject deploy events. To prevent event spoofing — spam alerts, or masking a real regression under noise — configure a shared secret.</p>
+<h3 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
+<p>Set the <code>--webhook-secret</code> flag (operator/ingester binary) or <code>spec.webhookSecret</code> (DeploySource CRD). The ingester then requires every POST to <code>/webhook</code> to include the secret verbatim in the <code>X-Webhook-Token</code> header. Requests without the header, or with a wrong value, are rejected with <code>401 Unauthorized</code>. The comparison is constant-time to prevent timing-based secret inference.</p>
+<p>The standalone <code>ingester</code> binary's <code>GET /events</code> route (lists the full deploy-event history — see <a href="../configuration/#ingester-flags-cmdingester">Configuration Reference</a>) is gated behind this same secret and header once <code>--webhook-secret</code> is set; it has no authentication of its own otherwise. <code>/events</code> doesn't exist in <code>operator</code>/<code>manager</code> mode, so this only applies to the standalone <code>ingester</code> binary.</p>
+<h3 id="operator-standalone-ingester">Operator / standalone ingester<a class="headerlink" href="#operator-standalone-ingester" title="Permanent link">&para;</a></h3>
+<p>Pass the secret via an environment variable to avoid exposure in process listings:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">WEBHOOK_SECRET</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="s2">&quot;</span>
+operator<span class="w"> </span>--dsn<span class="o">=</span>...<span class="w"> </span>--webhook-secret<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$WEBHOOK_SECRET</span><span class="s2">&quot;</span>
+</code></pre></div>
+<p>Or with the standalone ingester binary:</p>
+<div class="highlight"><pre><span></span><code>ingester<span class="w"> </span>--source-type<span class="o">=</span>argocd<span class="w"> </span>--webhook-secret<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$WEBHOOK_SECRET</span><span class="s2">&quot;</span>
+</code></pre></div>
+<h3 id="helm-chart-mode-operator">Helm chart (mode: operator)<a class="headerlink" href="#helm-chart-mode-operator" title="Permanent link">&para;</a></h3>
+<p>Set <code>ingester.webhookSecret</code> in your <code>values.yaml</code> override (or via <code>--set</code>). The chart stores the value in the existing <code>&lt;release&gt;-secret</code> Kubernetes Secret and injects it into the pod as the <code>WEBHOOK_SECRET</code> environment variable:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">ingester</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">sourceType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">argocd</span>
+<span class="w">  </span><span class="nt">webhookSecret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;your-secret-here&quot;</span><span class="w">   </span><span class="c1"># generate with: openssl rand -hex 32</span>
+</code></pre></div>
+<p>In production, avoid committing the secret to version control. Instead, pre-create the Kubernetes Secret and reference it directly, or use an external secrets operator to sync it.</p>
+<h3 id="configuring-argocd-argo-rollouts-flux-to-send-the-header">Configuring ArgoCD / Argo Rollouts / Flux to send the header<a class="headerlink" href="#configuring-argocd-argo-rollouts-flux-to-send-the-header" title="Permanent link">&para;</a></h3>
+<p>Each GitOps tool lets you add custom HTTP headers to its webhook notifications:</p>
+<p><strong>ArgoCD</strong> (<code>argocd-notifications-cm</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">service.webhook.pg-regression-radar</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">  </span><span class="no">url: http://pg-regression-radar:8080/webhook</span>
+<span class="w">  </span><span class="no">headers:</span>
+<span class="w">    </span><span class="no">- name: X-Webhook-Token</span>
+<span class="w">      </span><span class="no">value: $webhook-secret   # reference a secret key</span>
+</code></pre></div>
+<p><strong>Argo Rollouts</strong> (<code>argo-rollouts-notification-configmap</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">service.webhook.pg-regression-radar</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">  </span><span class="no">url: http://pg-regression-radar:8080/webhook</span>
+<span class="w">  </span><span class="no">headers:</span>
+<span class="w">    </span><span class="no">- name: X-Webhook-Token</span>
+<span class="w">      </span><span class="no">value: $webhook-secret</span>
+</code></pre></div>
+<p><strong>Flux</strong> (<code>Provider</code> resource):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">notification.toolkit.fluxcd.io/v1beta3</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Provider</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pg-regression-radar-webhook</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">flux-system</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generic</span>
+<span class="w">  </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://pg-regression-radar:8080/webhook</span>
+<span class="w">  </span><span class="nt">headers</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">X-Webhook-Token</span>
+<span class="w">      </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">your-secret-here</span><span class="w">   </span><span class="c1"># replace with your actual secret</span>
+</code></pre></div>
+<p>Flux ≥ 2.4 supports the <code>headers</code> field on the generic <code>Provider</code>, which lets you send a custom header verbatim. For earlier versions that only support <code>secretRef</code> (which sends <code>Authorization: token &lt;value&gt;</code> instead), use the <code>generic-hmac</code> provider type or upgrade Flux.</p>
+<h3 id="verifying-the-token-with-curl">Verifying the token with curl<a class="headerlink" href="#verifying-the-token-with-curl" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/webhook<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Webhook-Token: your-secret-here&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;app&quot;:&quot;my-app&quot;,&quot;revision&quot;:&quot;abc123&quot;,&quot;timestamp&quot;:&quot;2024-01-15T10:00:00Z&quot;}&#39;</span>
+</code></pre></div>
+<p>A request without the header returns <code>401 Unauthorized</code>; with the correct token it returns <code>204 No Content</code>.</p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../api-reference/">API Reference</a> — the <code>DeployEvent</code> JSON shape every source normalises into.</li>
+<li><a href="../configuration/">Configuration Reference</a> — <code>--source-type</code> / <code>sourceType</code>.</li>
+<li><a href="../getting-started/">Getting Started</a> — simulating a deploy event with <code>curl</code> against the generic source.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/nav-data.js"></script>
+      
+        <script src="../javascripts/nav-flyout.js"></script>
+      
+        <script src="../javascripts/version-flyout.js"></script>
+      
+    
+  </body>
+</html>

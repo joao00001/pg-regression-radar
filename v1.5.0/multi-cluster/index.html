@@ -1,0 +1,2276 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/v1.5.0/multi-cluster/">
+      
+      
+        <link rel="prev" href="../collector-internals/">
+      
+      
+        <link rel="next" href="../security-model/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Multi-Cluster (Fleet) Mode - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#multi-cluster-fleet-mode" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are not viewing the latest version of these docs.
+  <a href="../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Multi-Cluster (Fleet) Mode
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../installation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../configuration/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../testing/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Contributing
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression Scenario Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply Chain Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection Algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cluster (Fleet) Mode
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cluster (Fleet) Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cluster-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cluster registry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cluster registry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registering-a-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registering a cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#referencing-a-registered-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Referencing a registered cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rbac-for-cluster-administrators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBAC for cluster administrators
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hub-spoke-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hub-spoke model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-actually-happens-on-reconcile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What actually happens on reconcile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generating-and-storing-the-kubeconfig-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generating and storing the kubeconfig Secret
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rbac-two-separate-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBAC: two separate concerns
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secret-consent-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret consent label
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kubeconfig-restrictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kubeconfig restrictions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-gaps-and-deliberate-scope-cuts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known gaps and deliberate scope cuts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration from remoteClusterSecretRef to remoteClusterRef
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model & Threat Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Security (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Versioning & Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy Sources & Webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-Abort (Argo Rollouts)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic (Deploy-Independent) Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch Protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cluster-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cluster registry
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cluster registry">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registering-a-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registering a cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#referencing-a-registered-cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Referencing a registered cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rbac-for-cluster-administrators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBAC for cluster administrators
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hub-spoke-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The hub-spoke model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-actually-happens-on-reconcile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What actually happens on reconcile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generating-and-storing-the-kubeconfig-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generating and storing the kubeconfig Secret
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rbac-two-separate-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RBAC: two separate concerns
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#secret-consent-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Secret consent label
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#kubeconfig-restrictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kubeconfig restrictions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-gaps-and-deliberate-scope-cuts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known gaps and deliberate scope cuts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration from remoteClusterSecretRef to remoteClusterRef
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/multi-cluster.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="multi-cluster-fleet-mode">Multi-Cluster (Fleet) Mode<a class="headerlink" href="#multi-cluster-fleet-mode" title="Permanent link">&para;</a></h1>
+<p><em>How one <code>cmd/manager</code> in a hub cluster watches Postgres/CloudNativePG clusters living in other ("spoke") Kubernetes clusters.</em></p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p><code>cmd/manager</code> can reconcile any number of <code>PostgresWatch</code> CRs at once, each with its own <code>Collector</code>/<code>Engine</code>/<code>Notifier</code>/<code>ingester.Store</code> (see <a href="../architecture/">Architecture Overview</a> and <code>internal/controller/registry.go</code>). When a Postgres cluster's DSN Secret lives in a <em>different</em> Kubernetes cluster than the manager, the fleet mode described on this page applies.</p>
+<p>Two approaches are supported:</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Field</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cluster registry</strong> (recommended)</td>
+<td><code>spec.remoteClusterRef</code></td>
+<td>An administrator pre-registers the cluster; watch creators pick from the approved list.</td>
+</tr>
+<tr>
+<td><strong>Direct Secret reference</strong> (deprecated)</td>
+<td><code>spec.remoteClusterSecretRef</code></td>
+<td>Backward compatibility — still works in <code>controlled</code> security-profile mode, rejected in <code>hardened</code> mode.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="cluster-registry">Cluster registry<a class="headerlink" href="#cluster-registry" title="Permanent link">&para;</a></h2>
+<h3 id="registering-a-cluster">Registering a cluster<a class="headerlink" href="#registering-a-cluster" title="Permanent link">&para;</a></h3>
+<p>An administrator creates a <code>PostgresRadarCluster</code> resource (cluster-scoped) for each remote cluster. Only users with create/update/delete access to <code>PostgresRadarCluster</code> can add or change cluster registrations — watch creators have no say in which clusters are reachable.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PostgresRadarCluster</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">kubeconfigSecretRef</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pg-radar-system</span><span class="w">   </span><span class="c1"># namespace of the kubeconfig Secret in the HUB cluster</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west-kubeconfig</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kubeconfig</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span><span class="w">            </span><span class="c1"># optional: default namespace on the remote cluster for DSN Secrets</span>
+</code></pre></div>
+<p>The kubeconfig Secret must carry the <a href="#secret-consent-label">consent label</a> and must contain only static credentials (bearer token or client certificate). See <a href="#kubeconfig-restrictions">Kubeconfig restrictions</a> for what is rejected and why.</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>prod-eu-west-kubeconfig<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-file<span class="o">=</span><span class="nv">kubeconfig</span><span class="o">=</span>./spoke-scoped.kubeconfig<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>pg-radar-system
+
+kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w"> </span>prod-eu-west-kubeconfig<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>pg-regression-radar.io/allow-postgreswatch-access<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>pg-radar-system
+</code></pre></div>
+<h3 id="referencing-a-registered-cluster">Referencing a registered cluster<a class="headerlink" href="#referencing-a-registered-cluster" title="Permanent link">&para;</a></h3>
+<p>A <code>PostgresWatch</code> references a registered cluster by name via <code>spec.remoteClusterRef</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PostgresWatch</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west</span>
+<span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">default</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">clusterName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west</span>
+<span class="w">  </span><span class="nt">remoteClusterRef</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west</span><span class="w">     </span><span class="c1"># must match a PostgresRadarCluster name</span>
+<span class="w">  </span><span class="nt">dsnSecretRef</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west-app-superuser</span><span class="w"> </span><span class="c1"># Secret name on the SPOKE cluster</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uri</span>
+</code></pre></div>
+<p>If the named <code>PostgresRadarCluster</code> does not exist, reconciliation fails with <code>status.phase: Failed</code> and a clear error message, exactly like any other DSN resolution failure.</p>
+<h3 id="security-profiles">Security profiles<a class="headerlink" href="#security-profiles" title="Permanent link">&para;</a></h3>
+<p>The manager and operator support a <code>--security-profile</code> flag that controls whether the deprecated <code>remoteClusterSecretRef</code> path is still accepted:</p>
+<ul>
+<li><strong><code>controlled</code></strong> (default): both <code>remoteClusterRef</code> and <code>remoteClusterSecretRef</code> work. A deprecation warning is logged whenever the old field is used. This is the backward-compatible default for existing installations.</li>
+<li><strong><code>hardened</code></strong>: <code>remoteClusterSecretRef</code> is rejected outright with a clear error. Only the cluster registry path (<code>remoteClusterRef</code>) is allowed.</li>
+</ul>
+<p>Use <code>hardened</code> in new installations and in clusters where you want to enforce that only pre-registered clusters are reachable.</p>
+<h3 id="rbac-for-cluster-administrators">RBAC for cluster administrators<a class="headerlink" href="#rbac-for-cluster-administrators" title="Permanent link">&para;</a></h3>
+<p>Only bind <code>create</code>/<code>update</code>/<code>delete</code> on <code>postgresradarclusters</code> to administrators — watch creators need no write access to this resource. The Helm chart creates a <code>ClusterRole</code> for this purpose:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>clusterrolebinding<span class="w"> </span>pg-radar-cluster-admins<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--clusterrole<span class="o">=</span>&lt;release&gt;-cluster-registry-admin<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--group<span class="o">=</span>cluster-admins
+</code></pre></div>
+<p>The manager's own <code>ServiceAccount</code> only needs <code>get;list;watch</code> on <code>postgresradarclusters</code> (already included in the generated <code>ClusterRole</code>).</p>
+<hr />
+<h2 id="the-hub-spoke-model">The hub-spoke model<a class="headerlink" href="#the-hub-spoke-model" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Hub cluster</strong>: where <code>cmd/manager</code> (the Deployment, its ServiceAccount, and its RBAC) actually runs. This is the only cluster the manager's own Kubernetes client (<code>r.Client</code> in <code>internal/controller/postgreswatch_controller.go</code>) can talk to.</li>
+<li><strong>Spoke cluster(s)</strong>: any number of other Kubernetes clusters, each typically running its own CloudNativePG installation and Postgres cluster(s). The manager never runs anything in a spoke cluster; it only reads one Secret from it.</li>
+</ul>
+<h2 id="what-actually-happens-on-reconcile">What actually happens on reconcile<a class="headerlink" href="#what-actually-happens-on-reconcile" title="Permanent link">&para;</a></h2>
+<p><code>PostgresWatchReconciler.resolveDSN</code> → <code>dsnSecretClient</code> (<code>internal/controller/postgreswatch_controller.go</code>) decide, on every reconcile, which Kubernetes API server to read <code>spec.dsnSecretRef</code> from:</p>
+<ol>
+<li><strong><code>remoteClusterRef</code> set (recommended):</strong> look up the named <code>PostgresRadarCluster</code>, read its kubeconfig Secret (from the hub cluster, in whatever namespace the <code>PostgresRadarCluster.spec.kubeconfigSecretRef.namespace</code> specifies), build (or reuse a cached) <code>client.Client</code>, and read <code>spec.dsnSecretRef</code> through that remote client. The <code>PostgresRadarCluster</code> must exist; if it doesn't, <code>Reconcile</code> marks the watch <code>Failed</code> immediately.</li>
+<li><strong><code>remoteClusterSecretRef</code> set (deprecated):</strong> read the kubeconfig Secret it names — <strong>in the hub cluster</strong>, in the <code>PostgresWatch</code>'s own namespace — then follow the same build/cache/read path as above. Accepted in <code>controlled</code> profile (default), rejected in <code>hardened</code> profile.</li>
+<li><strong>Neither set (default):</strong> read the DSN Secret with the manager's own (hub) client, exactly as before fleet mode existed. Zero behavior change, zero new RBAC needed.</li>
+</ol>
+<p>In all cases, <code>spec.remoteNamespace</code> (if set alongside a remote cluster path) overrides which namespace on the remote cluster is used to look up the DSN Secret — see the <code>remoteNamespace</code> field in the <a href="../configuration/">Configuration Reference</a>.</p>
+<p>Any failure in that chain — the <code>PostgresRadarCluster</code> doesn't exist, its kubeconfig Secret is missing, the kubeconfig is malformed, or the remote API server is unreachable — is treated exactly like any other DSN resolution failure: <code>Reconcile</code> calls <code>markFailed</code>, setting <code>status.phase: Failed</code>, <code>status.message</code> to the error, and returning it so controller-runtime's rate limiter retries with backoff.</p>
+<h2 id="generating-and-storing-the-kubeconfig-secret">Generating and storing the kubeconfig Secret<a class="headerlink" href="#generating-and-storing-the-kubeconfig-secret" title="Permanent link">&para;</a></h2>
+<p>The kubeconfig you put in the Secret should be scoped down to the bare minimum on the <strong>spoke</strong> side — least privilege lives entirely in the kubeconfig's own embedded credentials/RBAC, not in anything the hub cluster enforces (the hub cluster has no way to know or limit what a kubeconfig can do once it's handed to a remote API server). A reasonable way to build one:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># On/against the SPOKE cluster:</span>
+kubectl<span class="w"> </span>create<span class="w"> </span>serviceaccount<span class="w"> </span>pg-regression-radar-reader<span class="w"> </span>-n<span class="w"> </span>&lt;spoke-namespace&gt;
+
+kubectl<span class="w"> </span>create<span class="w"> </span>role<span class="w"> </span>pg-regression-radar-dsn-reader<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--verb<span class="o">=</span>get<span class="w"> </span>--resource<span class="o">=</span>secrets<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--resource-name<span class="o">=</span>&lt;dsn-secret-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>&lt;spoke-namespace&gt;
+
+kubectl<span class="w"> </span>create<span class="w"> </span>rolebinding<span class="w"> </span>pg-regression-radar-dsn-reader<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--role<span class="o">=</span>pg-regression-radar-dsn-reader<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--serviceaccount<span class="o">=</span>&lt;spoke-namespace&gt;:pg-regression-radar-reader<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>&lt;spoke-namespace&gt;
+
+<span class="c1"># Mint a kubeconfig for that ServiceAccount only (exact steps depend on your</span>
+<span class="c1"># cluster&#39;s token/cert issuance setup — a short-lived ServiceAccount token</span>
+<span class="c1"># via `kubectl create token`, or a long-lived one via a Secret of type</span>
+<span class="c1"># kubernetes.io/service-account-token, both work as the &quot;users.user.token&quot;</span>
+<span class="c1"># field of a kubeconfig).</span>
+
+<span class="c1"># On the HUB cluster:</span>
+kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>prod-eu-west-kubeconfig<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-file<span class="o">=</span><span class="nv">kubeconfig</span><span class="o">=</span>./spoke-scoped.kubeconfig<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>default
+
+<span class="c1"># Required — see &quot;Secret consent label&quot; below: without this label the</span>
+<span class="c1"># manager refuses to read this Secret at all, regardless of RBAC.</span>
+kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w"> </span>prod-eu-west-kubeconfig<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>pg-regression-radar.io/allow-postgreswatch-access<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>default
+</code></pre></div>
+<p>The Role above grants <code>get</code> on exactly one named Secret — nothing else. It should <strong>not</strong> grant <code>list</code>/<code>watch</code> on all Secrets, access to any other resource type, or any verb beyond what's needed to read that one DSN Secret. This is an operational responsibility of whoever creates the kubeconfig Secret, not something <code>cmd/manager</code> or its own RBAC can enforce from the hub side.</p>
+<h2 id="rbac-two-separate-concerns">RBAC: two separate concerns<a class="headerlink" href="#rbac-two-separate-concerns" title="Permanent link">&para;</a></h2>
+<p>It's easy to conflate "the manager's own RBAC" with "what the manager can reach in a spoke cluster" — they are unrelated:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Grants</th>
+<th>Enforced by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hub ServiceAccount RBAC (<code>config/rbac/role.yaml</code>, <code>+kubebuilder:rbac</code> marker above <code>PostgresWatchReconciler.Reconcile</code>)</td>
+<td>Read access to <strong>Secrets in the hub cluster</strong> — this already covered <code>dsnSecretRef</code> before this feature, and now also covers reading the <code>remoteClusterSecretRef</code> kubeconfig Secret. Nothing about this RBAC changes what can be reached in a spoke cluster.</td>
+<td>The hub cluster's API server</td>
+</tr>
+<tr>
+<td>The kubeconfig's own embedded credentials</td>
+<td>Whatever the spoke cluster's API server decides that identity can do — should be scoped to <code>get</code> on exactly the one Secret <code>dsnSecretRef</code> names, per the previous section.</td>
+<td>The <strong>spoke</strong> cluster's API server</td>
+</tr>
+</tbody>
+</table>
+<p><code>config/rbac/role.yaml</code>'s existing <code>secrets: get;list;watch</code> ClusterRole rule is unchanged by this feature — it was already necessary and sufficient for <code>dsnSecretRef</code>, and the exact same rule is what makes <code>remoteClusterSecretRef</code> kubeconfig Secrets readable too, since both live in the hub cluster. If you're running a hardened setup that narrows that ClusterRole to specific Secret names (e.g. via <code>resourceNames</code>), remember to include your kubeconfig Secrets in that list alongside your DSN Secrets.</p>
+<h2 id="secret-consent-label">Secret consent label<a class="headerlink" href="#secret-consent-label" title="Permanent link">&para;</a></h2>
+<p>That cluster-wide <code>secrets: get;list;watch</code> grant means anyone who can create or edit a <code>PostgresWatch</code> in a namespace — a much weaker permission than being able to read Secrets in that namespace directly — could otherwise name <em>any</em> Secret there in <code>dsnSecretRef</code> or <code>remoteClusterSecretRef</code> and have the manager read it on their behalf: a classic confused-deputy path, since it's the manager's own broader Secret-read privilege being exercised at the referencer's request, not the Secret owner's.</p>
+<p><code>internal/controller/secret_consent.go</code> closes this: before either Secret's contents are used, the manager checks it carries the label</p>
+<div class="highlight"><pre><span></span><code>pg-regression-radar.io/allow-postgreswatch-access: &quot;true&quot;
+</code></pre></div>
+<p>If the label is missing, <code>resolveDSN</code>/<code>dsnSecretClient</code> return an error (surfaced the same way any other DSN resolution failure is — <code>status.phase: Failed</code>, <code>status.message</code> set) instead of using the Secret's contents. This applies to <strong>both</strong> <code>dsnSecretRef</code> (the DSN Secret itself) and <code>remoteClusterSecretRef</code> (the kubeconfig Secret) — whoever owns a Secret must explicitly opt it in before any <code>PostgresWatch</code> can reference it, in the hub cluster or, via a remote kubeconfig, in a spoke cluster's own Secrets:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w"> </span>prod-eu-west-app-superuser<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>pg-regression-radar.io/allow-postgreswatch-access<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>&lt;namespace&gt;
+</code></pre></div>
+<p>This is a namespace-local decision the Secret's own owner makes (labeling a Secret requires the same <code>patch</code>/<code>update</code> permission on that Secret that creating it did), independent of whatever RBAC governs who can create <code>PostgresWatch</code> CRs — it doesn't replace narrowing that RBAC or the ClusterRole above where you can, it closes the gap for installations where you can't (or haven't yet).</p>
+<p>For <strong>multi-tenant clusters</strong>, treat that label as a privileged capability: add an admission policy so only approved identities can set it. A ready-to-adapt Kyverno example (edit its allowed-identity list for your environment) lives at <a href="../policies/kyverno-consent-label-policy.yaml"><code>docs/policies/kyverno-consent-label-policy.yaml</code></a>.</p>
+<h2 id="kubeconfig-restrictions">Kubeconfig restrictions<a class="headerlink" href="#kubeconfig-restrictions" title="Permanent link">&para;</a></h2>
+<p>Because a <code>remoteClusterSecretRef</code> kubeconfig comes from a Secret a <code>PostgresWatch</code>'s owner controls — untrusted input from the manager's perspective, even after the consent label above — <code>buildRemoteClient</code> (<code>internal/controller/remote_client.go</code>) rejects any kubeconfig that would hand the manager process more capability than "talk to a remote API server with a static credential":</p>
+<table>
+<thead>
+<tr>
+<th>Rejected</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>users[].exec</code> (exec-based credential plugins)</td>
+<td>client-go would execute it as a local process inside the manager's own pod every time the resulting client authenticates — a kubeconfig-controlled arbitrary command, not just a credential.</td>
+</tr>
+<tr>
+<td><code>users[].auth-provider</code> (deprecated auth-provider plugins)</td>
+<td>Same "plugin decides how to authenticate" shape as <code>exec</code>; some implementations shell out too.</td>
+</tr>
+<tr>
+<td><code>clusters[].proxy-url</code></td>
+<td>Would route the manager's API traffic for that cluster through a proxy endpoint the kubeconfig's author chooses, not the cluster operator — a network egress redirection risk.</td>
+</tr>
+</tbody>
+</table>
+<p>Static-credential kubeconfigs — bearer token, client-certificate, or username/password <code>users[]</code> entries, with no <code>proxy-url</code> — are unaffected; those are exactly the shapes the <a href="#generating-and-storing-the-kubeconfig-secret">previous section</a>'s <code>kubectl create token</code>-based example produces. A rejected kubeconfig surfaces the same way any other DSN resolution failure does (<code>status.phase: Failed</code>), with an error naming the specific user/cluster entry and restriction that was violated.</p>
+<h2 id="known-gaps-and-deliberate-scope-cuts">Known gaps and deliberate scope cuts<a class="headerlink" href="#known-gaps-and-deliberate-scope-cuts" title="Permanent link">&para;</a></h2>
+<p>This feature closes the "Postgres lives in a different Kubernetes cluster" gap, but intentionally does not attempt everything a mature fleet story eventually needs:</p>
+<ul>
+<li><strong>No kubeconfig rotation/expiration handling beyond evict-on-failure.</strong> A short-lived static token embedded in a kubeconfig Secret that genuinely expires still fails DSN resolution the same way (surfacing as <code>status.phase: Failed</code>) — no code running in the hub cluster has the authority to mint a fresh credential for a spoke cluster it doesn't control, so refreshing the Secret's content remains an operational responsibility, same as rotating <code>dsnSecretRef</code> itself. What <em>is</em> handled: the moment a cached remote client fails a real request (<code>resolveDSN</code>), its entry is evicted from <code>remoteClientCache</code> immediately (<code>remoteClientCache.evict</code>, <code>internal/controller/remote_client.go</code>), rather than waiting for a future reconcile to keep reusing a client already known to be broken. This means (a) a transient failure gets a genuinely fresh connection/transport on the very next attempt instead of reusing one that just failed, and (b) once an external rotator <em>does</em> rewrite the kubeconfig Secret with fresh credentials, the next reconcile picks that new content up immediately with no orphaned old entry left sitting in the cache. This is now the <em>only</em> supported way to keep credentials current — <a href="#kubeconfig-restrictions">exec-based kubeconfig auth plugins</a>, which would otherwise get transparent, automatic refresh from client-go itself with no evict/re-fetch cycle needed at all, are rejected outright, precisely because that same "runs a local process to get fresh credentials" mechanism is what makes them unsafe to accept from a tenant-controlled Secret.</li>
+<li><strong>The remote client cache's time-based eviction has no failure-aware equivalent.</strong> Entries unused for over an hour are swept out (<code>internal/controller/remote_client.go</code>'s <code>Start</code>, registered as a manager-owned background task in <code>SetupWithManager</code>, running every 10 minutes) — a kubeconfig still referenced by a live <code>PostgresWatch</code> gets its cache entry refreshed at least every 30 seconds (the reconciler's status-refresh cadence), so this only ever reclaims clients for kubeconfigs that were rotated away from or whose <code>PostgresWatch</code>/Secret was deleted, never one still genuinely in use. What's still out of scope: eviction isn't triggered directly by a Secret's deletion (it just stops being asked for and ages out on the next sweep), and there's no proactive health check of a cached client's remote reachability — that still only surfaces as a failed request.</li>
+<li><strong>The CloudNativePG <code>Cluster</code> resource itself is not read remotely.</strong> Only the generated DSN Secret is fetched from the spoke cluster; nothing here reads spoke-side <code>Cluster</code>/<code>Pooler</code>/etc. custom resources to, say, auto-discover DSN Secret names or validate the target actually exists. <code>clusterName</code> remains a free-text label, not a live cross-cluster reference.</li>
+<li><strong>Not validated against a real second Kubernetes cluster.</strong> Testing here uses <code>sigs.k8s.io/controller-runtime/pkg/client/fake</code> for the hub-side Secret reads, and a syntactically valid kubeconfig pointing at an address nothing listens on to exercise the "unreachable remote cluster" failure path (see <code>internal/controller/postgreswatch_controller_test.go</code> and <code>remote_client_test.go</code>) — the same sandboxed-CI constraint noted elsewhere in <a href="../roadmap/#known-robustness-gaps">the roadmap</a> for real-<code>kind</code>-cluster validation applies doubly here, since it would need <em>two</em> real clusters.</li>
+</ul>
+<h2 id="migration">Migration from <code>remoteClusterSecretRef</code> to <code>remoteClusterRef</code><a class="headerlink" href="#migration" title="Permanent link">&para;</a></h2>
+<p>The <code>remoteClusterSecretRef</code> field on <code>PostgresWatch</code> is deprecated. It continues to work in <code>controlled</code> security-profile mode (the default), but will be rejected in <code>hardened</code> mode. Migrating is a two-step process:</p>
+<p><strong>Step 1 — Register the cluster as a <code>PostgresRadarCluster</code>.</strong></p>
+<p>Move the kubeconfig Secret to the administrator-managed namespace (e.g. <code>pg-radar-system</code>) if it isn't there already, and create the <code>PostgresRadarCluster</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Move the kubeconfig Secret if needed (or create a new one in the admin namespace)</span>
+kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>prod-eu-west-kubeconfig<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--from-file<span class="o">=</span><span class="nv">kubeconfig</span><span class="o">=</span>./spoke-scoped.kubeconfig<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>pg-radar-system
+
+kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w"> </span>prod-eu-west-kubeconfig<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>pg-regression-radar.io/allow-postgreswatch-access<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-n<span class="w"> </span>pg-radar-system
+
+<span class="c1"># Create the PostgresRadarCluster</span>
+kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>-<span class="w"> </span><span class="s">&lt;&lt;EOF</span>
+<span class="s">apiVersion: radar.pgregressionradar.io/v1alpha1</span>
+<span class="s">kind: PostgresRadarCluster</span>
+<span class="s">metadata:</span>
+<span class="s">  name: prod-eu-west</span>
+<span class="s">spec:</span>
+<span class="s">  kubeconfigSecretRef:</span>
+<span class="s">    namespace: pg-radar-system</span>
+<span class="s">    name: prod-eu-west-kubeconfig</span>
+<span class="s">    key: kubeconfig</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<p><strong>Step 2 — Update each <code>PostgresWatch</code> to use <code>remoteClusterRef</code>.</strong></p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>postgreswatch<span class="w"> </span>prod-eu-west<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-p<span class="w"> </span><span class="s1">&#39;{&quot;spec&quot;:{&quot;remoteClusterRef&quot;:&quot;prod-eu-west&quot;,&quot;remoteClusterSecretRef&quot;:null}}&#39;</span>
+</code></pre></div>
+<p>Or apply a new manifest replacing <code>remoteClusterSecretRef</code> with <code>remoteClusterRef</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">remoteClusterRef</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west</span><span class="w">    </span><span class="c1"># replaces remoteClusterSecretRef</span>
+<span class="w">  </span><span class="nt">dsnSecretRef</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west-app-superuser</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">uri</span>
+</code></pre></div>
+<p>After migration, the old kubeconfig Secret in the watch's namespace can be removed (once no other watch references it).</p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../architecture/">Architecture Overview</a> — how <code>cmd/manager</code> reconciles many <code>PostgresWatch</code> CRs today, hub-spoke or not.</li>
+<li><a href="../configuration/">Configuration Reference</a> — the full <code>PostgresWatch</code> spec field table, including <code>remoteClusterRef</code> and the deprecated <code>remoteClusterSecretRef</code>.</li>
+<li><a href="../roadmap/">Roadmap</a> — where fleet/multi-cluster support sits against the rest of the version roadmap.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/nav-data.js"></script>
+      
+        <script src="../javascripts/nav-flyout.js"></script>
+      
+        <script src="../javascripts/version-flyout.js"></script>
+      
+    
+  </body>
+</html>
