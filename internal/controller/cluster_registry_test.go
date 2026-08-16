@@ -60,7 +60,7 @@ func TestDSNSecretClient_RemoteClusterRef_ValidCluster(t *testing.T) {
 
 	r, _ := newTestReconciler(t, watch, cluster, secret)
 
-	cl, kubeconfig, err := r.dsnSecretClient(context.Background(), watch)
+	cl, kubeconfig, _, err := r.dsnSecretClient(context.Background(), watch)
 	if err != nil {
 		t.Fatalf("dsnSecretClient: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestDSNSecretClient_RemoteClusterRef_ClusterNotFound(t *testing.T) {
 
 	r, _ := newTestReconciler(t, watch)
 
-	_, _, err := r.dsnSecretClient(context.Background(), watch)
+	_, _, _, err := r.dsnSecretClient(context.Background(), watch)
 	if err == nil {
 		t.Fatal("expected an error when the named PostgresRadarCluster does not exist")
 	}
@@ -105,7 +105,7 @@ func TestDSNSecretClient_RemoteClusterRef_MissingKubeconfigSecret(t *testing.T) 
 
 	r, _ := newTestReconciler(t, watch, cluster)
 
-	_, _, err := r.dsnSecretClient(context.Background(), watch)
+	_, _, _, err := r.dsnSecretClient(context.Background(), watch)
 	if err == nil {
 		t.Fatal("expected an error when the kubeconfig Secret is missing")
 	}
@@ -129,7 +129,7 @@ func TestDSNSecretClient_RemoteClusterRef_MissingConsentLabel(t *testing.T) {
 
 	r, _ := newTestReconciler(t, watch, cluster, unlabeled)
 
-	_, _, err := r.dsnSecretClient(context.Background(), watch)
+	_, _, _, err := r.dsnSecretClient(context.Background(), watch)
 	if err == nil {
 		t.Fatal("expected an error for a kubeconfig Secret missing the consent label")
 	}
@@ -157,7 +157,7 @@ func TestDSNSecretClient_RemoteClusterRef_TakesPrecedenceOverSecretRef(t *testin
 
 	// Should succeed via the registry path even though the legacy Secret
 	// does not exist in the fake client.
-	cl, _, err := r.dsnSecretClient(context.Background(), watch)
+	cl, _, _, err := r.dsnSecretClient(context.Background(), watch)
 	if err != nil {
 		t.Fatalf("dsnSecretClient: %v", err)
 	}
@@ -178,11 +178,11 @@ func TestDSNSecretClient_RemoteClusterRef_CacheReuse(t *testing.T) {
 
 	r, _ := newTestReconciler(t, watch, cluster, secret)
 
-	cl1, _, err := r.dsnSecretClient(context.Background(), watch)
+	cl1, _, _, err := r.dsnSecretClient(context.Background(), watch)
 	if err != nil {
 		t.Fatalf("first call: %v", err)
 	}
-	cl2, _, err := r.dsnSecretClient(context.Background(), watch)
+	cl2, _, _, err := r.dsnSecretClient(context.Background(), watch)
 	if err != nil {
 		t.Fatalf("second call: %v", err)
 	}
@@ -202,8 +202,42 @@ func TestDSNSecretNamespace_RemoteClusterRef(t *testing.T) {
 			RemoteNamespace:  "spoke-ns",
 		},
 	}
-	if got := dsnSecretNamespace(watch); got != "spoke-ns" {
+	if got := dsnSecretNamespace(watch, ""); got != "spoke-ns" {
 		t.Fatalf("dsnSecretNamespace with remoteClusterRef+remoteNamespace = %q, want \"spoke-ns\"", got)
+	}
+}
+
+// TestDSNSecretNamespace_ClusterDefaultNamespace verifies that when
+// remoteNamespace is unset but the registered PostgresRadarCluster has a
+// default namespace, the cluster's namespace is used as the fallback
+// (instead of the hub namespace).
+func TestDSNSecretNamespace_ClusterDefaultNamespace(t *testing.T) {
+	watch := &radarv1alpha1.PostgresWatch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "hub-ns"},
+		Spec: radarv1alpha1.PostgresWatchSpec{
+			RemoteClusterRef: "prod-spoke",
+			// RemoteNamespace intentionally left empty.
+		},
+	}
+	// The PostgresRadarCluster has a default namespace "postgres-ns".
+	if got := dsnSecretNamespace(watch, "postgres-ns"); got != "postgres-ns" {
+		t.Fatalf("expected cluster default namespace %q, got %q", "postgres-ns", got)
+	}
+}
+
+// TestDSNSecretNamespace_WatchNamespaceOverridesClusterDefault verifies that
+// watch.Spec.RemoteNamespace takes precedence over the cluster's default
+// namespace.
+func TestDSNSecretNamespace_WatchNamespaceOverridesClusterDefault(t *testing.T) {
+	watch := &radarv1alpha1.PostgresWatch{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "hub-ns"},
+		Spec: radarv1alpha1.PostgresWatchSpec{
+			RemoteClusterRef: "prod-spoke",
+			RemoteNamespace:  "spoke-override",
+		},
+	}
+	if got := dsnSecretNamespace(watch, "cluster-default"); got != "spoke-override" {
+		t.Fatalf("expected watch remoteNamespace to win, got %q", got)
 	}
 }
 
@@ -311,7 +345,7 @@ func TestDSNSecretClient_HardenedProfile_RejectsLegacyRef(t *testing.T) {
 		SecurityProfile: radarv1alpha1.SecurityProfileHardened,
 	}
 
-	_, _, err := r.dsnSecretClient(context.Background(), watch)
+	_, _, _, err := r.dsnSecretClient(context.Background(), watch)
 	if err == nil {
 		t.Fatal("expected an error when remoteClusterSecretRef is used in hardened profile")
 	}
@@ -345,7 +379,7 @@ func TestDSNSecretClient_ControlledProfile_AllowsLegacyRef(t *testing.T) {
 		SecurityProfile: radarv1alpha1.SecurityProfileControlled, // explicit; same as the zero-value default
 	}
 
-	cl, _, err := r.dsnSecretClient(context.Background(), watch)
+	cl, _, _, err := r.dsnSecretClient(context.Background(), watch)
 	if err != nil {
 		t.Fatalf("dsnSecretClient in controlled profile: %v", err)
 	}

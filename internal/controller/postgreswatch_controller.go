@@ -285,13 +285,13 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 		return "", fmt.Errorf("postgreswatch %s/%s: neither spec.dsn nor spec.dsnSecretRef is set", watch.Namespace, watch.Name)
 	}
 
-	secretClient, remoteKubeconfig, err := r.dsnSecretClient(ctx, watch)
+	secretClient, remoteKubeconfig, clusterDefaultNS, err := r.dsnSecretClient(ctx, watch)
 	if err != nil {
 		return "", err
 	}
 
 	var secret corev1.Secret
-	key := types.NamespacedName{Namespace: dsnSecretNamespace(watch), Name: watch.Spec.DSNSecretRef.Name}
+	key := types.NamespacedName{Namespace: dsnSecretNamespace(watch, clusterDefaultNS), Name: watch.Spec.DSNSecretRef.Name}
 	if err := secretClient.Get(ctx, key, &secret); err != nil {
 		if remoteKubeconfig != nil {
 			// The cached remote client we just used failed a real request
@@ -319,16 +319,25 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 }
 
 // dsnSecretNamespace returns the namespace dsnSecretRef should be looked up
-// in: spec.remoteNamespace when a remote cluster is in play and it's set,
-// the watch's own namespace otherwise (the pre-existing "same name on both
-// sides" convention, still the default because it matches how
-// CloudNativePG's own generated credential Secrets are named). A
-// remoteNamespace set without any remote cluster reference has no effect —
-// it only means anything once there's a remote cluster to look in.
-func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch) string {
+// in on the remote cluster. Resolution order:
+//  1. watch.Spec.RemoteNamespace when a remote cluster is in play and it's set
+//  2. clusterDefaultNamespace when provided by the registered PostgresRadarCluster
+//  3. the watch's own namespace (the "same name on both sides" convention,
+//     matching how CloudNativePG generates credential Secrets)
+//
+// A remoteNamespace or clusterDefaultNamespace set without any remote cluster
+// reference has no effect — they only take effect once there's a remote
+// cluster to look in.
+func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch, clusterDefaultNamespace string) string {
 	hasRemote := watch.Spec.RemoteClusterRef != "" || watch.Spec.RemoteClusterSecretRef != nil
-	if hasRemote && watch.Spec.RemoteNamespace != "" {
+	if !hasRemote {
+		return watch.Namespace
+	}
+	if watch.Spec.RemoteNamespace != "" {
 		return watch.Spec.RemoteNamespace
+	}
+	if clusterDefaultNamespace != "" {
+		return clusterDefaultNamespace
 	}
 	return watch.Namespace
 }
@@ -340,7 +349,9 @@ func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch) string {
 // watch.Spec.RemoteClusterSecretRef (deprecated, direct Secret reference) is
 // set. The raw kubeconfig bytes are returned alongside the remote client (nil
 // in the hub-client case) so resolveDSN can evict this exact cache entry if
-// the client goes on to fail a real request.
+// the client goes on to fail a real request. The cluster's default namespace
+// (from PostgresRadarCluster.Spec.Namespace, or empty string) is returned as
+// the third value so resolveDSN can pass it to dsnSecretNamespace.
 //
 // Resolution order:
 //  1. remoteClusterRef — look up the named PostgresRadarCluster and read its
@@ -354,7 +365,7 @@ func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch) string {
 // live in the hub cluster precisely so the manager's existing
 // "get;list;watch Secrets" RBAC (see the kubebuilder marker above Reconcile)
 // is sufficient to reach it.
-func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, []byte, error) {
+func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, []byte, string, error) {
 	log := logf.FromContext(ctx)
 
 	// Path 1: registry-backed cluster reference (new, preferred).
@@ -369,7 +380,7 @@ func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *ra
 			profile = radarv1alpha1.SecurityProfileControlled
 		}
 		if profile == radarv1alpha1.SecurityProfileHardened {
-			return nil, nil, fmt.Errorf(
+			return nil, nil, "", fmt.Errorf(
 				"remoteClusterSecretRef is not allowed in hardened security-profile mode — "+
 					"register the cluster as a PostgresRadarCluster and use remoteClusterRef instead; "+
 					"see docs/multi-cluster.md#migration",
@@ -382,42 +393,46 @@ func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *ra
 			"namespace", watch.Namespace,
 			"see", "docs/multi-cluster.md#migration",
 		)
-		return r.dsnSecretClientFromSecret(ctx, watch)
+		cl, kubeconfig, err := r.dsnSecretClientFromSecret(ctx, watch)
+		return cl, kubeconfig, "", err
 	}
 
 	// Path 3: hub cluster only.
-	return r.Client, nil, nil
+	return r.Client, nil, "", nil
 }
 
 // dsnSecretClientFromRegistry looks up the PostgresRadarCluster named by
 // watch.Spec.RemoteClusterRef, reads the kubeconfig Secret it points at, and
-// returns a remote client built from that kubeconfig.
-func (r *PostgresWatchReconciler) dsnSecretClientFromRegistry(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, []byte, error) {
+// returns a remote client built from that kubeconfig along with the cluster's
+// configured default namespace (PostgresRadarCluster.Spec.Namespace), which
+// is passed to dsnSecretNamespace as the fallback when watch.Spec.RemoteNamespace
+// is unset.
+func (r *PostgresWatchReconciler) dsnSecretClientFromRegistry(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, []byte, string, error) {
 	var cluster radarv1alpha1.PostgresRadarCluster
 	clusterKey := types.NamespacedName{Name: watch.Spec.RemoteClusterRef}
 	if err := r.Get(ctx, clusterKey, &cluster); err != nil {
-		return nil, nil, fmt.Errorf("fetch registered cluster %q (PostgresRadarCluster): %w", watch.Spec.RemoteClusterRef, err)
+		return nil, nil, "", fmt.Errorf("fetch registered cluster %q (PostgresRadarCluster): %w", watch.Spec.RemoteClusterRef, err)
 	}
 
 	sel := cluster.Spec.KubeconfigSecretRef
 	secretKey := types.NamespacedName{Namespace: sel.Namespace, Name: sel.Name}
 	var kubeconfigSecret corev1.Secret
 	if err := r.Get(ctx, secretKey, &kubeconfigSecret); err != nil {
-		return nil, nil, fmt.Errorf("fetch kubeconfig secret %s for cluster %q: %w", secretKey, watch.Spec.RemoteClusterRef, err)
+		return nil, nil, "", fmt.Errorf("fetch kubeconfig secret %s for cluster %q: %w", secretKey, watch.Spec.RemoteClusterRef, err)
 	}
 	if err := checkSecretConsent(&kubeconfigSecret, "registered cluster kubeconfig secret"); err != nil {
-		return nil, nil, err
+		return nil, nil, "", err
 	}
 	kubeconfig, ok := kubeconfigSecret.Data[sel.Key]
 	if !ok {
-		return nil, nil, fmt.Errorf("kubeconfig secret %s for cluster %q has no key %q", secretKey, watch.Spec.RemoteClusterRef, sel.Key)
+		return nil, nil, "", fmt.Errorf("kubeconfig secret %s for cluster %q has no key %q", secretKey, watch.Spec.RemoteClusterRef, sel.Key)
 	}
 
 	remoteClient, err := r.getRemoteClients().get(kubeconfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("build client for registered cluster %q from secret %s: %w", watch.Spec.RemoteClusterRef, secretKey, err)
+		return nil, nil, "", fmt.Errorf("build client for registered cluster %q from secret %s: %w", watch.Spec.RemoteClusterRef, secretKey, err)
 	}
-	return remoteClient, kubeconfig, nil
+	return remoteClient, kubeconfig, cluster.Spec.Namespace, nil
 }
 
 // dsnSecretClientFromSecret handles the deprecated remoteClusterSecretRef
