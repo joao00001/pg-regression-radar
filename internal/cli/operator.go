@@ -49,6 +49,7 @@ import (
 	"syscall"
 	"time"
 
+	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/internal/alerting"
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
@@ -58,7 +59,6 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/planner"
 	"github.com/joao00001/pg-regression-radar/internal/storage"
 	"github.com/joao00001/pg-regression-radar/internal/storage/postgres"
-	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
