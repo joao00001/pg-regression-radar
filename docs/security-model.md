@@ -103,7 +103,7 @@ Practical example:
 | Create `PostgresWatch` resource | Allowed: Cluster admin, Team lead | Allowed: Team lead in own namespace; Cluster admin | Allowed: Team lead in own namespace; Cluster admin |
 | Create/modify `DeploySource` resource | Allowed: Cluster admin, Team lead, App developer (team policy) | Conditional: Team lead/App developer in own namespace only, with stricter admission | Conditional: Team lead/App developer in own namespace only, often templated via platform workflow |
 | Manager reads DSN Secret (`spec.dsnSecretRef`) | Allowed: If Secret is consent-labeled | Allowed: If Secret is consent-labeled and label assignment is restricted | Conditional: Prefer platform-managed relay/credentials; direct reads only for explicitly approved Secrets |
-| Configure remote cluster reference (`spec.remoteClusterRef` or deprecated `spec.remoteClusterSecretRef`) | Allowed: Trusted team operators or Cluster admin | Conditional: Platform-approved identities only; tenant use gated by policy | Disallowed: tenant-managed remote references; break-glass platform admin only |
+| Configure remote cluster reference (`spec.remoteClusterRef` or deprecated `spec.remoteClusterSecretRef`) | Allowed: Trusted team operators or Cluster admin | Conditional: Platform-approved identities only; tenant use gated by policy | Disallowed: Tenant-managed remote references; break-glass platform admin only |
 
 ### Which Secrets may be read
 
