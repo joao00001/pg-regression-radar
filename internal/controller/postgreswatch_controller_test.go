@@ -284,7 +284,7 @@ func TestDsnSecretClient_RemoteMissingConsentLabel_ReturnsError(t *testing.T) {
 	watch := samplePostgresWatch("watch-no-consent", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	// Built directly (not via the kubeconfigSecret helper, which always
 	// carries the label) — this is the one Secret in this file
@@ -385,7 +385,7 @@ func TestDSNSecretClient_RemoteValidKubeconfig_ReturnsDistinctCachedClient(t *te
 	watch := samplePostgresWatch("watch-remote", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", validTestKubeconfig)
 	r, _ := newTestReconciler(t, watch, secret)
@@ -420,7 +420,7 @@ func TestDSNSecretClient_RemoteMissingSecret_ReturnsError(t *testing.T) {
 	watch := samplePostgresWatch("watch-remote-missing", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "does-not-exist", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "does-not-exist", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 	r, _ := newTestReconciler(t, watch)
 
 	if _, _, _, err := r.dsnSecretClient(context.Background(), watch); err == nil {
@@ -490,7 +490,7 @@ func TestDSNSecretClient_RemoteMissingKey_ReturnsError(t *testing.T) {
 	watch := samplePostgresWatch("watch-remote-badkey", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "wrong-key", validTestKubeconfig)
 	r, _ := newTestReconciler(t, watch, secret)
@@ -507,7 +507,7 @@ func TestDSNSecretClient_RemoteInvalidKubeconfig_ReturnsError(t *testing.T) {
 	watch := samplePostgresWatch("watch-remote-invalid", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", "this is not a valid kubeconfig")
 	r, _ := newTestReconciler(t, watch, secret)
@@ -526,7 +526,7 @@ func TestReconcile_RemoteClusterInvalidKubeconfigMarksFailed(t *testing.T) {
 	watch := samplePostgresWatch("watch-f", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", "not: [valid, kubeconfig")
 	r, c := newTestReconciler(t, watch, secret)
@@ -557,7 +557,7 @@ func TestReconcile_RemoteClusterUnreachableMarksFailed(t *testing.T) {
 	watch := samplePostgresWatch("watch-g", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", validTestKubeconfig)
 	r, c := newTestReconciler(t, watch, secret)
@@ -743,7 +743,7 @@ func TestResolveDSN_RemoteFailure_EvictsCacheEntry(t *testing.T) {
 	watch := samplePostgresWatch("watch-j", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	secret := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", validTestKubeconfig)
 	r, _ := newTestReconciler(t, watch, secret)
