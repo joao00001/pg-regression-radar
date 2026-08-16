@@ -45,7 +45,7 @@ Practical example:
 
 Supported:
 
-- Teams may define correlation intent (`PostgresWatch` + `DeploySource`) but should not manage remote-cluster references directly.
+- Teams may define correlation intent (`PostgresWatch` + `DeploySource`) through platform-approved templates/policies, but should not manage remote-cluster references directly.
 - `spec.remoteClusterSecretRef` is disallowed by policy (admission/RBAC convention) unless approved as break-glass by platform admins.
 - Manager network egress is restricted to approved alert relays and required in-cluster APIs.
 
@@ -101,8 +101,8 @@ Legend: ✅ allowed by profile contract; ⚠️ allowed only for approved identi
 
 | Capability | `controlled` | `hardened` | `relay-only` |
 |---|---|---|---|
-| Create `PostgresWatch` CRD | ✅ Cluster admin, team lead | ✅ Team lead in own namespace; cluster admin | ✅ Team lead in own namespace; cluster admin |
-| Create/modify `DeploySource` CRD | ✅ Cluster admin, team lead, app developer (team policy) | ⚠️ Team lead/app developer in own namespace only, with stricter admission | ⚠️ Team lead/app developer in own namespace only, often templated via platform workflow |
+| Create `PostgresWatch` resource | ✅ Cluster admin, team lead | ✅ Team lead in own namespace; cluster admin | ✅ Team lead in own namespace; cluster admin |
+| Create/modify `DeploySource` resource | ✅ Cluster admin, team lead, app developer (team policy) | ⚠️ Team lead/app developer in own namespace only, with stricter admission | ⚠️ Team lead/app developer in own namespace only, often templated via platform workflow |
 | Manager reads DSN Secret (`spec.dsnSecretRef`) | ✅ If Secret is consent-labeled | ✅ If Secret is consent-labeled and label assignment is restricted | ⚠️ Prefer platform-managed relay/credentials; direct reads only for explicitly approved Secrets |
 | Configure remote cluster reference (`spec.remoteClusterSecretRef`) | ✅ Trusted team operators or cluster admin | ⚠️ Platform-approved identities only; tenant use gated by policy | ❌ Tenant-managed remote references; break-glass platform admin only |
 
