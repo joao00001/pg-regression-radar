@@ -1,0 +1,80 @@
+# Example RBAC split for consent label governance.
+#
+# Goal:
+# - A dedicated identity may label Secrets with
+#   pg-regression-radar.io/allow-postgreswatch-access=true.
+# - Regular tenant identities can create PostgresWatch resources, but cannot
+#   create/update/patch Secrets and therefore cannot self-approve Secret access.
+#
+# Apply (copy/paste):
+#   kubectl apply -f docs/policies/rbac-consent-labeler-example.yaml
+#
+# Then enforce with admission policy:
+# - Kyverno: docs/policies/kyverno-consent-label-policy.yaml
+# - CEL VAP: docs/policies/validating-admission-policy-consent-label.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: secret-consent-labeler
+  namespace: platform-security
+---
+# ClusterRole granted only to approved consent-labeling identities.
+# Scope note: this grants Secret mutation cluster-wide. In stricter environments,
+# replace with namespace-scoped Role/RoleBinding pairs per tenant namespace.
+# Keep the granted verbs narrowly scoped to what the labeler needs.
+# Trust note: `update`/`patch` also permit Secret data mutation, not only labels.
+# Mitigations:
+# - Use namespace-scoped Role/RoleBinding where possible.
+# - Optionally add `resourceNames` to allow only specific Secret names.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pg-regression-radar-secret-consent-labeler
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["update", "patch"]
+---
+# Bind the consent-labeling ClusterRole only to the dedicated labeler ServiceAccount.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pg-regression-radar-secret-consent-labeler
+subjects:
+  - kind: ServiceAccount
+    name: secret-consent-labeler
+    namespace: platform-security
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pg-regression-radar-secret-consent-labeler
+---
+# ClusterRole for regular PostgresWatch authors.
+# This role intentionally excludes Secret create/update/patch/delete verbs.
+# Without Secret mutation verbs, these identities cannot set the consent label.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pg-regression-radar-postgreswatch-author-no-secret-mutation
+rules:
+  - apiGroups: ["radar.2m.com.br"]
+    resources: ["postgreswatches", "deploysources"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+---
+# Example binding for a tenant team. Replace namespace/name for your environment.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pg-regression-radar-team-a-author
+subjects:
+  - kind: ServiceAccount
+    name: app-operator
+    namespace: team-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: pg-regression-radar-postgreswatch-author-no-secret-mutation

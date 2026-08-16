@@ -82,3 +82,59 @@ func TestCheckSecretConsent_LabelPresent_ReturnsNil(t *testing.T) {
 		t.Fatalf("expected no error for a properly labeled Secret, got: %v", err)
 	}
 }
+
+func TestCheckSecretConsent_ValidationMatrix_ForDSNAndRemoteKubeconfig(t *testing.T) {
+	kinds := []string{"dsn secret", "remote cluster kubeconfig secret"}
+
+	for _, kind := range kinds {
+		t.Run(kind+"/missing-label-rejected-with-actionable-error", func(t *testing.T) {
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "missing-label", Namespace: "default"},
+			}
+
+			err := checkSecretConsent(secret, kind)
+			if err == nil {
+				t.Fatal("expected an error for a Secret with no consent label")
+			}
+			msg := err.Error()
+			if !strings.Contains(msg, kind) {
+				t.Fatalf("expected error to include kind %q, got: %v", kind, err)
+			}
+			if !strings.Contains(msg, secretConsentLabel+"="+secretConsentValue) {
+				t.Fatalf("expected error to include required label/value, got: %v", err)
+			}
+			if !strings.Contains(msg, "add the label to the Secret to allow this") {
+				t.Fatalf("expected actionable guidance in error, got: %v", err)
+			}
+			if !strings.Contains(msg, "docs/multi-cluster.md#secret-consent-label") {
+				t.Fatalf("expected docs reference in error, got: %v", err)
+			}
+		})
+
+		t.Run(kind+"/invalid-label-value-rejected", func(t *testing.T) {
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "invalid-value",
+					Namespace: "default",
+					Labels:    map[string]string{secretConsentLabel: "yes"},
+				},
+			}
+			if err := checkSecretConsent(secret, kind); err == nil {
+				t.Fatal("expected an error when the consent label value is not exactly true")
+			}
+		})
+
+		t.Run(kind+"/valid-label-accepted", func(t *testing.T) {
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "allowed",
+					Namespace: "default",
+					Labels:    map[string]string{secretConsentLabel: secretConsentValue},
+				},
+			}
+			if err := checkSecretConsent(secret, kind); err != nil {
+				t.Fatalf("expected no error for a properly labeled Secret, got: %v", err)
+			}
+		})
+	}
+}
