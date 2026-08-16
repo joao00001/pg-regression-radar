@@ -217,6 +217,21 @@ jobs:
           output-file: sbom-${{ matrix.target }}-${{ env.ARCH }}.spdx.json
           artifact-name: sbom-${{ matrix.target }}-${{ env.ARCH }}-${{ env.VERSION }}.spdx.json
 
+      - name: Verify SBOM file is present
+        # Guard against a silent SBOM-generation failure: anchore/sbom-action
+        # can sometimes exit 0 without writing the output file (e.g. if the
+        # image reference resolves to nothing). The retry step above
+        # already re-runs on a non-zero exit, but this explicit check
+        # catches a zero-exit / missing-file case and fails the job
+        # before anything is pushed, so a release is never published
+        # without an attestable SBOM.
+        run: |
+          FILE="sbom-${{ matrix.target }}-${{ env.ARCH }}.spdx.json"
+          if [ ! -s "$FILE" ]; then
+            echo "::error::SBOM file '$FILE' is missing or empty after generation (including retry). Cannot attest — release blocked."
+            exit 1
+          fi
+
       - name: Scan for vulnerabilities (Trivy)
         # Runs against the same not-yet-pushed local image. exit-code: '1'
         # fails this step — and therefore the job, since every step after it
