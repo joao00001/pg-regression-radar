@@ -32,6 +32,34 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.5.0 - 2026-08-16
+
+### Features
+
+- Alerting destinations can now be governed by a configurable `destinationPolicy`.
+  Three modes are available:
+
+  - **`permissive`** (default): unchanged behaviour — any URL that passes the built-in SSRF blocklist is accepted. Fully backward-compatible.
+  - **`allowlist`**: the webhook URL's host must appear in `--alerting-allowed-destinations`. Reconciliation fails fast with a clear error when the host is outside the list. Intended for multi-tenant clusters where only a pre-approved set of receivers should be reachable.
+  - **`relay-only`**: per-watch `spec.alerting.url` is ignored entirely; all alerts are forwarded to the fixed relay endpoint in `--alerting-destination-policy-relay-url`. The manager and operator both fail at startup if the relay URL is missing, surfacing misconfiguration before any watch is reconciled.
+
+  The policy is configured via two new flags shared by both the `manager` and the standalone `operator`:
+
+  ```
+  --alerting-destination-policy=<permissive|allowlist|relay-only>
+  --alerting-destination-policy-relay-url=<url>          # required for relay-only
+  ```
+
+  `PostgresWatch.spec.alerting.destinationPolicy` mirrors these values at the per-watch level and is honoured when no manager-level policy is set.
+
+  See [Alerting: destination policies](../docs/alerting.md#destination-policies) and [Security model](../docs/security-model.md) for configuration examples and deployment guidance.
+
+  (#136)
+- Introduces the `PostgresRadarCluster` CRD so administrators can pre-register remote clusters; `PostgresWatch` now references them by name via `spec.remoteClusterRef`, eliminating the confused-deputy risk of direct kubeconfig Secret access. (#138)
+- Operators can now cryptographically verify every released artifact. All five container images and the Helm OCI chart are signed with Cosign keyless signing; each image carries an attached SPDX SBOM attestation. A new `docs/supply-chain.md` page documents the trust model and step-by-step `cosign verify` commands. A companion `scripts/verify-release.sh` automates the checks. (#139)
+- Completed the final security-roadmap deployment gaps by adding Helm controls for alerting destination policies and ServiceAccount token automount, plus release provenance attestations for published images and the Helm OCI chart. (#141)
+
+
 ## v1.4.0 - 2026-08-15
 
 ### Features
