@@ -381,8 +381,8 @@ func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *ra
 		}
 		if profile == radarv1alpha1.SecurityProfileHardened {
 			return nil, nil, "", fmt.Errorf(
-				"remoteClusterSecretRef is not allowed in hardened security-profile mode — "+
-					"register the cluster as a PostgresRadarCluster and use remoteClusterRef instead; "+
+				"remoteClusterSecretRef is not allowed in hardened security-profile mode — " +
+					"register the cluster as a PostgresRadarCluster and use remoteClusterRef instead; " +
 					"see docs/multi-cluster.md#migration",
 			)
 		}
