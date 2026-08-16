@@ -27,6 +27,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "deploylens.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -44,6 +45,12 @@ spec:
             - --health-probe-bind-address=:{{ .Values.manager.ports.healthProbe }}
             {{- if .Values.alerting.allowedDestinations }}
             - {{ printf "--alerting-allowed-destinations=%s" .Values.alerting.allowedDestinations | quote }}
+            {{- end }}
+            {{- if .Values.alerting.destinationPolicy }}
+            - {{ printf "--alerting-destination-policy=%s" .Values.alerting.destinationPolicy | quote }}
+            {{- end }}
+            {{- if .Values.alerting.destinationPolicyRelayUrl }}
+            - {{ printf "--alerting-destination-policy-relay-url=%s" .Values.alerting.destinationPolicyRelayUrl | quote }}
             {{- end }}
           ports:
             - name: webhook

@@ -19,9 +19,11 @@ spec:
   latencyChangeThreshold: {{ .Values.analysis.latencyThreshold | quote }}
   pValueThreshold: {{ .Values.analysis.pValueThreshold | quote }}
   slackWebhookUrl: {{ .Values.alerting.slackWebhookUrl | quote }}
-  {{- if .Values.alerting.format }}
+  {{- if or .Values.alerting.format .Values.alerting.url .Values.alerting.pagerDutyRoutingKey .Values.alerting.customTemplate .Values.alerting.destinationPolicy }}
   alerting:
+    {{- if .Values.alerting.format }}
     format: {{ .Values.alerting.format | quote }}
+    {{- end }}
     {{- if .Values.alerting.url }}
     url: {{ .Values.alerting.url | quote }}
     {{- end }}
@@ -30,6 +32,9 @@ spec:
     {{- end }}
     {{- if .Values.alerting.customTemplate }}
     customTemplate: {{ .Values.alerting.customTemplate | quote }}
+    {{- end }}
+    {{- if .Values.alerting.destinationPolicy }}
+    destinationPolicy: {{ .Values.alerting.destinationPolicy | quote }}
     {{- end }}
   {{- end }}
   {{- if .Values.periodicDetection.enabled }}

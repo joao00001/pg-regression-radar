@@ -113,6 +113,8 @@ helm install pg-regression-radar ./deploy/helm/deploylens \
 > PostgreSQL connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
 > Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
+For hardened alert egress in Helm, set `alerting.destinationPolicy` (`allowlist` or `relay-only`) and the matching companion values (`alerting.allowedDestinations` and/or `alerting.destinationPolicyRelayUrl`) — see [Alerting: destination policies](alerting.md#destination-policies).
+
 !!! note
     Helm only installs a chart's `crds/` directory on `helm install`, never on `helm upgrade` — this is a deliberate Helm safety behaviour, not a bug in this chart (see the [Helm docs on CRDs](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/)). To pick up CRD schema changes after upgrading the chart, apply `deploy/helm/deploylens/crds/*.yaml` (or `config/crd/bases/*.yaml`, the same files) with `kubectl apply -f` directly.
 

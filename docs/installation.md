@@ -155,6 +155,22 @@ helm install pg-regression-radar oci://ghcr.io/joao00001/charts/pg-regression-ra
 
 `--version` here is the chart's SemVer version (the release tag *without* its leading `v` — release `v0.3.0` publishes chart version `0.3.0`; see [CI/CD](ci-cd.md#releaseyml-on-pushing-a-v-tag) for why the two differ by that one character). No `helm repo add` is needed for an OCI registry — `helm install`/`helm pull` reference `oci://` URLs directly. The chart's `image.tag` values default to the chart's own `appVersion` (the release tag *with* the `v`, e.g. `v0.3.0`), which already matches the images published in the same release, so you don't need to set `image.tag`/`manager.image.tag` explicitly unless you want to run a different image tag than the chart's own release.
 
+The chart also exposes alert destination-policy controls used by both entrypoints:
+
+- `alerting.destinationPolicy`: `""` (default permissive), `allowlist`, or `relay-only`
+- `alerting.allowedDestinations`: manager/operator allowlist used by `allowlist` policy
+- `alerting.destinationPolicyRelayUrl`: required when policy is `relay-only`
+
+Example (`mode=manager`, force all alerts through a relay):
+
+```bash
+helm upgrade --install pg-regression-radar oci://ghcr.io/joao00001/charts/pg-regression-radar \
+  --version 0.3.0 \
+  --set mode=manager \
+  --set alerting.destinationPolicy=relay-only \
+  --set alerting.destinationPolicyRelayUrl=https://relay.example.com/webhook
+```
+
 **Verify the chart's signature before trusting it**, the same way as the container images above — the published Helm OCI artifact is keyless-signed with cosign too, using the chart's SemVer version as the tag (same one `--version` above installs):
 
 ```bash
@@ -178,6 +194,8 @@ See [Getting Started](getting-started.md#deploy-on-kubernetes-via-helm) for the 
 ### Pod/container security defaults
 
 `podSecurityContext`/`securityContext` default to `runAsNonRoot: true` (UID/GID `65532`), `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, `capabilities.drop: [ALL]`, and `seccompProfile: RuntimeDefault` — matching how every image this chart deploys already runs regardless (all five binaries build on `gcr.io/distroless/static-debian12:nonroot`, which sets `USER nonroot:nonroot` and has no writable-filesystem tooling to begin with), just enforced by Kubernetes instead of merely true by accident. None of the binaries write to the local filesystem, so `readOnlyRootFilesystem` costs nothing. Override either value back to `{}` only if your environment's own admission policy conflicts with these fields.
+
+`serviceAccount.automountServiceAccountToken` defaults to `true` for backward compatibility. Keep it `true` in `mode: manager` (the manager talks to the Kubernetes API for leader election and reconciliation). In `mode: operator`, you can safely set it to `false` when you do not need in-cluster API access.
 
 If `ingester.webhookSecret` is left empty, `helm install`/`helm upgrade` prints a warning that the deploy-event webhook (and, in `mode: operator`, `GET /events`) are unauthenticated — see [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication). That's expected and fine as long as the Service stays cluster-internal (the default `service.type` is `ClusterIP`); set the secret before exposing it further.
 

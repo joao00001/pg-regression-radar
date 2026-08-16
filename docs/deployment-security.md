@@ -62,6 +62,7 @@ The chart defaults are compatible with PSS `restricted` expectations:
 - `allowPrivilegeEscalation: false`
 - `capabilities.drop: [ALL]`
 - `readOnlyRootFilesystem: true`
+- `serviceAccount.automountServiceAccountToken: true` (configurable)
 
 Apply namespace Pod Security Admission labels as needed:
 
@@ -86,6 +87,13 @@ helm upgrade --install radar deploy/helm/deploylens \
 ```
 
 The template renders only when API `policy/v1beta1/PodSecurityPolicy` is available.
+
+## ServiceAccount token automount
+
+The chart now exposes `serviceAccount.automountServiceAccountToken` on both the ServiceAccount and Pod specs.
+
+- **`mode: manager`**: keep this `true` (required for in-cluster Kubernetes API access, reconciliation, and leader election).
+- **`mode: operator`**: can be set to `false` to reduce credential exposure when running without in-cluster API usage.
 
 ## Hardened values example
 

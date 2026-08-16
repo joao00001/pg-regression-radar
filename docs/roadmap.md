@@ -15,7 +15,7 @@ This project does not commit features to specific version numbers — a version 
 - Collector + Ingester + Correlation Engine + Slack alerting + Helm chart.
 - Argo Rollouts and Flux source types — see [Deploy Sources & Webhooks](webhooks.md).
 - Real CRDs (`PostgresWatch`, `DeploySource`, `PerformanceRegression`) reconciled by `cmd/manager` via controller-runtime, with leader-election HA — see [Architecture Overview](architecture.md).
-- Multi-cluster (fleet) support via `spec.remoteClusterSecretRef` — see below for what's still open within it.
+- Multi-cluster (fleet) support via `spec.remoteClusterRef` (cluster registry) with backward-compatible `spec.remoteClusterSecretRef` deprecation path — see below for what's still open within it.
 
 **Planned for a future release** (no version committed):
 
@@ -24,13 +24,18 @@ This project does not commit features to specific version numbers — a version 
 
 ### Multi-cluster support, in detail
 
-`cmd/manager` reconciling many `PostgresWatch` CRs at once, each with its own isolated `Collector`/`Engine`/`Notifier` (`internal/controller/registry.go`), predates this entry and was never actually the missing piece — that's "many Postgres clusters reachable over the network from one manager," which has worked since the CRD controller shipped. The real gap was **the manager reaching a Postgres cluster whose CloudNativePG-generated DSN Secret lives in a different Kubernetes cluster than the manager itself** — until now the only way to make that work was manually copying the Secret into the manager's own cluster, a pure operational workaround with no code support.
+`cmd/manager` reconciling many `PostgresWatch` CRs at once, each with its own isolated `Collector`/`Engine`/`Notifier` (`internal/controller/registry.go`), predates this entry and was never actually the missing piece — that's "many Postgres clusters reachable over the network from one manager," which has worked since the CRD controller shipped. The real gap was **the manager reaching a Postgres cluster whose CloudNativePG-generated DSN Secret lives in a different Kubernetes cluster than the manager itself**.
 
-`spec.remoteClusterSecretRef` (see [Multi-Cluster (Fleet) Mode](multi-cluster.md) and [Configuration Reference](configuration.md#postgreswatch-spec-fields)) closes that gap: a kubeconfig Secret in the hub cluster lets `PostgresWatchReconciler` build a `client.Client` for a remote cluster and read that cluster's DSN Secret through it, following the same hub-spoke pattern Cluster API / Argo CD / Open Cluster Management use. What's still open, deliberately left out of this first pass:
+That gap is now addressed in two paths documented in [Multi-Cluster (Fleet) Mode](multi-cluster.md):
 
-- **No kubeconfig rotation/expiration handling beyond evict-on-failure.** A bare static token that genuinely expires still fails DSN resolution (`status.phase: Failed`, same as any other bad DSN) — no code in the hub cluster has the authority to mint a fresh credential it didn't issue. See [Multi-Cluster (Fleet) Mode](multi-cluster.md#known-gaps-and-deliberate-scope-cuts) for what evict-on-failure does and doesn't cover.
-- **The CloudNativePG `Cluster` resource itself is never read remotely** — only the generated DSN Secret. `clusterName` stays a free-text label either way.
-- **Not validated against two real Kubernetes clusters.** Tests use `sigs.k8s.io/controller-runtime/pkg/client/fake` plus a syntactically valid kubeconfig pointing at an unreachable address, not an actual second `kind` cluster. The [kind + CloudNativePG e2e workflow](testing.md#e2e-kind-cloudnativepg) below validates the single-cluster case against a real cluster; extending it to a second `kind` cluster for the hub-spoke path is a natural follow-up, not yet done.
+- **Preferred:** `spec.remoteClusterRef` points to an admin-managed `PostgresRadarCluster` registry entry.
+- **Backward compatibility:** deprecated `spec.remoteClusterSecretRef` still works in `controlled` security profile, and is rejected in `hardened`.
+
+Remaining deliberate scope cuts are operational/advanced hardening items:
+
+- **No kubeconfig rotation/expiration handling beyond evict-on-failure.** A static token that genuinely expires still fails DSN resolution (`status.phase: Failed`) until external rotation updates the Secret.
+- **The CloudNativePG `Cluster` resource itself is not read remotely** — only the generated DSN Secret.
+- **Not yet validated against two real Kubernetes clusters in CI.** Existing e2e validates real single-cluster manager mode; two-cluster hub-spoke e2e remains open.
 
 ## Known robustness gaps
 
@@ -48,6 +53,21 @@ Shipped operational work (publishing signed release artifacts, per-release docs 
 
 - **Branch protection review.** See [Branch Protection](branch-protection.md) — the CI checks in [CI/CD](ci-cd.md) only have real effect once `main`'s ruleset actually requires each one by name.
 - **GitHub Discussions link.** `.github/ISSUE_TEMPLATE/config.yml` links to the repo's Discussions tab; whether Discussions is actually enabled on the repo hasn't been confirmed.
+
+## 7-step security and robustness checklist status
+
+This repository's code/docs/workflow-addressable checklist is now effectively closed for steps 1-6:
+
+1. **Security model and trust boundaries:** documented in [Security Model](security-model.md).
+2. **Secret-consent and policy controls:** implemented (`internal/controller/secret_consent.go`) with admission-policy examples in `docs/policies/`.
+3. **Alert destination controls:** destination policy (`permissive`/`allowlist`/`relay-only`) implemented in code and wired through Helm values/templates/docs.
+4. **Kubernetes hardening defaults:** Helm exposes pod security context, NetworkPolicy/Quota/LimitRange, and ServiceAccount token automount control.
+5. **Tenant-safe remote cluster model:** registry-backed `PostgresRadarCluster` + `remoteClusterRef` path implemented; legacy `remoteClusterSecretRef` is deprecated compatibility.
+6. **Supply-chain controls:** release workflow builds/scans/signs artifacts, attaches SBOM attestations, and now publishes SLSA provenance attestations.
+
+Step 7 remains intentionally **operational**:
+
+- **External-user quickstart validation is reproducibly documented but not auto-provable from code alone.** The execution checklist exists in [Quickstart Validation](quickstart-validation.md), but completion still depends on a real human/operator run in an external environment.
 
 ## See also
 

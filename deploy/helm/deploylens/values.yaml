@@ -29,6 +29,10 @@ serviceAccount:
   create: true
   annotations: {}
   name: ""
+  # Controls ServiceAccount token projection for the chart's pods. Keep true
+  # for manager mode (it talks to the Kubernetes API). Operator mode can set
+  # this to false when no in-cluster API access is needed.
+  automountServiceAccountToken: true
 
 podAnnotations: {}
 
@@ -138,6 +142,13 @@ alerting:
   # hostnames, IPs, or CIDRs. Leave empty to keep the default best-effort
   # SSRF mitigation only.
   allowedDestinations: ""
+  # destinationPolicy controls destination handling: "" (same as permissive),
+  # "allowlist", or "relay-only". In manager mode this is cluster-wide unless
+  # left empty (so per-watch spec.alerting.destinationPolicy can apply).
+  destinationPolicy: ""
+  # destinationPolicyRelayUrl is the fixed relay endpoint required when
+  # destinationPolicy is relay-only.
+  destinationPolicyRelayUrl: ""
   # pagerDutyRoutingKey is the PagerDuty Events API v2 routing key, required
   # (and only used) when format is "pagerduty".
   pagerDutyRoutingKey: ""
