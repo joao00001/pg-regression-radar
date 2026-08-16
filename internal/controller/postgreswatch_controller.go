@@ -329,6 +329,7 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 // reference has no effect — they only take effect once there's a remote
 // cluster to look in.
 func dsnSecretNamespace(watch *radarv1alpha1.PostgresWatch, clusterDefaultNamespace string) string {
+	//nolint:staticcheck // SA1019: intentional backward-compat check for the deprecated field
 	hasRemote := watch.Spec.RemoteClusterRef != "" || watch.Spec.RemoteClusterSecretRef != nil
 	if !hasRemote {
 		return watch.Namespace
@@ -374,6 +375,7 @@ func (r *PostgresWatchReconciler) dsnSecretClient(ctx context.Context, watch *ra
 	}
 
 	// Path 2: direct kubeconfig Secret reference (deprecated).
+	//nolint:staticcheck // SA1019: intentional backward-compat check for the deprecated field
 	if watch.Spec.RemoteClusterSecretRef != nil {
 		profile := r.SecurityProfile
 		if profile == "" {
@@ -440,6 +442,7 @@ func (r *PostgresWatchReconciler) dsnSecretClientFromRegistry(ctx context.Contex
 // own namespace.
 func (r *PostgresWatchReconciler) dsnSecretClientFromSecret(ctx context.Context, watch *radarv1alpha1.PostgresWatch) (client.Client, []byte, error) {
 	var kubeconfigSecret corev1.Secret
+	//nolint:staticcheck // SA1019: intentional use of the deprecated field in the backward-compat path
 	key := types.NamespacedName{Namespace: watch.Namespace, Name: watch.Spec.RemoteClusterSecretRef.Name}
 	if err := r.Get(ctx, key, &kubeconfigSecret); err != nil {
 		return nil, nil, fmt.Errorf("fetch remote cluster kubeconfig secret %s: %w", key, err)
@@ -447,8 +450,10 @@ func (r *PostgresWatchReconciler) dsnSecretClientFromSecret(ctx context.Context,
 	if err := checkSecretConsent(&kubeconfigSecret, "remote cluster kubeconfig secret"); err != nil {
 		return nil, nil, err
 	}
+	//nolint:staticcheck // SA1019: intentional use of the deprecated field in the backward-compat path
 	kubeconfig, ok := kubeconfigSecret.Data[watch.Spec.RemoteClusterSecretRef.Key]
 	if !ok {
+		//nolint:staticcheck // SA1019: intentional use of the deprecated field in the backward-compat path
 		return nil, nil, fmt.Errorf("secret %s has no key %q", key, watch.Spec.RemoteClusterSecretRef.Key)
 	}
 
@@ -869,6 +874,7 @@ func (r *PostgresWatchReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func hashPostgresWatchSpec(spec radarv1alpha1.PostgresWatchSpec, resolvedDSN string) string {
 	spec.DSN = resolvedDSN
 	spec.DSNSecretRef = nil
+	//nolint:staticcheck // SA1019: intentional use of the deprecated field for hash compatibility
 	spec.RemoteClusterSecretRef = nil
 	spec.RemoteClusterRef = ""
 	b, _ := json.Marshal(spec)
