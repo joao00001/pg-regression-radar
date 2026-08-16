@@ -79,6 +79,7 @@ func RunManager(args []string) int {
 	var alertingDestinationPolicyRelayURL string
 	var versionFlag bool
 	var dryRun bool
+	var securityProfile string
 
 	fs.StringVar(&metricsAddr, "metrics-bind-address", "0",
 		"Address the controller-runtime metrics endpoint binds to (reconcile/workqueue metrics). "+
@@ -100,10 +101,12 @@ func RunManager(args []string) int {
 			"namespace when running in-cluster (via the downward API / in-cluster config).")
 	fs.StringVar(&alertAllowedDestinations, "alerting-allowed-destinations", "",
 		"Optional strict allowlist for PostgresWatch alert destinations: comma-separated exact hostnames, IPs, or CIDRs. When set, spec.alerting.url/spec.slackWebhookUrl must target one of these destinations.")
-	fs.StringVar(&alertingDestinationPolicy, "alerting-destination-policy", "permissive",
-		"Destination validation policy for outbound alerts: permissive (default, SSRF blocklist only), allowlist (URL host must appear in --alerting-allowed-destinations), or relay-only (ignore CRD URL, always send to --alerting-destination-policy-relay-url).")
+	fs.StringVar(&alertingDestinationPolicy, "alerting-destination-policy", "",
+		"Destination validation policy for outbound alerts: permissive (default, SSRF blocklist only), allowlist (URL host must appear in --alerting-allowed-destinations), or relay-only (ignore CRD URL, always send to --alerting-destination-policy-relay-url). When empty, per-watch spec.alerting.destinationPolicy takes effect.")
 	fs.StringVar(&alertingDestinationPolicyRelayURL, "alerting-destination-policy-relay-url", "",
 		"Fixed relay endpoint used when --alerting-destination-policy=relay-only. Must be a valid http/https URL. Required when the policy is relay-only.")
+	fs.StringVar(&securityProfile, "security-profile", string(radarv1alpha1.SecurityProfileControlled),
+		"Remote-cluster security profile: controlled (default) or hardened. In hardened mode, spec.remoteClusterSecretRef is rejected outright.")
 	fs.BoolVar(&versionFlag, "version", false, "Print version information and exit")
 	fs.BoolVar(&dryRun, "dry-run", false,
 		"Validate that a Kubernetes API server config can be resolved (in-cluster or via "+
@@ -131,6 +134,11 @@ func RunManager(args []string) int {
 	}
 	if err := alerting.ValidateDestinationPolicy(alerting.DestinationPolicy(alertingDestinationPolicy), alertingDestinationPolicyRelayURL); err != nil {
 		logger.Error("invalid alerting destination policy configuration", "err", err)
+		return 1
+	}
+	if securityProfile != string(radarv1alpha1.SecurityProfileControlled) && securityProfile != string(radarv1alpha1.SecurityProfileHardened) {
+		logger.Error("invalid --security-profile value", "value", securityProfile,
+			"allowed", []string{string(radarv1alpha1.SecurityProfileControlled), string(radarv1alpha1.SecurityProfileHardened)})
 		return 1
 	}
 
@@ -205,6 +213,7 @@ func RunManager(args []string) int {
 		AllowedAlertDestinations:          parsedAllowedDestinations,
 		AlertingDestinationPolicy:         alerting.DestinationPolicy(alertingDestinationPolicy),
 		AlertingDestinationPolicyRelayURL: alertingDestinationPolicyRelayURL,
+		SecurityProfile:                   radarv1alpha1.SecurityProfile(securityProfile),
 		Aborter:                           aborter,
 	}).SetupWithManager(mgr); err != nil {
 		managerSetupLog.Error(err, "unable to create controller", "controller", "PostgresWatch")

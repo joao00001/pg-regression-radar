@@ -53,6 +53,7 @@ spec:
             {{- if .Values.alerting.destinationPolicy }}
             - {{ printf "--alerting-destination-policy=%s" .Values.alerting.destinationPolicy | quote }}
             {{- end }}
+            - {{ printf "--security-profile=%s" .Values.securityProfile | quote }}
             {{- if .Values.alerting.destinationPolicyRelayUrl }}
             - --alerting-destination-policy-relay-url=$(ALERTING_DESTINATION_POLICY_RELAY_URL)
             {{- end }}

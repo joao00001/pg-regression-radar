@@ -167,3 +167,28 @@ func TestRunOperator_DryRun_UnreadableAlertTemplateFile(t *testing.T) {
 		t.Errorf("RunOperator(--alert-template-file pointing nowhere) = %d, want 1", got)
 	}
 }
+
+func TestRunOperator_InvalidSecurityProfile(t *testing.T) {
+	t.Parallel()
+	got := cli.RunOperator([]string{
+		"--dsn", unreachableDSN,
+		"--security-profile", "unknown",
+	})
+	if got != 1 {
+		t.Errorf("RunOperator(--security-profile=unknown) = %d, want 1", got)
+	}
+}
+
+func TestRunOperator_ValidSecurityProfileHardened(t *testing.T) {
+	t.Parallel()
+	// hardened is a valid value; operator will fail later on Postgres connectivity,
+	// not on flag parsing (exit must not be 2).
+	got := cli.RunOperator([]string{
+		"--dsn", unreachableDSN,
+		"--security-profile", "hardened",
+		"--dry-run",
+	})
+	if got == 2 {
+		t.Errorf("RunOperator(--security-profile=hardened) rejected the flag (exit 2)")
+	}
+}

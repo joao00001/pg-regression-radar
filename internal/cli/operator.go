@@ -58,6 +58,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/planner"
 	"github.com/joao00001/pg-regression-radar/internal/storage"
 	"github.com/joao00001/pg-regression-radar/internal/storage/postgres"
+	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -83,8 +84,9 @@ func runOperator(args []string, logOutput io.Writer) int {
 	alertFormat := fs.String("alert-format", "slack", "Notification payload format: slack, teams, pagerduty, or custom — see docs/alerting.md")
 	alertURL := fs.String("alert-url", "", "Webhook URL for --alert-format=slack/teams/custom; ignored for pagerduty. Falls back to --slack-url when unset")
 	alertAllowedDestinations := fs.String("alerting-allowed-destinations", "", "Optional strict allowlist for alert destinations: comma-separated exact hostnames, IPs, or CIDRs. When set, --alert-url/--slack-url must target one of these destinations")
-	alertingDestinationPolicy := fs.String("alerting-destination-policy", "permissive", "Destination validation policy for outbound alerts: permissive (default, SSRF blocklist only), allowlist (URL host must appear in --alerting-allowed-destinations), or relay-only (ignore --alert-url, always send to --alerting-destination-policy-relay-url).")
+	alertingDestinationPolicy := fs.String("alerting-destination-policy", "", "Destination validation policy for outbound alerts: permissive (default, SSRF blocklist only), allowlist (URL host must appear in --alerting-allowed-destinations), or relay-only (ignore --alert-url, always send to --alerting-destination-policy-relay-url). When empty, per-watch spec.alerting.destinationPolicy takes effect.")
 	alertingDestinationPolicyRelayURL := fs.String("alerting-destination-policy-relay-url", "", "Fixed relay endpoint used when --alerting-destination-policy=relay-only. Must be a valid http/https URL. Required when the policy is relay-only.")
+	securityProfile := fs.String("security-profile", string(radarv1alpha1.SecurityProfileControlled), "Remote-cluster security profile: controlled (default) or hardened. In hardened mode, spec.remoteClusterSecretRef is rejected outright.")
 	pagerdutyRoutingKey := fs.String("pagerduty-routing-key", "", "PagerDuty Events API v2 routing key; required when --alert-format=pagerduty")
 	alertTemplate := fs.String("alert-template", "", "Go text/template source (inline) for --alert-format=custom — see docs/alerting.md#custom-format. Alternative to --alert-template-file; takes precedence when both are set")
 	alertTemplateFile := fs.String("alert-template-file", "", "Path to a Go text/template file for --alert-format=custom, when passing the source inline via --alert-template isn't convenient")
@@ -190,6 +192,12 @@ func runOperator(args []string, logOutput io.Writer) int {
 		logger.Error("invalid alerting destination policy configuration", "err", err)
 		return 1
 	}
+	if *securityProfile != string(radarv1alpha1.SecurityProfileControlled) && *securityProfile != string(radarv1alpha1.SecurityProfileHardened) {
+		logger.Error("invalid --security-profile value", "value", *securityProfile,
+			"allowed", []string{string(radarv1alpha1.SecurityProfileControlled), string(radarv1alpha1.SecurityProfileHardened)})
+		return 1
+	}
+	logger.Info("security profile", "security-profile", *securityProfile)
 
 	// ---- Collector ----
 	col, err := collector.New(collector.Config{

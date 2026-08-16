@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	"github.com/joao00001/pg-regression-radar/internal/alerting"
 	"github.com/joao00001/pg-regression-radar/internal/testlogger"
 	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
@@ -767,5 +768,68 @@ func TestResolveDSN_RemoteFailure_EvictsCacheEntry(t *testing.T) {
 	}
 	if before == after {
 		t.Fatal("expected the failed request to evict the cache entry, forcing a fresh client on the next call")
+	}
+}
+
+// TestReconcile_HardenedProfile_RemoteClusterSecretRefRejected verifies that
+// when the reconciler is configured with SecurityProfileHardened, a
+// PostgresWatch that specifies spec.remoteClusterSecretRef is immediately
+// rejected (Reconcile returns an error and the watch is marked Failed).
+func TestReconcile_HardenedProfile_RemoteClusterSecretRefRejected(t *testing.T) {
+	watch := samplePostgresWatch("watch-hardened", "default")
+	watch.Spec.DSN = ""
+	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "dsn-secret", Key: "dsn"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck
+
+	r, c := newTestReconciler(t, watch)
+	r.SecurityProfile = radarv1alpha1.SecurityProfileHardened
+
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "watch-hardened", Namespace: "default"}}
+	_, err := r.Reconcile(context.Background(), req)
+	if err == nil {
+		t.Fatal("expected an error when remoteClusterSecretRef is set in hardened mode")
+	}
+	if !strings.Contains(err.Error(), "hardened") {
+		t.Errorf("error message should mention 'hardened', got: %v", err)
+	}
+
+	var got radarv1alpha1.PostgresWatch
+	if getErr := c.Get(context.Background(), req.NamespacedName, &got); getErr != nil {
+		t.Fatalf("Get: %v", getErr)
+	}
+	if got.Status.Phase != radarv1alpha1.PostgresWatchPhaseFailed {
+		t.Errorf("expected phase Failed, got %q", got.Status.Phase)
+	}
+}
+
+// TestMergeAlertingDestinationPolicy exercises the four precedence scenarios
+// documented in the pre-release audit:
+//
+//	a) global empty  + watch relay-only  → relay-only  (watch wins)
+//	b) global allowlist + watch permissive → allowlist  (global wins)
+//	c) global relay-only + watch policy     → relay-only  (global wins)
+//	d) global empty  + watch empty         → ""          (no policy = permissive default)
+func TestMergeAlertingDestinationPolicy(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name   string
+		global alerting.DestinationPolicy
+		watch  alerting.DestinationPolicy
+		want   alerting.DestinationPolicy
+	}{
+		{"a: global empty + watch relay-only", "", alerting.DestinationPolicyRelayOnly, alerting.DestinationPolicyRelayOnly},
+		{"b: global allowlist + watch permissive", alerting.DestinationPolicyAllowlist, alerting.DestinationPolicyPermissive, alerting.DestinationPolicyAllowlist},
+		{"c: global relay-only + watch permissive", alerting.DestinationPolicyRelayOnly, alerting.DestinationPolicyPermissive, alerting.DestinationPolicyRelayOnly},
+		{"d: watch without policy", "", "", ""},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := mergeAlertingDestinationPolicy(tc.global, tc.watch)
+			if got != tc.want {
+				t.Errorf("mergeAlertingDestinationPolicy(%q, %q) = %q, want %q", tc.global, tc.watch, got, tc.want)
+			}
+		})
 	}
 }

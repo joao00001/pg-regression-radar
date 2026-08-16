@@ -14,6 +14,13 @@
 #     pg-regression-radar", for the full comparison.
 mode: operator
 
+# securityProfile controls how strictly remote-cluster access is enforced.
+# "controlled" (default): both remoteClusterRef and the deprecated
+# remoteClusterSecretRef paths are allowed (with a deprecation warning for the
+# latter). "hardened": remoteClusterSecretRef is rejected outright, forcing all
+# remote clusters to be registered via PostgresRadarCluster CRs.
+securityProfile: controlled
+
 replicaCount: 1
 
 image:
