@@ -32,6 +32,11 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.4.1 - 2026-08-16
+
+No significant changes.
+
+
 ## v1.5.0 - 2026-08-16
 
 ### Features
