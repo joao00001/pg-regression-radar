@@ -1,0 +1,96 @@
+{{- if and .Values.networkPolicy.enabled (eq .Values.mode "manager") }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "deploylens.fullname" . }}-manager-default-deny
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+    app.kubernetes.io/component: manager
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "deploylens.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: manager
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "deploylens.fullname" . }}-manager-allow
+  labels:
+    {{- include "deploylens.labels" . | nindent 4 }}
+    app.kubernetes.io/component: manager
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "deploylens.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: manager
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - {{- if .Values.networkPolicy.ingressCIDR }}
+      from:
+        - ipBlock:
+            cidr: {{ .Values.networkPolicy.ingressCIDR | quote }}
+      {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.manager.ports.webhook }}
+        - protocol: TCP
+          port: {{ .Values.manager.ports.pgMetrics }}
+        - protocol: TCP
+          port: {{ .Values.manager.ports.ctrlMetrics }}
+  {{- $hasPostgres := gt (len .Values.networkPolicy.egress.postgresCIDRs) 0 }}
+  {{- $hasAPIServers := gt (len .Values.networkPolicy.egress.apiServerCIDRs) 0 }}
+  {{- $hasAlertRelay := gt (len .Values.networkPolicy.egress.alertRelayCIDRs) 0 }}
+  {{- $hasDNS := .Values.networkPolicy.egress.dns.enabled }}
+  {{- if or $hasPostgres $hasAPIServers $hasAlertRelay $hasDNS }}
+  egress:
+    {{- range .Values.networkPolicy.egress.postgresCIDRs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . | quote }}
+      ports:
+        {{- range $.Values.networkPolicy.egress.postgresPorts }}
+        - protocol: TCP
+          port: {{ . }}
+        {{- end }}
+    {{- end }}
+    {{- range .Values.networkPolicy.egress.apiServerCIDRs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . | quote }}
+      ports:
+        {{- range $.Values.networkPolicy.egress.apiServerPorts }}
+        - protocol: TCP
+          port: {{ . }}
+        {{- end }}
+    {{- end }}
+    {{- if .Values.networkPolicy.egress.dns.enabled }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.egress.dns.namespace | quote }}
+      ports:
+        - protocol: UDP
+          port: {{ .Values.networkPolicy.egress.dns.port }}
+        - protocol: TCP
+          port: {{ .Values.networkPolicy.egress.dns.port }}
+    {{- end }}
+    {{- range .Values.networkPolicy.egress.alertRelayCIDRs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . | quote }}
+      ports:
+        {{- range $.Values.networkPolicy.egress.alertRelayPorts }}
+        - protocol: TCP
+          port: {{ . }}
+        {{- end }}
+    {{- end }}
+  {{- else }}
+  egress: []
+  {{- end }}
+{{- end }}

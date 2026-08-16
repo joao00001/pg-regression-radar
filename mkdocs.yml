@@ -103,6 +103,7 @@ nav:
       - Collector Internals: collector-internals.md
       - Multi-Cluster (Fleet) Mode: multi-cluster.md
       - Security Model & Threat Model: security-model.md
+      - Deployment Security (Helm): deployment-security.md
   - Reference:
       - Configuration Reference: configuration.md
       - API Reference: api-reference.md
