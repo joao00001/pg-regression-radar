@@ -98,14 +98,12 @@ Practical example:
 
 ## Permission matrix (security contract)
 
-Legend: ✅ allowed by profile contract; ⚠️ allowed only for approved identities/policies; ❌ disallowed by profile contract.
-
 | Capability | `controlled` | `hardened` | `relay-only` |
 |---|---|---|---|
-| Create `PostgresWatch` resource | ✅ Cluster admin, team lead | ✅ Team lead in own namespace; cluster admin | ✅ Team lead in own namespace; cluster admin |
-| Create/modify `DeploySource` resource | ✅ Cluster admin, team lead, app developer (team policy) | ⚠️ Team lead/app developer in own namespace only, with stricter admission | ⚠️ Team lead/app developer in own namespace only, often templated via platform workflow |
-| Manager reads DSN Secret (`spec.dsnSecretRef`) | ✅ If Secret is consent-labeled | ✅ If Secret is consent-labeled and label assignment is restricted | ⚠️ Prefer platform-managed relay/credentials; direct reads only for explicitly approved Secrets |
-| Configure remote cluster reference (`spec.remoteClusterRef` or deprecated `spec.remoteClusterSecretRef`) | ✅ Trusted team operators or cluster admin | ⚠️ Platform-approved identities only; tenant use gated by policy | ❌ Tenant-managed remote references; break-glass platform admin only |
+| Create `PostgresWatch` resource | Allowed: cluster admin, team lead | Allowed: team lead in own namespace; cluster admin | Allowed: team lead in own namespace; cluster admin |
+| Create/modify `DeploySource` resource | Allowed: cluster admin, team lead, app developer (team policy) | Conditional: team lead/app developer in own namespace only, with stricter admission | Conditional: team lead/app developer in own namespace only, often templated via platform workflow |
+| Manager reads DSN Secret (`spec.dsnSecretRef`) | Allowed: if Secret is consent-labeled | Allowed: if Secret is consent-labeled and label assignment is restricted | Conditional: prefer platform-managed relay/credentials; direct reads only for explicitly approved Secrets |
+| Configure remote cluster reference (`spec.remoteClusterRef` or deprecated `spec.remoteClusterSecretRef`) | Allowed: trusted team operators or cluster admin | Conditional: platform-approved identities only; tenant use gated by policy | Disallowed: tenant-managed remote references; break-glass platform admin only |
 
 ### Which Secrets may be read
 
