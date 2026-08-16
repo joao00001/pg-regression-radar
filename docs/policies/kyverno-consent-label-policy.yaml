@@ -1,10 +1,41 @@
+# Kyverno policy: only approved identities may set the Secret consent label used
+# by PostgresWatch (`pg-regression-radar.io/allow-postgreswatch-access=true`).
+#
+# Why this policy exists:
+# - The controller intentionally refuses unlabeled Secrets.
+# - This policy prevents a tenant from self-approving access by labeling any
+#   Secret they can write.
+#
+# Deployment (copy/paste):
+# 1) Apply RBAC examples for your consent-labeling identities:
+#    kubectl apply -f docs/policies/rbac-consent-labeler-example.yaml
+# 2) Apply this policy:
+#    kubectl apply -f docs/policies/kyverno-consent-label-policy.yaml
+# 3) Verify:
+#    kubectl get cpol restrict-postgreswatch-consent-label
+#    kubectl describe cpol restrict-postgreswatch-consent-label
+#
+# Troubleshooting:
+# - Policy not enforcing:
+#   - Confirm Kyverno is installed and healthy:
+#     kubectl -n kyverno get pods
+#   - Confirm admission mode is Enforce in this file.
+# - Request unexpectedly denied:
+#   - Check the caller identity:
+#     kubectl auth whoami
+#   - Verify identity is listed in the NotIn exception list below.
+# - Need emergency path:
+#   - Keep a dedicated break-glass identity in the allowlist and audit its use.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: restrict-postgreswatch-consent-label
 spec:
   validationFailureAction: Enforce
+  background: true
   rules:
+    # Rule 1 (CREATE): deny creating a Secret with the consent label unless
+    # the request user is in the approved identity list.
     - name: restrict-consent-label-application-on-create
       match:
         any:
@@ -23,15 +54,20 @@ spec:
         deny:
           conditions:
             all:
+              # Condition A: request is trying to set consent=true.
               - key: "{{ request.object.metadata.labels.\"pg-regression-radar.io/allow-postgreswatch-access\" || '' }}"
                 operator: Equals
                 value: "true"
+              # Condition B: caller is not an approved identity.
               - key: "{{ request.userInfo.username }}"
                 operator: NotIn
-                # Replace these with identities approved to set the consent label.
+                # Replace with identities approved to set the consent label.
                 value:
                   - "system:serviceaccount:platform-security:secret-consent-labeler"
                   - "system:serviceaccount:platform-security:secret-consent-labeler-breakglass"
+
+    # Rule 2 (UPDATE): deny transitioning consent label from not-true to true
+    # unless caller is an approved identity.
     - name: restrict-consent-label-application-on-update
       match:
         any:
@@ -50,15 +86,18 @@ spec:
         deny:
           conditions:
             all:
+              # Condition A: new object has consent=true.
               - key: "{{ request.object.metadata.labels.\"pg-regression-radar.io/allow-postgreswatch-access\" || '' }}"
                 operator: Equals
                 value: "true"
+              # Condition B: old object did not already have consent=true.
               - key: "{{ request.oldObject.metadata.labels.\"pg-regression-radar.io/allow-postgreswatch-access\" || '' }}"
                 operator: NotEquals
                 value: "true"
+              # Condition C: caller is not approved.
               - key: "{{ request.userInfo.username }}"
                 operator: NotIn
-                # Replace these with identities approved to set the consent label.
+                # Replace with identities approved to set the consent label.
                 value:
                   - "system:serviceaccount:platform-security:secret-consent-labeler"
                   - "system:serviceaccount:platform-security:secret-consent-labeler-breakglass"

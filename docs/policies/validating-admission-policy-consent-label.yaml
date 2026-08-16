@@ -1,0 +1,64 @@
+# Kubernetes-native alternative to the Kyverno policy:
+# only approved identities may set
+# pg-regression-radar.io/allow-postgreswatch-access=true on Secrets.
+#
+# Requirements:
+# - Kubernetes 1.26+ with ValidatingAdmissionPolicy feature enabled.
+# - In Kubernetes 1.30+, the feature is generally available by default.
+#
+# Deployment (copy/paste):
+# 1) Apply RBAC examples for labeling identities:
+#    kubectl apply -f docs/policies/rbac-consent-labeler-example.yaml
+# 2) Apply this policy and binding:
+#    kubectl apply -f docs/policies/validating-admission-policy-consent-label.yaml
+# 3) Verify:
+#    kubectl get validatingadmissionpolicy restrict-postgreswatch-consent-label
+#    kubectl get validatingadmissionpolicybinding restrict-postgreswatch-consent-label
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: restrict-postgreswatch-consent-label
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["secrets"]
+  validations:
+    # CREATE rule: if consent=true is being set on create, caller must be approved.
+    - expression: >-
+        request.operation != 'CREATE' ||
+        !has(object.metadata.labels) ||
+        object.metadata.labels['pg-regression-radar.io/allow-postgreswatch-access'] != 'true' ||
+        request.userInfo.username in [
+          'system:serviceaccount:platform-security:secret-consent-labeler',
+          'system:serviceaccount:platform-security:secret-consent-labeler-breakglass'
+        ]
+      message: >-
+        Only approved identities may set
+        pg-regression-radar.io/allow-postgreswatch-access=true.
+    # UPDATE rule: if consent transitions from non-true to true, caller must be approved.
+    - expression: >-
+        request.operation != 'UPDATE' ||
+        !has(object.metadata.labels) ||
+        object.metadata.labels['pg-regression-radar.io/allow-postgreswatch-access'] != 'true' ||
+        (has(oldObject.metadata.labels) &&
+        oldObject.metadata.labels['pg-regression-radar.io/allow-postgreswatch-access'] == 'true') ||
+        request.userInfo.username in [
+          'system:serviceaccount:platform-security:secret-consent-labeler',
+          'system:serviceaccount:platform-security:secret-consent-labeler-breakglass'
+        ]
+      message: >-
+        Only approved identities may set
+        pg-regression-radar.io/allow-postgreswatch-access=true.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: restrict-postgreswatch-consent-label
+spec:
+  policyName: restrict-postgreswatch-consent-label
+  validationActions:
+    - Deny

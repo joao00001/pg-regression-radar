@@ -4,7 +4,7 @@
 
 ## Overview
 
-This page defines Stage 1's security contract for `cmd/manager` mode: trust assumptions, protected assets, authorization boundaries, and profile-specific operational rules. It is intentionally concrete: an administrator should be able to answer (a) who can create each CRD, (b) which Secrets may be read, (c) where the manager may connect, and (d) what changes between `controlled`, `hardened`, and `relay-only`.
+This page defines the security contract for `cmd/manager` mode: trust assumptions, protected assets, authorization boundaries, and profile-specific operational rules. It is intentionally concrete: an administrator should be able to answer (a) who can create each CRD, (b) which Secrets may be read, (c) where the manager may connect, and (d) what changes between `controlled`, `hardened`, and `relay-only`.
 
 The model applies to the Kubernetes/CRD deployment path (`PostgresWatch` + `DeploySource`), including fleet mode via `spec.remoteClusterSecretRef`. It does **not** cover host/OS hardening, cloud IAM design outside Kubernetes, or arbitrary third-party webhook endpoints beyond the controls listed here.
 
@@ -157,6 +157,88 @@ This document defines the contract for CRD-driven access mediation and manager c
 | Alert destination validation and allowlist support | Reduce SSRF/exfiltration risk for alerting destinations | [Alerting: Destination validation](alerting.md#destination-validation-ssrf-hardening) | `internal/alerting` notifier construction and destination validation path |
 | Webhook shared-secret authentication | Prevent unauthenticated deploy-event injection | [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication) | `internal/cli/ingester.go` (`X-Webhook-Token` constant-time check) |
 | Manager RBAC split (hub Secrets vs spoke kubeconfig rights) | Clarify and constrain what manager SA can do in hub cluster | [Multi-Cluster: RBAC](multi-cluster.md#rbac-two-separate-concerns) | `config/rbac/role.yaml` + spoke-cluster RBAC provided by kubeconfig owner |
+
+## Hardened-mode deployment: admission + RBAC for consent labeling
+
+Use these policy examples to ensure tenants cannot self-approve Secret access by setting
+`pg-regression-radar.io/allow-postgreswatch-access=true` themselves.
+
+### Option A: Kyverno policy
+
+1. Apply RBAC example identities:
+   ```bash
+   kubectl apply -f docs/policies/rbac-consent-labeler-example.yaml
+   ```
+2. Apply Kyverno policy:
+   ```bash
+   kubectl apply -f docs/policies/kyverno-consent-label-policy.yaml
+   ```
+3. Verify enforcement:
+   ```bash
+   kubectl get cpol restrict-postgreswatch-consent-label
+   kubectl describe cpol restrict-postgreswatch-consent-label
+   ```
+
+### Option B: Kubernetes ValidatingAdmissionPolicy (CEL)
+
+1. Ensure your cluster supports ValidatingAdmissionPolicy (Kubernetes 1.26+ with feature enabled).
+2. Apply RBAC example identities:
+   ```bash
+   kubectl apply -f docs/policies/rbac-consent-labeler-example.yaml
+   ```
+3. Apply CEL policy + binding:
+   ```bash
+   kubectl apply -f docs/policies/validating-admission-policy-consent-label.yaml
+   ```
+4. Verify enforcement:
+   ```bash
+   kubectl get validatingadmissionpolicy restrict-postgreswatch-consent-label
+   kubectl get validatingadmissionpolicybinding restrict-postgreswatch-consent-label
+   ```
+
+### RBAC strategy (least privilege)
+
+- Use a dedicated identity for labeling (`docs/policies/rbac-consent-labeler-example.yaml`).
+- Keep tenant `PostgresWatch` authors in roles that exclude Secret mutation (`create`, `update`, `patch`, `delete` on Secrets).
+- Treat break-glass labeler identities as audited, short-lived operational paths.
+
+### Validate policy behavior with `kubectl --dry-run=server`
+
+> Replace `<ns>` with a namespace where your policy applies.
+
+Attempt without consent label (should be denied by your policy stack):
+
+```bash
+kubectl -n <ns> create secret generic denied-without-consent \
+  --from-literal=dsn='postgres://example' \
+  --dry-run=server -o yaml
+```
+
+Attempt with consent label as unauthorized identity (should be denied):
+
+```bash
+kubectl -n <ns> create secret generic denied-unauthorized-labeler \
+  --from-literal=dsn='postgres://example' \
+  --label pg-regression-radar.io/allow-postgreswatch-access=true \
+  --dry-run=server -o yaml
+```
+
+Attempt with consent label as approved labeler identity (should succeed):
+
+```bash
+kubectl -n <ns> create secret generic allowed-authorized-labeler \
+  --from-literal=dsn='postgres://example' \
+  --label pg-regression-radar.io/allow-postgreswatch-access=true \
+  --dry-run=server -o yaml
+```
+
+### Troubleshooting common misconfigurations
+
+- **Policy appears inactive:** ensure Kyverno is healthy (`kubectl -n kyverno get pods`) or that ValidatingAdmissionPolicy feature is enabled on API server.
+- **Unexpected deny:** confirm caller identity (`kubectl auth whoami`) and compare to the allowlist in the policy file.
+- **Unauthorized users can still label:** verify their RBAC grants do not include Secret mutation verbs.
+- **Manager still rejects a Secret:** confirm exact label key/value is present:
+  `pg-regression-radar.io/allow-postgreswatch-access=true`.
 
 ## See also
 
