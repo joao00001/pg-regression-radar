@@ -58,3 +58,26 @@ func TestRunManager_Help(t *testing.T) {
 		t.Errorf("RunManager(--help) = %d, want 0", got)
 	}
 }
+
+func TestRunManager_InvalidSecurityProfile(t *testing.T) {
+	if got := cli.RunManager([]string{"--security-profile", "unknown"}); got != 1 {
+		t.Errorf("RunManager(--security-profile=unknown) = %d, want 1", got)
+	}
+}
+
+func TestRunManager_ValidSecurityProfileControlled(t *testing.T) {
+	// controlled is valid; GetConfig() will fail in test env but that's exit 1 for a
+	// different reason — we just need no exit 2 from flag parsing.
+	got := cli.RunManager([]string{"--security-profile", "controlled", "--dry-run"})
+	// Without a kubeconfig this exits 1 (GetConfig fails), not 2; flag was accepted.
+	if got == 2 {
+		t.Errorf("RunManager(--security-profile=controlled) rejected the flag (exit 2)")
+	}
+}
+
+func TestRunManager_ValidSecurityProfileHardened(t *testing.T) {
+	got := cli.RunManager([]string{"--security-profile", "hardened", "--dry-run"})
+	if got == 2 {
+		t.Errorf("RunManager(--security-profile=hardened) rejected the flag (exit 2)")
+	}
+}

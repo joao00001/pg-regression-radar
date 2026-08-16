@@ -541,9 +541,10 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		// not set its own global policy; this preserves the manager-as-enforcer
 		// model while still making the CRD field meaningful for single-cluster
 		// operator deployments.
-		if alertCfg.DestinationPolicy == "" && watch.Spec.Alerting.DestinationPolicy != "" {
-			alertCfg.DestinationPolicy = alerting.DestinationPolicy(watch.Spec.Alerting.DestinationPolicy)
-		}
+		alertCfg.DestinationPolicy = mergeAlertingDestinationPolicy(
+			r.AlertingDestinationPolicy,
+			alerting.DestinationPolicy(watch.Spec.Alerting.DestinationPolicy),
+		)
 	} else {
 		//nolint:staticcheck // SA1019: this is the deliberate legacy fallback
 		// read for backward compatibility -- the one intentional reference to
@@ -944,4 +945,21 @@ func setCondition(conditions *[]metav1.Condition, cond metav1.Condition) {
 		cond.LastTransitionTime = now
 	}
 	*conditions = append(*conditions, cond)
+}
+
+// mergeAlertingDestinationPolicy resolves the effective DestinationPolicy for
+// a given watch by applying the precedence rule:
+//
+//   - If globalPolicy is non-empty it was explicitly configured by the
+//     operator (via --alerting-destination-policy) and always wins.
+//   - Otherwise the per-watch policy from spec.alerting.destinationPolicy is
+//     used when set, falling back to the permissive default ("").
+//
+// Extracted as a pure function so it can be exercised in unit tests without
+// wiring up a full controller.
+func mergeAlertingDestinationPolicy(globalPolicy, watchPolicy alerting.DestinationPolicy) alerting.DestinationPolicy {
+	if globalPolicy != "" {
+		return globalPolicy
+	}
+	return watchPolicy
 }
