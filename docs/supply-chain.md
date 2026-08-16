@@ -60,7 +60,7 @@ helm show chart oci://ghcr.io/joao00001/charts/pg-regression-radar --version 1.2
 Replace `v1.2.3` with the release tag you are verifying. The `--certificate-identity-regexp` must match the release workflow path exactly; the `--certificate-oidc-issuer` must be GitHub's Actions token endpoint.
 
 ```bash
-IMAGE=oci://ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+IMAGE=ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
 
 cosign verify "$IMAGE" \
   --certificate-identity-regexp \
@@ -99,7 +99,7 @@ cosign verify ghcr.io/joao00001/charts/pg-regression-radar:1.2.3 \
 Each image digest has an SPDX-JSON SBOM attached as a signed in-toto attestation. Fetch and inspect it:
 
 ```bash
-IMAGE=oci://ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+IMAGE=ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
 
 cosign verify-attestation "$IMAGE" \
   --type spdxjson \
@@ -136,7 +136,7 @@ gh attestation verify "$IMAGE" \
 For the Helm chart OCI artifact:
 
 ```bash
-CHART=oci://ghcr.io/joao00001/charts/pg-regression-radar:1.2.3
+CHART=ghcr.io/joao00001/charts/pg-regression-radar:1.2.3
 
 gh attestation verify "$CHART" \
   --owner joao00001

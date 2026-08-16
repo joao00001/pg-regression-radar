@@ -50,8 +50,16 @@ spec:
             - {{ printf "--alerting-destination-policy=%s" .Values.alerting.destinationPolicy | quote }}
             {{- end }}
             {{- if .Values.alerting.destinationPolicyRelayUrl }}
-            - {{ printf "--alerting-destination-policy-relay-url=%s" .Values.alerting.destinationPolicyRelayUrl | quote }}
+            - --alerting-destination-policy-relay-url=$(ALERTING_DESTINATION_POLICY_RELAY_URL)
             {{- end }}
+          {{- if .Values.alerting.destinationPolicyRelayUrl }}
+          env:
+            - name: ALERTING_DESTINATION_POLICY_RELAY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: alertingDestinationPolicyRelayUrl
+          {{- end }}
           ports:
             - name: webhook
               containerPort: {{ .Values.manager.ports.webhook }}
