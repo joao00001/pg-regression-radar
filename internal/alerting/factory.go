@@ -40,6 +40,7 @@ type BuildConfig struct {
 	// URL is the webhook endpoint for the slack, teams, and custom formats.
 	// Ignored (and overridden with pagerDutyEventsURL) for pagerduty, which
 	// has no per-integration URL — see PagerDutyFormatter.
+	// In relay-only mode this field is also ignored; RelayURL is used instead.
 	URL string
 
 	// PagerDutyRoutingKey is required when Format == "pagerduty".
@@ -60,6 +61,16 @@ type BuildConfig struct {
 	// reachable from PostgresWatch-driven alerting.
 	AllowedDestinations []string
 
+	// DestinationPolicy selects the destination-validation strategy. Leave
+	// empty (or set to "permissive") for the original SSRF-blocklist-only
+	// behaviour. See the DestinationPolicy constants for available values and
+	// docs/alerting.md#destination-policies.
+	DestinationPolicy DestinationPolicy
+
+	// RelayURL is the fixed relay endpoint used when DestinationPolicy is
+	// "relay-only". Ignored for all other policies.
+	RelayURL string
+
 	ClusterName string
 	Timeout     time.Duration
 }
@@ -74,6 +85,16 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 	if err := ValidateAllowedDestinations(cfg.AllowedDestinations); err != nil {
 		return nil, err
 	}
+
+	// Resolve the effective URL based on the destination policy.  This must
+	// happen before format-specific validation so the correct URL is checked
+	// and used throughout.
+	effectiveURL, err := resolveDestinationURL(cfg)
+	if err != nil {
+		return nil, err
+	}
+	// Use the policy-resolved URL for all subsequent logic.
+	cfg.URL = effectiveURL
 
 	format := cfg.Format
 	if format == "" {
@@ -144,7 +165,62 @@ func BuildNotifier(cfg BuildConfig, logger *slog.Logger, reg prometheus.Register
 	}, logger), nil
 }
 
-// blockedAlertDestinationHosts lists well-known cloud instance-metadata
+// resolveDestinationURL applies the DestinationPolicy in cfg and returns the
+// effective URL that BuildNotifier should use.  It enforces policy-specific
+// constraints before any format-level validation runs:
+//
+//   - permissive (default): returns cfg.URL unchanged; the SSRF blocklist
+//     applied later by validateWebhookURL is the only guard.
+//   - allowlist: returns cfg.URL unchanged but guarantees AllowedDestinations
+//     is non-empty; if the list is empty the caller's
+//     --alerting-allowed-destinations was missing, which is a misconfiguration.
+//   - relay-only: returns cfg.RelayURL, ignoring cfg.URL entirely; returns an
+//     error when RelayURL is empty because the policy is meaningless without it.
+func resolveDestinationURL(cfg BuildConfig) (string, error) {
+	switch cfg.DestinationPolicy {
+	case DestinationPolicyRelayOnly:
+		if cfg.RelayURL == "" {
+			return "", fmt.Errorf("alerting: destination policy %q requires --alerting-destination-policy-relay-url to be set", DestinationPolicyRelayOnly)
+		}
+		return cfg.RelayURL, nil
+	case DestinationPolicyAllowlist:
+		if len(cfg.AllowedDestinations) == 0 {
+			return "", fmt.Errorf("alerting: destination policy %q requires --alerting-allowed-destinations to be non-empty", DestinationPolicyAllowlist)
+		}
+		return cfg.URL, nil
+	case DestinationPolicyPermissive, "":
+		return cfg.URL, nil
+	default:
+		return "", fmt.Errorf("alerting: unknown destination policy %q (want permissive, allowlist, or relay-only)", cfg.DestinationPolicy)
+	}
+}
+
+// ValidateDestinationPolicy checks that the combination of policy and
+// relayUrl is coherent at startup — before any PostgresWatch is reconciled.
+// This is analogous to ValidateAllowedDestinations: callers (CLI flag
+// parsing in internal/cli) can surface misconfiguration immediately rather
+// than discovering it at the first reconcile.
+//
+// Specifically:
+//   - "relay-only" without a relayUrl is rejected with a clear message.
+//   - Unknown policy strings are rejected.
+//   - The relay URL itself is NOT validated here (validateWebhookURL is
+//     called later inside BuildNotifier, where the policy and URL are both
+//     available at the same time).
+func ValidateDestinationPolicy(policy DestinationPolicy, relayUrl string) error {
+	switch policy {
+	case DestinationPolicyRelayOnly:
+		if relayUrl == "" {
+			return fmt.Errorf("alerting: destination policy %q requires --alerting-destination-policy-relay-url to be set", policy)
+		}
+		return nil
+	case DestinationPolicyAllowlist, DestinationPolicyPermissive, "":
+		return nil
+	default:
+		return fmt.Errorf("alerting: unknown destination policy %q (want permissive, allowlist, or relay-only)", policy)
+	}
+}
+
 // hostnames -- the single highest-value SSRF target, since a request that
 // reaches one of these from inside a cloud VM/pod can return the node's own
 // cloud credentials. Matched case-insensitively against the URL's hostname

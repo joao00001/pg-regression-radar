@@ -301,3 +301,156 @@ func TestValidateAllowedDestinations(t *testing.T) {
 		}
 	})
 }
+
+// TestDestinationPolicy_Permissive verifies that the default permissive
+// policy keeps backward-compatible behaviour: any URL that passes the SSRF
+// blocklist is accepted, without any further allowlist check.
+func TestDestinationPolicy_Permissive(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		url  string
+		want bool
+	}{
+		{"ordinary external url", "https://hooks.slack.example.com/T000/B000/X", true},
+		{"private range url (in-cluster receiver)", "http://10.0.0.5:9094/webhook", true},
+		{"loopback rejected", "http://127.0.0.1/steal", false},
+		{"link-local rejected", "http://169.254.169.254/latest/meta-data/", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := BuildNotifier(BuildConfig{
+				Format:            "slack",
+				URL:               tc.url,
+				DestinationPolicy: DestinationPolicyPermissive,
+			}, nil, prometheus.NewRegistry())
+			if tc.want && err != nil {
+				t.Errorf("expected url to be accepted with permissive policy, got error: %v", err)
+			}
+			if !tc.want && err == nil {
+				t.Error("expected url to be rejected with permissive policy, got nil")
+			}
+		})
+	}
+}
+
+// TestDestinationPolicy_Allowlist verifies that the allowlist policy rejects
+// URLs whose host is not in AllowedDestinations, and that it requires the
+// list to be non-empty at all.
+func TestDestinationPolicy_Allowlist(t *testing.T) {
+	t.Run("accepts URL matching allowlist", func(t *testing.T) {
+		_, err := BuildNotifier(BuildConfig{
+			Format:              "slack",
+			URL:                 "https://hooks.slack.example.com/services/T000/B000/XXX",
+			DestinationPolicy:   DestinationPolicyAllowlist,
+			AllowedDestinations: []string{"hooks.slack.example.com"},
+		}, nil, prometheus.NewRegistry())
+		if err != nil {
+			t.Fatalf("expected allowlist policy to accept matching URL, got error: %v", err)
+		}
+	})
+
+	t.Run("rejects URL not in allowlist", func(t *testing.T) {
+		_, err := BuildNotifier(BuildConfig{
+			Format:              "slack",
+			URL:                 "https://other.example.com/hook",
+			DestinationPolicy:   DestinationPolicyAllowlist,
+			AllowedDestinations: []string{"hooks.slack.example.com"},
+		}, nil, prometheus.NewRegistry())
+		if err == nil {
+			t.Fatal("expected allowlist policy to reject URL outside allowlist, got nil")
+		}
+	})
+
+	t.Run("fails when allowlist is empty", func(t *testing.T) {
+		_, err := BuildNotifier(BuildConfig{
+			Format:            "slack",
+			URL:               "https://hooks.slack.example.com/hook",
+			DestinationPolicy: DestinationPolicyAllowlist,
+		}, nil, prometheus.NewRegistry())
+		if err == nil {
+			t.Fatal("expected allowlist policy to fail when AllowedDestinations is empty, got nil")
+		}
+	})
+}
+
+// TestDestinationPolicy_RelayOnly verifies that relay-only ignores the
+// CRD-level URL entirely and always uses RelayURL, and rejects empty relay.
+func TestDestinationPolicy_RelayOnly(t *testing.T) {
+	const relay = "https://relay.example.com/webhook"
+
+	t.Run("uses relay url, ignores CRD url", func(t *testing.T) {
+		n, err := BuildNotifier(BuildConfig{
+			Format:            "slack",
+			URL:               "https://crd-url-should-be-ignored.invalid/hook",
+			DestinationPolicy: DestinationPolicyRelayOnly,
+			RelayURL:          relay,
+		}, nil, prometheus.NewRegistry())
+		if err != nil {
+			t.Fatalf("expected relay-only policy to succeed, got error: %v", err)
+		}
+		if n.cfg.URL != relay {
+			t.Errorf("expected notifier URL to be the relay %q, got %q", relay, n.cfg.URL)
+		}
+	})
+
+	t.Run("rejects empty relay url", func(t *testing.T) {
+		_, err := BuildNotifier(BuildConfig{
+			Format:            "slack",
+			URL:               "https://some-url.example.com/hook",
+			DestinationPolicy: DestinationPolicyRelayOnly,
+		}, nil, prometheus.NewRegistry())
+		if err == nil {
+			t.Fatal("expected relay-only policy to fail when RelayURL is empty, got nil")
+		}
+	})
+
+	t.Run("relay url must pass SSRF blocklist", func(t *testing.T) {
+		_, err := BuildNotifier(BuildConfig{
+			Format:            "slack",
+			DestinationPolicy: DestinationPolicyRelayOnly,
+			RelayURL:          "http://169.254.169.254/latest/meta-data/",
+		}, nil, prometheus.NewRegistry())
+		if err == nil {
+			t.Fatal("expected SSRF-blocked relay url to be rejected, got nil")
+		}
+	})
+}
+
+// TestValidateDestinationPolicy verifies startup-time validation of
+// policy + relay-url combinations, independent of BuildNotifier.
+func TestValidateDestinationPolicy(t *testing.T) {
+	t.Run("permissive requires no relay url", func(t *testing.T) {
+		if err := ValidateDestinationPolicy(DestinationPolicyPermissive, ""); err != nil {
+			t.Fatalf("expected permissive+empty relay to be valid, got: %v", err)
+		}
+	})
+
+	t.Run("allowlist requires no relay url", func(t *testing.T) {
+		if err := ValidateDestinationPolicy(DestinationPolicyAllowlist, ""); err != nil {
+			t.Fatalf("expected allowlist+empty relay to be valid, got: %v", err)
+		}
+	})
+
+	t.Run("relay-only requires relay url", func(t *testing.T) {
+		if err := ValidateDestinationPolicy(DestinationPolicyRelayOnly, ""); err == nil {
+			t.Fatal("expected relay-only+empty relay to be invalid, got nil")
+		}
+	})
+
+	t.Run("relay-only with relay url is valid", func(t *testing.T) {
+		if err := ValidateDestinationPolicy(DestinationPolicyRelayOnly, "https://relay.example.com/hook"); err != nil {
+			t.Fatalf("expected relay-only+relay url to be valid, got: %v", err)
+		}
+	})
+
+	t.Run("unknown policy is rejected", func(t *testing.T) {
+		if err := ValidateDestinationPolicy(DestinationPolicy("unknown"), ""); err == nil {
+			t.Fatal("expected unknown policy to be rejected, got nil")
+		}
+	})
+
+	t.Run("empty policy is treated as permissive", func(t *testing.T) {
+		if err := ValidateDestinationPolicy("", ""); err != nil {
+			t.Fatalf("expected empty policy to be accepted (treated as permissive), got: %v", err)
+		}
+	})
+}
