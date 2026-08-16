@@ -45,6 +45,19 @@ type PostgresWatchSpec struct {
 	// +optional
 	DSNSecretRef *SecretKeySelector `json:"dsnSecretRef,omitempty"`
 
+	// remoteClusterRef names a PostgresRadarCluster resource (cluster-scoped)
+	// that was pre-registered by an administrator. When set, dsnSecretRef is
+	// resolved against the remote cluster described by that
+	// PostgresRadarCluster instead of the hub — only clusters explicitly
+	// registered by an administrator can be referenced here, which eliminates
+	// the confused-deputy risk of arbitrary kubeconfig references. The named
+	// PostgresRadarCluster must exist; reconciliation fails if it does not.
+	//
+	// Takes precedence over remoteClusterSecretRef when both are set.
+	// See docs/multi-cluster.md#cluster-registry for the full model.
+	// +optional
+	RemoteClusterRef string `json:"remoteClusterRef,omitempty"`
+
 	// remoteClusterSecretRef points at a Secret, in the hub cluster and in
 	// this PostgresWatch's namespace, whose key holds a kubeconfig (raw
 	// YAML or JSON, the same format `kubectl config view --raw` produces)
@@ -56,6 +69,11 @@ type PostgresWatchSpec struct {
 	// including the least-privilege expectation on the kubeconfig itself:
 	// it should grant nothing beyond reading the one Secret dsnSecretRef
 	// names, in the remote cluster.
+	//
+	// Deprecated: use remoteClusterRef with a registered PostgresRadarCluster
+	// instead. In hardened security-profile mode this field is rejected
+	// outright; in controlled mode (the default) it continues to work but
+	// logs a deprecation warning. See docs/multi-cluster.md#migration.
 	//
 	// Leave unset (the default) when the Postgres cluster being watched is
 	// reachable over the network from the manager and its DSN Secret lives

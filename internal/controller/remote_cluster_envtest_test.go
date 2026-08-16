@@ -130,7 +130,7 @@ func TestEnvtest_PostgresWatch_RemoteClusterSecretRef_FetchesDSNFromRemoteAPISer
 	watch := samplePostgresWatch("watch-remote-real", "default")
 	watch.Spec.DSN = ""
 	watch.Spec.DSNSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-dsn", Key: "dsn"}
-	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"}
+	watch.Spec.RemoteClusterSecretRef = &radarv1alpha1.SecretKeySelector{Name: "remote-kubeconfig", Key: "kubeconfig"} //nolint:staticcheck // SA1019: intentional test of deprecated backward-compat field
 
 	kubeconfigSec := kubeconfigSecret("remote-kubeconfig", "default", "kubeconfig", string(kubeconfig))
 

@@ -42,6 +42,7 @@ var (
 			&PostgresWatch{}, &PostgresWatchList{},
 			&DeploySource{}, &DeploySourceList{},
 			&PerformanceRegression{}, &PerformanceRegressionList{},
+			&PostgresRadarCluster{}, &PostgresRadarClusterList{},
 		)
 		return nil
 	})

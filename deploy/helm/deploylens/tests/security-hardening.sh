@@ -47,14 +47,24 @@ assert_eq "Manager NetworkPolicies rendered" "2" "$(count_kind "$MANIFEST_HARDEN
 assert_eq "ResourceQuota rendered when enabled" "1" "$(count_kind "$MANIFEST_HARDENED" "ResourceQuota")"
 assert_eq "LimitRange rendered when enabled" "1" "$(count_kind "$MANIFEST_HARDENED" "LimitRange")"
 
+# np_has_cidr captures yq output into a variable before piping to grep to avoid
+# SIGPIPE under set -o pipefail (yq <=4.44.6 emits output for every document in
+# the stream, and grep -q exits after the first match, triggering SIGPIPE).
+np_has_cidr() {
+  local manifest="$1" np_name="$2" cidr="$3"
+  local yq_out
+  yq_out="$(printf '%s' "$manifest" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$np_name"'") | .spec.egress[]?.to[]?.ipBlock.cidr == "'"$cidr"'"')"
+  printf '%s\n' "$yq_out" | grep -q true && echo true || echo false
+}
+
 assert_eq "Manager allow policy has Postgres egress CIDR" "true" \
-  "$(printf '%s' "$MANIFEST_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$MANAGER_ALLOW_NP_NAME"'") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.10.0.0/16"' | grep -q true && echo true || echo false)"
+  "$(np_has_cidr "$MANIFEST_HARDENED" "$MANAGER_ALLOW_NP_NAME" "10.10.0.0/16")"
 
 assert_eq "Manager allow policy has API server egress CIDR" "true" \
-  "$(printf '%s' "$MANIFEST_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$MANAGER_ALLOW_NP_NAME"'") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.20.0.0/16"' | grep -q true && echo true || echo false)"
+  "$(np_has_cidr "$MANIFEST_HARDENED" "$MANAGER_ALLOW_NP_NAME" "10.20.0.0/16")"
 
 assert_eq "Manager allow policy has alert relay egress CIDR" "true" \
-  "$(printf '%s' "$MANIFEST_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$MANAGER_ALLOW_NP_NAME"'") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.30.0.0/16"' | grep -q true && echo true || echo false)"
+  "$(np_has_cidr "$MANIFEST_HARDENED" "$MANAGER_ALLOW_NP_NAME" "10.30.0.0/16")"
 
 MANIFEST_OPERATOR_HARDENED=$(helm template "$RELEASE" "$CHART_DIR" \
   --set mode=operator \
@@ -71,4 +81,4 @@ OPERATOR_ALLOW_NP_NAME=$(
 
 assert_eq "Operator NetworkPolicies rendered" "2" "$(count_kind "$MANIFEST_OPERATOR_HARDENED" "NetworkPolicy")"
 assert_eq "Operator allow policy has no API-server CIDR egress by default" "false" \
-  "$(printf '%s' "$MANIFEST_OPERATOR_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$OPERATOR_ALLOW_NP_NAME"'") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.20.0.0/16"' | grep -q true && echo true || echo false)"
+  "$(np_has_cidr "$MANIFEST_OPERATOR_HARDENED" "$OPERATOR_ALLOW_NP_NAME" "10.20.0.0/16")"
