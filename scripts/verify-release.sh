@@ -31,7 +31,7 @@ usage() {
 }
 
 [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && usage
-[[ $# -lt 1 ]] && { echo "error: tag argument required" >&2; usage; }
+[[ $# -lt 1 ]] && { echo "error: tag argument required" >&2; exit 1; }
 
 TAG="$1"
 # Chart version strips the leading 'v' (Helm SemVer requirement)
