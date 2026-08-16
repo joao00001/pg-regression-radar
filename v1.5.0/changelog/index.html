@@ -2468,7 +2468,7 @@ build</code> as described above.</p>
 --alerting-destination-policy-relay-url=&lt;url&gt;          # required for relay-only
 </code></pre></div>
 <p><code>PostgresWatch.spec.alerting.destinationPolicy</code> mirrors these values at the per-watch level and is honoured when no manager-level policy is set.</p>
-<p>See <a href="../docs/alerting.md#destination-policies">Alerting: destination policies</a> and <a href="../docs/security-model.md">Security model</a> for configuration examples and deployment guidance.</p>
+<p>See <a href="../alerting/#destination-policies">Alerting: destination policies</a> and <a href="../security-model/">Security model</a> for configuration examples and deployment guidance.</p>
 <p>(#136)
 - Introduces the <code>PostgresRadarCluster</code> CRD so administrators can pre-register remote clusters; <code>PostgresWatch</code> now references them by name via <code>spec.remoteClusterRef</code>, eliminating the confused-deputy risk of direct kubeconfig Secret access. (#138)
 - Operators can now cryptographically verify every released artifact. All five container images and the Helm OCI chart are signed with Cosign keyless signing; each image carries an attached SPDX SBOM attestation. A new <code>docs/supply-chain.md</code> page documents the trust model and step-by-step <code>cosign verify</code> commands. A companion <code>scripts/verify-release.sh</code> automates the checks. (#139)
