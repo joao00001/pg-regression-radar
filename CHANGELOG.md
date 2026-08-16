@@ -52,7 +52,7 @@ build` as described above.
 
   `PostgresWatch.spec.alerting.destinationPolicy` mirrors these values at the per-watch level and is honoured when no manager-level policy is set.
 
-  See [Alerting: destination policies](../docs/alerting.md#destination-policies) and [Security model](../docs/security-model.md) for configuration examples and deployment guidance.
+  See [Alerting: destination policies](alerting.md#destination-policies) and [Security model](security-model.md) for configuration examples and deployment guidance.
 
   (#136)
 - Introduces the `PostgresRadarCluster` CRD so administrators can pre-register remote clusters; `PostgresWatch` now references them by name via `spec.remoteClusterRef`, eliminating the confused-deputy risk of direct kubeconfig Secret access. (#138)
