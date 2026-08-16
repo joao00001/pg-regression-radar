@@ -37,18 +37,24 @@ assert_eq "LimitRange disabled by default" "0" "$(count_kind "$MANIFEST_DEFAULT"
 MANIFEST_HARDENED=$(helm template "$RELEASE" "$CHART_DIR" \
   -f "$HARDENED_VALUES")
 
+MANAGER_ALLOW_NP_NAME=$(
+  printf '%s' "$MANIFEST_HARDENED" \
+    | yq 'select(.kind == "NetworkPolicy" and (.metadata.name | test("manager-allow$"))) | .metadata.name' \
+    | head -n1
+)
+
 assert_eq "Manager NetworkPolicies rendered" "2" "$(count_kind "$MANIFEST_HARDENED" "NetworkPolicy")"
 assert_eq "ResourceQuota rendered when enabled" "1" "$(count_kind "$MANIFEST_HARDENED" "ResourceQuota")"
 assert_eq "LimitRange rendered when enabled" "1" "$(count_kind "$MANIFEST_HARDENED" "LimitRange")"
 
 assert_eq "Manager allow policy has Postgres egress CIDR" "true" \
-  "$(printf '%s' "$MANIFEST_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$RELEASE"'-pg-regression-radar-manager-allow") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.10.0.0/16"' | grep -q true && echo true || echo false)"
+  "$(printf '%s' "$MANIFEST_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$MANAGER_ALLOW_NP_NAME"'") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.10.0.0/16"' | grep -q true && echo true || echo false)"
 
 assert_eq "Manager allow policy has API server egress CIDR" "true" \
-  "$(printf '%s' "$MANIFEST_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$RELEASE"'-pg-regression-radar-manager-allow") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.20.0.0/16"' | grep -q true && echo true || echo false)"
+  "$(printf '%s' "$MANIFEST_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$MANAGER_ALLOW_NP_NAME"'") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.20.0.0/16"' | grep -q true && echo true || echo false)"
 
 assert_eq "Manager allow policy has alert relay egress CIDR" "true" \
-  "$(printf '%s' "$MANIFEST_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$RELEASE"'-pg-regression-radar-manager-allow") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.30.0.0/16"' | grep -q true && echo true || echo false)"
+  "$(printf '%s' "$MANIFEST_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$MANAGER_ALLOW_NP_NAME"'") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.30.0.0/16"' | grep -q true && echo true || echo false)"
 
 MANIFEST_OPERATOR_HARDENED=$(helm template "$RELEASE" "$CHART_DIR" \
   --set mode=operator \
@@ -57,6 +63,12 @@ MANIFEST_OPERATOR_HARDENED=$(helm template "$RELEASE" "$CHART_DIR" \
   --set networkPolicy.ingressCIDR="10.0.0.0/24" \
   --set networkPolicy.egress.postgresCIDRs[0]="10.10.0.0/16")
 
+OPERATOR_ALLOW_NP_NAME=$(
+  printf '%s' "$MANIFEST_OPERATOR_HARDENED" \
+    | yq 'select(.kind == "NetworkPolicy" and (.metadata.name | test("operator-allow$"))) | .metadata.name' \
+    | head -n1
+)
+
 assert_eq "Operator NetworkPolicies rendered" "2" "$(count_kind "$MANIFEST_OPERATOR_HARDENED" "NetworkPolicy")"
 assert_eq "Operator allow policy has no API-server CIDR egress by default" "false" \
-  "$(printf '%s' "$MANIFEST_OPERATOR_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$RELEASE"'-pg-regression-radar-operator-allow") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.20.0.0/16"' | grep -q true && echo true || echo false)"
+  "$(printf '%s' "$MANIFEST_OPERATOR_HARDENED" | yq '. | select(.kind == "NetworkPolicy" and .metadata.name == "'"$OPERATOR_ALLOW_NP_NAME"'") | .spec.egress[]?.to[]?.ipBlock.cidr == "10.20.0.0/16"' | grep -q true && echo true || echo false)"

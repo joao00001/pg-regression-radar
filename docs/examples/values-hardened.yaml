@@ -1,6 +1,6 @@
 mode: manager
 postgres:
-  dsn: "******postgresql.default.svc:5432/postgres?sslmode=require"
+  dsn: "<replace-with-your-postgres-dsn>"
   clusterName: production-cluster
   namespace: database
 

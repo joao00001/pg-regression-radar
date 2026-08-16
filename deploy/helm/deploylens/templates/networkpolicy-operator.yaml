@@ -23,23 +23,32 @@ spec:
   podSelector:
     matchLabels:
       {{- include "deploylens.selectorLabels" . | nindent 6 }}
+  {{- $hasPostgres := gt (len .Values.networkPolicy.egress.postgresCIDRs) 0 }}
+  {{- $hasAlertRelay := gt (len .Values.networkPolicy.egress.alertRelayCIDRs) 0 }}
+  {{- $hasDNS := .Values.networkPolicy.egress.dns.enabled }}
   policyTypes:
     - Ingress
+    {{- if or $hasPostgres $hasAlertRelay $hasDNS }}
     - Egress
+    {{- end }}
   ingress:
-    - {{- if .Values.networkPolicy.ingressCIDR }}
-      from:
+    {{- if .Values.networkPolicy.ingressCIDR }}
+    - from:
         - ipBlock:
             cidr: {{ .Values.networkPolicy.ingressCIDR | quote }}
-      {{- end }}
       ports:
         - protocol: TCP
           port: {{ .Values.service.webhookPort }}
         - protocol: TCP
           port: {{ .Values.service.metricsPort }}
-  {{- $hasPostgres := gt (len .Values.networkPolicy.egress.postgresCIDRs) 0 }}
-  {{- $hasAlertRelay := gt (len .Values.networkPolicy.egress.alertRelayCIDRs) 0 }}
-  {{- $hasDNS := .Values.networkPolicy.egress.dns.enabled }}
+    {{- else }}
+    -
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.webhookPort }}
+        - protocol: TCP
+          port: {{ .Values.service.metricsPort }}
+    {{- end }}
   {{- if or $hasPostgres $hasAlertRelay $hasDNS }}
   egress:
     {{- range .Values.networkPolicy.egress.postgresCIDRs }}
@@ -73,7 +82,5 @@ spec:
           port: {{ . }}
         {{- end }}
     {{- end }}
-  {{- else }}
-  egress: []
   {{- end }}
 {{- end }}

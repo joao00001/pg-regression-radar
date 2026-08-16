@@ -183,6 +183,9 @@ networkPolicy:
       - 443
     # DNS access (CoreDNS / kube-dns) for service discovery.
     dns:
+      # If set false, ensure at least one other egress destination is allowed
+      # (postgresCIDRs, apiServerCIDRs, alertRelayCIDRs) or egress remains
+      # fully denied by the default-deny policy.
       enabled: true
       namespace: kube-system
       port: 53

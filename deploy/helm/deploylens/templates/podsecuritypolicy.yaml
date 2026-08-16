@@ -8,6 +8,7 @@ metadata:
 spec:
   privileged: false
   allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
   requiredDropCapabilities:
     - ALL
   runAsUser:
