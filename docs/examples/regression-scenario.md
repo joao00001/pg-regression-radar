@@ -8,6 +8,8 @@ This scenario gives external users a deterministic way to validate end-to-end be
 
 The workflow is run-mode agnostic: `operator`, `manager`, and Helm all use the same database workload and webhook payloads. Only where you read results differs by mode.
 
+> **Important timing note (E-divisive requirement):** detection needs a time series that spans multiple scrape windows, not a single burst of queries in one scrape cycle. Keep each traffic phase running for at least **3–4 scrape intervals**. For quick demos, start pg-regression-radar with `--scrape-interval 1s` and keep each phase running for ~20–30 seconds total.
+
 ## 1) Set up PostgreSQL and test data
 
 Start a local PostgreSQL for testing:
@@ -41,9 +43,9 @@ SQL
 Generate baseline (fast) query executions:
 
 ```bash
-for i in $(seq 1 120); do
+for i in $(seq 1 600); do
   psql "******localhost:5432/mydb?sslmode=disable" \
-    -c "SELECT count(*) FROM orders WHERE customer_id = 42;" >/dev/null
+    -c "SELECT pg_sleep(0.04); SELECT count(*) FROM orders WHERE customer_id = 42;" >/dev/null
 done
 ```
 
@@ -73,9 +75,9 @@ psql "******localhost:5432/mydb?sslmode=disable" \
 Drive post-change workload with the same query:
 
 ```bash
-for i in $(seq 1 180); do
+for i in $(seq 1 600); do
   psql "******localhost:5432/mydb?sslmode=disable" \
-    -c "SELECT count(*) FROM orders WHERE customer_id = 42;" >/dev/null
+    -c "SELECT pg_sleep(0.04); SELECT count(*) FROM orders WHERE customer_id = 42;" >/dev/null
 done
 ```
 

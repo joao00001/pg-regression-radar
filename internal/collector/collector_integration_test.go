@@ -56,6 +56,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/joao00001/pg-regression-radar/internal/planner"
+	"github.com/joao00001/pg-regression-radar/internal/testutil"
 )
 
 func TestIntegration_Scrape_RealPostgres(t *testing.T) {
@@ -72,6 +73,8 @@ func TestIntegration_Scrape_RealPostgres(t *testing.T) {
 		t.Fatalf("open setup connection: %v", err)
 	}
 	defer setup.Close()
+	releasePGStatStatementsLock := testutil.AcquirePGStatStatementsTestLock(t, ctx, setup)
+	defer releasePGStatStatementsLock()
 
 	if _, err := setup.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS pg_stat_statements`); err != nil {
 		t.Fatalf("CREATE EXTENSION pg_stat_statements (is shared_preload_libraries set? see this file's doc comment): %v", err)

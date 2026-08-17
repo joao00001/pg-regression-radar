@@ -31,6 +31,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 	"github.com/joao00001/pg-regression-radar/internal/storage/postgres"
 	"github.com/joao00001/pg-regression-radar/internal/testlogger"
+	"github.com/joao00001/pg-regression-radar/internal/testutil"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -84,6 +85,8 @@ func TestIntegration_Backfill_RestartRestoresStateAndCursor(t *testing.T) {
 		t.Fatalf("open setup connection: %v", err)
 	}
 	defer setup.Close()
+	releasePGStatStatementsLock := testutil.AcquirePGStatStatementsTestLock(t, ctx, setup)
+	defer releasePGStatStatementsLock()
 	if _, err := setup.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS pg_stat_statements`); err != nil {
 		t.Fatalf("CREATE EXTENSION pg_stat_statements: %v", err)
 	}
