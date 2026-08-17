@@ -97,6 +97,8 @@ Execute the full scenario from [Example regression scenario](examples/regression
 3. Emit a second deploy event (`revision=v2`).
 4. Continue query traffic until analysis runs.
 
+> Tip: for fast local demos, run with `--scrape-interval 1s` and keep each baseline/regression traffic phase long enough to cover at least 3–4 scrape windows; short single-burst traffic usually does not produce enough time-series shape for E-divisive detection.
+
 ## 4) Validate that detection worked
 
 Use mode-appropriate checks:

@@ -148,6 +148,7 @@ Depending on mode and configuration, this appears in logs, in `PerformanceRegres
 
 - **No deploy events are being ingested:** verify your webhook URL/path (`/webhook`), source type, and authentication header if `--webhook-secret` is enabled.
 - **No regression detected yet:** increase traffic volume for the target query, verify `pg_stat_statements` is enabled, and check detection thresholds (`windowMinutes`, `minExecutions`, latency threshold).
+- **Manager exits with `address already in use` on startup:** the health probe endpoint listens on `:8081` by default (`--health-probe-bind-address`). If that port is already taken (for example by another manager instance), set a free port, for example `--health-probe-bind-address=:18081`.
 - **Manager mode does not produce resources:** confirm CRDs are installed and check namespace-scoped `PostgresWatch`/`DeploySource` reconciliation status.
 - **Helm manager mode seems missing CRDs on upgrade:** Helm installs `crds/` only on initial install; apply updated CRDs manually as noted above.
 - **Alerts not delivered:** validate webhook destination config and any egress/destination policy restrictions.
