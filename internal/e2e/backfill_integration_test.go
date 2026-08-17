@@ -31,6 +31,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 	"github.com/joao00001/pg-regression-radar/internal/storage/postgres"
 	"github.com/joao00001/pg-regression-radar/internal/testlogger"
+	"github.com/joao00001/pg-regression-radar/internal/testutil"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -84,7 +85,7 @@ func TestIntegration_Backfill_RestartRestoresStateAndCursor(t *testing.T) {
 		t.Fatalf("open setup connection: %v", err)
 	}
 	defer setup.Close()
-	releasePGStatStatementsLock := acquirePGStatStatementsTestLock(t, ctx, setup)
+	releasePGStatStatementsLock := testutil.AcquirePGStatStatementsTestLock(t, ctx, setup)
 	defer releasePGStatStatementsLock()
 	if _, err := setup.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS pg_stat_statements`); err != nil {
 		t.Fatalf("CREATE EXTENSION pg_stat_statements: %v", err)
@@ -305,28 +306,4 @@ func findRegressionByMarker(t *testing.T, results []v1alpha1.PerformanceRegressi
 		t.Fatalf("expected exactly one PerformanceRegression matching marker %q, got %d: %+v", marker, len(matches), matches)
 	}
 	return matches[0]
-}
-
-func acquirePGStatStatementsTestLock(t *testing.T, ctx context.Context, db *sql.DB) func() {
-	t.Helper()
-
-	// Serializes integration tests that reset/read pg_stat_statements so package-
-	// parallel test execution does not race on shared server-global stats state.
-	const lockKey int64 = 8255423672001
-	conn, err := db.Conn(ctx)
-	if err != nil {
-		t.Fatalf("open dedicated lock connection: %v", err)
-	}
-	if _, err := conn.ExecContext(ctx, `SELECT pg_advisory_lock($1)`, lockKey); err != nil {
-		_ = conn.Close()
-		t.Fatalf("pg_advisory_lock(%d): %v", lockKey, err)
-	}
-	return func() {
-		if _, err := conn.ExecContext(context.Background(), `SELECT pg_advisory_unlock($1)`, lockKey); err != nil {
-			t.Errorf("pg_advisory_unlock(%d): %v", lockKey, err)
-		}
-		if err := conn.Close(); err != nil {
-			t.Errorf("close lock connection: %v", err)
-		}
-	}
 }
