@@ -299,7 +299,7 @@ jobs:
         run: cosign attest --yes --predicate "sbom-${{ matrix.target }}-${{ env.ARCH }}.spdx.json" --type spdxjson "${{ steps.push.outputs.image }}@${{ steps.push.outputs.digest }}"
 
       - name: Attest image build provenance (SLSA)
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ steps.push.outputs.image }}
           subject-digest: ${{ steps.push.outputs.digest }}
@@ -370,7 +370,7 @@ jobs:
         run: cosign sign --yes "${{ steps.create.outputs.image }}@${{ steps.create.outputs.digest }}"
 
       - name: Attest manifest provenance (SLSA)
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ steps.create.outputs.image }}
           subject-digest: ${{ steps.create.outputs.digest }}
@@ -490,7 +490,7 @@ jobs:
         run: cosign sign --yes "${{ steps.push.outputs.ref }}@${{ steps.push.outputs.digest }}"
 
       - name: Attest Helm chart provenance (SLSA)
-        uses: actions/attest-build-provenance@v3
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ steps.push.outputs.ref }}
           subject-digest: ${{ steps.push.outputs.digest }}
