@@ -43,7 +43,7 @@
 # so buildx still produces a correctly-tagged linux/arm64 (or whichever)
 # final image — they only ever COPY a prebuilt static binary, never execute
 # anything at build time, so there is no emulation cost to avoid there.
-FROM --platform=$BUILDPLATFORM golang:1.27rc2-bookworm AS build
+FROM --platform=$BUILDPLATFORM golang:1.27rc3-bookworm AS build
 WORKDIR /src
 
 # Build metadata for internal/buildinfo, surfaced by every binary's
