@@ -17,6 +17,7 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--webhook-listen` | `:8080` | Deploy-event webhook listen address |
 | `--webhook-secret` | `` | Shared secret for webhook authentication. When set, every `POST /webhook` must include this value in the `X-Webhook-Token` header (constant-time comparison), or the request is rejected with `401`. Recommended for internet-facing deployments — see [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication) |
 | `--metrics-listen` | `:9090` | Prometheus metrics listen address |
+| `--dashboard-addr` | `` | Listen address for the read-only dashboard API (`GET /api/v1/{regressions,deploys,queries,watches}` — see [API Reference](api-reference.md#dashboard-api)). Empty (default) disables it. `/api/v1/regressions` and `/api/v1/watches` always answer `501 Not Implemented` on this binary, since `cmd/operator` has no Kubernetes client; run `cmd/manager` for those two routes |
 | `--slack-url` | `` | Slack incoming-webhook URL. Alias of `--alert-url` with `--alert-format=slack` (the default) — kept for backward compatibility |
 | `--alert-format` | `slack` | Notification payload layout: `slack`, `teams`, `pagerduty`, or `custom` — see [Alerting](alerting.md) |
 | `--alert-url` | `` | Webhook URL for `--alert-format=slack`/`teams`/`custom`; ignored for `pagerduty`. Falls back to `--slack-url` when unset |
