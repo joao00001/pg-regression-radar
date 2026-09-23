@@ -81,7 +81,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 	scrapeInterval := fs.Duration("scrape-interval", 60*time.Second, "Collector scrape interval")
 	webhookListen := fs.String("webhook-listen", ":8080", "HTTP listen address for deploy webhooks")
 	metricsListen := fs.String("metrics-listen", ":9090", "HTTP listen address for Prometheus metrics")
-	dashboardListen := fs.String("dashboard-addr", "", "HTTP listen address for the read-only dashboard API (see internal/dashboardapi); empty (default) disables it. Serves GET /api/v1/{regressions,deploys,queries,watches}. /api/v1/regressions and /api/v1/watches always answer 501 Not Implemented on this binary, which has no Kubernetes client; run the manager (cmd/manager) for those.")
+	dashboardListen := fs.String("dashboard-addr", "", "HTTP listen address for the read-only dashboard API (see internal/dashboardapi); empty (default) disables it. Serves GET /api/v1/{regressions,deploys,queries,watches}. /api/v1/deploys and /api/v1/queries work regardless of --state-backend. /api/v1/regressions and /api/v1/watches always answer 501 Not Implemented on this binary, which has no Kubernetes client; run the manager (cmd/manager, --dashboard-addr there too) for those.")
 	slackURL := fs.String("slack-url", "", "Slack incoming-webhook URL for notifications (alias of --alert-url with --alert-format=slack, the default)")
 	alertFormat := fs.String("alert-format", "slack", "Notification payload format: slack, teams, pagerduty, or custom — see docs/alerting.md")
 	alertURL := fs.String("alert-url", "", "Webhook URL for --alert-format=slack/teams/custom; ignored for pagerduty. Falls back to --slack-url when unset")
@@ -417,17 +417,32 @@ func runOperator(args []string, logOutput io.Writer) int {
 	// ---- Dashboard API (see internal/dashboardapi) ----
 	// This binary has no Kubernetes client, so Client stays nil and
 	// /api/v1/regressions and /api/v1/watches always answer 501 Not
-	// Implemented here; EventStore/SampleStore are whatever --state-backend
-	// resolved to above (nil for the "memory" default, since that mode
-	// already keeps state only inside the Collector/Ingester in-process
-	// maps this handler doesn't have access to — see cmd/manager for the
-	// dashboard's Kubernetes-backed routes).
+	// Implemented here — see cmd/manager for the dashboard's
+	// Kubernetes-backed routes.
+	//
+	// /api/v1/deploys and /api/v1/queries, however, work regardless of
+	// --state-backend: when the postgres backend is configured,
+	// eventStore/sampleStore (its durable, cross-restart view) are used
+	// directly; otherwise (the "memory" default) col/store's own
+	// in-process history — already populated either way, since the
+	// Collector/Ingester keep it independently of --state-backend — is
+	// used via the dashboardapi adapters, so these two routes aren't
+	// gated behind opting into postgres persistence.
+	dashboardEventReader := dashboardapi.NewIngesterEventReader(store)
+	if eventStore != nil {
+		dashboardEventReader = eventStore
+	}
+	dashboardSampleReader := dashboardapi.NewCollectorSampleReader(col)
+	if sampleStore != nil {
+		dashboardSampleReader = sampleStore
+	}
+
 	var dashboardSrv *http.Server
 	if *dashboardListen != "" {
 		dashboardMux := http.NewServeMux()
 		(&dashboardapi.Handler{
-			EventStore:  eventStore,
-			SampleStore: sampleStore,
+			EventStore:  dashboardEventReader,
+			SampleStore: dashboardSampleReader,
 			Logger:      logger,
 		}).Routes(dashboardMux)
 		dashboardSrv = httpserver.New(*dashboardListen, dashboardMux)

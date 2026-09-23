@@ -47,9 +47,9 @@ Produced by the Correlation Engine for every query analysed against a `DeployEve
 
 ## Dashboard API
 
-`internal/dashboardapi` serves a read-only HTTP API for the observability dashboard. It is enabled with `--dashboard-addr` on `cmd/operator` (see [Configuration Reference](configuration.md)) and is a pure read layer: every field returned already exists on the `PerformanceRegression`/`PostgresWatch` CRDs (`api/v1alpha1`) or in `internal/storage`, with no new computed metrics. Fields the current detection pipeline does not compute — t-statistic, Cohen's d, confidence intervals, e-divisive permutation counts, cache-hit ratio, rows-examined, lock-wait time, p95/p99 latency — are not part of this API.
+`internal/dashboardapi` serves a read-only HTTP API for the observability dashboard. It is enabled with `--dashboard-addr` on `cmd/operator` and `cmd/manager` (see [Configuration Reference](configuration.md)) and is a pure read layer: every field returned already exists on the `PerformanceRegression`/`PostgresWatch` CRDs (`api/v1alpha1`) or in `internal/storage`/`internal/collector`/`internal/ingester`, with no new computed metrics. Fields the current detection pipeline does not compute — t-statistic, Cohen's d, confidence intervals, e-divisive permutation counts, cache-hit ratio, rows-examined, lock-wait time, p95/p99 latency — are not part of this API.
 
-Each route returns `501 Not Implemented` if the process serving it wasn't wired with the dependency that route needs (for example, `cmd/operator` has no Kubernetes client, so `/api/v1/regressions` and `/api/v1/watches` always 501 there).
+Each route returns `501 Not Implemented` if the process serving it wasn't wired with the dependency that route needs. `/api/v1/regressions` and `/api/v1/watches` list Kubernetes objects and need a `client.Client` — only `cmd/manager` has one, so they always 501 on `cmd/operator`. `/api/v1/deploys` and `/api/v1/queries` need query-sample/deploy-event history, which only `cmd/operator` builds (via its `Collector`/deploy-event `Store`, or the postgres state backend when `--state-backend=postgres`) — they always 501 on `cmd/manager`.
 
 ### `GET /api/v1/regressions?namespace=&status=`
 
@@ -77,11 +77,11 @@ Lists `PerformanceRegression` objects (`api/v1alpha1/performanceregression_types
 
 ### `GET /api/v1/deploys?since=RFC3339&until=RFC3339`
 
-Returns `DeployEvent` (above), unmodified, from `storage.EventStore.EventsInRange`. Defaults to the last 7 days when `since`/`until` are omitted.
+Returns `DeployEvent` (above), unmodified. Backed by `storage.EventStore.EventsInRange` when `--state-backend=postgres`, or otherwise directly by the operator's own in-process deploy-event history (`internal/ingester.Store`) — either way this works with `cmd/operator`'s default configuration, not only when postgres persistence is opted into. Defaults to the last 7 days when `since`/`until` are omitted.
 
 ### `GET /api/v1/queries?windowMinutes=60`
 
-Returns, per tracked `queryId`, an aggregate over `storage.SampleStore` samples recorded in the last `windowMinutes` (default 60):
+Returns, per tracked `queryId`, an aggregate over samples recorded in the last `windowMinutes` (default 60). Backed by `storage.SampleStore` when `--state-backend=postgres`, or otherwise directly by the operator's own in-process query-sample history (`internal/collector.Collector`) — either way this works with `cmd/operator`'s default configuration:
 
 ```json
 {

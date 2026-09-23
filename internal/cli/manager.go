@@ -41,6 +41,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/actuation"
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/controller"
+	"github.com/joao00001/pg-regression-radar/internal/dashboardapi"
 	"github.com/joao00001/pg-regression-radar/internal/httpserver"
 )
 
@@ -72,6 +73,7 @@ func RunManager(args []string) int {
 	var probeAddr string
 	var pgMetricsAddr string
 	var webhookAddr string
+	var dashboardAddr string
 	var enableLeaderElection bool
 	var leaderElectionNamespace string
 	var alertAllowedDestinations string
@@ -92,6 +94,14 @@ func RunManager(args []string) int {
 	fs.StringVar(&webhookAddr, "webhook-bind-address", ":8080",
 		"Address the deploy-event webhook listener (one route per DeploySource CR) binds to. "+
 			"Served only by the leader.")
+	fs.StringVar(&dashboardAddr, "dashboard-addr", "",
+		"Address the read-only dashboard API (see internal/dashboardapi) binds to. Empty (default) "+
+			"disables it. Serves GET /api/v1/regressions and /api/v1/watches, listing "+
+			"PerformanceRegression/PostgresWatch via this manager's Kubernetes client — unlike "+
+			"--webhook-bind-address/--pg-metrics-bind-address, it is not gated behind leader "+
+			"election, since it only reads the API server, not per-replica in-memory state. "+
+			"/api/v1/deploys and /api/v1/queries always answer 501 Not Implemented here; run the "+
+			"operator (cmd/operator, --dashboard-addr there too) for those.")
 	fs.BoolVar(&enableLeaderElection, "leader-elect", true,
 		"Enable leader election for controller manager. Enabling this ensures there is only one "+
 			"active set of PostgresWatch/DeploySource workers across all replicas, with automatic "+
@@ -256,10 +266,11 @@ func RunManager(args []string) int {
 	// context) on step-down. Non-leader replicas stay idle and ready to
 	// take over.
 	if err := mgr.Add(&httpRunnable{
-		addr:    webhookAddr,
-		handler: mux,
-		name:    "webhook",
-		logger:  logger,
+		addr:                   webhookAddr,
+		handler:                mux,
+		name:                   "webhook",
+		logger:                 logger,
+		leaderElectionRequired: true,
 	}); err != nil {
 		managerSetupLog.Error(err, "unable to add webhook server")
 		return 1
@@ -268,13 +279,37 @@ func RunManager(args []string) int {
 	pgMetricsMux := http.NewServeMux()
 	pgMetricsMux.Handle("/metrics", promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 	if err := mgr.Add(&httpRunnable{
-		addr:    pgMetricsAddr,
-		handler: pgMetricsMux,
-		name:    "pg-metrics",
-		logger:  logger,
+		addr:                   pgMetricsAddr,
+		handler:                pgMetricsMux,
+		name:                   "pg-metrics",
+		logger:                 logger,
+		leaderElectionRequired: true,
 	}); err != nil {
 		managerSetupLog.Error(err, "unable to add pg-metrics server")
 		return 1
+	}
+
+	// Unlike webhook/pg-metrics above, the dashboard API only reads
+	// PerformanceRegression/PostgresWatch straight from this manager's
+	// Kubernetes client (see internal/dashboardapi) — it has no dependency
+	// on Registry/Mux, which only the leader populates — so it is not
+	// gated behind leader election and stays available on every replica.
+	if dashboardAddr != "" {
+		dashboardMux := http.NewServeMux()
+		(&dashboardapi.Handler{
+			Client: mgr.GetClient(),
+			Logger: logger,
+		}).Routes(dashboardMux)
+		if err := mgr.Add(&httpRunnable{
+			addr:                   dashboardAddr,
+			handler:                dashboardMux,
+			name:                   "dashboard-api",
+			logger:                 logger,
+			leaderElectionRequired: false,
+		}); err != nil {
+			managerSetupLog.Error(err, "unable to add dashboard API server")
+			return 1
+		}
 	}
 
 	managerSetupLog.Info("starting manager", "leaderElection", enableLeaderElection)
@@ -302,6 +337,13 @@ type httpRunnable struct {
 	handler http.Handler
 	name    string
 	logger  *slog.Logger
+
+	// leaderElectionRequired controls NeedLeaderElection's return value.
+	// true for servers whose handler depends on leader-only in-memory
+	// state (Registry/Mux); false for servers that only read state shared
+	// across every replica (e.g. the Kubernetes API server directly), so
+	// they stay available during leader failover instead of going dark.
+	leaderElectionRequired bool
 }
 
 // Start implements manager.Runnable.
@@ -331,10 +373,8 @@ func (h *httpRunnable) Start(ctx context.Context) error {
 	}
 }
 
-// NeedLeaderElection implements manager.LeaderElectionRunnable: both the
-// webhook listener and the pg-metrics listener only have anything useful
-// to serve on the leader (Registry/Mux are only populated by the
-// reconcilers, which only run on the leader), so gate them the same way.
+// NeedLeaderElection implements manager.LeaderElectionRunnable: see
+// leaderElectionRequired's doc comment.
 func (h *httpRunnable) NeedLeaderElection() bool {
-	return true
+	return h.leaderElectionRequired
 }

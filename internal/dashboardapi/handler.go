@@ -42,7 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
-	"github.com/joao00001/pg-regression-radar/internal/storage"
+	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -54,6 +54,32 @@ const defaultDeploysLookback = 7 * 24 * time.Hour
 // ?windowMinutes is not supplied.
 const defaultQueriesWindowMinutes = 60
 
+// SampleReader is the read-only slice of storage.SampleStore that GET
+// /api/v1/queries needs. storage.SampleStore satisfies this automatically;
+// it is declared separately so callers whose query-sample history lives
+// somewhere other than a storage.SampleStore (e.g. internal/collector's own
+// in-memory map — see NewCollectorSampleReader) can plug in too, without
+// having to also implement Append/Prune.
+type SampleReader interface {
+	// SamplesInRange returns every sample for queryID whose RecordedAt
+	// falls within [from, to] (inclusive).
+	SamplesInRange(ctx context.Context, queryID int64, from, to time.Time) ([]collector.QuerySample, error)
+
+	// AllQueryIDs returns the distinct set of query IDs known to the store.
+	AllQueryIDs(ctx context.Context) ([]int64, error)
+}
+
+// EventReader is the read-only slice of storage.EventStore that GET
+// /api/v1/deploys needs. storage.EventStore satisfies this automatically;
+// it is declared separately so callers whose deploy-event history lives
+// somewhere other than a storage.EventStore (e.g. internal/ingester.Store's
+// own in-memory slice — see NewIngesterEventReader) can plug in too.
+type EventReader interface {
+	// EventsInRange returns all events whose Timestamp falls within [from,
+	// to] (inclusive).
+	EventsInRange(ctx context.Context, from, to time.Time) ([]v1alpha1.DeployEvent, error)
+}
+
 // Handler serves the dashboard's read-only HTTP API. Every field is
 // optional: a nil dependency means the routes that need it answer 501 Not
 // Implemented instead of the data they'd otherwise serve, so a single
@@ -62,14 +88,18 @@ const defaultQueriesWindowMinutes = 60
 type Handler struct {
 	// Client lists PerformanceRegression (GET /api/v1/regressions) and
 	// PostgresWatch (GET /api/v1/watches) objects. Typically
-	// mgr.GetClient() from a controller-runtime Manager.
+	// mgr.GetClient() from a controller-runtime Manager (cmd/manager) —
+	// cmd/operator has no Kubernetes client, so these two routes always
+	// 501 there.
 	Client client.Client
 
-	// EventStore backs GET /api/v1/deploys.
-	EventStore storage.EventStore
+	// EventStore backs GET /api/v1/deploys. Both storage.EventStore and
+	// NewIngesterEventReader(*ingester.Store) satisfy this.
+	EventStore EventReader
 
-	// SampleStore backs GET /api/v1/queries.
-	SampleStore storage.SampleStore
+	// SampleStore backs GET /api/v1/queries. Both storage.SampleStore and
+	// NewCollectorSampleReader(*collector.Collector) satisfy this.
+	SampleStore SampleReader
 
 	// Logger receives handler-internal error logs. A nil Logger disables
 	// logging (see Handler.logger).
@@ -279,7 +309,7 @@ func (h *Handler) handleQueries(w http.ResponseWriter, r *http.Request) {
 // into a single queryDTO. ok is false when there were no samples in range,
 // in which case queryID is omitted from the /api/v1/queries response rather
 // than reported with zero/misleading values.
-func aggregateQuerySamples(ctx context.Context, store storage.SampleStore, queryID int64, from, to time.Time) (queryDTO, bool, error) {
+func aggregateQuerySamples(ctx context.Context, store SampleReader, queryID int64, from, to time.Time) (queryDTO, bool, error) {
 	samples, err := store.SamplesInRange(ctx, queryID, from, to)
 	if err != nil {
 		return queryDTO{}, false, err
