@@ -32,6 +32,13 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.6.0 - 2026-09-23
+
+### Features
+
+- Added a read-only dashboard HTTP API (`GET /api/v1/regressions`, `/deploys`, `/queries`, `/watches`), enabled with the new `--dashboard-addr` flag on the operator and manager, so the observability dashboard can read regression, deploy, query-sample, and watch data without inventing any metric the correlation engine doesn't already compute. (#159)
+
+
 ## v1.5.0 - 2026-08-16
 
 ### Features
