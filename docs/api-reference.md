@@ -51,6 +51,10 @@ Produced by the Correlation Engine for every query analysed against a `DeployEve
 
 Each route returns `501 Not Implemented` if the process serving it wasn't wired with the dependency that route needs. `/api/v1/regressions` and `/api/v1/watches` list Kubernetes objects and need a `client.Client` — only `cmd/manager` has one, so they always 501 on `cmd/operator`. `/api/v1/deploys` and `/api/v1/queries` need query-sample/deploy-event history, which only `cmd/operator` builds (via its `Collector`/deploy-event `Store`, or the postgres state backend when `--state-backend=postgres`) — they always 501 on `cmd/manager`.
 
+Every route responds with permissive CORS headers (`Access-Control-Allow-Origin: *`, GET and OPTIONS only), so a browser-based dashboard served from a different origin can call this API directly without a proxy. This is safe precisely because the API is read-only and never combines the open origin with credentialed/cookie-based access.
+
+**`queryId` is a JSON string, not a number**, on every route below (`/api/v1/regressions`, `/api/v1/queries`, and `/api/v1/queries/{queryId}/samples`) — `pg_stat_statements` queryids are arbitrary `int64` values that routinely exceed JavaScript's `Number.MAX_SAFE_INTEGER` (2^53-1), so a bare JSON number would get silently rounded by `JSON.parse` in any JS consumer. Treat it as an opaque string identifier: pass it back verbatim (e.g. into `/api/v1/queries/{queryId}/samples`), never parse it into a number.
+
 ### `GET /api/v1/regressions?namespace=&status=`
 
 Lists `PerformanceRegression` objects (`api/v1alpha1/performanceregression_types.go`) via a `client.Client`, optionally filtered by namespace and `status` (`Detected`, `NoRegression`, `InsufficientData`). Each item:
@@ -60,8 +64,9 @@ Lists `PerformanceRegression` objects (`api/v1alpha1/performanceregression_types
   "name": "argocd-my-app-1234567890-q8675309",
   "namespace": "production",
   "clusterName": "prod-cluster",
-  "queryId": 8675309,
+  "queryId": "8675309",
   "queryText": "SELECT * FROM orders WHERE user_id = $1",
+  "deployEventId": "argocd-my-app-1234567890",
   "status": "Detected",
   "triggerType": "deploy",
   "confidenceScore": "0.98",
@@ -75,6 +80,8 @@ Lists `PerformanceRegression` objects (`api/v1alpha1/performanceregression_types
 }
 ```
 
+`deployEventId` is omitted for a periodic-triggered regression (no deploy involved); when present, cross-reference it against `GET /api/v1/deploys` (below) to show the real deploy that triggered the regression — app, image tag, revision, timestamp.
+
 ### `GET /api/v1/deploys?since=RFC3339&until=RFC3339`
 
 Returns `DeployEvent` (above), unmodified. Backed by `storage.EventStore.EventsInRange` when `--state-backend=postgres`, or otherwise directly by the operator's own in-process deploy-event history (`internal/ingester.Store`) — either way this works with `cmd/operator`'s default configuration, not only when postgres persistence is opted into. Defaults to the last 7 days when `since`/`until` are omitted.
@@ -85,7 +92,7 @@ Returns, per tracked `queryId`, an aggregate over samples recorded in the last `
 
 ```json
 {
-  "queryId": 8675309,
+  "queryId": "8675309",
   "queryText": "SELECT * FROM orders WHERE user_id = $1",
   "calls": 4213,
   "meanExecMs": 4.2,
@@ -94,6 +101,17 @@ Returns, per tracked `queryId`, an aggregate over samples recorded in the last `
 ```
 
 `calls` and `meanExecMs` mirror exactly what `regression_radar.query_samples` stores (`calls`, `mean_exec_time_ms`); there is no p95/p99 or cache-hit-ratio field, since that data isn't collected today.
+
+### `GET /api/v1/queries/{queryId}/samples?since=RFC3339&until=RFC3339`
+
+Returns the raw, per-scrape samples for one `queryId` in `[since, until]` — unlike `/api/v1/queries` above, which collapses a whole window into one aggregate, this is one entry per `pg_stat_statements` scrape, meant for plotting an actual time series (e.g. the real before/after curve around a specific regression's `detectedAt`) rather than a single before/after number. Defaults to the last 60 minutes when `since`/`until` are omitted, same as `/api/v1/queries`. Backed by the same `SampleReader` as `/api/v1/queries`, so it 501s under the same conditions.
+
+```json
+[
+  { "recordedAt": "2026-08-11T12:30:00Z", "calls": 4201, "meanExecMs": 4.1 },
+  { "recordedAt": "2026-08-11T12:35:00Z", "calls": 4213, "meanExecMs": 13.7 }
+]
+```
 
 ### `GET /api/v1/watches`
 
