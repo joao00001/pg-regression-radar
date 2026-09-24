@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -190,6 +191,7 @@ type Collector struct {
 	callsTotal      *prometheus.GaugeVec
 	trackedQueries  prometheus.Gauge
 	retainedSamples prometheus.Gauge
+	explainSkipped  prometheus.Counter
 
 	// lastScrapeTime holds the UTC time of the most recent successful scrape
 	// as an atomic.Value (stores time.Time) so that LastScrapeTime() can
@@ -249,8 +251,13 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 		Help:        "Total number of QuerySamples currently retained in memory across all queryids.",
 		ConstLabels: labels,
 	})
+	explainSkipped := prometheus.NewCounter(prometheus.CounterOpts{
+		Name:        "pg_regression_radar_collector_explain_statements_skipped_total",
+		Help:        "Total number of pg_stat_statements rows skipped because their query text is itself an EXPLAIN statement (see isExplainStatement). A sustained non-zero rate points at something other than this collector issuing raw EXPLAINs against the tracked database.",
+		ConstLabels: labels,
+	})
 
-	for _, m := range []prometheus.Collector{scrapeTotal, scrapeErrors, meanExecTime, callsTotal, trackedQueries, retainedSamples} {
+	for _, m := range []prometheus.Collector{scrapeTotal, scrapeErrors, meanExecTime, callsTotal, trackedQueries, retainedSamples, explainSkipped} {
 		if err := reg.Register(m); err != nil {
 			return nil, fmt.Errorf("collector: register metric: %w", err)
 		}
@@ -270,6 +277,7 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 		callsTotal:       callsTotal,
 		trackedQueries:   trackedQueries,
 		retainedSamples:  retainedSamples,
+		explainSkipped:   explainSkipped,
 	}, nil
 }
 
@@ -508,6 +516,21 @@ func (c *Collector) scrape(ctx context.Context) error {
 			return fmt.Errorf("scan row: %w", err)
 		}
 
+		// EXPLAIN-prefixed rows are skipped entirely — not just excluded from
+		// plan capture. See isExplainStatement's doc comment for how these
+		// ghost entries are created in the first place; the reason this also
+		// has to skip ingestSample (not just the capturePlans tracked list,
+		// which is all the original fix covered) is that leaving them in the
+		// correlation engine's sample store lets them accumulate their own
+		// latency history and, in principle, get flagged as a "regression"
+		// in their own right — a false positive with no real query behind
+		// it. Skipping the row here removes it from both code paths in one
+		// place instead of asking every consumer to filter it themselves.
+		if isExplainStatement(queryText) {
+			c.explainSkipped.Inc()
+			continue
+		}
+
 		c.ingestSample(now, qid, queryText, calls, totalExecTime, meanExecTime)
 		if c.cfg.CapturePlans {
 			tracked = append(tracked, trackedQuery{queryID: qid, queryText: queryText})
@@ -533,6 +556,32 @@ func (c *Collector) scrape(ctx context.Context) error {
 type trackedQuery struct {
 	queryID   int64
 	queryText string
+}
+
+// isExplainStatement reports whether queryText is itself an EXPLAIN
+// statement, so scrape can exclude it from both sampling (ingestSample) and
+// plan capture (the tracked list capturePlans consumes). Without this,
+// capturePlans's own "EXPLAIN (FORMAT JSON, GENERIC_PLAN) <queryText>" calls
+// get recorded as new pg_stat_statements entries whenever
+// pg_stat_statements.track=all is set (the default the project's own
+// local-e2e script uses) or in any setup that tracks utility statements —
+// and on the NEXT scrape cycle:
+//   - capturePlans would try to capture a plan for THAT entry too, producing
+//     "EXPLAIN (...) EXPLAIN (...) <original query>", which PostgreSQL
+//     correctly rejects with a syntax error ("syntax error at or near
+//     \"EXPLAIN\"") — harmless on its own, but noise that obscures whether a
+//     REAL query's plan capture is working, growing without bound every
+//     cycle capturePlans runs.
+//   - ingestSample would keep feeding that ghost entry's own (essentially
+//     meaningless) latency history into the correlation engine, which could
+//     in principle flag it as a "regression" of its own — a false positive
+//     with no real query behind it.
+//
+// Matching case-insensitively and after trimming leading whitespace mirrors
+// how pg_stat_statements itself normalizes leading whitespace out of
+// tracked query text.
+func isExplainStatement(queryText string) bool {
+	return strings.HasPrefix(strings.ToUpper(strings.TrimSpace(queryText)), "EXPLAIN")
 }
 
 // capturePlans runs internal/planner.CapturePlan for every query tracked

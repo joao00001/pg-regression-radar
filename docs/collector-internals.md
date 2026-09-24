@@ -16,6 +16,7 @@ Two Prometheus gauges expose current state:
 
 - `pg_regression_radar_collector_tracked_queries` — distinct queryids retained.
 - `pg_regression_radar_collector_retained_samples_total` — total samples retained across all queryids.
+- `pg_regression_radar_collector_explain_statements_skipped_total` — `pg_stat_statements` rows skipped because their query text is itself an `EXPLAIN` statement, so it's never retained as a sample or handed to plan capture. See [Detection Algorithm § Excluding capture's own footprint from tracking](detection-algorithm.md#excluding-captures-own-footprint-from-tracking) for why these rows exist at all and why they're excluded.
 
 ## `queryid` is not a stable identifier across a deploy
 
