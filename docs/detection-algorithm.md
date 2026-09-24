@@ -59,6 +59,15 @@ Once per scrape cycle (not once per query — this stays bounded), the collector
 
 When a regression is `Detected`, the operator's poll loop looks up the plan snapshot closest before `DetectedChangeAt` and the most recent one since, and diffs them: whether the root plan node changed, whether the estimated cost moved meaningfully, and — per the caution line above — whether either side is only an estimate. The result is attached to the `PerformanceRegression` as `PlanDiffSummary` and included in the Slack message when non-empty.
 
+### Excluding capture's own footprint from tracking
+
+When `CapturePlans` is enabled, the collector's `GENERIC_PLAN` capture literally runs `EXPLAIN (FORMAT JSON, GENERIC_PLAN) <query text>` against the target database. If `pg_stat_statements.track` is set to `all` (rather than the default `top`) — or anything else that tracks utility statements — that `EXPLAIN` call gets recorded by `pg_stat_statements` as a brand-new query in its own right, distinct from the query it was EXPLAINing. Left alone, this causes two problems on the next scrape cycle:
+
+- Plan capture would try to `EXPLAIN` that ghost entry too, producing `EXPLAIN (FORMAT JSON, GENERIC_PLAN) EXPLAIN (FORMAT JSON, GENERIC_PLAN) <original query>`, which PostgreSQL correctly rejects with a syntax error. Harmless by itself, but it grows without bound every cycle capture runs, and it's noise that obscures whether capture is actually working for real queries.
+- The correlation engine would keep accumulating that ghost entry's own latency samples, which could in principle trip stage 0/1/2 above and produce a `PerformanceRegression` for a query that was never really run by the application — a false positive with no real query behind it.
+
+`internal/collector.isExplainStatement` guards against both: any `pg_stat_statements` row whose (trimmed, case-insensitive) query text starts with `EXPLAIN` is skipped entirely during `scrape` — excluded from both `ingestSample` (so it can never feed the correlation engine) and the tracked-query list `capturePlans` consumes (so it's never re-`EXPLAIN`'d). Skipped rows increment the `pg_regression_radar_collector_explain_statements_skipped_total` counter metric; a sustained non-zero rate is expected whenever `CapturePlans` is on under `track=all`, and would only be worth investigating if it appears with `CapturePlans` off (which would mean something *other* than this collector is issuing raw `EXPLAIN`s against the tracked database).
+
 ### Honest limitations
 
 - **`GENERIC_PLAN`, when that's the source actually used, is an estimate, not a real one.** It reflects the planner's default, parameter-independent cost estimate — it can differ from the plan Postgres would actually choose for a real, skewed parameter value (e.g. a highly selective vs. a common value for the same column). Treat a `"generic_plan"`-sourced diff as a hint pointing you toward `EXPLAIN ANALYZE`-ing the real query yourself, not a substitute for it. This caveat does not apply when `Source` is `"pg_store_plans"`, since that plan is what actually ran.

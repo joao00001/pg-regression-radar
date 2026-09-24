@@ -31,6 +31,21 @@ GRANT pg_monitor TO pgrr_monitor;
 -- GRANT USAGE ON SCHEMA extensions TO pgrr_monitor;
 ```
 
+!!! warning "Using `spec.capturePlans` / `--capture-plans`? `pg_monitor` alone is not enough"
+    `pg_monitor` grants read access to catalog/statistics views, but **not** `SELECT` on ordinary user tables. Plan-diff capture runs `EXPLAIN (FORMAT JSON, GENERIC_PLAN) <query>` against every tracked query, and PostgreSQL checks table-level `SELECT` privilege for every table an `EXPLAIN`'d statement references — even though `EXPLAIN` never executes the statement. Without it, capture fails per-query with `pq: permission denied for table ... (42501)`, logged at `DEBUG` (so it's easy to miss), and `planDiffSummary` is left permanently at "no plan captured on either side of the regression" for any query touching a real table. (Queries with no table reference, like `SELECT pg_sleep($1)`, are unaffected — this is why capture can appear to "work" in a quick smoke test and then silently fail on real workload queries.)
+
+    If you enable plan-diff capture, also grant read access to the tables you want plan diffs for:
+
+    ```sql
+    -- Existing tables in the schema:
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO pgrr_monitor;
+
+    -- So newly created tables get it automatically too (adjust FOR ROLE to
+    -- whatever role actually creates your application's tables):
+    ALTER DEFAULT PRIVILEGES FOR ROLE app_owner IN SCHEMA public
+      GRANT SELECT ON TABLES TO pgrr_monitor;
+    ```
+
 Then use that role in your DSN:
 
 ```
