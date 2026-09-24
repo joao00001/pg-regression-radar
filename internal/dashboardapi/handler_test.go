@@ -116,7 +116,7 @@ func TestHandleRegressions_ListsAndFilters(t *testing.T) {
 		Name:                "reg-1",
 		Namespace:           "prod",
 		ClusterName:         "prod-cluster",
-		QueryID:             8675309,
+		QueryID:             "8675309",
 		QueryText:           "SELECT * FROM orders WHERE user_id = $1",
 		Status:              "Detected",
 		TriggerType:         "deploy",
@@ -228,7 +228,7 @@ func TestHandleQueries_AggregatesSamples(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("len(got) = %d, want 1", len(got))
 	}
-	want := queryDTO{QueryID: 42, QueryText: "SELECT 1", Calls: 20, MeanExecMs: 12.5, SampleCount: 2}
+	want := queryDTO{QueryID: "42", QueryText: "SELECT 1", Calls: 20, MeanExecMs: 12.5, SampleCount: 2}
 	if got[0] != want {
 		t.Fatalf("got %+v, want %+v", got[0], want)
 	}
@@ -268,6 +268,138 @@ func TestHandleWatches_ListsWithoutTransformation(t *testing.T) {
 	got := decodeJSON[[]radarv1alpha1.PostgresWatch](t, rec)
 	if len(got) != 1 || got[0].Name != "watch-1" || got[0].Spec.ClusterName != "prod-cluster" {
 		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestHandleQuerySamples_NoStoreConfigured(t *testing.T) {
+	h := &Handler{}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/queries/42/samples", nil)
+	req.SetPathValue("queryId", "42")
+	rec := httptest.NewRecorder()
+	h.handleQuerySamples(rec, req)
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("status = %d, want 501", rec.Code)
+	}
+}
+
+func TestHandleQuerySamples_InvalidQueryID(t *testing.T) {
+	h := &Handler{SampleStore: memory.NewSampleStore()}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/queries/not-an-int/samples", nil)
+	req.SetPathValue("queryId", "not-an-int")
+	rec := httptest.NewRecorder()
+	h.handleQuerySamples(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleQuerySamples_InvalidRFC3339(t *testing.T) {
+	h := &Handler{SampleStore: memory.NewSampleStore()}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/queries/42/samples?since=not-a-date", nil)
+	req.SetPathValue("queryId", "42")
+	rec := httptest.NewRecorder()
+	h.handleQuerySamples(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleQuerySamples_ReturnsRangeFilteredSamples(t *testing.T) {
+	store := memory.NewSampleStore()
+	now := time.Now().UTC()
+	ctx := context.Background()
+	samples := []collector.QuerySample{
+		{QueryID: 42, QueryText: "SELECT 1", Calls: 10, TotalExecTimeMs: 100, MeanExecTimeMs: 10, RecordedAt: now.Add(-30 * time.Minute)},
+		{QueryID: 42, QueryText: "SELECT 1", Calls: 20, TotalExecTimeMs: 300, MeanExecTimeMs: 15, RecordedAt: now.Add(-10 * time.Minute)},
+		// Outside the default 60-minute window, and a different queryid —
+		// neither should appear in the response below.
+		{QueryID: 42, QueryText: "SELECT 1", Calls: 999, TotalExecTimeMs: 999, MeanExecTimeMs: 999, RecordedAt: now.Add(-2 * time.Hour)},
+		{QueryID: 7, QueryText: "SELECT 2", Calls: 1, TotalExecTimeMs: 1, MeanExecTimeMs: 1, RecordedAt: now.Add(-5 * time.Minute)},
+	}
+	for _, s := range samples {
+		if err := store.Append(ctx, s); err != nil {
+			t.Fatalf("append: %v", err)
+		}
+	}
+
+	h := &Handler{SampleStore: store}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/queries/42/samples", nil)
+	req.SetPathValue("queryId", "42")
+	rec := httptest.NewRecorder()
+	h.handleQuerySamples(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+	got := decodeJSON[[]sampleDTO](t, rec)
+	if len(got) != 2 {
+		t.Fatalf("len(got) = %d, want 2 (one per in-window sample for queryid 42): %+v", len(got), got)
+	}
+	for _, s := range got {
+		if s.Calls != 10 && s.Calls != 20 {
+			t.Errorf("unexpected sample in response: %+v (want only the two in-window queryid-42 samples)", s)
+		}
+	}
+}
+
+func TestRoutes_QuerySamplesEndpoint_ResolvesQueryIdFromPath(t *testing.T) {
+	store := memory.NewSampleStore()
+	now := time.Now().UTC()
+	if err := store.Append(context.Background(), collector.QuerySample{
+		QueryID: 42, QueryText: "SELECT 1", Calls: 5, TotalExecTimeMs: 50, MeanExecTimeMs: 10, RecordedAt: now.Add(-time.Minute),
+	}); err != nil {
+		t.Fatalf("append: %v", err)
+	}
+
+	h := &Handler{SampleStore: store}
+	mux := http.NewServeMux()
+	h.Routes(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/queries/42/samples", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+	got := decodeJSON[[]sampleDTO](t, rec)
+	if len(got) != 1 || got[0].Calls != 5 {
+		t.Fatalf("got %+v, want one sample with Calls=5 (routing must resolve {queryId}=42 from the path)", got)
+	}
+
+	// The bare "/api/v1/queries" route must still work — i.e. the new
+	// {queryId} pattern doesn't shadow or otherwise break it.
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/queries", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("aggregate /api/v1/queries status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestWithCORS_SetsHeadersOnSuccessAndError(t *testing.T) {
+	h := &Handler{} // no Client configured, so the wrapped handler answers 501
+	mux := http.NewServeMux()
+	h.Routes(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/regressions", nil))
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("status = %d, want 501", rec.Code)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("Access-Control-Allow-Origin = %q, want \"*\" — CORS headers must be set even on an error response", got)
+	}
+}
+
+func TestWithCORS_PreflightShortCircuits(t *testing.T) {
+	h := &Handler{}
+	mux := http.NewServeMux()
+	h.Routes(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodOptions, "/api/v1/regressions", nil))
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204 (OPTIONS preflight must short-circuit before reaching the wrapped handler)", rec.Code)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Methods"); got != "GET, OPTIONS" {
+		t.Errorf("Access-Control-Allow-Methods = %q, want \"GET, OPTIONS\"", got)
 	}
 }
 

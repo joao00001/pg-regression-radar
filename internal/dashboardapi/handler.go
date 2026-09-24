@@ -108,10 +108,38 @@ type Handler struct {
 
 // Routes registers every dashboard API route on mux.
 func (h *Handler) Routes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/v1/regressions", h.handleRegressions)
-	mux.HandleFunc("/api/v1/deploys", h.handleDeploys)
-	mux.HandleFunc("/api/v1/queries", h.handleQueries)
-	mux.HandleFunc("/api/v1/watches", h.handleWatches)
+	mux.HandleFunc("/api/v1/regressions", withCORS(h.handleRegressions))
+	mux.HandleFunc("/api/v1/deploys", withCORS(h.handleDeploys))
+	mux.HandleFunc("/api/v1/queries", withCORS(h.handleQueries))
+	// Registered before the bare "/api/v1/queries" pattern is irrelevant —
+	// net/http's ServeMux always prefers the more specific pattern
+	// (a literal {queryId} segment beats none) regardless of registration
+	// order. See handleQuerySamples's doc comment for why this exists
+	// alongside the aggregate route above.
+	mux.HandleFunc("GET /api/v1/queries/{queryId}/samples", withCORS(h.handleQuerySamples))
+	mux.HandleFunc("/api/v1/watches", withCORS(h.handleWatches))
+}
+
+// withCORS wraps a route handler so every response — success or error —
+// carries permissive CORS headers, letting a browser-based dashboard served
+// from a different origin call this API directly. This is safe to leave
+// wide open (Access-Control-Allow-Origin: *) because every route this
+// package serves is GET-only and strictly read-only (see the package doc):
+// there is no state-changing action a cross-origin page could trigger by
+// reading it, unlike an API that accepts writes. Access-Control-Allow-Origin
+// is *never* combined with Access-Control-Allow-Credentials here, so this
+// does not expose any cookie- or session-authenticated data to other origins.
+func withCORS(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next(w, r)
+	}
 }
 
 func (h *Handler) logger() *slog.Logger {
@@ -126,11 +154,24 @@ func (h *Handler) logger() *slog.Logger {
 // (api/v1alpha1/performanceregression_types.go) — nothing here is computed
 // or invented.
 type regressionDTO struct {
-	Name                   string `json:"name"`
-	Namespace              string `json:"namespace"`
-	ClusterName            string `json:"clusterName"`
-	QueryID                int64  `json:"queryId"`
-	QueryText              string `json:"queryText"`
+	Name        string `json:"name"`
+	Namespace   string `json:"namespace"`
+	ClusterName string `json:"clusterName"`
+	// QueryID is serialized as a string (not a bare JSON number): pg_stat_statements
+	// queryids are arbitrary int64 values and routinely exceed JavaScript's
+	// Number.MAX_SAFE_INTEGER (2^53-1). A raw JSON number here gets silently
+	// rounded by any JS consumer's JSON.parse, producing a queryId that no
+	// longer matches the real one — which then 404s/empty-results on
+	// GET /api/v1/queries/{queryId}/samples. Every consumer must treat this as
+	// an opaque string id, not parse it back into a number.
+	QueryID   string `json:"queryId"`
+	QueryText string `json:"queryText"`
+	// DeployEventID lets a caller cross-reference this regression against
+	// GET /api/v1/deploys (operator-only — see that handler's doc comment)
+	// to show the real deploy that triggered it: app, image tag, revision,
+	// timestamp. Empty for a periodic-triggered regression (no deploy
+	// involved — see v1alpha1.TriggerTypePeriodic).
+	DeployEventID          string `json:"deployEventId,omitempty"`
 	Status                 string `json:"status"`
 	TriggerType            string `json:"triggerType"`
 	ConfidenceScore        string `json:"confidenceScore"`
@@ -149,8 +190,9 @@ func toRegressionDTO(r radarv1alpha1.PerformanceRegression) regressionDTO {
 		Name:                   r.Name,
 		Namespace:              r.Namespace,
 		ClusterName:            r.Spec.ClusterName,
-		QueryID:                r.Spec.QueryID,
+		QueryID:                strconv.FormatInt(r.Spec.QueryID, 10),
 		QueryText:              r.Spec.QueryText,
+		DeployEventID:          r.Spec.DeployEventID,
 		Status:                 string(r.Status.Status),
 		TriggerType:            string(r.Spec.TriggerType),
 		ConfidenceScore:        r.Status.ConfidenceScore,
@@ -252,7 +294,12 @@ func (h *Handler) handleDeploys(w http.ResponseWriter, r *http.Request) {
 // deliberately no p95/p99 or cache-hit-ratio field, since that data doesn't
 // exist in storage.SampleStore today.
 type queryDTO struct {
-	QueryID     int64   `json:"queryId"`
+	// QueryID is a string for the same reason as regressionDTO.QueryID (see
+	// its doc comment): pg_stat_statements queryids routinely exceed
+	// JavaScript's safe integer range, and a bare JSON number here would be
+	// silently rounded by any JS consumer, producing a queryId that no
+	// longer matches the one GET /api/v1/queries/{queryId}/samples expects.
+	QueryID     string  `json:"queryId"`
 	QueryText   string  `json:"queryText"`
 	Calls       int64   `json:"calls"`
 	MeanExecMs  float64 `json:"meanExecMs"`
@@ -305,6 +352,77 @@ func (h *Handler) handleQueries(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// sampleDTO is the JSON shape returned by GET /api/v1/queries/{queryId}/samples
+// — one row per raw pg_stat_statements scrape, unlike queryDTO (GET
+// /api/v1/queries) which collapses a whole window into one aggregate. This
+// is what lets a caller plot an actual before/after time series around a
+// specific deploy, instead of a single before/after number.
+type sampleDTO struct {
+	RecordedAt string  `json:"recordedAt"`
+	Calls      int64   `json:"calls"`
+	MeanExecMs float64 `json:"meanExecMs"`
+}
+
+// handleQuerySamples serves GET /api/v1/queries/{queryId}/samples?since=RFC3339&until=RFC3339.
+// It exists specifically so a UI showing one PerformanceRegression (which
+// only carries aggregate meanLatencyBeforeMs/AfterMs — see docs/api-reference.md)
+// can request the real per-scrape samples around that regression's
+// detectedAt and render a genuine chart, rather than a number-only summary
+// or, worse, a fabricated illustrative curve. Defaults to the last
+// defaultQueriesWindowMinutes minutes when since/until are omitted, matching
+// GET /api/v1/queries's own default.
+func (h *Handler) handleQuerySamples(w http.ResponseWriter, r *http.Request) {
+	if !allowGET(w, r) {
+		return
+	}
+	if h.SampleStore == nil {
+		writeError(w, http.StatusNotImplemented, "sample store not configured on this process")
+		return
+	}
+
+	queryID, err := strconv.ParseInt(r.PathValue("queryId"), 10, 64)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid queryId: must be an integer (pg_stat_statements.queryid)")
+		return
+	}
+
+	until := time.Now().UTC()
+	from := until.Add(-time.Duration(defaultQueriesWindowMinutes) * time.Minute)
+	if raw := r.URL.Query().Get("since"); raw != "" {
+		t, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid since (want RFC3339): "+err.Error())
+			return
+		}
+		from = t
+	}
+	if raw := r.URL.Query().Get("until"); raw != "" {
+		t, err := time.Parse(time.RFC3339, raw)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid until (want RFC3339): "+err.Error())
+			return
+		}
+		until = t
+	}
+
+	samples, err := h.SampleStore.SamplesInRange(r.Context(), queryID, from, until)
+	if err != nil {
+		h.logger().Error("dashboardapi: load query samples failed", "query_id", queryID, "err", err)
+		writeError(w, http.StatusInternalServerError, "failed to load query samples")
+		return
+	}
+
+	out := make([]sampleDTO, 0, len(samples))
+	for _, s := range samples {
+		out = append(out, sampleDTO{
+			RecordedAt: s.RecordedAt.UTC().Format(time.RFC3339),
+			Calls:      s.Calls,
+			MeanExecMs: s.MeanExecTimeMs,
+		})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 // aggregateQuerySamples summarises every sample for queryID in [from, to]
 // into a single queryDTO. ok is false when there were no samples in range,
 // in which case queryID is omitted from the /api/v1/queries response rather
@@ -318,7 +436,7 @@ func aggregateQuerySamples(ctx context.Context, store SampleReader, queryID int6
 		return queryDTO{}, false, nil
 	}
 
-	dto := queryDTO{QueryID: queryID, SampleCount: len(samples)}
+	dto := queryDTO{QueryID: strconv.FormatInt(queryID, 10), SampleCount: len(samples)}
 	var meanSum float64
 	// Calls (like the rest of pg_stat_statements) is a cumulative counter
 	// as of each scrape, not a per-window delta, so the most recently
