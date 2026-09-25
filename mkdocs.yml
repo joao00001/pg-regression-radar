@@ -105,6 +105,7 @@ nav:
       - architecture.md
       - Detection Algorithm: detection-algorithm.md
       - Collector Internals: collector-internals.md
+      - OpenTelemetry / Prometheus Sample Source: otel-prometheus-source.md
       - Multi-Cluster (Fleet) Mode: multi-cluster.md
       - Security Model & Threat Model: security-model.md
       - Deployment Security (Helm): deployment-security.md

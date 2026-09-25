@@ -40,3 +40,4 @@ CloudNativePG's currently supported releases only ship PostgreSQL 14+ (see [Supp
 - [Detection Algorithm](detection-algorithm.md) — how the samples described here are consumed by the Correlation Engine.
 - [Configuration Reference](configuration.md) — `--retention-minutes` and related flags.
 - [Persistence](persistence.md) — the optional durable copy of these same samples in Postgres.
+- [OpenTelemetry / Prometheus Sample Source](otel-prometheus-source.md) — an alternative `SampleSource` implementation, for fleets that already run an OTel Collector.
