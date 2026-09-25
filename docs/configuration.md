@@ -160,6 +160,12 @@ All four binaries share two flags:
 | `periodicDetection.enabled` | `false` | Also run regression detection on a rolling schedule, independent of any tracked deploy — see [Periodic Detection](periodic-detection.md) |
 | `periodicDetection.windowMinutes` | `60` | Split-window size for periodic detection; only meaningful alongside `periodicDetection.enabled` |
 | `periodicDetection.intervalMinutes` | `15` | How often a full periodic-detection pass runs; only meaningful alongside `periodicDetection.enabled` |
+| `sampleSource.type` | `"collector"` | Sample source backing the Correlation Engine: `collector` (default — `internal/collector.Collector` scrapes `pg_stat_statements` directly) or `prometheus` (`internal/telemetry/promsource` — see [OpenTelemetry / Prometheus Sample Source](otel-prometheus-source.md)). `dsn`/`dsnSecretRef` are not required when this is `prometheus`; `capturePlans: true` is rejected when combined with it |
+| `sampleSource.prometheus.url` | *(required with `type: prometheus`)* | Prometheus HTTP API base, e.g. `http://prometheus:9090` |
+| `sampleSource.prometheus.metricName` | *(required with `type: prometheus`)* | Prometheus metric to read samples from — see [OpenTelemetry / Prometheus Sample Source: The real gap](otel-prometheus-source.md#the-real-gap-per-query-attribution-isnt-there-yet-out-of-the-box) for why there's no safe default |
+| `sampleSource.prometheus.queryIDLabel` | `"queryid"` | Label carrying the queryid |
+| `sampleSource.prometheus.queryTextLabel` | `"query"` | Label carrying the query text; set to `"-"` to disable |
+| `sampleSource.prometheus.stepSeconds` | `15` | `query_range` resolution |
 
 ## `DeploySource` spec fields
 

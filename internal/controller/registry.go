@@ -59,10 +59,26 @@ type WatchRuntime struct {
 	Store *ingester.Store
 
 	// Collector scrapes pg_stat_statements for this watch's target
-	// database on its own goroutine (started by the reconciler).
+	// database on its own goroutine (started by the reconciler). nil when
+	// spec.sampleSource selects an alternative implementation (currently
+	// only "prometheus") instead — see SampleSource below, which is
+	// always set regardless of which one backs it, and CapturePlans's own
+	// doc comment for why that combination is rejected before either
+	// field would need to handle it.
 	Collector *collector.Collector
 
-	// Engine analyses DeployEvents against Collector's samples.
+	// SampleSource is whichever correlation.SampleSource implementation
+	// actually backs Engine below — Collector when spec.sampleSource is
+	// unset (the default), or the alternative implementation spec.sampleSource
+	// selects otherwise. Code that only needs SampleSource's two-method
+	// interface (e.g. refreshStatus's AllQueryIDs call) should use this
+	// field so it keeps working regardless of which one is active; use
+	// Collector directly only for collector.Collector-specific behavior
+	// (LastScrapeTime, PlansAround) that has no equivalent on other
+	// SampleSource implementations.
+	SampleSource correlation.SampleSource
+
+	// Engine analyses DeployEvents against SampleSource's samples.
 	Engine *correlation.Engine
 
 	// Notifier fires Slack/webhook alerts for detected regressions.
@@ -90,7 +106,11 @@ type WatchRuntime struct {
 	// CapturePlans mirrors the owning PostgresWatch's spec.capturePlans —
 	// copied here (rather than re-read from the CR on every poll
 	// iteration) so pollLoop can cheaply decide whether to call
-	// Collector.PlansAround for a detected regression.
+	// Collector.PlansAround for a detected regression. startWatch rejects
+	// spec.capturePlans: true combined with a non-collector
+	// spec.sampleSource before a WatchRuntime is ever built, so
+	// CapturePlans true here is a guarantee that Collector above is
+	// non-nil, not just a likelihood.
 	CapturePlans bool
 
 	// AutoAbortEnabled mirrors the owning PostgresWatch's

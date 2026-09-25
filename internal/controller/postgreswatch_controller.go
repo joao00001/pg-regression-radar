@@ -44,6 +44,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 	"github.com/joao00001/pg-regression-radar/internal/planner"
+	"github.com/joao00001/pg-regression-radar/internal/telemetry/promsource"
 	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -190,10 +191,19 @@ func (r *PostgresWatchReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	dsn, err := r.resolveDSN(ctx, &watch)
-	if err != nil {
-		log.Error(err, "unable to resolve DSN")
-		return r.markFailed(ctx, &watch, err)
+	// dsn/dsnSecretRef only matter when this watch's spec.sampleSource
+	// actually connects to the database directly (the "collector" type,
+	// the default) — a "prometheus" sampleSource never reads either, so
+	// resolving one here would just demand a credential this watch has no
+	// use for. See usesPrometheusSampleSource's doc comment.
+	var dsn string
+	if !usesPrometheusSampleSource(watch.Spec) {
+		var err error
+		dsn, err = r.resolveDSN(ctx, &watch)
+		if err != nil {
+			log.Error(err, "unable to resolve DSN")
+			return r.markFailed(ctx, &watch, err)
+		}
 	}
 
 	specHash := hashPostgresWatchSpec(watch.Spec, dsn)
@@ -257,15 +267,31 @@ func (r *PostgresWatchReconciler) markFailed(ctx context.Context, watch *radarv1
 // refreshStatus updates observability fields on an already-running watch
 // without restarting anything.
 func (r *PostgresWatchReconciler) refreshStatus(ctx context.Context, watch *radarv1alpha1.PostgresWatch, rt *WatchRuntime) error {
-	ids := rt.Collector.AllQueryIDs()
+	ids := rt.SampleSource.AllQueryIDs()
 	watch.Status.Phase = radarv1alpha1.PostgresWatchPhaseRunning
 	watch.Status.ObservedGeneration = watch.Generation
 	watch.Status.TrackedQueryIDs = int64(len(ids))
-	if last := rt.Collector.LastScrapeTime(); !last.IsZero() {
-		mt := metav1.NewTime(last)
-		watch.Status.LastScrapeTime = &mt
+	// LastScrapeTime describes internal/collector.Collector's own scrape
+	// loop specifically, so it stays unset (rather than reporting
+	// something misleading) when rt.Collector is nil -- a "prometheus"
+	// sampleSource has no equivalent single "last scrape" moment of its
+	// own; that cadence belongs to whatever's already scraping the
+	// database on the OpenTelemetry Collector side.
+	if rt.Collector != nil {
+		if last := rt.Collector.LastScrapeTime(); !last.IsZero() {
+			mt := metav1.NewTime(last)
+			watch.Status.LastScrapeTime = &mt
+		}
 	}
 	return r.Status().Update(ctx, watch)
+}
+
+// usesPrometheusSampleSource reports whether spec opts into
+// internal/telemetry/promsource in place of the default
+// internal/collector.Collector-backed sample source. See
+// SampleSourceConfig's doc comment for the full semantics of that choice.
+func usesPrometheusSampleSource(spec radarv1alpha1.PostgresWatchSpec) bool {
+	return spec.SampleSource != nil && spec.SampleSource.Type == "prometheus"
 }
 
 // resolveDSN returns the Postgres DSN to use: spec.dsn takes precedence,
@@ -469,21 +495,68 @@ func (r *PostgresWatchReconciler) dsnSecretClientFromSecret(ctx context.Context,
 // (the short-lived Reconcile context) — its lifetime is controlled solely
 // by Registry and stopWatch.
 func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *radarv1alpha1.PostgresWatch, dsn, specHash string) (*WatchRuntime, error) {
+	// capturePlans needs EXPLAIN/pg_store_plans access over the same
+	// direct database connection the "collector" sampleSource type
+	// (Collector) holds; "prometheus" has no such connection, by design
+	// (see PrometheusSampleSourceConfig's doc comment). Rejecting the
+	// combination here, before either a Collector or a promsource.Source
+	// is built, keeps WatchRuntime's own CapturePlans-implies-non-nil-
+	// Collector invariant (see WatchRuntime.CapturePlans) true from the
+	// moment a WatchRuntime exists, rather than something pollLoop has to
+	// guard against at every tick.
+	if watch.Spec.CapturePlans && usesPrometheusSampleSource(watch.Spec) {
+		return nil, fmt.Errorf(
+			"postgreswatch %s/%s: capturePlans is not supported with sampleSource.type=prometheus "+
+				"(plan-diff capture needs the direct database connection that sample source deliberately doesn't have) — "+
+				"see docs/otel-prometheus-source.md",
+			watch.Namespace, watch.Name)
+	}
+
 	scrapeInterval := time.Duration(watch.Spec.ScrapeIntervalSeconds) * time.Second
 	if scrapeInterval <= 0 {
 		scrapeInterval = 60 * time.Second
 	}
 
 	promReg := prometheus.NewRegistry()
-	col, err := collector.New(collector.Config{
-		DSN:            dsn,
-		ScrapeInterval: scrapeInterval,
-		ClusterName:    watch.Spec.ClusterName,
-		Namespace:      watch.Namespace,
-		CapturePlans:   watch.Spec.CapturePlans,
-	}, r.Logger, promReg)
-	if err != nil {
-		return nil, fmt.Errorf("create collector: %w", err)
+
+	// col stays nil, and sampleSrc is built from promsource instead, when
+	// this watch opted into an alternative sample source. Otherwise col is
+	// the default internal/collector.Collector, and it also satisfies
+	// sampleSrc directly (correlation.SampleSource is a two-method subset
+	// of its own API).
+	var col *collector.Collector
+	var sampleSrc correlation.SampleSource
+	if usesPrometheusSampleSource(watch.Spec) {
+		promCfg := watch.Spec.SampleSource.Prometheus
+		if promCfg == nil {
+			return nil, fmt.Errorf(
+				"postgreswatch %s/%s: sampleSource.type is \"prometheus\" but sampleSource.prometheus is unset",
+				watch.Namespace, watch.Name)
+		}
+		src, err := promsource.New(promsource.Config{
+			BaseURL:        promCfg.URL,
+			MetricName:     promCfg.MetricName,
+			QueryIDLabel:   promCfg.QueryIDLabel,
+			QueryTextLabel: promCfg.QueryTextLabel,
+			Step:           time.Duration(promCfg.StepSeconds) * time.Second,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("create prometheus sample source: %w", err)
+		}
+		sampleSrc = src
+	} else {
+		var err error
+		col, err = collector.New(collector.Config{
+			DSN:            dsn,
+			ScrapeInterval: scrapeInterval,
+			ClusterName:    watch.Spec.ClusterName,
+			Namespace:      watch.Namespace,
+			CapturePlans:   watch.Spec.CapturePlans,
+		}, r.Logger, promReg)
+		if err != nil {
+			return nil, fmt.Errorf("create collector: %w", err)
+		}
+		sampleSrc = col
 	}
 
 	windowMinutes := int(watch.Spec.WindowMinutes)
@@ -516,7 +589,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		LatencyChangeThreshold: latencyThreshold,
 		PValueThreshold:        pValueThreshold,
 		PeriodicWindowMinutes:  periodicWindowMinutes,
-	}, col, r.Logger)
+	}, sampleSrc, r.Logger)
 
 	var periodicTracker *correlation.PeriodicTracker
 	if periodicEnabled {
@@ -571,6 +644,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	rt := &WatchRuntime{
 		Store:                   &ingester.Store{},
 		Collector:               col,
+		SampleSource:            sampleSrc,
 		Engine:                  engine,
 		Notifier:                notifier,
 		PromRegistry:            promReg,
@@ -586,11 +660,17 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		Cancel:                  cancel,
 	}
 
-	go func() {
-		if err := col.Run(workerCtx); err != nil && workerCtx.Err() == nil {
-			r.Logger.Error("postgreswatch: collector exited unexpectedly", "watch", key.String(), "err", err)
-		}
-	}()
+	// col is nil precisely when sampleSrc came from promsource instead —
+	// that implementation has no background scrape loop of its own to run
+	// (it queries Prometheus on demand, from correlation.Engine's own
+	// goroutines), so there is nothing to start here in that case.
+	if col != nil {
+		go func() {
+			if err := col.Run(workerCtx); err != nil && workerCtx.Err() == nil {
+				r.Logger.Error("postgreswatch: collector exited unexpectedly", "watch", key.String(), "err", err)
+			}
+		}()
+	}
 	go r.pollLoop(workerCtx, key, rt)
 	if periodicEnabled {
 		go r.periodicPollLoop(workerCtx, key, rt)
