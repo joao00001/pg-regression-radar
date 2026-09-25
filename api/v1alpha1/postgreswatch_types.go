@@ -190,6 +190,84 @@ type PostgresWatchSpec struct {
 	// this field existed unless explicitly opted in.
 	// +optional
 	PeriodicDetection *PeriodicDetectionConfig `json:"periodicDetection,omitempty"`
+
+	// sampleSource optionally selects an alternative source of query
+	// samples in place of this watch's own internal/collector.Collector
+	// scrape loop. nil (the default) means: collector.Collector connects
+	// directly to dsn/dsnSecretRef and scrapes pg_stat_statements itself,
+	// exactly as before this field existed -- dsn/dsnSecretRef remain
+	// required in that case. Set this to point the watch at a Prometheus
+	// HTTP API instead (fed by an OpenTelemetry Collector) when the
+	// target database is already scraped that way and a second direct
+	// scraper isn't wanted -- see
+	// docs/otel-prometheus-source.md, including the real
+	// per-query-attribution caveat that path requires operators to
+	// address themselves before it returns any data.
+	// +optional
+	SampleSource *SampleSourceConfig `json:"sampleSource,omitempty"`
+}
+
+// SampleSourceConfig selects and configures an alternative
+// internal/correlation.SampleSource implementation for a PostgresWatch.
+type SampleSourceConfig struct {
+	// type selects the SampleSource implementation. "collector" (the
+	// default, whether this field is set explicitly or the whole
+	// sampleSource field is left nil) uses internal/collector.Collector,
+	// connected via dsn/dsnSecretRef, exactly as before this field
+	// existed. "prometheus" uses internal/telemetry/promsource against a
+	// Prometheus HTTP API instead -- dsn/dsnSecretRef are not required
+	// (and not read) in that case, but capturePlans is: EXPLAIN-based
+	// plan-diff capture needs a direct database connection this mode
+	// deliberately doesn't have, so a watch with capturePlans: true and
+	// sampleSource.type: prometheus fails reconciliation with a clear
+	// error rather than silently skipping plan-diff capture.
+	// +kubebuilder:validation:Enum=collector;prometheus
+	// +kubebuilder:default=collector
+	// +optional
+	Type string `json:"type,omitempty"`
+
+	// prometheus configures the "prometheus" type. Required, and only
+	// used, when type is "prometheus".
+	// +optional
+	Prometheus *PrometheusSampleSourceConfig `json:"prometheus,omitempty"`
+}
+
+// PrometheusSampleSourceConfig mirrors internal/telemetry/promsource.Config
+// -- see that package's doc comment and docs/otel-prometheus-source.md for
+// the full semantics, including why metricName has no safe default.
+type PrometheusSampleSourceConfig struct {
+	// url is the Prometheus HTTP API base, e.g. "http://prometheus:9090"
+	// (no trailing slash required, no "/api/v1/..." suffix).
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	URL string `json:"url"`
+
+	// metricName is the Prometheus metric samples are read from. Required
+	// -- there is deliberately no default pointing at
+	// postgresqlreceiver's stock postgresql.query.execution.time metric,
+	// which has no per-query attribution as of this writing. See
+	// docs/otel-prometheus-source.md for what to point this at instead.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	MetricName string `json:"metricName"`
+
+	// queryIDLabel is the label carrying a query's pg_stat_statements
+	// queryid, as a base-10 integer string. Defaults to "queryid"
+	// (promsource.Config's own default) when left unset.
+	// +optional
+	QueryIDLabel string `json:"queryIDLabel,omitempty"`
+
+	// queryTextLabel is the label carrying the query's text. Defaults to
+	// "query" (promsource.Config's own default) when left unset; set to
+	// "-" to explicitly disable the lookup.
+	// +optional
+	QueryTextLabel string `json:"queryTextLabel,omitempty"`
+
+	// stepSeconds is the query_range resolution. Defaults to 15
+	// (promsource.Config's own default) when left unset or zero.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	StepSeconds int32 `json:"stepSeconds,omitempty"`
 }
 
 // AutoAbortConfig controls automatic Argo Rollouts abortion. It only ever

@@ -45,9 +45,39 @@ avg by (queryid) (
 | `Step` | `15s` | `query_range` resolution; should match or exceed the underlying scrape interval. |
 | `HTTPClient` / `Timeout` | 10s timeout | `HTTPClient` set explicitly takes precedence; set its own `Timeout` in that case. |
 
-## Usage example
+## Using it from a PostgresWatch CRD (cmd/manager)
 
-`internal/telemetry/promsource` is not wired into `cmd/manager` yet (that's Phase 1b — see [Roadmap](roadmap.md#opentelemetry-as-a-pluggable-analysis-input-in-detail)), so today it's used the same way any other `correlation.SampleSource` implementation is: constructed directly and passed to `correlation.New`, in place of an `*internal/collector.Collector`.
+The CRD-driven `cmd/manager` path (`PostgresWatch`) selects this source declaratively via `spec.sampleSource`, instead of any Go code:
+
+```yaml
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: PostgresWatch
+metadata:
+  name: widgets-prod
+spec:
+  clusterName: widgets-prod
+  sampleSource:
+    type: prometheus
+    prometheus:
+      url: http://prometheus.monitoring.svc:9090
+      # A custom recording rule's output, not the stock
+      # postgresql_query_execution_time_seconds_total metric — see
+      # "The real gap" above for why.
+      metricName: pg_regression_radar_query_mean_exec_time_ms
+      queryIDLabel: queryid
+      queryTextLabel: query
+      stepSeconds: 15
+  windowMinutes: 30
+  minExecutions: 10
+```
+
+`dsn`/`dsnSecretRef` are not required, and not read, when `sampleSource.type` is `prometheus` — `internal/controller.PostgresWatchReconciler` skips DSN resolution entirely in that mode (see `usesPrometheusSampleSource` in `internal/controller/postgreswatch_controller.go`). `capturePlans: true` combined with `sampleSource.type: prometheus` is rejected at reconcile time with a clear error, rather than silently ignored: `EXPLAIN`-based plan-diff capture needs the direct database connection this mode deliberately doesn't have. Every other field (`windowMinutes`, `minExecutions`, `alerting`, `autoAbort`, `periodicDetection`, …) works exactly the same regardless of which `sampleSource` is active — the only things this field changes are which `correlation.SampleSource` implementation `internal/correlation.Engine` runs against and whether a direct database connection exists at all.
+
+See [`SampleSourceConfig`](https://github.com/joao00001/pg-regression-radar/blob/main/api/v1alpha1/postgreswatch_types.go) in `api/v1alpha1/postgreswatch_types.go` for the full field reference (`type`, and `prometheus.{url,metricName,queryIDLabel,queryTextLabel,stepSeconds}`), each mirroring `promsource.Config` one-to-one.
+
+## Usage example (direct Go construction)
+
+Outside the CRD path — the standalone `operator` CLI, a custom binary, or a smoke test against a real Prometheus — `internal/telemetry/promsource` is used the same way any other `correlation.SampleSource` implementation is: constructed directly and passed to `correlation.New`, in place of an `*internal/collector.Collector`.
 
 ```go
 package main
@@ -103,7 +133,7 @@ for _, qid := range ids {
 
 ## Failure behavior
 
-`SamplesInRange` and `AllQueryIDs` return `nil` on any error — unreachable Prometheus, a non-`success` API response, a malformed body, or the wrong `resultType` — rather than an error, matching `correlation.SampleSource`'s signature and the same "unknown queryid returns nothing" contract `internal/collector.Collector`'s own implementation follows. There is currently no metric or log distinguishing "no data in range" from "Prometheus is unreachable"; that is a natural follow-up once this source has real usage (see [Roadmap](roadmap.md#opentelemetry-as-a-pluggable-analysis-input-in-detail)'s Phase 1b, which is where this package gets wired into `internal/controller/postgreswatch_controller.go` behind an opt-in flag — not yet done as of this page).
+`SamplesInRange` and `AllQueryIDs` return `nil` on any error — unreachable Prometheus, a non-`success` API response, a malformed body, or the wrong `resultType` — rather than an error, matching `correlation.SampleSource`'s signature and the same "unknown queryid returns nothing" contract `internal/collector.Collector`'s own implementation follows. There is currently no metric or log distinguishing "no data in range" from "Prometheus is unreachable"; that is a natural follow-up once this source has real usage.
 
 ## See also
 
