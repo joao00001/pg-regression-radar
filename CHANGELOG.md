@@ -32,6 +32,19 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.7.0 - 2026-09-25
+
+### Features
+
+- Added GET /api/v1/queries/{queryId}/samples for per-query sample history, enabled CORS on every dashboard API route, and changed queryId to a JSON string across the API so large pg_stat_statements ids no longer get silently rounded by JavaScript clients. (#162)
+- Added `internal/telemetry/promsource`, an opt-in `correlation.SampleSource` backed by PromQL queries against a Prometheus HTTP API, for fleets that already run an OpenTelemetry Collector and would rather not run a second `pg_stat_statements` scraper against the same database. Not yet wired into `cmd/manager`; that's a follow-up PR. (#163)
+- Wired `internal/telemetry/promsource` into the CRD-driven `cmd/manager` path: `PostgresWatch.spec.sampleSource.type: prometheus` now selects it as an opt-in alternative to `internal/collector.Collector`, skipping `dsn`/`dsnSecretRef` entirely and rejecting `capturePlans: true` (which needs a direct database connection this mode doesn't have) with a clear error instead of ignoring it. (#164)
+
+### Fixes
+
+- Fixed a self-feedback loop where the collector's own EXPLAIN plan-capture queries were recorded as new pg_stat_statements entries, which could grow into repeated capture failures or a false-positive regression of their own; these ghost entries are now excluded from both sampling and plan capture, with a new metric tracking how often it happens. (#161)
+
+
 ## v1.6.0 - 2026-09-23
 
 ### Features
