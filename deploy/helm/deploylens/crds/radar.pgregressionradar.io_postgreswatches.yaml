@@ -286,6 +286,83 @@ spec:
                   CloudNativePG Cluster lives in a namespace simply called
                   "postgres"). See docs/multi-cluster.md.
                 type: string
+              sampleSource:
+                description: |-
+                  sampleSource optionally selects an alternative source of query
+                  samples in place of this watch's own internal/collector.Collector
+                  scrape loop. nil (the default) means: collector.Collector connects
+                  directly to dsn/dsnSecretRef and scrapes pg_stat_statements itself,
+                  exactly as before this field existed -- dsn/dsnSecretRef remain
+                  required in that case. Set this to point the watch at a Prometheus
+                  HTTP API instead (fed by an OpenTelemetry Collector) when the
+                  target database is already scraped that way and a second direct
+                  scraper isn't wanted -- see
+                  docs/otel-prometheus-source.md, including the real
+                  per-query-attribution caveat that path requires operators to
+                  address themselves before it returns any data.
+                properties:
+                  prometheus:
+                    description: |-
+                      prometheus configures the "prometheus" type. Required, and only
+                      used, when type is "prometheus".
+                    properties:
+                      metricName:
+                        description: |-
+                          metricName is the Prometheus metric samples are read from. Required
+                          -- there is deliberately no default pointing at
+                          postgresqlreceiver's stock postgresql.query.execution.time metric,
+                          which has no per-query attribution as of this writing. See
+                          docs/otel-prometheus-source.md for what to point this at instead.
+                        minLength: 1
+                        type: string
+                      queryIDLabel:
+                        description: |-
+                          queryIDLabel is the label carrying a query's pg_stat_statements
+                          queryid, as a base-10 integer string. Defaults to "queryid"
+                          (promsource.Config's own default) when left unset.
+                        type: string
+                      queryTextLabel:
+                        description: |-
+                          queryTextLabel is the label carrying the query's text. Defaults to
+                          "query" (promsource.Config's own default) when left unset; set to
+                          "-" to explicitly disable the lookup.
+                        type: string
+                      stepSeconds:
+                        description: |-
+                          stepSeconds is the query_range resolution. Defaults to 15
+                          (promsource.Config's own default) when left unset or zero.
+                        format: int32
+                        minimum: 1
+                        type: integer
+                      url:
+                        description: |-
+                          url is the Prometheus HTTP API base, e.g. "http://prometheus:9090"
+                          (no trailing slash required, no "/api/v1/..." suffix).
+                        minLength: 1
+                        type: string
+                    required:
+                    - metricName
+                    - url
+                    type: object
+                  type:
+                    default: collector
+                    description: |-
+                      type selects the SampleSource implementation. "collector" (the
+                      default, whether this field is set explicitly or the whole
+                      sampleSource field is left nil) uses internal/collector.Collector,
+                      connected via dsn/dsnSecretRef, exactly as before this field
+                      existed. "prometheus" uses internal/telemetry/promsource against a
+                      Prometheus HTTP API instead -- dsn/dsnSecretRef are not required
+                      (and not read) in that case, but capturePlans is: EXPLAIN-based
+                      plan-diff capture needs a direct database connection this mode
+                      deliberately doesn't have, so a watch with capturePlans: true and
+                      sampleSource.type: prometheus fails reconciliation with a clear
+                      error rather than silently skipping plan-diff capture.
+                    enum:
+                    - collector
+                    - prometheus
+                    type: string
+                type: object
               scrapeIntervalSeconds:
                 default: 60
                 description: |-
