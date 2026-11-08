@@ -49,6 +49,22 @@ go test -tags=integration ./internal/storage/... ./internal/collector/... ./inte
 > The redacted form shown above is for documentation safety only and cannot be used as-is —
 > replace it with your real connection string.
 
+### Real `pg_store_plans` extension {#real-pg_store_plans-extension}
+
+`internal/planner.CapturePlanFromStorePlans` (see [Detection Algorithm](detection-algorithm.md#plan-diff-correlation-optional)) prefers the real, previously-executed plan [`pg_store_plans`](https://github.com/ossc-db/pg_store_plans) records over an `EXPLAIN (GENERIC_PLAN)` estimate — but none of the plain `postgres:16`/`17`/`18` images the integration tests above run against ship that third-party C extension at all. `scripts/pg_store_plans` builds a server that does, compiling the real upstream source via PGXS:
+
+```bash
+docker build -t pgrr-pg-store-plans scripts/pg_store_plans
+docker run -d --name pgrr-test-storeplans -e POSTGRES_PASSWORD=test -p 5432:5432 \
+  pgrr-pg-store-plans
+export PGRR_STOREPLANS_TEST_DSN="******localhost:5432/postgres?sslmode=disable"
+go test -tags=integration -run StorePlans -v ./internal/planner/...
+```
+
+`internal/planner/storeplans_integration_test.go` skips automatically if `PGRR_STOREPLANS_TEST_DSN` is unset (a plain `go test ./...` or the `integration-postgres` run above never needs it), but fails loudly — rather than silently falling back to `GENERIC_PLAN` — if it's set and pointed at a server that doesn't actually have a reliable `pg_store_plans` installed. `.github/workflows/ci.yml`'s `integration-pg-store-plans` job runs this exact sequence on every push/PR, unconditionally: everything it pulls from (Debian's own `deb.debian.org` archives and the public `pg_store_plans` GitHub repo) is public and unauthenticated, unlike the secret-gated EDB job below, so there's no reason to gate it behind a repository secret or `continue-on-error`.
+
+`scripts/pg_store_plans/Dockerfile` deliberately isn't `FROM postgres:17`: that image's apt source (`apt.postgresql.org`/PGDG) ships pre-built server binaries only, with no `postgresql-server-dev-17` headers to compile a PGXS extension against, and depending on network/DNS configuration that registry isn't always reachable at all. Debian trixie's own archives ship `postgresql-17` and `postgresql-server-dev-17` built from the exact same source at the exact same version, which is what makes the PGXS build reliably load into that same server — see the Dockerfile's own comments for the full rationale.
+
 ```bash
 # Real kube-apiserver + etcd (internal/controller):
 go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
@@ -111,7 +127,7 @@ Everything above proves either the Go source directly (`go test`) or the built c
 Deliberately out of scope for this first pass — see [Roadmap](roadmap.md) for both tracked as explicit follow-ups:
 
 - **No real ArgoCD.** Standing up ArgoCD's Application controller *and* its Notifications engine (the part that actually emits an `on-sync-succeeded` webhook — see [Deploy Sources & Webhooks](webhooks.md)) is a second, mostly-orthogonal integration surface. This workflow posts a `sourceType: generic` payload directly to the DeploySource webhook route instead — the same deliberate choice the manual e2e workflow above documents for the same reason (a `generic` payload carries an explicit, already-elapsed timestamp, avoiding a race against the reconciler's fixed 5s poll interval that an `argocd`-shaped payload would reintroduce).
-- **No `pg_store_plans`.** It's a C extension not compiled into CloudNativePG's default operand images; building and maintaining a custom operand image just for this smoke test wasn't judged worth it yet — see the existing `pg_store_plans` entry in [Roadmap](roadmap.md).
+- **No `pg_store_plans` on the CloudNativePG instance specifically.** It's a C extension not compiled into CloudNativePG's default operand images; building and maintaining a custom CloudNativePG operand image just for this smoke test wasn't judged worth it yet. This is narrower than "is `pg_store_plans` validated against a real server at all" — see [Real `pg_store_plans` extension](#real-pg_store_plans-extension) above, which validates the real extension outside of CloudNativePG specifically, and [Roadmap](roadmap.md) for the full history.
 
 It's `workflow_dispatch`-only, for the same reason as the manual e2e above: creating a Kubernetes cluster, installing two operators, and sleeping through real traffic-generation windows takes several minutes.
 
@@ -204,5 +220,5 @@ kind delete cluster --name pgrr-e2e
 - [CI/CD](ci-cd.md) — which of these run automatically, and on what trigger.
 - [Detection Algorithm](detection-algorithm.md) — what `internal/e2e` and the two e2e workflows are all ultimately proving.
 - [Multi-Cluster (Fleet) Mode](multi-cluster.md) — the remote-cluster DSN-resolution path this single-cluster kind test doesn't cover.
-- [Roadmap](roadmap.md) — the ArgoCD and `pg_store_plans` follow-ups the kind e2e workflow deliberately leaves out.
+- [Roadmap](roadmap.md) — the ArgoCD and CloudNativePG-operand-image `pg_store_plans` follow-ups the kind e2e workflow deliberately leaves out.
 - [Contributing](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md) — what's expected of tests in a PR.
