@@ -83,6 +83,27 @@ func TestCheckSecretConsent_LabelPresent_ReturnsNil(t *testing.T) {
 	}
 }
 
+func TestCheckSecretConsent_ManagedSecretOptIn(t *testing.T) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pgrr-e2e-pg-app",
+			Namespace: "pgrr-e2e",
+			Labels:    map[string]string{"app.kubernetes.io/managed-by": "cnpg"},
+		},
+	}
+
+	if err := checkSecretConsent(secret, "dsn secret"); err == nil {
+		t.Fatal("expected a managed Secret to require explicit consent")
+	}
+	secret.Labels[secretConsentLabel] = secretConsentValue
+	if err := checkSecretConsent(secret, "dsn secret"); err != nil {
+		t.Fatalf("expected opt-in to allow access to the managed Secret, got: %v", err)
+	}
+	if secret.Labels["app.kubernetes.io/managed-by"] != "cnpg" {
+		t.Fatal("opt-in must preserve the Secret's existing labels")
+	}
+}
+
 func TestCheckSecretConsent_ValidationMatrix_ForDSNAndRemoteKubeconfig(t *testing.T) {
 	kinds := []string{"dsn secret", "remote cluster kubeconfig secret"}
 
