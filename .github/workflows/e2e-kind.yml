@@ -270,6 +270,13 @@ jobs:
             --set manager.createDefaultWatch=false \
             --wait --timeout=180s
 
+      - name: Allow PostgresWatch access to the CloudNativePG application Secret
+        # The manager requires explicit Secret-owner consent even when its
+        # RBAC permits reads. Opt in only this test cluster's application DSN.
+        run: |
+          kubectl -n "${NAMESPACE}" label secret "${PG_CLUSTER_NAME}-app" \
+            pg-regression-radar.io/allow-postgreswatch-access=true --overwrite
+
       - name: Apply PostgresWatch and DeploySource CRs
         # dsnSecretRef points directly at the Secret CloudNativePG generated
         # for ${PG_CLUSTER_NAME} — "<cluster-name>-app", key "uri" — rather
@@ -370,8 +377,10 @@ jobs:
             --restart=Never --env="PGURI=${PGURI}" --command -- sleep 3600
           kubectl -n "${NAMESPACE}" wait --for=condition=Ready pod/pgrr-e2e-probe --timeout=120s
 
-          kubectl -n "${NAMESPACE}" exec pgrr-e2e-probe -- \
-            psql "$PGURI" -c "SELECT pg_stat_statements_reset();" >/dev/null
+          # Reset requires superuser privileges; keep probe traffic as "app".
+          PG_PRIMARY="$(kubectl -n "${NAMESPACE}" get cluster "${PG_CLUSTER_NAME}" -o jsonpath='{.status.currentPrimary}')"
+          kubectl -n "${NAMESPACE}" exec "${PG_PRIMARY}" -c postgres -- \
+            psql -U postgres -d app -c "SELECT pg_stat_statements_reset();" >/dev/null
 
           for i in $(seq 1 10); do
             kubectl -n "${NAMESPACE}" exec pgrr-e2e-probe -- \
@@ -387,9 +396,9 @@ jobs:
         # internal/e2e/pipeline_integration_test.go's runProbe.
         run: |
           echo "DEPLOY_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
-          PGURI="$(kubectl -n "${NAMESPACE}" get secret "${PG_CLUSTER_NAME}-app" -o jsonpath='{.data.uri}' | base64 -d)"
-          kubectl -n "${NAMESPACE}" exec pgrr-e2e-probe -- \
-            psql "$PGURI" -c "SELECT pg_stat_statements_reset();" >/dev/null
+          PG_PRIMARY="$(kubectl -n "${NAMESPACE}" get cluster "${PG_CLUSTER_NAME}" -o jsonpath='{.status.currentPrimary}')"
+          kubectl -n "${NAMESPACE}" exec "${PG_PRIMARY}" -c postgres -- \
+            psql -U postgres -d app -c "SELECT pg_stat_statements_reset();" >/dev/null
 
       - name: Generate "after" (regressed) traffic
         run: |
