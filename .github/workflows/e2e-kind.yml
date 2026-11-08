@@ -77,12 +77,22 @@ name: E2E (kind + CloudNativePG)
 # introducing a second artifact hand-off purely for image bytes — not worth
 # the extra complexity for a workflow that is already this long.
 #
-# Not wired to push/pull_request, for the same reason as e2e-manual.yml:
-# creating a Kubernetes cluster, installing two operators, and sleeping
-# through real wall-clock traffic-generation windows takes several minutes
-# and isn't worth paying on every push/PR.
+# Not wired to every push/pull_request, for the same reason as
+# e2e-manual.yml: creating a Kubernetes cluster, installing two operators,
+# and sleeping through real wall-clock traffic-generation windows takes
+# several minutes and isn't worth paying on every push/PR by default.
+#
+# It IS wired to an opt-in `run-e2e-kind` label, though (see the job's
+# `if:` below): adding that label to a PR runs this suite against it, and
+# because `synchronize` is also in `types:` below, every subsequent push to
+# a PR that still carries the label re-runs it automatically — not just the
+# commit present when the label was added. Removing the label (or never
+# adding it) costs nothing; the job-level `if:` skips the job entirely
+# (shows as "skipped", not "failed") whenever it isn't satisfied.
 on:
   workflow_dispatch: {}
+  pull_request:
+    types: [labeled, synchronize]
 
 permissions:
   contents: read
@@ -116,6 +126,20 @@ jobs:
     name: Real kind + CloudNativePG cluster, CRD-driven manager, real regression
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Always run on an explicit manual dispatch. On a pull_request event,
+    # only run when the `run-e2e-kind` label is the one actually being
+    # added right now (action == 'labeled'), or when the PR is pushed to
+    # (action == 'synchronize') while that label is already attached — so a
+    # label added once keeps re-validating every new commit, but adding any
+    # *other* label never triggers a spurious run.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+        (
+          (github.event.action == 'labeled' && github.event.label.name == 'run-e2e-kind') ||
+          (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'run-e2e-kind'))
+        )
+      )
 
     steps:
       - name: Checkout
@@ -455,15 +479,56 @@ jobs:
           fi
           echo "Full CRD-driven pipeline (real kind cluster, real CloudNativePG Postgres, real manager Deployment, real HTTP webhook) detected the regression end to end."
 
-      - name: Dump manager logs
-        if: always()
-        run: kubectl -n "${NAMESPACE}" logs "deploy/${RELEASE_FULLNAME}-manager" --all-containers --tail=500 || true
-
-      - name: Dump PostgresWatch/DeploySource/PerformanceRegression state
+      # Everything the kind cluster knows, gathered into plain files so the
+      # upload step below can persist it — the cluster itself (and
+      # everything in it, including these logs) is torn down by
+      # helm/kind-action's post-run cleanup the moment this job ends, so
+      # anything not captured to a file here is gone forever the instant
+      # the job finishes, pass or fail. Always runs (not just on failure):
+      # a passing run's logs are just as useful for confirming *why* it
+      # passed (e.g. did the regression really get flagged for the right
+      # reason) as a failing run's are for debugging.
+      - name: Collect cluster diagnostics
         if: always()
         run: |
-          kubectl -n "${NAMESPACE}" get postgreswatch,deploysource,performanceregression -o wide || true
-          kubectl -n "${NAMESPACE}" get cluster "${PG_CLUSTER_NAME}" -o wide || true
+          mkdir -p /tmp/e2e-diagnostics
+
+          kubectl -n "${NAMESPACE}" get postgreswatch,deploysource,performanceregression -o wide \
+            > /tmp/e2e-diagnostics/resources.txt 2>&1 || true
+          kubectl -n "${NAMESPACE}" get postgreswatch,deploysource,performanceregression -o yaml \
+            > /tmp/e2e-diagnostics/resources.yaml 2>&1 || true
+          kubectl -n "${NAMESPACE}" get cluster "${PG_CLUSTER_NAME}" -o yaml \
+            > /tmp/e2e-diagnostics/cnpg-cluster.yaml 2>&1 || true
+          kubectl -n "${NAMESPACE}" describe cluster "${PG_CLUSTER_NAME}" \
+            > /tmp/e2e-diagnostics/cnpg-cluster-describe.txt 2>&1 || true
+          kubectl -n "${NAMESPACE}" get pods -o wide \
+            > /tmp/e2e-diagnostics/pods.txt 2>&1 || true
+          kubectl -n "${NAMESPACE}" get events --sort-by=.lastTimestamp \
+            > /tmp/e2e-diagnostics/events.txt 2>&1 || true
+          kubectl -n "${NAMESPACE}" logs "deploy/${RELEASE_FULLNAME}-manager" --all-containers --tail=1000 \
+            > /tmp/e2e-diagnostics/manager.log 2>&1 || true
+          kubectl -n cnpg-system logs deploy/cnpg-controller-manager --tail=1000 \
+            > /tmp/e2e-diagnostics/cnpg-controller-manager.log 2>&1 || true
+
+          # Best-effort copies of files earlier steps already wrote — not
+          # every one of these exists on every run (e.g. the deploy
+          # event/regressions files never get written if the job fails
+          # before that point), hence the individual existence checks.
+          [ -f /tmp/port-forward.log ] && cp /tmp/port-forward.log /tmp/e2e-diagnostics/ || true
+          [ -f /tmp/deploy-event.json ] && cp /tmp/deploy-event.json /tmp/e2e-diagnostics/ || true
+          [ -f /tmp/regressions.json ] && cp /tmp/regressions.json /tmp/e2e-diagnostics/ || true
+
+          echo "--- Collected diagnostics ---"
+          ls -la /tmp/e2e-diagnostics
+
+      - name: Upload cluster diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-kind-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/e2e-diagnostics
+          retention-days: 14
+          if-no-files-found: warn
 
       - name: Stop the port-forward
         # Best-effort: the runner (and this background process with it) is
