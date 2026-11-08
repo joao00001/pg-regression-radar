@@ -4,7 +4,7 @@
 
 ## Overview
 
-pg-regression-radar runs eleven workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, and [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`.
+pg-regression-radar runs twelve workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, and [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`.
 
 **Security scanning, end to end:** this repo uses only tools that are free for a public repository, spread across the layer each is actually good at — no single tool covers all of these:
 
@@ -28,6 +28,16 @@ CodeQL findings are never blocking by design — `github/codeql-action/analyze` 
 | `Integration tests (EDB Postgres)` | Same integration test suite, run against EDB Postgres Advanced Server and EDB Postgres Extended Server images — but only when the `EDB_SUBSCRIPTION_TOKEN` repository secret is configured (those images live behind a private, authenticated registry), and with `continue-on-error: true` so an absent secret or a real failure here can't break CI for anyone else. See [Support Matrix](support-matrix.md#ci-coverage-for-edb-distributions) for the full rationale. |
 | `Integration tests (real pg_store_plans extension)` | Builds a real PostgreSQL 17 server with the real, upstream [`pg_store_plans`](https://github.com/ossc-db/pg_store_plans) extension compiled via PGXS (`scripts/pg_store_plans`), and runs `internal/planner`'s `pg_store_plans`-specific integration test against it — proving `CapturePlanFromStorePlans` reads back a real plan for a real, actually-executed query, not just a fake `*sql.DB`. Unlike the EDB job above, everything this pulls from is public and unauthenticated, so it runs unconditionally, with no `continue-on-error`. See [Testing](testing.md#real-pg_store_plans-extension) and [Roadmap](roadmap.md#known-robustness-gaps). |
 | `Controller tests (real kube-apiserver)` | Runs `internal/controller`'s `TestEnvtest_*` suite against a real, locally-provisioned kube-apiserver + etcd via controller-runtime's envtest. |
+
+Every `go test`-based job above (every row except `Helm render tests`, which is shell, not Go) runs its tests through [`gotestsum`](https://github.com/gotestyourself/gotestsum) instead of plain `go test`, producing a real JUnit XML report alongside the usual console output. Each job uploads its report as a build artifact (`junit-unit`, `junit-integration-postgres-16`/`17`/`18`, `junit-integration-edb-epas`/`pge`, `junit-integration-pg-store-plans`, `junit-envtest`) with `if: always()`, so a report exists whether the job passes or fails. [`test-report.yml`](#test-reportyml-on-ciymls-completion) below turns these into GitHub Check Runs.
+
+## `test-report.yml` — on `ci.yml`'s completion
+
+A separate `workflow_run`-triggered workflow that downloads every `junit-*` artifact `ci.yml` uploaded and feeds each one to [`dorny/test-reporter`](https://github.com/dorny/test-reporter), producing one GitHub Check Run per job — a pass/fail/skipped count, a per-test-case listing, and inline annotations pointing at the exact test (and, where the stack trace allows it, the exact source line) that failed. This replaces the single opaque pass/fail tick a plain `go test` step leaves behind with the kind of structured, drill-down test report CI for a project like this should have.
+
+It's a separate workflow (triggered by `workflow_run`, not a job appended to `ci.yml`) specifically so it always runs with this repository's own read-write `GITHUB_TOKEN`, even when the triggering `ci.yml` run came from a pull request opened from a fork. GitHub Actions always gives a `pull_request`-triggered workflow a read-only token on fork PRs — which can never create a Check Run regardless of the `permissions:` block — but a `workflow_run` workflow always executes against this repo's default branch with its own normal permissions, no matter whose fork triggered the run it's reporting on. This is `dorny/test-reporter`'s own documented pattern for public repositories (see its README's "Recommended setup for public repositories" section).
+
+One consequence: a PR that only changes this file won't see it react to its own `ci.yml` run until after it's merged — `workflow_run` always resolves the workflow definition from the base branch, never the PR branch.
 
 ## `go-quality.yml` — on every push/PR to `main`
 
@@ -87,9 +97,13 @@ This automates *building* the changelog, not *deciding when to release*: a perso
 
 The containerized, real-artifact end-to-end smoke test — see [Testing](testing.md#manual-e2e-real-container) for the full description. Deliberately not wired to push/PR: it spins up multiple long-lived containers and sleeps through real wall-clock windows, so it's opt-in rather than adding minutes to every PR.
 
-## `e2e-kind.yml` — manual only (`workflow_dispatch`)
+## `e2e-kind.yml` — manual (`workflow_dispatch`) or opt-in via the `run-e2e-kind` PR label
 
-The real-Kubernetes end-to-end test for the CRD-driven mode (`cmd/manager`) — see [Testing](testing.md#e2e-kind-cloudnativepg) for the full description. Creates a real `kind` cluster, installs the real CloudNativePG operator and a real `Cluster`, installs pg-regression-radar via the Helm chart, and asserts a real `PerformanceRegression` CR is created. Real ArgoCD and `pg_store_plans` are deliberately out of scope for this first pass — see [Roadmap](roadmap.md). Same opt-in reasoning as `e2e-manual.yml`: this is even heavier (a full cluster plus two operators), so it's `workflow_dispatch`-only too.
+The real-Kubernetes end-to-end test for the CRD-driven mode (`cmd/manager`) — see [Testing](testing.md#e2e-kind-cloudnativepg) for the full description. Creates a real `kind` cluster, installs the real CloudNativePG operator and a real `Cluster`, installs pg-regression-radar via the Helm chart, and asserts a real `PerformanceRegression` CR is created. Real ArgoCD and `pg_store_plans` are deliberately out of scope for this first pass — see [Roadmap](roadmap.md). Same opt-in reasoning as `e2e-manual.yml`: this is even heavier (a full cluster plus two operators), so it doesn't run on every push/PR by default.
+
+It's opt-in on a per-PR basis, though: adding the `run-e2e-kind` label to a pull request runs this workflow against it, and every subsequent push to that PR re-runs it automatically for as long as the label stays attached (the job's `if:` checks the label on both the `labeled` and `synchronize` pull_request events — see the workflow's own header comment). Adding any other label never triggers it. Remove the label, or never add it, and this workflow costs nothing on that PR.
+
+On every run (manual or label-triggered), a final `Collect cluster diagnostics` step writes everything useful the kind cluster still knows — the `PostgresWatch`/`DeploySource`/`PerformanceRegression` resources, the CloudNativePG `Cluster`'s full YAML and `describe` output, cluster events, and the manager's and CloudNativePG controller's logs — to files, which an `if: always()` step then uploads as the `e2e-kind-diagnostics-<run-id>-<attempt>` build artifact. This matters specifically here because helm/kind-action tears the entire kind cluster down the instant the job ends (pass or fail): anything not captured to a file before that happens is gone for good, so this is the only way to debug a failure (or confirm a pass for the right reason) after the fact.
 
 ## `release.yml` — on pushing a `v*` tag
 

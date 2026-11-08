@@ -63,8 +63,18 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # gotestsum wraps `go test`, adding a human-readable progress stream
+      # (same info `go test -v` gives) plus a real JUnit XML report on disk
+      # — the format test-report.yml's dorny/test-reporter step later turns
+      # into GitHub Check Run annotations. Pinned, not @latest, for
+      # reproducible CI runs.
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
+
       - name: Test (with coverage)
-        run: go test -race -count=1 -coverprofile=coverage.out ./...
+        run: |
+          $(go env GOPATH)/bin/gotestsum --junitfile report-unit.xml --format standard-verbose -- \
+            -race -count=1 -coverprofile=coverage.out ./...
 
       # Reports coverage on every run — visibility, not a gate: this repo
       # deliberately does not fail CI below some blanket percentage. Unit
@@ -100,6 +110,20 @@ jobs:
         with:
           name: coverage-unit
           path: coverage.out
+          retention-days: 14
+
+      # Uploaded even on failure (that's the whole point of a test report —
+      # seeing *which* test failed). Consumed by test-report.yml, a
+      # separate workflow triggered by `workflow_run` rather than a step
+      # appended here, precisely so a fork PR's read-only GITHUB_TOKEN
+      # never has to hold `checks: write` — see that workflow's own header
+      # comment for the full reasoning.
+      - name: Upload JUnit report (unit tests)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-unit
+          path: report-unit.xml
           retention-days: 14
 
   # Runs the tests behind the "integration" build tag against a real
@@ -162,6 +186,9 @@ jobs:
           docker logs pgrr-test || true
           exit 1
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
+
       - name: Run integration tests
         env:
           PGRR_TEST_DSN: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
@@ -187,7 +214,17 @@ jobs:
         # out call counts the other test is mid-way through accumulating,
         # corrupting both. -p 1 gives each package exclusive access to the
         # shared instance for the duration of its own tests.
-        run: go test -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
+        run: |
+          $(go env GOPATH)/bin/gotestsum --junitfile "report-integration-postgres-${{ matrix.postgres-version }}.xml" --format standard-verbose -- \
+            -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
+
+      - name: Upload JUnit report (integration tests, postgres:${{ matrix.postgres-version }})
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-integration-postgres-${{ matrix.postgres-version }}
+          path: report-integration-postgres-${{ matrix.postgres-version }}.xml
+          retention-days: 14
 
       - name: Stop PostgreSQL
         if: always()
@@ -250,10 +287,23 @@ jobs:
           docker logs pgrr-test-storeplans || true
           exit 1
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
+
       - name: Run pg_store_plans integration tests
         env:
           PGRR_STOREPLANS_TEST_DSN: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
-        run: go test -tags=integration -race -count=1 -run StorePlans -v ./internal/planner/...
+        run: |
+          $(go env GOPATH)/bin/gotestsum --junitfile report-integration-pg-store-plans.xml --format standard-verbose -- \
+            -tags=integration -race -count=1 -run StorePlans -v ./internal/planner/...
+
+      - name: Upload JUnit report (pg_store_plans)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-integration-pg-store-plans
+          path: report-integration-pg-store-plans.xml
+          retention-days: 14
 
       - name: Stop PostgreSQL
         if: always()
@@ -327,8 +377,10 @@ jobs:
       matrix:
         include:
           - display-name: EDB Postgres Advanced Server (EPAS)
+            id: epas
             image: docker.enterprisedb.com/k8s/edb-postgres-advanced:16-standard-ubi9
           - display-name: EDB Postgres Extended Server (PGE)
+            id: pge
             image: docker.enterprisedb.com/k8s/edb-postgres-extended:16-standard-ubi9
 
     steps:
@@ -375,10 +427,24 @@ jobs:
           docker logs pgrr-test-edb || true
           exit 1
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
+
       - name: Run integration tests
         env:
           PGRR_TEST_DSN: postgres://postgres:test@localhost:5432/postgres?sslmode=disable
-        run: go test -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
+        run: |
+          $(go env GOPATH)/bin/gotestsum --junitfile "report-integration-edb-${{ matrix.id }}.xml" --format standard-verbose -- \
+            -tags=integration -race -count=1 -p 1 ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
+
+      - name: "Upload JUnit report (EDB Postgres: ${{ matrix.display-name }})"
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-integration-edb-${{ matrix.id }}
+          path: report-integration-edb-${{ matrix.id }}.xml
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Stop EDB Postgres
         if: always()
@@ -412,5 +478,18 @@ jobs:
         # bump it alongside those dependencies if they're upgraded together.
         run: echo "KUBEBUILDER_ASSETS=$($(go env GOPATH)/bin/setup-envtest use 1.31.0 -p path)" >> "$GITHUB_ENV"
 
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@v1.13.0
+
       - name: Run envtest-backed controller tests
-        run: go test ./internal/controller/... -run TestEnvtest -v
+        run: |
+          $(go env GOPATH)/bin/gotestsum --junitfile report-envtest.xml --format standard-verbose -- \
+            ./internal/controller/... -run TestEnvtest -v
+
+      - name: Upload JUnit report (envtest)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-envtest
+          path: report-envtest.xml
+          retention-days: 14

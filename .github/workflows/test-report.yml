@@ -1,0 +1,106 @@
+name: Test Report
+
+# Turns the JUnit XML artifacts ci.yml's test jobs upload (junit-unit,
+# junit-integration-postgres-*, junit-integration-edb-*,
+# junit-integration-pg-store-plans, junit-envtest) into GitHub Check Runs
+# with per-test-case pass/fail annotations, instead of the single opaque
+# green/red tick a plain `go test` step leaves behind.
+#
+# This is a separate workflow triggered by `workflow_run` rather than a job
+# appended to ci.yml itself, for one specific reason: creating a Check Run
+# requires the `checks: write` permission, and GitHub Actions always runs a
+# `pull_request`-triggered workflow with a read-only GITHUB_TOKEN whenever
+# the PR comes from a fork — no `permissions:` block can change that. A
+# `workflow_run` workflow, by contrast, always executes in the context of
+# this repository's default branch with that branch's normal token
+# permissions, regardless of whose fork the originating PR came from. This
+# is dorny/test-reporter's own documented "Recommended setup for public
+# repositories" pattern — see
+# https://github.com/dorny/test-reporter#recommended-setup-for-public-repositories.
+#
+# One consequence of that split: this workflow only exists on `main` (or
+# whichever ref GitHub resolves `workflow_run` against), so a PR that only
+# adds/changes this file won't see it react to its own ci.yml run until
+# after it's merged — same caveat dorny's own docs call out.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+jobs:
+  report:
+    name: Publish JUnit test results as Check Runs
+    runs-on: ubuntu-latest
+    # Skip entirely for a cancelled CI run — there are no meaningful
+    # results to report, and the artifacts may not even exist. A failed CI
+    # run, on the other hand, still gets reported: that's the case where
+    # seeing exactly which test failed, as an annotation, matters most.
+    if: github.event.workflow_run.conclusion != 'cancelled'
+
+    steps:
+      # Each of these matches one or more JUnit artifacts ci.yml uploads by
+      # exact name or by regex (artifacts matching a /regex/ each get their
+      # own Check Run, with capture groups substituted into `name` — e.g.
+      # junit-integration-postgres-16/17/18 become three separate "Integration
+      # tests (PostgreSQL 16/17/18)" check runs from one step). `fail-on-error:
+      # false` means a real test failure is reported as a Check Run
+      # annotation (and fails the underlying CI run, which already happened)
+      # without ALSO failing this reporting workflow — a missing or
+      # malformed report shouldn't be indistinguishable from an actual test
+      # failure in this workflow's own status.
+      - name: Unit tests
+        uses: dorny/test-reporter@v3
+        with:
+          artifact: junit-unit
+          name: "Unit tests"
+          path: "*.xml"
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Integration tests (PostgreSQL)
+        uses: dorny/test-reporter@v3
+        with:
+          artifact: /junit-integration-postgres-(.*)/
+          name: "Integration tests (PostgreSQL $1)"
+          path: "*.xml"
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Integration tests (pg_store_plans)
+        uses: dorny/test-reporter@v3
+        with:
+          artifact: junit-integration-pg-store-plans
+          name: "Integration tests (pg_store_plans)"
+          path: "*.xml"
+          reporter: java-junit
+          fail-on-error: false
+
+      # EDB Postgres artifacts only exist when the integration-edb-postgres
+      # job in ci.yml actually ran, which only happens when the
+      # EDB_SUBSCRIPTION_TOKEN repository secret is configured (see that
+      # job's own comments). `fail-on-empty: false` keeps that the normal,
+      # unremarkable case here too — no artifact means "skipped", not
+      # "broken".
+      - name: Integration tests (EDB Postgres)
+        uses: dorny/test-reporter@v3
+        with:
+          artifact: /junit-integration-edb-(.*)/
+          name: "Integration tests (EDB Postgres: $1)"
+          path: "*.xml"
+          reporter: java-junit
+          fail-on-error: false
+          fail-on-empty: false
+
+      - name: Controller tests (envtest)
+        uses: dorny/test-reporter@v3
+        with:
+          artifact: junit-envtest
+          name: "Controller tests (envtest)"
+          path: "*.xml"
+          reporter: java-junit
+          fail-on-error: false
