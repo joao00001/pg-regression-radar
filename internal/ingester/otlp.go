@@ -57,7 +57,7 @@ func (h *Handler) serveOTLP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad request: invalid gzip body", http.StatusBadRequest)
 			return
 		}
-		defer zr.Close()
+		defer func() { _ = zr.Close() }()
 		body = io.LimitReader(zr, maxOTLPBodyBytes+1)
 	default:
 		http.Error(w, "unsupported content-encoding "+enc, http.StatusUnsupportedMediaType)

@@ -380,7 +380,7 @@ func (e *Exporter) post(body []byte, contentType string) (retryable bool, retryA
 	if err != nil {
 		return e.ctx.Err() == nil, 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	snippet, _ := io.ReadAll(io.LimitReader(resp.Body, maxResponseDrain))
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {

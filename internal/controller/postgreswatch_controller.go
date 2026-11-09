@@ -1013,7 +1013,7 @@ func hashPostgresWatchSpec(spec radarv1alpha1.PostgresWatchSpec, resolvedDSN str
 	// the hash they had before the Secrets existed (no restart on upgrade).
 	for i, v := range resolvedSecrets {
 		if v != "" {
-			fmt.Fprintf(h, "\x00%d:%d:%s", i, len(v), v)
+			_, _ = fmt.Fprintf(h, "\x00%d:%d:%s", i, len(v), v)
 		}
 	}
 	return hex.EncodeToString(h.Sum(nil))
