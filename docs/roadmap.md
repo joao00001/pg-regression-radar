@@ -1,23 +1,14 @@
 # Roadmap
 
-*Where the project has been, and what's still open — including operational follow-ups that aren't code changes.*
+*What's still open — planned features, known gaps, and operational follow-ups. What's already shipped lives in [CHANGELOG.md](changelog.md) and in each feature's own docs page, not repeated here.*
 
 ## Overview
 
-This page tracks both feature roadmap and known operational/robustness gaps, so "what's next" lives in one place instead of being scattered across commit messages and release notes.
+This page tracks only what's *not* done yet: planned features, known robustness gaps, and operational follow-ups that aren't code changes. It is not a running history of delivered work — once an item here ships, it's removed from this page, not reworded as "done"; its details live in [CHANGELOG.md](changelog.md) (what shipped and when) and the relevant feature's own docs page (how it works today).
 
 ## Feature roadmap
 
-This project does not commit features to specific version numbers — a version tag marks when something shipped, not a promise of what a future one will contain. Work below is grouped by whether it has shipped, not by which release it's slated for.
-
-**Shipped:**
-
-- Collector + Ingester + Correlation Engine + Slack alerting + Helm chart.
-- Argo Rollouts and Flux source types — see [Deploy Sources & Webhooks](webhooks.md).
-- Real CRDs (`PostgresWatch`, `DeploySource`, `PerformanceRegression`) reconciled by `cmd/manager` via controller-runtime, with leader-election HA — see [Architecture Overview](architecture.md).
-- Multi-cluster (fleet) support via `spec.remoteClusterRef` (cluster registry, with backward-compatible `spec.remoteClusterSecretRef` deprecation path), `spec.cnpgClusterRef` remote CloudNativePG `Cluster` validation, and a dedicated `PostgresRadarClusterReconciler` health check that proactively detects a registered cluster's kubeconfig going bad — see [Multi-Cluster (Fleet) Mode](multi-cluster.md) for the full model, now validated end to end against two real `kind` clusters (see [Testing](testing.md#e2e-kind-multicluster)).
-
-**Planned for a future release** (no version committed):
+This project does not commit features to specific version numbers — a version tag marks when something shipped, not a promise of what a future one will contain. What's below has no version committed yet:
 
 - GitHub/GitLab PR comment on detected regression; Grafana annotation.
 - An OLM bundle for OperatorHub.io.
@@ -40,36 +31,27 @@ Deliberately staying out of scope for all of the above: `EXPLAIN`/plan-diff capt
 ## Known robustness gaps
 
 - **Real `auto_explain` log ingestion is not yet built.** `internal/planner` captures a query's execution plan from either `pg_store_plans` (the real, previously-executed plan — see [Testing](testing.md#real-pg_store_plans-extension) for how it's validated against a real install) or `EXPLAIN (FORMAT JSON, GENERIC_PLAN)` (an estimate, PostgreSQL 16+ only) and diffs two captures — see [Detection Algorithm](detection-algorithm.md#plan-diff-correlation-optional). A full `auto_explain` log-shipping pipeline remains a heavier, not-yet-started alternative for clusters that have neither `pg_store_plans` nor PostgreSQL 16 available — see the "Honest limitations" note on [Detection Algorithm](detection-algorithm.md#honest-limitations).
-- **Full kind + CloudNativePG cluster validation is now done; real ArgoCD validation is not.** The [kind + CloudNativePG e2e workflow](testing.md#e2e-kind-cloudnativepg) (`.github/workflows/e2e-kind.yml`) closes the "no real Kubernetes cluster" half of this gap: a real `kind` cluster, a real CloudNativePG operator and `Cluster`, pg-regression-radar installed via the real Helm chart in `mode=manager`, and a `PostgresWatch` reading its DSN from the CloudNativePG-generated Secret directly. What's still open, deliberately left out of this pass:
-  - **No real ArgoCD.** The workflow posts a `sourceType: generic` webhook directly to the DeploySource route rather than standing up ArgoCD's Application controller and Notifications engine (the part that actually emits a real `on-sync-succeeded` webhook — see [Deploy Sources & Webhooks](webhooks.md)). That's a second, mostly-orthogonal integration surface on top of everything the workflow already does; a natural follow-up once someone needs to validate ArgoCD's own webhook delivery specifically, not just the manager's handling of a webhook once it arrives.
-  - **No `pg_store_plans` on the CloudNativePG instance.** It's a C extension that isn't compiled into CloudNativePG's default operand images; building and maintaining a custom CloudNativePG operand image just for this smoke test wasn't judged worth it yet. This is a narrower, Kubernetes-operand-specific gap than "is `pg_store_plans` validated against a real server at all" — see [Testing](testing.md#real-pg_store_plans-extension) for that validation, which runs outside of CloudNativePG specifically.
-  - **Authored, not yet proven green in CI.** The sandbox this workflow was written in has no Docker-in-Docker/`kind` support, so `kind create cluster` could never actually run there. The workflow's commands were checked against current upstream CloudNativePG/kind/Helm documentation and the YAML was syntax- and `actionlint`-checked, but the very first real `workflow_dispatch` run of it should be treated as part of reviewing the change that introduced it, not as an already-passing check.
-- **Two-real-cluster fleet mode is now validated too, with the same "not yet proven green in CI" caveat.** The [two-`kind`-cluster end-to-end workflow](testing.md#e2e-kind-multicluster) (`.github/workflows/e2e-kind-multicluster.yml`) closes what used to be this page's "single-cluster only" gap: a real hub cluster running the manager, a real spoke cluster running the CloudNativePG operator and a real `Cluster`, a least-privilege kubeconfig wiring `spec.remoteClusterRef`/`spec.cnpgClusterRef`, real query traffic, and a kubeconfig-rotation failure/recovery check against the new `PostgresRadarClusterReconciler` health check. It was authored and validated the same way the single-cluster workflow above was — real two-`kind`-cluster manual validation in a sandboxed environment that lacks GitHub Actions' kernel support for live Service networking (worked around locally with direct API-server access and a plain container instead of a routed CNPG operand; see [Multi-Cluster: Operational considerations](multi-cluster.md#operational-considerations) for why a NodePort bridge is needed at all), plus `actionlint` and YAML-structure checks — but, same as its single-cluster counterpart, its first real `workflow_dispatch`/labeled-PR run on an actual GitHub Actions runner should be treated as part of reviewing the change that introduced it.
+- **No real ArgoCD or `pg_store_plans` in the kind + CloudNativePG e2e.** The [kind + CloudNativePG e2e workflow](testing.md#e2e-kind-cloudnativepg) (`.github/workflows/e2e-kind.yml`) posts a `sourceType: generic` webhook directly to the DeploySource route rather than standing up ArgoCD's Application controller and Notifications engine (the part that actually emits a real `on-sync-succeeded` webhook — see [Deploy Sources & Webhooks](webhooks.md)); that's a second, mostly-orthogonal integration surface, a natural follow-up once someone needs to validate ArgoCD's own webhook delivery specifically. Separately, it doesn't run with `pg_store_plans` on the CloudNativePG instance: that C extension isn't compiled into CloudNativePG's default operand images, and building/maintaining a custom operand image just for this smoke test hasn't been judged worth it yet (narrower than "is `pg_store_plans` validated against a real server at all" — see [Testing](testing.md#real-pg_store_plans-extension) for that validation, which runs outside of CloudNativePG specifically).
+- **Neither kind-based e2e workflow has a real GitHub Actions run yet.** `.github/workflows/e2e-kind.yml` and `.github/workflows/e2e-kind-multicluster.yml` were both authored, actionlint/YAML-checked, and validated against real clusters in a local sandbox that lacks GitHub Actions' kernel support for `kind`/Docker-in-Docker (see [Multi-Cluster: Operational considerations](multi-cluster.md#operational-considerations) for the networking workaround that local validation needed) — but neither has actually executed as a real `workflow_dispatch`/labeled-PR run on an actual GitHub Actions runner. Treat each workflow's first real run as part of reviewing the change that introduces it, not as an already-passing check.
 
 ## Operational follow-ups
 
-Shipped operational work (publishing signed release artifacts, per-release docs versioning, per-PR release-notes fragments) is documented where it actually lives — [CI/CD](ci-cd.md) and [Installation](installation.md) — rather than listed again here once it's done. What's below is genuinely still open:
+Shipped operational work (publishing signed release artifacts, per-release docs versioning, per-PR release-notes fragments) is documented where it actually lives — [CI/CD](ci-cd.md) and [Installation](installation.md) — and logged in [CHANGELOG.md](changelog.md), rather than listed again here once it's done. What's below is genuinely still open:
 
 - **Branch protection review.** See [Branch Protection](branch-protection.md) — the CI checks in [CI/CD](ci-cd.md) only have real effect once `main`'s ruleset actually requires each one by name.
 - **GitHub Discussions link.** `.github/ISSUE_TEMPLATE/config.yml` links to the repo's Discussions tab; whether Discussions is actually enabled on the repo hasn't been confirmed.
 
 ## 7-step security and robustness checklist status
 
-This repository's code/docs/workflow-addressable checklist is now effectively closed for steps 1-6:
+This repository's code/docs/workflow-addressable checklist has 6 of its 7 steps complete — security model and trust boundaries, secret-consent and policy controls, alert destination controls, Kubernetes hardening defaults, the tenant-safe remote cluster model, and supply-chain controls, in that order. Each is documented in full on its own page, not restated here: [Security Model](security-model.md), [Multi-Cluster (Fleet) Mode](multi-cluster.md), [Deployment Security](deployment-security.md), and [Supply Chain](supply-chain.md) cover how; [CHANGELOG.md](changelog.md) covers when.
 
-1. **Security model and trust boundaries:** documented in [Security Model](security-model.md).
-2. **Secret-consent and policy controls:** implemented (`internal/controller/secret_consent.go`) with admission-policy examples in `docs/policies/`.
-3. **Alert destination controls:** destination policy (`permissive`/`allowlist`/`relay-only`) implemented in code and wired through Helm values/templates/docs.
-4. **Kubernetes hardening defaults:** Helm exposes pod security context, NetworkPolicy/Quota/LimitRange, and ServiceAccount token automount control.
-5. **Tenant-safe remote cluster model:** registry-backed `PostgresRadarCluster` + `remoteClusterRef` path implemented, including remote CloudNativePG `Cluster` validation (`cnpgClusterRef`) and a proactive kubeconfig health-check reconciler; legacy `remoteClusterSecretRef` is deprecated compatibility.
-6. **Supply-chain controls:** release workflow builds/scans/signs artifacts, attaches SBOM attestations, and now publishes SLSA provenance attestations.
-
-Step 7 remains intentionally **operational**:
+Step 7 remains intentionally **operational**, and genuinely open:
 
 - **External-user quickstart validation is reproducibly documented but not auto-provable from code alone.** The execution checklist exists in [Quickstart Validation](quickstart-validation.md), but completion still depends on a real human/operator run in an external environment.
 
 ## See also
 
+- [CHANGELOG.md](changelog.md) — what's already shipped, release by release; this page only tracks what's still open.
 - [CI/CD](ci-cd.md) — the workflows referenced by the operational follow-ups above.
 - [Persistence](persistence.md) and [Collector Internals](collector-internals.md) — the two pages with the most detail on the robustness gaps above.
 - [Support Matrix](support-matrix.md) — officially supported PostgreSQL versions and distributions, including real `kind` + CloudNativePG validation coverage (single- and two-cluster) and the remaining `pg_store_plans`-on-CloudNativePG-operand-image follow-up referenced above.
