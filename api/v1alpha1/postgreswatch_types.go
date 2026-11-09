@@ -100,6 +100,28 @@ type PostgresWatchSpec struct {
 	// +optional
 	RemoteNamespace string `json:"remoteNamespace,omitempty"`
 
+	// cnpgClusterRef optionally names a CloudNativePG `Cluster` resource
+	// (postgresql.cnpg.io/v1) to validate before trusting dsnSecretRef's
+	// contents. When set, resolveDSN additionally fetches that Cluster
+	// object — through the exact same client and in the exact same
+	// namespace dsnSecretRef itself is read from/in (the hub cluster by
+	// default, or the cluster named by remoteClusterRef/
+	// remoteClusterSecretRef when either is set) — and fails DSN
+	// resolution, exactly like any other DSN resolution error
+	// (status.phase: Failed), if that Cluster doesn't exist or isn't
+	// reporting a healthy status. "Healthy" means a `status.conditions`
+	// entry of `type: Ready, status: "True"` when CloudNativePG reports
+	// one (recent versions always do), falling back to `status.phase` not
+	// indicating a failure state for older CloudNativePG versions that
+	// predate the Ready condition.
+	//
+	// Leave unset (the default) to keep today's behavior: only the
+	// generated DSN Secret is ever read, and this project has no opinion
+	// on whether the CloudNativePG Cluster that generated it is itself
+	// healthy. See docs/multi-cluster.md#remote-cloudnativepg-cluster-validation.
+	// +optional
+	CNPGClusterRef string `json:"cnpgClusterRef,omitempty"`
+
 	// scrapeIntervalSeconds controls how often pg_stat_statements is
 	// scraped. Lower values increase detection granularity at the cost of
 	// DB load.

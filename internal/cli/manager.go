@@ -54,6 +54,10 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(managerScheme))
 	utilruntime.Must(corev1.AddToScheme(managerScheme))
 	utilruntime.Must(radarv1alpha1.AddToScheme(managerScheme))
+	// postgresql.cnpg.io/v1, Kind=Cluster (see internal/controller/cnpg_types.go)
+	// — needed whenever a PostgresWatch sets spec.cnpgClusterRef and the
+	// Cluster it names lives on the hub cluster (i.e. no remoteClusterRef).
+	controller.AddCNPGToScheme(managerScheme)
 }
 
 // +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;watch;create;update;patch;delete
@@ -82,6 +86,7 @@ func RunManager(args []string) int {
 	var versionFlag bool
 	var dryRun bool
 	var securityProfile string
+	var clusterHealthCheckInterval time.Duration
 
 	fs.StringVar(&metricsAddr, "metrics-bind-address", "0",
 		"Address the controller-runtime metrics endpoint binds to (reconcile/workqueue metrics). "+
@@ -117,6 +122,10 @@ func RunManager(args []string) int {
 		"Fixed relay endpoint used when --alerting-destination-policy=relay-only. Must be a valid http/https URL. Required when the policy is relay-only.")
 	fs.StringVar(&securityProfile, "security-profile", string(radarv1alpha1.SecurityProfileControlled),
 		"Remote-cluster security profile: controlled (default) or hardened. In hardened mode, spec.remoteClusterSecretRef is rejected outright.")
+	fs.DurationVar(&clusterHealthCheckInterval, "cluster-health-check-interval", controller.DefaultClusterHealthCheckInterval,
+		"How often each registered PostgresRadarCluster's kubeconfig is re-validated against its remote API server "+
+			"(a lightweight discovery version probe — see docs/multi-cluster.md#cluster-health-checks). A kubeconfig "+
+			"rotation (Secret update) also triggers an immediate re-check regardless of this interval. Must be positive.")
 	fs.BoolVar(&versionFlag, "version", false, "Print version information and exit")
 	fs.BoolVar(&dryRun, "dry-run", false,
 		"Validate that a Kubernetes API server config can be resolved (in-cluster or via "+
@@ -149,6 +158,10 @@ func RunManager(args []string) int {
 	if securityProfile != string(radarv1alpha1.SecurityProfileControlled) && securityProfile != string(radarv1alpha1.SecurityProfileHardened) {
 		logger.Error("invalid --security-profile value", "value", securityProfile,
 			"allowed", []string{string(radarv1alpha1.SecurityProfileControlled), string(radarv1alpha1.SecurityProfileHardened)})
+		return 1
+	}
+	if clusterHealthCheckInterval <= 0 {
+		logger.Error("invalid --cluster-health-check-interval value: must be positive", "value", clusterHealthCheckInterval.String())
 		return 1
 	}
 
@@ -246,6 +259,15 @@ func RunManager(args []string) int {
 		Logger:   logger,
 	}).SetupWithManager(mgr); err != nil {
 		managerSetupLog.Error(err, "unable to create controller", "controller", "WorkloadWatch")
+		return 1
+	}
+
+	if err := (&controller.PostgresRadarClusterReconciler{
+		Client:              mgr.GetClient(),
+		Logger:              logger,
+		HealthCheckInterval: clusterHealthCheckInterval,
+	}).SetupWithManager(mgr); err != nil {
+		managerSetupLog.Error(err, "unable to create controller", "controller", "PostgresRadarCluster")
 		return 1
 	}
 

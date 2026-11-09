@@ -341,6 +341,18 @@ func (r *PostgresWatchReconciler) resolveDSN(ctx context.Context, watch *radarv1
 	if !ok {
 		return "", fmt.Errorf("secret %s has no key %q", key, watch.Spec.DSNSecretRef.Key)
 	}
+
+	// Deliberately validated after (not before) the DSN secret fetch above:
+	// a transport-broken remote client is already caught and evicted by the
+	// Get call this follows, so checking cnpgClusterRef first would just
+	// duplicate that failure mode under a different error message. Uses the
+	// exact same client and namespace the DSN secret was just read
+	// through/from, so this works identically whether the Cluster lives on
+	// the hub or on a spoke registered via remoteClusterRef.
+	if err := r.validateCNPGCluster(ctx, secretClient, key.Namespace, watch); err != nil {
+		return "", err
+	}
+
 	return string(val), nil
 }
 

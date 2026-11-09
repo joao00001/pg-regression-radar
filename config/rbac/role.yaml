@@ -55,6 +55,7 @@ rules:
   resources:
   - deploysources/status
   - performanceregressions/status
+  - postgresradarclusters/status
   - postgreswatches/status
   verbs:
   - get

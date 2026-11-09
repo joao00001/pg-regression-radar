@@ -76,6 +76,35 @@ spec:
                       when format is "custom" — see docs/alerting.md#custom-format for the
                       available template fields and a worked example.
                     type: string
+                  destinationPolicy:
+                    description: |-
+                      destinationPolicy controls how the alerting destination URL is
+                      validated and resolved. Three modes are supported:
+
+                      "permissive" (default): the URL is accepted as long as it passes the
+                      static SSRF blocklist (no loopback, no link-local, no cloud-metadata
+                      hostnames). This matches the pre-existing behaviour and is
+                      backward-compatible with all existing installations.
+
+                      "allowlist": the URL's host must also appear in the
+                      --alerting-allowed-destinations list configured at the operator or
+                      manager level. Reconciliation fails with a clear message if the host
+                      is not in the list. Use this in multi-tenant clusters where only a
+                      pre-approved set of receivers should be reachable.
+
+                      "relay-only": the CRD-level URL is ignored entirely; the notifier
+                      always sends to the relay URL supplied via
+                      --alerting-destination-policy-relay-url. Reconciliation fails if
+                      that flag is empty. Use this when you want a single, centrally
+                      controlled egress point that individual watch owners cannot override.
+
+                      Leave unset to get "permissive" behaviour — no breaking change for
+                      existing installations.
+                    enum:
+                    - permissive
+                    - allowlist
+                    - relay-only
+                    type: string
                   format:
                     description: |-
                       format selects the notification payload layout. Leave unset (or set
@@ -148,6 +177,28 @@ spec:
                   PerformanceRegression created from this watch.
                 minLength: 1
                 type: string
+              cnpgClusterRef:
+                description: |-
+                  cnpgClusterRef optionally names a CloudNativePG `Cluster` resource
+                  (postgresql.cnpg.io/v1) to validate before trusting dsnSecretRef's
+                  contents. When set, resolveDSN additionally fetches that Cluster
+                  object — through the exact same client and in the exact same
+                  namespace dsnSecretRef itself is read from/in (the hub cluster by
+                  default, or the cluster named by remoteClusterRef/
+                  remoteClusterSecretRef when either is set) — and fails DSN
+                  resolution, exactly like any other DSN resolution error
+                  (status.phase: Failed), if that Cluster doesn't exist or isn't
+                  reporting a healthy status. "Healthy" means a `status.conditions`
+                  entry of `type: Ready, status: "True"` when CloudNativePG reports
+                  one (recent versions always do), falling back to `status.phase` not
+                  indicating a failure state for older CloudNativePG versions that
+                  predate the Ready condition.
+
+                  Leave unset (the default) to keep today's behavior: only the
+                  generated DSN Secret is ever read, and this project has no opinion
+                  on whether the CloudNativePG Cluster that generated it is itself
+                  healthy. See docs/multi-cluster.md#remote-cloudnativepg-cluster-validation.
+                type: string
               criticalQueryIDs:
                 description: |-
                   criticalQueryIDs bypass minExecutions so SLA-critical queries are
@@ -166,6 +217,9 @@ spec:
                 description: |-
                   dsnSecretRef points at a Secret key holding the Postgres DSN, keeping
                   credentials out of the CR spec (and out of `kubectl get -o yaml`).
+                  By default this Secret is read from the same Kubernetes cluster the
+                  manager runs in (the "hub"). Set remoteClusterSecretRef to read it
+                  from a different ("spoke") cluster instead.
                 properties:
                   key:
                     description: key within the Secret's Data.
@@ -238,6 +292,19 @@ spec:
                 required:
                 - enabled
                 type: object
+              remoteClusterRef:
+                description: |-
+                  remoteClusterRef names a PostgresRadarCluster resource (cluster-scoped)
+                  that was pre-registered by an administrator. When set, dsnSecretRef is
+                  resolved against the remote cluster described by that
+                  PostgresRadarCluster instead of the hub — only clusters explicitly
+                  registered by an administrator can be referenced here, which eliminates
+                  the confused-deputy risk of arbitrary kubeconfig references. The named
+                  PostgresRadarCluster must exist; reconciliation fails if it does not.
+
+                  Takes precedence over remoteClusterSecretRef when both are set.
+                  See docs/multi-cluster.md#cluster-registry for the full model.
+                type: string
               remoteClusterSecretRef:
                 description: |-
                   remoteClusterSecretRef points at a Secret, in the hub cluster and in
@@ -252,6 +319,10 @@ spec:
                   it should grant nothing beyond reading the one Secret dsnSecretRef
                   names, in the remote cluster.
 
+                  Deprecated: use remoteClusterRef with a registered PostgresRadarCluster
+                  instead. In hardened security-profile mode this field is rejected
+                  outright; in controlled mode (the default) it continues to work but
+                  logs a deprecation warning. See docs/multi-cluster.md#migration.
 
                   Leave unset (the default) when the Postgres cluster being watched is
                   reachable over the network from the manager and its DSN Secret lives

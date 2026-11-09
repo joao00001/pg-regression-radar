@@ -256,6 +256,14 @@ manager:
     ctrlMetrics: 8443  # controller-runtime's own reconcile/workqueue metrics
     healthProbe: 8081  # /healthz and /readyz
 
+  # How often PostgresRadarClusterReconciler re-probes each registered
+  # remote cluster's kubeconfig (a lightweight API discovery call) to keep
+  # status.ready/status.conditions/status.lastProbeTime current — see
+  # docs/multi-cluster.md#cluster-health-checks. A Go duration string
+  # (e.g. "30s", "5m"). Leave empty to use the binary's own built-in
+  # default (controller.DefaultClusterHealthCheckInterval, currently 5m).
+  clusterHealthCheckInterval: ""
+
   # When true, the chart also renders one PostgresWatch and one
   # DeploySource CR from the postgres/analysis/ingester/alerting values
   # above, so switching `mode` from "operator" to "manager" reproduces the

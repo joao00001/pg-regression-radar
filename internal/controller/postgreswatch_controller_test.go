@@ -55,6 +55,9 @@ func testScheme(t *testing.T) *runtime.Scheme {
 	if err := appsv1.AddToScheme(s); err != nil {
 		t.Fatalf("add appsv1 scheme: %v", err)
 	}
+	// postgresql.cnpg.io/v1, Kind=Cluster (see cnpg_types.go) is needed by
+	// any test exercising spec.cnpgClusterRef (cnpg_cluster_test.go).
+	AddCNPGToScheme(s)
 	return s
 }
 

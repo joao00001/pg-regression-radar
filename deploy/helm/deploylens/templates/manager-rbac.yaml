@@ -15,7 +15,7 @@ rules:
     resources: ["postgreswatches", "deploysources", "postgresradarclusters"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["radar.pgregressionradar.io"]
-    resources: ["postgreswatches/status", "deploysources/status", "performanceregressions/status"]
+    resources: ["postgreswatches/status", "deploysources/status", "performanceregressions/status", "postgresradarclusters/status"]
     verbs: ["get", "update", "patch"]
   - apiGroups: ["radar.pgregressionradar.io"]
     resources: ["performanceregressions"]
