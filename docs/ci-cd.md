@@ -4,7 +4,7 @@
 
 ## Overview
 
-pg-regression-radar runs fourteen workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`, and [Backporting](backporting.md) for the two workflows (`backport.yml`, `release-branches.yml`) and the `release-prep.yml` changes that exist specifically to support shipping a fix to an already-released tool version.
+pg-regression-radar runs fifteen workflows plus Dependabot. This page is a map of what each one does; see [Testing](testing.md) for how to reproduce the test-related ones locally, [Branch Protection](branch-protection.md) for how (and whether) they're actually enforced as required checks on `main`, [Backporting](backporting.md) for the two workflows (`backport.yml`, `release-branches.yml`) and the `release-prep.yml` changes that exist specifically to support shipping a fix to an already-released tool version, and [`branch-cleanup.yml`](#branch-cleanupyml-on-a-pr-closing-merged-or-not) below for how this repo keeps disposable branches (including the ones those two workflows create) from piling up.
 
 **Security scanning, end to end:** this repo uses only tools that are free for a public repository, spread across the layer each is actually good at — no single tool covers all of these:
 
@@ -120,6 +120,21 @@ For a pushed tag `vX.Y.Z`: pre-release tags (containing `-`, e.g. `v2.0.0-rc1`) 
 - creates the matching `backport release-X.Y` label.
 
 See [Backporting: Maintenance branches](backporting.md#maintenance-branches-release-xy) for the full lifecycle this feeds into.
+
+## `branch-cleanup.yml` — on a PR closing (merged or not)
+
+Deletes a pull request's head branch the moment it closes, whether merged or closed without merging — feature branches, `backport.yml`'s own per-target branches, and `release-prep.yml`'s reused `release-prep-${{ github.ref_name }}` branch all get cleaned up this way instead of piling up indefinitely.
+
+Deliberately a workflow rather than just the repository's native **Settings → General → "Automatically delete head branches"** toggle (which is **not** enabled on this repo): that setting only fires on merge, never on a PR closed without merging, and this repo wants both. Keeping it as one workflow, rather than a mix of that setting plus a workflow for the other case, avoids two independent mechanisms that could ever disagree.
+
+Triggered by `pull_request: types: [closed]` with no branch filter, so it reacts to a PR closing against `main`, a `release-X.Y` branch, or anywhere else:
+
+| Safeguard | Why |
+|---|---|
+| Job gated on `head.repo.full_name == github.repository` | A PR opened from a fork has its head branch *in the fork*, not this repo — never attempted, and couldn't succeed with this repo's own token anyway. |
+| `main` and any `release-\d+\.\d+` branch name are never deleted | These are long-lived branches this repo depends on, even in the unusual case one of them is ever a PR's *head* rather than its usual role as a base (e.g. a hypothetical "merge release-1.6 fixes forward into main" PR). Note this regex deliberately does **not** match `release-prep-main`/`release-prep-release-1.6` — those *are* meant to be cleaned up. |
+| A real branch protection rule, if one exists on the branch | Checked independently of the name-based check above, as a second safety net for any branch this repo ever protects that the naming check doesn't happen to catch. |
+| Already-deleted branch (404/422 from the delete call) | Treated as a no-op, not a failure — e.g. if someone already clicked GitHub's own "Delete branch" button. |
 
 ## `e2e-manual.yml` — manual only (`workflow_dispatch`)
 
