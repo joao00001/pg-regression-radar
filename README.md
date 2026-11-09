@@ -78,6 +78,19 @@ A concrete, reproducible walkthrough (full script in [Regression Scenario Exampl
 3. The Correlation Engine's E-divisive change-point detection locates the shift, Welch's t-test confirms it's statistically significant (not noise), and the result is tied back to the `v2` deploy event.
 
 ```text
+latency (ms), checkout-api · customer_id lookup
+
+ 50 ┤                                        ┌───────────●
+ 40 ┤                                        │
+ 30 ┤                                        │
+ 20 ┤                                        │
+ 10 ┤                                        │
+  3 ●────────────────────────────────────────┘
+    └─────────────────────┬──────────────────┬───────────────▶ time
+                      deploy v1           deploy v2
+                                   (index dropped here, flagged
+                                    by pg-regression-radar)
+
 regression detected: app=checkout-api namespace=demo revision=v2 query_id=123456
 latency_before_ms=3.1 latency_after_ms=48.7 change=15.7x confidence=0.98
 ```
