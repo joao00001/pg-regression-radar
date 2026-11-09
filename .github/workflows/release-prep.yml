@@ -67,15 +67,21 @@ jobs:
       - name: Check for pending fragments
         id: pending
         run: |
-          # changelog.d/README.md is the only file that should ever sit in
-          # this directory between releases; anything else means at least
-          # one feat/fix/perf PR has merged since the last towncrier build.
-          count=$(git ls-files changelog.d | grep -v '^changelog\.d/README\.md$' | wc -l)
+          # Count only the fragment types towncrier.toml actually declares
+          # (feat/fix/perf) -- NOT "any file besides README.md". A couple
+          # of older *.docs.md/*.test.md fragments (from before the
+          # fragment vocabulary was narrowed to feat/fix/perf) permanently
+          # sit in changelog.d/ and are never consumed by `towncrier
+          # build`, since towncrier only scans the types configured below;
+          # counting them here would open a release-prep PR with nothing
+          # real to release (this bit exactly once, opening "v1.6.1 - No
+          # significant changes" right after a real release).
+          count=$(git ls-files 'changelog.d/*.feat.md' 'changelog.d/*.fix.md' 'changelog.d/*.perf.md' | wc -l)
           echo "count=$count" | tee -a "$GITHUB_OUTPUT"
 
       - name: Nothing to prepare
         if: steps.pending.outputs.count == '0'
-        run: echo "No fragments in changelog.d/ besides README.md; nothing to release-prep."
+        run: echo "No feat/fix/perf fragments pending in changelog.d/; nothing to release-prep."
 
       - name: Compute next version
         if: steps.pending.outputs.count != '0'
