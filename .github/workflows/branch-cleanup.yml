@@ -18,9 +18,18 @@ name: Delete head branch on PR close
 #   - Never deletes `main` or a `release-X.Y` maintenance branch, even if
 #     one is ever the HEAD of some PR (e.g. a "merge release-1.6 fixes
 #     forward into main" PR) rather than its usual role as a PR base.
-#   - Skips (rather than fails) a branch that's protected, or one that's
-#     already gone (e.g. deleted manually, or by GitHub's own UI "Delete
-#     branch" button after merge) - both are a no-op, not an error.
+#     This name-based check is the *only* protection mechanism here -
+#     deliberately not also querying the real branch protection/ruleset
+#     API as a second check: that endpoint (GET .../branches/{branch}/
+#     protection, and the rules/branches equivalent) requires
+#     `administration: read`, a permission the default GITHUB_TOKEN can
+#     never be granted via `permissions:` (confirmed by this workflow's
+#     own first run, which 403'd on exactly that call) - attempting it
+#     would reliably fail every single time, for every branch, not just
+#     protected ones.
+#   - Skips (rather than fails) a branch that's already gone (e.g.
+#     deleted manually, or by GitHub's own UI "Delete branch" button
+#     after merge) - a no-op, not an error.
 on:
   pull_request:
     types: [closed]
@@ -45,26 +54,13 @@ jobs:
 
             // Long-lived branches this repo depends on - never delete
             // these, regardless of how they ended up as a PR's HEAD.
+            // See this file's header comment for why this name-based
+            // check is the only protection mechanism (not also a real
+            // branch-protection API call).
             const protectedByName = branch === 'main' || /^release-\d+\.\d+$/.test(branch);
             if (protectedByName) {
               core.info(`Skipping delete of "${branch}" - it's a long-lived branch (main/release-X.Y), not a disposable PR branch.`);
               return;
-            }
-
-            // Belt-and-suspenders: also honor a real branch protection
-            // rule/ruleset on it, if one is ever added for a branch this
-            // naming check doesn't happen to catch.
-            try {
-              await github.rest.repos.getBranchProtection({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                branch,
-              });
-              core.info(`Skipping delete of "${branch}" - it has branch protection enabled.`);
-              return;
-            } catch (err) {
-              if (err.status !== 404) throw err;
-              // 404 = not protected; proceed.
             }
 
             try {
