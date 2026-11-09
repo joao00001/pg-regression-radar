@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"mime"
 	"strings"
 	"time"
@@ -241,7 +242,9 @@ func (m *Matcher) Events(spans []Span, now time.Time) Result {
 			nanos = sp.StartNanos
 		}
 		ts := now
-		if nanos != 0 {
+		// Values above MaxInt64 would wrap to a negative int64 and land
+		// before 1970; like any future timestamp they fall back to now.
+		if nanos != 0 && nanos <= math.MaxInt64 {
 			ts = time.Unix(0, int64(nanos)).UTC()
 			if ts.After(now) {
 				ts = now

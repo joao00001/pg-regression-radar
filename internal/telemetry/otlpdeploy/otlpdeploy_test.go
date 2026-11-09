@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -338,6 +339,10 @@ func TestMatcher_Events(t *testing.T) {
 		future := with(func(s *Span) { s.EndNanos = uint64(now.Add(time.Hour).UnixNano()) })
 		if got := m.Events([]Span{future}, now).Events[0].Timestamp; !got.Equal(now) {
 			t.Errorf("future end should clamp to now, got %v", got)
+		}
+		overflow := with(func(s *Span) { s.EndNanos = math.MaxUint64 })
+		if got := m.Events([]Span{overflow}, now).Events[0].Timestamp; !got.Equal(now) {
+			t.Errorf("end beyond int64 range should use now, got %v", got)
 		}
 		none := with(func(s *Span) { s.EndNanos, s.StartNanos = 0, 0 })
 		if got := m.Events([]Span{none}, now).Events[0].Timestamp; !got.Equal(now) {
