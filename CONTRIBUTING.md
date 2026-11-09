@@ -38,6 +38,12 @@ relevant one locally before pushing will save you a slow CI feedback loop.
 - `fix/collector-memory-leak`
 - `docs/contributing-guide`
 
+`release-X.Y` (e.g. `release-1.6`) is a reserved pattern: these branches are
+created automatically by `.github/workflows/release-branches.yml` when a new
+minor/major version ships, and exist only as backport targets — see
+[Backporting](https://joao00001.github.io/pg-regression-radar/backporting/).
+Don't create a branch matching this pattern by hand.
+
 ## Commit messages: Conventional Commits
 
 Every commit message (and PR title — see below) must follow
@@ -124,6 +130,23 @@ to a given component.
   update the relevant page under [`docs/`](docs/) in the same PR (see
   [`docs/TEMPLATE.md`](docs/TEMPLATE.md) for the structure every page
   follows), plus `README.md` if it affects the quick-start commands there.
+
+## Backporting a merged pull request
+
+If your fix should also ship in an already-released tool version (not just the
+next `main` release), say so in the PR description — a maintainer applies a
+`backport release-X.Y` label (one per affected version, e.g. both
+`backport release-1.5` and `backport release-1.6`) either before or after
+merging, and `.github/workflows/backport.yml` takes it from there: it
+cherry-picks your squash-merged commit onto each named `release-X.Y`
+maintenance branch and opens a PR per target automatically. If a cherry-pick
+doesn't apply cleanly, it opens a draft PR with the conflict committed as-is
+instead of failing silently — see
+[Backporting](https://joao00001.github.io/pg-regression-radar/backporting/)
+for the full label convention, how `release-X.Y` branches come to exist, and
+how to resolve a conflicting backport. Deciding *which* shipped versions are
+affected is a maintainer judgment call, not something a contributor needs to
+(or can) trigger themselves.
 
 ## Release notes / changeset fragments
 
@@ -214,20 +237,28 @@ like; it writes nothing and doesn't touch your fragment files.
 `towncrier build` used to be a step the repo owner ran locally by hand
 before every release. It no longer is:
 `.github/workflows/release-prep.yml` runs it automatically, on every push
-to `main` that touches `changelog.d/`, and keeps a single standing PR
-titled `ci: prepare release vX.Y.Z` open and up to date with the resulting
-`CHANGELOG.md` — the next version number is computed from the pushed tags
-plus whichever fragment types are currently pending (any `feat` fragment
-bumps minor; `fix`/`perf`-only bumps patch).
+to `main` **or a `release-X.Y` maintenance branch** that touches
+`changelog.d/`, and keeps a single standing PR titled
+`ci: prepare release vX.Y.Z` open and up to date with the resulting
+`CHANGELOG.md` — the next version number is computed relative to the
+pushed branch's own tag history plus whichever fragment types are
+currently pending (any `feat` fragment bumps minor on `main`;
+`fix`/`perf`-only bumps patch; a `release-X.Y` branch always bumps patch
+only, since a maintenance line never ships a new minor). See
+[Backporting](https://joao00001.github.io/pg-regression-radar/backporting/#cutting-a-patch-release-from-a-maintenance-branch)
+for the full walkthrough of cutting a patch release from a maintenance
+branch.
 
 The only manual step left is reviewing and merging that PR — same as any
-other PR — and then tagging the resulting commit on `main`:
+other PR — and then tagging the resulting commit on `main` (or on the
+`release-X.Y` branch, for a patch release):
 
 ```bash
 git pull origin main   # after merging the release-prep PR
 git tag vX.Y.Z
 git push origin vX.Y.Z
 ```
+
 
 This repo's tags are still pushed manually, not cut by a release bot —
 only the changelog-building step is automated, not the decision of when to

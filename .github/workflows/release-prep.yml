@@ -23,9 +23,19 @@ name: Prepare release changelog
 # approve pull requests" must be checked — without the latter,
 # peter-evans/create-pull-request fails to open the PR even though the
 # `permissions:` block below is otherwise sufficient.
+#
+# Also runs on `release-X.Y` maintenance branches (see
+# docs/backporting.md), not just `main`: once a fix is backported there via
+# backport.yml, that branch needs the exact same "build CHANGELOG.md from
+# changelog.d/, open a prep PR" automation to cut its own vX.Y.(Z+1) patch
+# release — the "Compute next version" step below is ref-relative (`git
+# describe` from HEAD, not a repo-wide tag sort) specifically so it computes
+# v1.6.1 when run on release-1.6 while main is already well past that, and
+# the PR branch/concurrency group are keyed per-ref so a release-1.6 prep PR
+# can never collide with (or be silently overwritten by) main's.
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "release-*"]
     paths:
       - "changelog.d/**"
   workflow_dispatch: {}
@@ -34,12 +44,14 @@ permissions:
   contents: write
   pull-requests: write
 
-# Only one release-prep PR is ever kept open at a time (branch "release-prep",
-# reused across cycles — see the create-pull-request step below), so
-# overlapping runs racing to push it are a real possibility if two
-# feat/fix/perf PRs merge to main within moments of each other.
+# One release-prep PR is kept open per ref (branch
+# "release-prep-${{ github.ref_name }}", reused across cycles for that ref —
+# see the create-pull-request step below), so overlapping runs racing to
+# push the *same* ref's PR are a real possibility if two feat/fix/perf PRs
+# merge within moments of each other; runs for different refs (main vs. a
+# release-X.Y line) never share a group, so they always proceed in parallel.
 concurrency:
-  group: release-prep
+  group: release-prep-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -69,9 +81,14 @@ jobs:
         if: steps.pending.outputs.count != '0'
         id: version
         run: |
-          last_tag=$(git tag --list 'v*' --sort=-v:refname | head -1)
+          # `git describe` (not a repo-wide `git tag --sort=-v:refname`) so
+          # this is relative to *this ref's own history*: on main, after
+          # main has moved past release-1.6, that branch's own `git
+          # describe` must still land on v1.6.x, never accidentally pick up
+          # whatever main's own latest tag is.
+          last_tag=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
           if [ -z "$last_tag" ]; then
-            echo "::error::No existing vX.Y.Z tag found to compute the next version from. This workflow bumps relative to the most recent tag; it doesn't pick a first version."
+            echo "::error::No vX.Y.Z tag reachable from ${{ github.ref_name }} to compute the next version from. This workflow bumps relative to the most recent tag on this ref's own history; it doesn't pick a first version."
             exit 1
           fi
 
@@ -81,16 +98,33 @@ jobs:
           minor="${rest%%.*}"
           patch="${rest#*.}"
 
-          # Bump policy (same convention as semantic-release / Conventional
-          # Commits): the highest-impact fragment type currently pending
-          # decides the bump. This repo's fragment vocabulary (see
-          # towncrier.toml) is only feat/fix/perf -- no "breaking" type
-          # exists yet, so there is no major-bump case here.
-          if git ls-files 'changelog.d/*.feat.md' | grep -q .; then
-            minor=$((minor + 1))
-            patch=0
-          else
+          ref="${{ github.ref_name }}"
+          if [[ "$ref" == release-* ]]; then
+            # A release-X.Y maintenance branch only ever cuts patch releases
+            # of its own line (see docs/backporting.md) — never a minor/major
+            # bump, even if a stray *.feat.md fragment somehow ended up here
+            # (features don't belong in a patch release; this step's job is
+            # to compute the *correct* version for what's actually on this
+            # branch, not to police how it got there).
+            branch_version="${ref#release-}"
+            tag_version="${major}.${minor}"
+            if [ "$branch_version" != "$tag_version" ]; then
+              echo "::error::${ref} expects version ${branch_version}.x, but the latest tag reachable from it is ${last_tag} (${tag_version}.x). This branch's history/tags look inconsistent with its own name — refusing to guess a version."
+              exit 1
+            fi
             patch=$((patch + 1))
+          else
+            # Bump policy on main (same convention as semantic-release /
+            # Conventional Commits): the highest-impact pending fragment type
+            # decides the bump. This repo's fragment vocabulary (see
+            # towncrier.toml) is only feat/fix/perf -- no "breaking" type
+            # exists yet, so there is no major-bump case here.
+            if git ls-files 'changelog.d/*.feat.md' | grep -q .; then
+              minor=$((minor + 1))
+              patch=0
+            else
+              patch=$((patch + 1))
+            fi
           fi
 
           next="v${major}.${minor}.${patch}"
@@ -118,30 +152,39 @@ jobs:
           # signoff + explicit committer/author satisfy dco.yml's check
           # (it only requires a "Signed-off-by: Name <email>" trailer on
           # every commit in the PR, not that the signer match any
-          # particular identity).
+          # particular identity). dco.yml itself only runs against PRs based
+          # on main, but signing off unconditionally keeps every bot-opened
+          # PR consistent regardless of target.
           committer: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
           author: github-actions[bot] <github-actions[bot]@users.noreply.github.com>
           signoff: true
           commit-message: "ci: prepare release ${{ steps.version.outputs.next }}"
-          branch: release-prep
+          # create-pull-request defaults `base` to the ref actions/checkout
+          # already checked out (main, or a release-X.Y branch) — this
+          # branch name is suffixed with that same ref so a release-1.6 and
+          # a main prep PR never share (and silently clobber) one branch.
+          branch: release-prep-${{ github.ref_name }}
           title: "ci: prepare release ${{ steps.version.outputs.next }}"
           labels: release-prep
           body: |
-            Automatically built from every fragment currently in `changelog.d/`,
-            via `towncrier build --version ${{ steps.version.outputs.next }} --yes`.
+            Automatically built from every fragment currently in `changelog.d/`
+            on `${{ github.ref_name }}`, via `towncrier build --version ${{ steps.version.outputs.next }} --yes`.
 
             Review the `CHANGELOG.md` diff below same as any other PR. Merging
-            this PR is the release-readiness signal -- once it's on `main`, tag
-            and push as usual to trigger `release.yml`:
+            this PR is the release-readiness signal -- once it's on
+            `${{ github.ref_name }}`, tag and push as usual to trigger `release.yml`:
 
             ```
+            git checkout ${{ github.ref_name }}
+            git pull
             git tag ${{ steps.version.outputs.next }}
             git push origin ${{ steps.version.outputs.next }}
             ```
 
-            If another feat/fix/perf PR merges before this one, this PR (and
-            its computed version) will update automatically rather than a
-            second one being opened.
+            If another feat/fix/perf PR merges to `${{ github.ref_name }}` before
+            this one, this PR (and its computed version) will update
+            automatically rather than a second one being opened.
 
-            See [CONTRIBUTING.md: Release notes / changeset fragments](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md#release-notes--changeset-fragments)
-            and [docs/ci-cd.md](https://github.com/joao00001/pg-regression-radar/blob/main/docs/ci-cd.md#release-prepyml--on-push-to-main-touching-changelogd).
+            See [CONTRIBUTING.md: Release notes / changeset fragments](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md#release-notes--changeset-fragments),
+            [docs/ci-cd.md](https://github.com/joao00001/pg-regression-radar/blob/main/docs/ci-cd.md#release-prepyml--on-push-to-main-or-release-xy-touching-changelogd),
+            and, if `${{ github.ref_name }}` is a maintenance branch, [Backporting](https://joao00001.github.io/pg-regression-radar/backporting/).

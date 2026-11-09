@@ -1,0 +1,220 @@
+name: Backport merged pull request
+
+# Backports a merged pull request to one or more maintenance branches, using
+# korthout/backport-action (https://github.com/korthout/backport-action)
+# instead of hand-rolled cherry-pick scripting — this exact "label names the
+# target branch" model is the action's own documented, battle-tested
+# pattern, and reimplementing it ourselves would just be a worse copy of
+# code someone else already maintains.
+#
+# Which tool version(s) a merged PR's fix will affect is expressed entirely
+# by which "backport <branch>" label(s) are on it — apply one per maintenance
+# branch that needs the fix (e.g. both "backport release-1.5" and
+# "backport release-1.6" to backport to two supported lines at once). Each
+# label names a `release-X.Y` branch created by release-branches.yml the
+# first time that minor/major line ships — see docs/backporting.md for the
+# full lifecycle (how a `release-X.Y` branch and its matching label come to
+# exist, how patch tags get cut from it afterwards).
+#
+# Two jobs, deliberately split so a typo'd/stale label can never silently
+# reach the backport-action step:
+#   1. validate-targets - parses every "backport <branch>" label, confirms
+#      each named branch is a real, existing `release-X.Y` branch (not a
+#      typo, not a branch that was never created, not an arbitrary branch
+#      name), and fails loudly with a PR comment if not. This is the single
+#      source of truth for which branches actually get backported to -
+#      label_pattern matching is disabled in the backport step below so
+#      there is no second, independently-computed target list that could
+#      ever disagree with this one.
+#   2. backport - only runs once validate-targets has produced a fully
+#      verified target list. Cherry-picks the squash-merged commit (see
+#      CONTRIBUTING.md's "Squash merge only" policy - cherry_picking: auto
+#      always has exactly one commit to pick here) onto each target branch
+#      and opens a pull request per branch.
+#
+# Conflict handling: experimental.conflict_resolution is set to
+# "draft_commit_conflicts" rather than the default "fail". When a
+# cherry-pick conflicts for a given target branch, the action does not just
+# fail silently - it commits the conflict markers as-is and opens a DRAFT
+# pull request against that target branch, with instructions posted back on
+# the original PR for how to pull the backport branch down locally, resolve
+# the conflict, and push the fix. This is what turns "the backport broke for
+# v1.5" into a concrete, assigned, actionable PR instead of a failed Actions
+# run someone has to go dig up.
+on:
+  pull_request_target:
+    types: [closed]
+    # Only PRs merged into main are ever backport sources - a backport PR
+    # itself targets a release-X.Y branch and is only ever labeled plain
+    # "backport" (add_labels below), never "backport <branch>", so it would
+    # never re-trigger this workflow anyway; this filter just avoids paying
+    # for the check on every closed PR against every branch in the repo.
+    branches: ["main"]
+
+# Keyed on the originating PR, not the ref - two different target branches
+# backporting the same PR run as one workflow (korthout/backport-action
+# handles every target in a single invocation), but a second event for the
+# same PR (e.g. a maintainer edits labels right after merge) must queue
+# behind the first rather than race it or cancel a half-pushed backport
+# branch out from under itself.
+concurrency:
+  group: backport-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  validate-targets:
+    name: Validate backport target branches
+    # Only merged PRs carrying at least one "backport <branch>" label incur
+    # any cost here - this is the same gate korthout/backport-action's own
+    # README recommends for the backport job itself, hoisted up a level so
+    # it also governs this validation job.
+    if: >
+      github.event.pull_request.merged &&
+      contains(toJSON(github.event.pull_request.labels.*.name), '"backport ')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # to comment on the PR when a label is invalid
+    outputs:
+      targets: ${{ steps.validate.outputs.targets }}
+    steps:
+      - name: Confirm every "backport <branch>" label names a real release branch
+        id: validate
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // Keep this pattern in sync with docs/backporting.md's naming
+            // convention: a backport target is always a `release-X.Y`
+            // maintenance branch, never an arbitrary ref - that keeps
+            // "which versions does this affect" answerable just by reading
+            // the label, and stops a stray "backport main" / "backport wip"
+            // label from ever reaching the cherry-pick step below.
+            const labelPattern = /^backport (release-\d+\.\d+)$/;
+
+            const labels = context.payload.pull_request.labels.map((l) => l.name);
+            const requested = [...new Set(
+              labels.filter((l) => labelPattern.test(l)).map((l) => l.match(labelPattern)[1])
+            )];
+
+            if (requested.length === 0) {
+              core.setFailed(
+                'A label matching "backport <something>" is present, but none matches ' +
+                `the required "backport release-X.Y" pattern (got: ${labels.join(', ') || '(no labels)'}). ` +
+                'See docs/backporting.md for the exact label format.'
+              );
+              return;
+            }
+
+            const valid = [];
+            const invalid = [];
+            for (const branch of requested) {
+              try {
+                await github.rest.repos.getBranch({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  branch,
+                });
+                valid.push(branch);
+              } catch (err) {
+                if (err.status === 404) {
+                  invalid.push(branch);
+                } else {
+                  throw err;
+                }
+              }
+            }
+
+            if (invalid.length > 0) {
+              const body = [
+                '⚠️ **Backport target validation failed**',
+                '',
+                'The following `backport <branch>` label(s) name a branch that ' +
+                  "doesn't exist, so no backport was attempted for them: " +
+                  invalid.map((b) => `\`${b}\``).join(', ') + '.',
+                '',
+                'A `backport <branch>` label must name an existing `release-X.Y` ' +
+                  'maintenance branch - see ' +
+                  '[Backporting](https://joao00001.github.io/pg-regression-radar/backporting/) ' +
+                  'for how those branches are created (release-branches.yml, on the ' +
+                  "first vX.Y.0 tag of a line) and for the exact label format.",
+                '',
+                valid.length > 0
+                  ? `Valid target(s) that were still backported: ${valid.map((b) => `\`${b}\``).join(', ')}.`
+                  : 'No valid target remained, so this run created no backport pull request. ' +
+                    'Fix the label (or create the missing branch) and re-run from the ' +
+                    "merged PR's Checks tab, or re-add the label to retrigger.",
+              ].join('\n');
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+
+              if (valid.length === 0) {
+                core.setFailed(`No valid backport target branch(es); invalid: ${invalid.join(', ')}`);
+                return;
+              }
+              core.warning(`Skipping invalid backport target branch(es): ${invalid.join(', ')}`);
+            }
+
+            core.setOutput('targets', valid.join(' '));
+
+  backport:
+    name: Create backport pull requests
+    needs: validate-targets
+    # needs.*.result is only 'success' when validate-targets actually ran
+    # and passed - if it was skipped (no backport label at all) or failed
+    # (every label was invalid), this job correctly never runs.
+    if: needs.validate-targets.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the cherry-picked backport branch
+      pull-requests: write # open the backport pull request, comment back
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Create backport pull requests
+        id: backport
+        uses: korthout/backport-action@v4
+        with:
+          # validate-targets already parsed and existence-checked every
+          # "backport <branch>" label - target_branches is the single
+          # source of truth here, so the action's own independent
+          # label_pattern matching is disabled rather than left to
+          # (redundantly, and possibly inconsistently) recompute the same
+          # set a second way.
+          target_branches: ${{ needs.validate-targets.outputs.targets }}
+          label_pattern: ""
+          add_labels: backport
+          add_author_as_assignee: true
+          experimental: |
+            {"conflict_resolution": "draft_commit_conflicts"}
+          pull_title: "[Backport ${target_branch}] ${pull_title}"
+          pull_description: |
+            # Description
+
+            Automatic backport of #${pull_number} to `${target_branch}`, created by
+            [backport.yml](https://github.com/${{ github.repository }}/blob/main/.github/workflows/backport.yml)
+            because the merged pull request was labeled `backport ${target_branch}`.
+
+            ${issue_refs}
+
+            If this pull request is a **draft** with a conflict committed as-is,
+            the cherry-pick could not be applied cleanly: resolve the conflict
+            locally on this PR's branch, push the fix, then mark it ready for
+            review. See [Backporting](https://joao00001.github.io/pg-regression-radar/backporting/#resolving-a-backport-conflict)
+            for the exact steps.
+
+      - name: Surface backport result
+        if: always()
+        run: |
+          echo "Created pull requests: ${{ steps.backport.outputs.created_pull_numbers }}"
+          echo "Overall success: ${{ steps.backport.outputs.was_successful }}"
+          echo "Per-target success: ${{ steps.backport.outputs.was_successful_by_target }}"

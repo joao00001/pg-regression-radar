@@ -37,6 +37,10 @@ These are the exact check names as they appear in the Checks tab (each is a job'
 
 `Manual E2E (real container)` (`e2e-manual.yml`) is deliberately **not** in this list — it's `workflow_dispatch`-only, so it never runs against a PR and can't be a required check.
 
+## Extending protection to `release-X.Y` branches
+
+Every `release-X.Y` maintenance branch (created automatically by `release-branches.yml` — see [Backporting](backporting.md#maintenance-branches-release-xy)) is a real target branch for backport pull requests, so the same `Build & Test` / integration / `golangci-lint` / `gofmt` checks above apply there too, via `ci.yml`/`go-quality.yml`'s `release-*` branch filter (see [CI/CD](ci-cd.md#ciyml-on-every-pushpr-to-main-or-a-release-branch)). Whichever mechanism this repo uses (ruleset or classic branch protection), target it at `release-*` as a second rule/pattern alongside `main`'s, requiring the same five rows from the table above — `Enforce Conventional Commits title` and `Check sign-off (DCO)` are the two exceptions, since those two checks are deliberately **not** extended to backport PRs (see [Backporting: CI on backport pull requests](backporting.md#ci-on-backport-pull-requests) for why) and so cannot be required there without blocking every backport PR from ever becoming mergeable.
+
 ## Other settings worth enabling alongside the checks
 
 - **Require a pull request before merging** — confirm it's on and scoped to `main`.
@@ -48,4 +52,5 @@ These are the exact check names as they appear in the Checks tab (each is a job'
 ## See also
 
 - [CI/CD](ci-cd.md) — every check referenced in the table above.
+- [Backporting](backporting.md) — how `release-X.Y` branches come to exist and why two checks are deliberately excluded from them.
 - [Roadmap](roadmap.md) — this is tracked there as an open operational follow-up.

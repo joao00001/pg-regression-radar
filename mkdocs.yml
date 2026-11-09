@@ -122,6 +122,7 @@ nav:
   - Contributing:
       - Testing: testing.md
       - CI/CD: ci-cd.md
+      - Backporting: backporting.md
       - Branch Protection: branch-protection.md
       - Roadmap: roadmap.md
       - Page Template: TEMPLATE.md
