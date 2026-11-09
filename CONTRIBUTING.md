@@ -130,6 +130,12 @@ to a given component.
   update the relevant page under [`docs/`](docs/) in the same PR (see
   [`docs/TEMPLATE.md`](docs/TEMPLATE.md) for the structure every page
   follows), plus `README.md` if it affects the quick-start commands there.
+- **If your branch lives directly in this repo** (not a fork), it's
+  deleted automatically once the PR closes — merged or not
+  (`.github/workflows/branch-cleanup.yml`). A PR opened from a fork is
+  unaffected: your fork's own branch is never touched. Either way, nothing
+  stops you from pushing the same branch again under a new PR later if
+  needed.
 
 ## Backporting a merged pull request
 

@@ -1,0 +1,87 @@
+name: Delete head branch on PR close
+
+# Deletes a pull request's head branch the moment the PR closes - whether
+# merged or closed without merging - so merged/abandoned feature branches,
+# backport.yml's own per-target branches, and release-prep.yml's reused
+# release-prep-<ref> branch never pile up indefinitely.
+#
+# Deliberately a workflow (not just the repo's native "Automatically
+# delete head branches" setting): that setting only fires on merge, never
+# on a PR closed without merging, and this repo wants both - see
+# docs/ci-cd.md and docs/backporting.md for the full rationale.
+#
+# Safety, by construction:
+#   - Only ever deletes a branch that lives in THIS repository. A PR
+#     opened from a fork has its head branch in the fork, not here - the
+#     job is gated on head.repo.full_name == this repo, so a fork's own
+#     branch is never touched (and couldn't be, with this token, anyway).
+#   - Never deletes `main` or a `release-X.Y` maintenance branch, even if
+#     one is ever the HEAD of some PR (e.g. a "merge release-1.6 fixes
+#     forward into main" PR) rather than its usual role as a PR base.
+#   - Skips (rather than fails) a branch that's protected, or one that's
+#     already gone (e.g. deleted manually, or by GitHub's own UI "Delete
+#     branch" button after merge) - both are a no-op, not an error.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+jobs:
+  delete-head-branch:
+    name: Delete head branch
+    runs-on: ubuntu-latest
+    # Only a branch that actually lives in this repo (never a fork's).
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: write # delete the head branch ref
+    steps:
+      - name: Delete ${{ github.event.pull_request.head.ref }}, if safe to do so
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const branch = context.payload.pull_request.head.ref;
+
+            // Long-lived branches this repo depends on - never delete
+            // these, regardless of how they ended up as a PR's HEAD.
+            const protectedByName = branch === 'main' || /^release-\d+\.\d+$/.test(branch);
+            if (protectedByName) {
+              core.info(`Skipping delete of "${branch}" - it's a long-lived branch (main/release-X.Y), not a disposable PR branch.`);
+              return;
+            }
+
+            // Belt-and-suspenders: also honor a real branch protection
+            // rule/ruleset on it, if one is ever added for a branch this
+            // naming check doesn't happen to catch.
+            try {
+              await github.rest.repos.getBranchProtection({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch,
+              });
+              core.info(`Skipping delete of "${branch}" - it has branch protection enabled.`);
+              return;
+            } catch (err) {
+              if (err.status !== 404) throw err;
+              // 404 = not protected; proceed.
+            }
+
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${branch}`,
+              });
+              core.info(`Deleted branch "${branch}".`);
+            } catch (err) {
+              // 422/404 here means it's already gone (e.g. GitHub's own
+              // "Delete branch" button, or the repo's
+              // delete-branch-on-merge setting, beat us to it) - a no-op,
+              // not a failure.
+              if (err.status === 422 || err.status === 404) {
+                core.info(`Branch "${branch}" was already deleted.`);
+                return;
+              }
+              throw err;
+            }

@@ -49,7 +49,7 @@ Not every cherry-pick applies cleanly — a maintenance branch can diverge from 
 
 4. Once the branch builds and passes CI (see [CI on backport pull requests](#ci-on-backport-pull-requests) below), mark the draft ready for review and merge it like any other pull request.
 
-Auto-merge is never enabled on a draft created this way (GitHub doesn't allow auto-merge on drafts), so a conflicting backport always gets a human's eyes before it merges, by construction.
+Auto-merge is never enabled on a draft created this way (GitHub doesn't allow auto-merge on drafts), so a conflicting backport always gets a human's eyes before it merges, by construction. Once the draft (or any backport PR) is merged or closed, `branch-cleanup.yml` deletes its branch automatically — see [CI/CD: `branch-cleanup.yml`](ci-cd.md#branch-cleanupyml-on-a-pr-closing-merged-or-not).
 
 ## Cutting a patch release from a maintenance branch
 
@@ -89,6 +89,7 @@ A few things were deliberately built in rather than left to convention:
 - **Existence is checked, not assumed.** A `backport <branch>` label that doesn't resolve to a real branch fails the run with a comment explaining exactly which label is wrong, instead of the backport-action failing deeper into its own run with a less actionable git-level error.
 - **Maintenance branches only ever bump their own patch version.** `release-prep.yml`'s version-bump logic takes a different path on a `release-X.Y` ref than on `main`: it always increments the patch number there, even if a stray `*.feat.md` fragment somehow ended up on that branch, because a maintenance line's entire purpose is patch releases.
 - **Concurrency is scoped correctly in both new workflows.** `backport.yml` groups by the originating PR number (so re-triggers for the same PR queue instead of racing); `release-prep.yml` now groups by `github.ref_name` (so a `release-1.6` prep PR and a `main` prep PR never share — or silently clobber — the same branch/PR).
+- **Disposable branches never linger, and long-lived ones are never touched by the same mechanism.** `branch-cleanup.yml` deletes every PR's head branch on close (merged or not) — including the per-target branches `backport.yml` creates and `release-prep.yml`'s reused `release-prep-<ref>` branch — but is hard-coded to never delete `main` or any `release-X.Y` branch, even in the (unusual) case one of those is ever a PR's head rather than its usual role as a base.
 
 ## See also
 
