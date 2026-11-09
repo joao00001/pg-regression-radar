@@ -32,6 +32,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/telemetry/otlpexport"
 )
 
 // RolloutAborter is the narrow interface pollLoop needs to auto-abort an
@@ -83,6 +84,10 @@ type WatchRuntime struct {
 
 	// Notifier fires Slack/webhook alerts for detected regressions.
 	Notifier *alerting.WebhookNotifier
+
+	// OTLPExporter publishes detected regressions as OTLP log records when
+	// spec.otlpExport is set; nil otherwise. Closed (flushed) by Cancel.
+	OTLPExporter *otlpexport.Exporter
 
 	// PromRegistry is a private Prometheus registry for this watch's
 	// Collector metrics. Each watch gets its own registry (rather than

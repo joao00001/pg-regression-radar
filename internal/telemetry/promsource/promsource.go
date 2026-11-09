@@ -71,12 +71,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 )
@@ -150,7 +155,28 @@ type Config struct {
 	// unset. Ignored if HTTPClient is set explicitly — set its own
 	// Timeout instead. Defaults to 10s.
 	Timeout time.Duration
+
+	// BearerToken, when non-empty, is sent as "Authorization: Bearer
+	// <token>" on every request, for Prometheus-compatible APIs behind an
+	// authenticating proxy (Grafana Mimir/Cloud, Thanos behind oauth2-proxy,
+	// ...). The standard library drops the header on cross-host redirects.
+	BearerToken string
+
+	// Logger receives a (rate-limited) warning when a query fails. nil
+	// means slog.Default().
+	Logger *slog.Logger
+
+	// Registerer, when set, receives the
+	// pg_regression_radar_promsource_query_errors_total counter, which is
+	// the only way to tell "Prometheus is down/misconfigured" from "no
+	// data" since SampleSource's methods cannot return an error.
+	Registerer prometheus.Registerer
 }
+
+// errorLogInterval rate-limits failure logs: the engine calls into the
+// source once per query ID per analysis tick, so an unreachable Prometheus
+// would otherwise produce one identical line per call.
+const errorLogInterval = time.Minute
 
 // Source implements correlation.SampleSource by issuing PromQL queries
 // against a Prometheus HTTP API. It is stateless and safe for concurrent
@@ -158,7 +184,13 @@ type Config struct {
 // AllQueryIDs concurrently across queryids within a single analysis (see
 // internal/correlation/engine.go's analyseWindow).
 type Source struct {
-	cfg Config
+	cfg      Config
+	logger   *slog.Logger
+	errTotal *prometheus.CounterVec
+
+	logMu   sync.Mutex
+	lastLog map[string]time.Time
+	now     func() time.Time
 }
 
 // New validates cfg and returns a ready-to-use Source. It performs no
@@ -173,9 +205,17 @@ func New(cfg Config) (*Source, error) {
 	if cfg.MetricName == "" {
 		return nil, fmt.Errorf("promsource: MetricName is required (see package doc comment for why there is no default)")
 	}
-	if _, err := url.Parse(cfg.BaseURL); err != nil {
+	u, err := url.Parse(cfg.BaseURL)
+	if err != nil {
 		return nil, fmt.Errorf("promsource: invalid BaseURL: %w", err)
 	}
+	if (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
+		return nil, fmt.Errorf("promsource: BaseURL %q must be an absolute http(s) URL", cfg.BaseURL)
+	}
+	if u.User != nil {
+		return nil, fmt.Errorf("promsource: BaseURL must not embed credentials; use BearerToken")
+	}
+	cfg.BaseURL = strings.TrimRight(cfg.BaseURL, "/")
 	if cfg.QueryIDLabel == "" {
 		cfg.QueryIDLabel = defaultQueryIDLabel
 	}
@@ -192,7 +232,37 @@ func New(cfg Config) (*Source, error) {
 		}
 		cfg.HTTPClient = &http.Client{Timeout: timeout}
 	}
-	return &Source{cfg: cfg}, nil
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+	errTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "pg_regression_radar",
+		Name:      "promsource_query_errors_total",
+		Help:      "Failed queries against the Prometheus sample source, by operation (samples_in_range, all_query_ids).",
+	}, []string{"operation"})
+	errTotal.WithLabelValues("samples_in_range")
+	errTotal.WithLabelValues("all_query_ids")
+	if cfg.Registerer != nil {
+		if err := cfg.Registerer.Register(errTotal); err != nil {
+			return nil, fmt.Errorf("promsource: registering metrics: %w", err)
+		}
+	}
+	return &Source{cfg: cfg, logger: logger, errTotal: errTotal, lastLog: map[string]time.Time{}, now: time.Now}, nil
+}
+
+// fail counts err and logs it at most once per errorLogInterval per operation.
+func (s *Source) fail(operation string, err error) {
+	s.errTotal.WithLabelValues(operation).Inc()
+	s.logMu.Lock()
+	defer s.logMu.Unlock()
+	now := s.now()
+	if last, ok := s.lastLog[operation]; ok && now.Sub(last) < errorLogInterval {
+		return
+	}
+	s.lastLog[operation] = now
+	s.logger.Warn("promsource: query failed; the engine will see no samples until this is fixed",
+		"operation", operation, "err", err)
 }
 
 // promResponse is the envelope every Prometheus HTTP API endpoint used here
@@ -254,15 +324,21 @@ func (s *promSample) UnmarshalJSON(b []byte) error {
 // correlation.SampleSource's signature — the same contract
 // internal/collector.Collector's own in-memory implementation follows for
 // an unknown queryid. A caller that needs to distinguish "no data" from
-// "Prometheus is down" should watch this package's future metrics/logs
-// rather than this return value; see docs/collector-internals.md.
+// "Prometheus is down" should watch the
+// pg_regression_radar_promsource_query_errors_total counter (and the
+// rate-limited warning log) rather than this return value; see
+// docs/otel-prometheus-source.md.
 func (s *Source) SamplesInRange(queryID int64, from, to time.Time) []collector.QuerySample {
 	ctx, cancel := context.WithTimeout(context.Background(), s.cfg.HTTPClient.Timeout+defaultTimeout)
 	defer cancel()
 
 	query := fmt.Sprintf("%s{%s=%q}", s.cfg.MetricName, s.cfg.QueryIDLabel, strconv.FormatInt(queryID, 10))
 	series, err := s.queryRange(ctx, query, from, to)
-	if err != nil || len(series) == 0 {
+	if err != nil {
+		s.fail("samples_in_range", err)
+		return nil
+	}
+	if len(series) == 0 {
 		return nil
 	}
 
@@ -308,6 +384,7 @@ func (s *Source) AllQueryIDs() []int64 {
 		s.cfg.QueryIDLabel, s.cfg.MetricName, allQueryIDsLookback.String())
 	series, err := s.queryInstant(ctx, query, time.Now())
 	if err != nil {
+		s.fail("all_query_ids", err)
 		return nil
 	}
 
@@ -373,6 +450,10 @@ func (s *Source) do(ctx context.Context, path string, q url.Values) (promData, e
 		return promData{}, fmt.Errorf("promsource: building request: %w", err)
 	}
 
+	if s.cfg.BearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+s.cfg.BearerToken)
+	}
+
 	resp, err := s.cfg.HTTPClient.Do(req)
 	if err != nil {
 		return promData{}, fmt.Errorf("promsource: request to %s failed: %w", path, err)
@@ -386,6 +467,9 @@ func (s *Source) do(ctx context.Context, path string, q url.Values) (promData, e
 
 	var parsed promResponse
 	if err := json.Unmarshal(body, &parsed); err != nil {
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			return promData{}, fmt.Errorf("promsource: %s returned %s (check the bearer token)", path, resp.Status)
+		}
 		return promData{}, fmt.Errorf("promsource: decoding response (status %d): %w", resp.StatusCode, err)
 	}
 	if parsed.Status != "success" {

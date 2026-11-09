@@ -15,12 +15,17 @@
 package promsource
 
 import (
+	"bytes"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // fakePrometheus is a minimal stand-in for a Prometheus HTTP API server:
@@ -76,6 +81,9 @@ func TestNew_validation(t *testing.T) {
 		{"missing MetricName", Config{BaseURL: "http://x"}, true},
 		{"invalid BaseURL", Config{BaseURL: "://bad", MetricName: "m"}, true},
 		{"valid minimal", Config{BaseURL: "http://x", MetricName: "m"}, false},
+		{"non-http scheme", Config{BaseURL: "file:///etc/passwd", MetricName: "m"}, true},
+		{"no host", Config{BaseURL: "http://", MetricName: "m"}, true},
+		{"embedded credentials", Config{BaseURL: "http://u:p@x", MetricName: "m"}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -339,5 +347,75 @@ func TestPromSampleUnmarshal(t *testing.T) {
 	}
 	if s.Value != "42.25" {
 		t.Errorf("Value = %q, want %q", s.Value, "42.25")
+	}
+}
+
+func TestDo_sendsBearerTokenAndToleratesTrailingSlash(t *testing.T) {
+	var gotAuth, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth, gotPath = r.Header.Get("Authorization"), r.URL.Path
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[]}}`))
+	}))
+	defer srv.Close()
+
+	src, err := New(Config{BaseURL: srv.URL + "/", MetricName: "m", BearerToken: "tok"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	src.AllQueryIDs()
+	if gotAuth != "Bearer tok" {
+		t.Errorf("Authorization = %q", gotAuth)
+	}
+	if gotPath != "/api/v1/query" {
+		t.Errorf("path = %q (trailing slash must not produce //api)", gotPath)
+	}
+}
+
+func TestFailures_areCountedAndLogRateLimited(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "denied", http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	var logs bytes.Buffer
+	reg := prometheus.NewRegistry()
+	src, err := New(Config{
+		BaseURL: srv.URL, MetricName: "m", Registerer: reg,
+		Logger: slog.New(slog.NewTextHandler(&logs, nil)),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	clock := time.Now()
+	src.now = func() time.Time { return clock }
+
+	for i := 0; i < 3; i++ {
+		if got := src.SamplesInRange(1, clock.Add(-time.Hour), clock); got != nil {
+			t.Fatalf("want nil on failure, got %v", got)
+		}
+	}
+	src.AllQueryIDs()
+	if n := strings.Count(logs.String(), "operation=samples_in_range"); n != 1 {
+		t.Errorf("samples_in_range failure logged %d times within the interval, want 1:\n%s", n, logs.String())
+	}
+	if !strings.Contains(logs.String(), "operation=all_query_ids") || !strings.Contains(logs.String(), "bearer token") {
+		t.Errorf("auth failure should be logged with a hint:\n%s", logs.String())
+	}
+
+	clock = clock.Add(errorLogInterval + time.Second)
+	src.SamplesInRange(1, clock.Add(-time.Hour), clock)
+	if n := strings.Count(logs.String(), "operation=samples_in_range"); n != 2 {
+		t.Errorf("failure after the interval should be logged again, count=%d", n)
+	}
+
+	counts := map[string]float64{}
+	mfs, _ := reg.Gather()
+	for _, mf := range mfs {
+		for _, m := range mf.Metric {
+			counts[m.Label[0].GetValue()] = m.GetCounter().GetValue()
+		}
+	}
+	if counts["samples_in_range"] != 4 || counts["all_query_ids"] != 1 {
+		t.Errorf("error counters = %v", counts)
 	}
 }

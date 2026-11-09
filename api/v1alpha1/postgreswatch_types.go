@@ -227,6 +227,54 @@ type PostgresWatchSpec struct {
 	// address themselves before it returns any data.
 	// +optional
 	SampleSource *SampleSourceConfig `json:"sampleSource,omitempty"`
+
+	// otlpExport optionally publishes every detected regression as an
+	// OpenTelemetry log record (OTLP/HTTP, POST <endpoint>/v1/logs) in
+	// addition to whatever spec.alerting does. nil (the default) means
+	// disabled. See docs/otlp-export.md for the record's attributes and
+	// the trace link back to an OTLP-sourced deploy.
+	// +optional
+	OTLPExport *OTLPExportConfig `json:"otlpExport,omitempty"`
+}
+
+// OTLPExportConfig configures internal/telemetry/otlpexport for a
+// PostgresWatch.
+type OTLPExportConfig struct {
+	// endpoint is the OTLP/HTTP base URL of the receiving collector or
+	// backend, e.g. "http://otel-collector.observability:4318". "/v1/logs"
+	// is appended unless already present. Must be http or https, must not
+	// embed credentials (use headersSecretRef), and is subject to the same
+	// manager-wide destination checks as alert destinations
+	// (--alerting-allowed-destinations, loopback/metadata hosts blocked,
+	// and rejected entirely under the relay-only destination policy).
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	Endpoint string `json:"endpoint"`
+
+	// encoding selects the OTLP/HTTP payload format.
+	// +kubebuilder:validation:Enum=protobuf;json
+	// +kubebuilder:default=protobuf
+	// +optional
+	Encoding string `json:"encoding,omitempty"`
+
+	// headersSecretRef points at a Secret key holding extra request
+	// headers in the OTEL_EXPORTER_OTLP_HEADERS format
+	// ("Authorization=Bearer%20abc,x-tenant=acme"), for authenticated
+	// backends. The Secret must carry the
+	// pg-regression-radar.io/allow-postgreswatch-access=true label, like
+	// every other Secret a PostgresWatch references.
+	// +optional
+	HeadersSecretRef *SecretKeySelector `json:"headersSecretRef,omitempty"`
+
+	// gzip compresses request bodies.
+	// +optional
+	Gzip bool `json:"gzip,omitempty"`
+
+	// timeoutSeconds bounds each delivery attempt. Defaults to 10.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=120
+	// +optional
+	TimeoutSeconds int32 `json:"timeoutSeconds,omitempty"`
 }
 
 // SampleSourceConfig selects and configures an alternative
@@ -290,6 +338,14 @@ type PrometheusSampleSourceConfig struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	StepSeconds int32 `json:"stepSeconds,omitempty"`
+
+	// bearerTokenSecretRef points at a Secret key holding a bearer token
+	// sent as "Authorization: Bearer <token>" on every request, for a
+	// Prometheus-compatible API behind an authenticating proxy. The Secret
+	// must carry the pg-regression-radar.io/allow-postgreswatch-access=true
+	// label.
+	// +optional
+	BearerTokenSecretRef *SecretKeySelector `json:"bearerTokenSecretRef,omitempty"`
 }
 
 // AutoAbortConfig controls automatic Argo Rollouts abortion. It only ever

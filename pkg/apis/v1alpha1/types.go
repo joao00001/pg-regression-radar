@@ -61,6 +61,47 @@ type DeploySource struct {
 	// Leave empty to disable authentication (not recommended for
 	// internet-facing deployments).
 	WebhookSecret string `json:"webhookSecret,omitempty"`
+	// OTLP configures how spans are recognised as deploys and mapped to
+	// DeployEvent fields. Only read when SourceType is "otlp".
+	OTLP *OTLPSpanMapping `json:"otlp,omitempty"`
+}
+
+// OTLPSpanMapping selects which OTLP spans represent a finished deploy and
+// which span/resource attributes populate the resulting DeployEvent. At
+// least one of SpanNames or MatchAttributes must be set so that an OTLP
+// endpoint receiving a full trace stream never turns every span into a
+// deploy event. Every attribute-name field is optional; the defaults follow
+// OpenTelemetry semantic conventions and are documented in
+// docs/otlp-deploy-events.md.
+type OTLPSpanMapping struct {
+	// SpanNames lists span names (exact match) that represent a deploy.
+	SpanNames []string `json:"spanNames,omitempty"`
+	// MatchAttributes lists attribute key/value pairs that must all be
+	// present with exactly these values on the span, or on its resource, for
+	// the span to represent a deploy. Span attributes take precedence.
+	MatchAttributes map[string]string `json:"matchAttributes,omitempty"`
+	// IncludeFailedSpans also accepts spans whose status is ERROR. Off by
+	// default: a failed deploy did not change what the database runs.
+	IncludeFailedSpans bool `json:"includeFailedSpans,omitempty"`
+	// AppAttribute names the attribute holding the application name.
+	// Default: service.name.
+	AppAttribute string `json:"appAttribute,omitempty"`
+	// NamespaceAttribute names the attribute holding the Kubernetes
+	// namespace. Default: k8s.namespace.name.
+	NamespaceAttribute string `json:"namespaceAttribute,omitempty"`
+	// ClusterAttribute names the attribute holding the destination cluster.
+	// Default: k8s.cluster.name.
+	ClusterAttribute string `json:"clusterAttribute,omitempty"`
+	// RevisionAttribute names the attribute holding the deployed revision.
+	// Default: vcs.ref.head.revision, falling back to service.version.
+	RevisionAttribute string `json:"revisionAttribute,omitempty"`
+	// ImageTagAttribute names the attribute holding the image tag. Default:
+	// container.image.tags (first element), falling back to
+	// container.image.tag.
+	ImageTagAttribute string `json:"imageTagAttribute,omitempty"`
+	// Timestamp selects which span timestamp becomes DeployEvent.Timestamp:
+	// "end" (default, the moment the deploy finished) or "start".
+	Timestamp string `json:"timestamp,omitempty"`
 }
 
 // DeployEvent is a normalised deploy event ingested from any supported source.

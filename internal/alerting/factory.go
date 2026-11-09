@@ -285,6 +285,14 @@ func validateWebhookURL(rawURL string, allowedDestinations []string) error {
 	return nil
 }
 
+// ValidateOutboundURL applies the alert-destination SSRF checks
+// (http/https only, no loopback/link-local/metadata hosts, optional
+// hostname/IP/CIDR allowlist) to any other URL the manager would call on a
+// PostgresWatch author's behalf, such as the OTLP log export endpoint.
+func ValidateOutboundURL(rawURL string, allowedDestinations []string) error {
+	return validateWebhookURL(rawURL, allowedDestinations)
+}
+
 // ValidateAllowedDestinations checks the syntax of the stricter, opt-in alert
 // destination allowlist used by BuildNotifier and the operator/manager CLI
 // flags. Entries must be exact hostnames, exact IP addresses, or CIDRs.

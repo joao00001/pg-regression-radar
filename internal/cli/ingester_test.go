@@ -78,3 +78,28 @@ func TestRunIngester_DryRun_BadListenAddress(t *testing.T) {
 		t.Errorf("RunIngester(--dry-run, bad --listen) = %d, want 1", got)
 	}
 }
+
+func TestRunIngester_DryRun_OTLP(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		args []string
+		want int
+	}{
+		{"valid span name", []string{"--source-type", "otlp", "--otlp-span-name", "deploy"}, 0},
+		{"valid match attribute", []string{"--source-type", "otlp", "--otlp-match-attribute", "cicd.pipeline.name=release"}, 0},
+		{"no selector would match every span", []string{"--source-type", "otlp"}, 1},
+		{"malformed match attribute", []string{"--source-type", "otlp", "--otlp-span-name", "d", "--otlp-match-attribute", "x"}, 1},
+		{"bad timestamp", []string{"--source-type", "otlp", "--otlp-span-name", "d", "--otlp-timestamp", "middle"}, 1},
+		{"otlp flags on another source", []string{"--source-type", "argocd", "--otlp-span-name", "d"}, 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			args := append([]string{"--dry-run", "--listen", ":0"}, tc.args...)
+			if got := cli.RunIngester(args); got != tc.want {
+				t.Errorf("RunIngester(%v) = %d, want %d", args, got, tc.want)
+			}
+		})
+	}
+}

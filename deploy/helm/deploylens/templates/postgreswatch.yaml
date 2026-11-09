@@ -37,6 +37,18 @@ spec:
     destinationPolicy: {{ .Values.alerting.destinationPolicy | quote }}
     {{- end }}
   {{- end }}
+  {{- if .Values.otlpExport.endpoint }}
+  otlpExport:
+    endpoint: {{ .Values.otlpExport.endpoint | quote }}
+    encoding: {{ .Values.otlpExport.encoding | quote }}
+    gzip: {{ .Values.otlpExport.gzip }}
+    timeoutSeconds: {{ .Values.otlpExport.timeoutSeconds }}
+    {{- if .Values.otlpExport.headers }}
+    headersSecretRef:
+      name: {{ include "deploylens.fullname" . }}-secret
+      key: otlpHeaders
+    {{- end }}
+  {{- end }}
   {{- if .Values.periodicDetection.enabled }}
   periodicDetection:
     enabled: {{ .Values.periodicDetection.enabled }}

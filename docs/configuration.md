@@ -27,7 +27,17 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--pagerduty-routing-key` | `` | PagerDuty Events API v2 routing key; required when `--alert-format=pagerduty` |
 | `--alert-template` | `` | Go `text/template` source, inline; required (or use `--alert-template-file`) when `--alert-format=custom` — see [Alerting: custom format](alerting.md#custom-format) |
 | `--alert-template-file` | `` | Path to a Go `text/template` file — alternative to `--alert-template` when passing the source inline isn't convenient |
-| `--source-type` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic` |
+| `--source-type` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic`, `otlp` — see [OTLP Deploy Events](otlp-deploy-events.md) |
+| `--otlp-span-name` | *(none)* | With `--source-type otlp`: span name that counts as a deploy (exact match; repeatable). At least one of this or `--otlp-match-attribute` is required — see [OTLP Deploy Events](otlp-deploy-events.md) |
+| `--otlp-match-attribute` | *(none)* | With `--source-type otlp`: `key=value` a span (or its resource) must carry to count as a deploy; repeatable, all must match |
+| `--otlp-include-failed` | `false` | With `--source-type otlp`: also accept spans whose status is `ERROR` |
+| `--otlp-timestamp` | `end` | With `--source-type otlp`: span timestamp used as the deploy time, `end` or `start` |
+| `--otlp-app-attribute`, `--otlp-namespace-attribute`, `--otlp-cluster-attribute`, `--otlp-revision-attribute`, `--otlp-image-tag-attribute` | see page | With `--source-type otlp`: override which attribute fills each `DeployEvent` field |
+| `--otlp-endpoint` | `` | Export every detected regression as an OTLP log record to this OTLP/HTTP endpoint (`/v1/logs` is appended). Empty disables the export — see [OTLP Regression Export](otlp-export.md) |
+| `--otlp-headers` | `` | Headers for `--otlp-endpoint` as `k=v,k2=v2`; falls back to `OTEL_EXPORTER_OTLP_LOGS_HEADERS`, then `OTEL_EXPORTER_OTLP_HEADERS` |
+| `--otlp-encoding` | `protobuf` | `protobuf` or `json` |
+| `--otlp-gzip` | `false` | Gzip-compress export request bodies |
+| `--otlp-timeout` | `10s` | Per-attempt timeout for export requests |
 | `--window-minutes` | `30` | Analysis window (minutes before/after deploy) |
 | `--min-executions` | `10` | Min query executions per window |
 | `--latency-threshold` | `0.20` | Min relative latency increase to flag (e.g. 0.20 = 20%) |
@@ -68,7 +78,12 @@ The `ingester` binary runs the deploy-event webhook receiver on its own, without
 | Flag | Default | Description |
 |---|---|---|
 | `--listen` | `:8080` | HTTP listen address for the webhook endpoint |
-| `--source-type` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic` |
+| `--source-type` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic`, `otlp` — see [OTLP Deploy Events](otlp-deploy-events.md) |
+| `--otlp-span-name` | *(none)* | With `--source-type otlp`: span name that counts as a deploy (exact match; repeatable). At least one of this or `--otlp-match-attribute` is required — see [OTLP Deploy Events](otlp-deploy-events.md) |
+| `--otlp-match-attribute` | *(none)* | With `--source-type otlp`: `key=value` a span (or its resource) must carry to count as a deploy; repeatable, all must match |
+| `--otlp-include-failed` | `false` | With `--source-type otlp`: also accept spans whose status is `ERROR` |
+| `--otlp-timestamp` | `end` | With `--source-type otlp`: span timestamp used as the deploy time, `end` or `start` |
+| `--otlp-app-attribute`, `--otlp-namespace-attribute`, `--otlp-cluster-attribute`, `--otlp-revision-attribute`, `--otlp-image-tag-attribute` | see page | With `--source-type otlp`: override which attribute fills each `DeployEvent` field |
 | `--source-name` | `default` | Unique name for this `DeploySource` |
 | `--postgres-watch-ref` | `` | `PostgresWatch` to associate events with |
 | `--app-name` | `` (all apps) | Filter events to a specific application name |
@@ -168,15 +183,22 @@ All four binaries share two flags:
 | `sampleSource.prometheus.queryIDLabel` | `"queryid"` | Label carrying the queryid |
 | `sampleSource.prometheus.queryTextLabel` | `"query"` | Label carrying the query text; set to `"-"` to disable |
 | `sampleSource.prometheus.stepSeconds` | `15` | `query_range` resolution |
+| `sampleSource.prometheus.bearerTokenSecretRef` | *(none)* | `name`/`key` of a Secret holding a bearer token for Prometheus. Needs the `pg-regression-radar.io/allow-postgreswatch-access=true` label |
+| `otlpExport.endpoint` | *(none — export disabled)* | OTLP/HTTP endpoint that receives one log record per detected regression (`/v1/logs` is appended); subject to the alert-destination SSRF checks and rejected under `relay-only` — see [OTLP Regression Export](otlp-export.md) |
+| `otlpExport.encoding` | `protobuf` | `protobuf` or `json` |
+| `otlpExport.headersSecretRef` | *(none)* | `name`/`key` of a Secret whose value is `k=v,k2=v2` request headers (e.g. `authorization=Bearer …`). Needs the consent label |
+| `otlpExport.gzip` | `false` | Gzip-compress request bodies |
+| `otlpExport.timeoutSeconds` | `10` | Per-attempt timeout, 1–120 |
 
 ## `DeploySource` spec fields
 
 | Field | Default | Description |
 |---|---|---|
 | `postgresWatchRef` | *(required)* | Name of the `PostgresWatch` (same namespace) to correlate against |
-| `sourceType` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic`, `kubernetes` — see [Deploy Sources & Webhooks: Native Kubernetes watch](webhooks.md#native-kubernetes-watch-no-webhook) for `kubernetes` |
+| `sourceType` | `generic` | `argocd`, `argo-rollouts`, `flux`, `generic`, `kubernetes`, `otlp` — see [Deploy Sources & Webhooks: Native Kubernetes watch](webhooks.md#native-kubernetes-watch-no-webhook) for `kubernetes` |
 | `appName` | `""` (all apps) | Narrow correlation to a single application. When `sourceType` is `kubernetes`, this is the Deployment/StatefulSet's name and is required |
 | `workloadKind` | `""` | `Deployment` or `StatefulSet`. Only meaningful (and required) when `sourceType` is `kubernetes` |
+| `otlp` | *(none)* | Required (with at least one of `spanNames`/`matchAttributes`) when `sourceType: otlp`; rejected otherwise. Fields: `spanNames`, `matchAttributes`, `includeFailedSpans`, `timestamp`, `appAttribute`, `namespaceAttribute`, `clusterAttribute`, `revisionAttribute`, `imageTagAttribute` — see [OTLP Deploy Events](otlp-deploy-events.md) |
 | `webhookSecret` | `""` | Shared secret for this source's webhook, equivalent to `--webhook-secret` above. Not meaningful when `sourceType` is `kubernetes` (that mode has no webhook route to protect). Store the value in a Secret and reference it with `valueFrom.secretKeyRef` rather than inlining it — see [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication) |
 
 ## Source-type capabilities by mode
@@ -185,8 +207,8 @@ All four binaries share two flags:
 
 | Where it's set | Accepted values | Accepts `kubernetes`? |
 |---|---|---|
-| `operator --source-type` / `ingester --source-type` (CLI flag, validated by `--dry-run`) | `argocd`, `argo-rollouts`, `flux`, `generic` | No — `kubernetes` isn't in `ValidSourceTypes`, so `--dry-run` rejects it outright, and without `--dry-run` it would silently fall through to generic-style webhook parsing instead of doing anything kubernetes-specific |
-| `DeploySource.spec.sourceType` (CRD field, `manager` mode only) | `argocd`, `argo-rollouts`, `flux`, `generic`, `kubernetes` | Yes — this is the only place `kubernetes` is meaningful. It skips webhook route registration entirely and instead watches the Deployment/StatefulSet named in `appName` directly — see [Deploy Sources & Webhooks: Native Kubernetes watch](webhooks.md#native-kubernetes-watch-no-webhook) |
+| `operator --source-type` / `ingester --source-type` (CLI flag, validated by `--dry-run`) | `argocd`, `argo-rollouts`, `flux`, `generic`, `otlp` | No — `kubernetes` isn't in `ValidSourceTypes`, so `--dry-run` rejects it outright, and without `--dry-run` it would silently fall through to generic-style webhook parsing instead of doing anything kubernetes-specific |
+| `DeploySource.spec.sourceType` (CRD field, `manager` mode only) | `argocd`, `argo-rollouts`, `flux`, `generic`, `kubernetes`, `otlp` | Yes — this is the only place `kubernetes` is meaningful. It skips webhook route registration entirely and instead watches the Deployment/StatefulSet named in `appName` directly — see [Deploy Sources & Webhooks: Native Kubernetes watch](webhooks.md#native-kubernetes-watch-no-webhook) |
 
 In short: if you're running the standalone `operator`/`ingester` binaries, `kubernetes` is not a valid `--source-type` no matter what — that capability only exists behind the `manager`/CRD path.
 
