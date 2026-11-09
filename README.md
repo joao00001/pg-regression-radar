@@ -77,23 +77,9 @@ A concrete, reproducible walkthrough (full script in [Regression Scenario Exampl
 2. Revision `v2` ships and silently drops the index behind `orders.customer_id`. The same query now takes ~49ms.
 3. The Correlation Engine's E-divisive change-point detection locates the shift, Welch's t-test confirms it's statistically significant (not noise), and the result is tied back to the `v2` deploy event.
 
-```text
-latency (ms), checkout-api · customer_id lookup
+![Chart showing checkout-api query latency flat at ~3ms through deploy v1, then jumping to ~49ms immediately after deploy v2 (dropped index), with pg-regression-radar annotating the detected regression at 15.7x change and 0.98 confidence](https://github.com/user-attachments/assets/78ef1e6c-9512-4d1a-8f60-b5dd341c1f5e)
 
- 50 ┤                                        ┌───────────●
- 40 ┤                                        │
- 30 ┤                                        │
- 20 ┤                                        │
- 10 ┤                                        │
-  3 ●────────────────────────────────────────┘
-    └─────────────────────┬──────────────────┬───────────────▶ time
-                      deploy v1           deploy v2
-                                   (index dropped here, flagged
-                                    by pg-regression-radar)
-
-regression detected: app=checkout-api namespace=demo revision=v2 query_id=123456
-latency_before_ms=3.1 latency_after_ms=48.7 change=15.7x confidence=0.98
-```
+*Illustrative rendering of the exact latency/confidence numbers the scripted example above produces — not a product screenshot, since pg-regression-radar ships alerts and CRs rather than a dashboard.*
 
 No manual Grafana digging, no cross-referencing deploy timestamps by eye — just the query, the deploy, and the confidence behind the call. The full example is scripted end-to-end, from `docker run postgres` to this exact output, in about 10 minutes.
 
