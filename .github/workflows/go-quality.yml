@@ -1,10 +1,13 @@
 name: Go Quality
 
+# Also runs against `release-X.Y` maintenance branches, for the same reason
+# as ci.yml: backport.yml's backport pull requests need the same lint/fmt/
+# vuln bar as any other PR before merging. See docs/backporting.md.
 on:
   pull_request:
-    branches: ["main"]
+    branches: ["main", "release-*"]
   push:
-    branches: ["main"]
+    branches: ["main", "release-*"]
 
 permissions:
   contents: read

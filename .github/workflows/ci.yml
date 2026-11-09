@@ -1,10 +1,16 @@
 name: CI
 
+# Also runs against `release-X.Y` maintenance branches (push and PR), not
+# just `main`: backport.yml opens its backport pull requests against those
+# branches, and they need the exact same build/test bar as any other PR
+# before merging - a cherry-pick that applies cleanly textually can still
+# fail to build or pass tests on a branch that has otherwise diverged from
+# main. See docs/backporting.md.
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "release-*"]
   pull_request:
-    branches: ["main"]
+    branches: ["main", "release-*"]
 
 permissions:
   contents: read

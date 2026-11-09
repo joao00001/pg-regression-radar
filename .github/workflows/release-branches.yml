@@ -1,0 +1,114 @@
+name: Maintain release branches
+
+# Creates the `release-X.Y` maintenance branch (and its matching
+# `backport release-X.Y` label) the moment a new minor/major line ships,
+# so backport.yml always has a real, existing branch to target - without
+# this, "which versions does a fix affect" would require a human to
+# remember to cut the branch by hand before anyone could apply the label.
+#
+# Deliberately a separate workflow file from release.yml, triggered by the
+# exact same `push: tags: v*` event rather than added as a job inside it:
+# release.yml publishes real, signed, user-facing artifacts and must keep
+# working exactly as it does today - a mistake in this file can, at worst,
+# fail to create a branch/label (caught immediately, fixed by re-running),
+# never touch an image, manifest, chart, or release note that release.yml
+# is responsible for. The two workflows share no jobs, steps, or
+# `needs:` relationship, by design.
+#
+# Versioning policy this encodes:
+#   - vX.Y.0 (patch 0) is the first release of a new X.Y line -> creates
+#     release-X.Y pointed at that tag's commit, if it doesn't already exist.
+#   - vX.Y.Z (patch > 0) is a patch release of an existing line -> its
+#     release-X.Y branch is assumed to already exist (created back when
+#     vX.Y.0 shipped); nothing to do here.
+#   - Pre-release tags (containing "-", e.g. v2.0.0-rc1 - same convention
+#     docs.yml already uses to decide what becomes the `latest` docs alias)
+#     never get a maintenance branch; only a real vX.Y.0 does.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  create-maintenance-branch:
+    name: Create release-X.Y branch + backport label for new release lines
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create/push the release-X.Y branch
+      issues: write # create the matching "backport release-X.Y" label
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Parse the pushed tag
+        id: parse
+        run: |
+          tag="${{ github.ref_name }}"
+
+          if [[ "$tag" == *-* ]]; then
+            echo "skip=true" | tee -a "$GITHUB_OUTPUT"
+            echo "Pre-release tag ($tag); pre-releases never get a maintenance branch."
+            exit 0
+          fi
+
+          version="${tag#v}"
+          major="${version%%.*}"
+          rest="${version#*.}"
+          minor="${rest%%.*}"
+          patch="${rest#*.}"
+
+          if [ "$patch" != "0" ]; then
+            echo "skip=true" | tee -a "$GITHUB_OUTPUT"
+            echo "$tag is a patch release (patch=$patch); release-${major}.${minor} should already exist from when ${major}.${minor}.0 shipped."
+            exit 0
+          fi
+
+          branch="release-${major}.${minor}"
+          echo "skip=false" | tee -a "$GITHUB_OUTPUT"
+          echo "branch=${branch}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Create the maintenance branch, if it doesn't already exist
+        if: steps.parse.outputs.skip == 'false'
+        id: branch
+        run: |
+          branch="${{ steps.parse.outputs.branch }}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            echo "created=false" | tee -a "$GITHUB_OUTPUT"
+            echo "Branch $branch already exists; leaving it where it is (its own patch tags/backports own its history from here, not this tag)."
+            exit 0
+          fi
+          git push origin "HEAD:refs/heads/${branch}"
+          echo "created=true" | tee -a "$GITHUB_OUTPUT"
+          echo "Created $branch at $(git rev-parse HEAD) (tag ${{ github.ref_name }})."
+
+      - name: Create the matching "backport <branch>" label, if it doesn't already exist
+        if: steps.parse.outputs.skip == 'false'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const branch = '${{ steps.parse.outputs.branch }}';
+            const name = `backport ${branch}`;
+            try {
+              await github.rest.issues.getLabel({ owner: context.repo.owner, repo: context.repo.repo, name });
+              core.info(`Label "${name}" already exists.`);
+            } catch (err) {
+              if (err.status !== 404) throw err;
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name,
+                color: "8E44AD",
+                description: `Backport a merged pull request to the ${branch} maintenance branch (tool ${branch.replace('release-', '')}.x)`,
+              });
+              core.info(`Created label "${name}".`);
+            }
+
+      - name: Note the new maintenance line on the tagged release
+        if: steps.parse.outputs.skip == 'false' && steps.branch.outputs.created == 'true'
+        run: |
+          echo "::notice::${{ steps.parse.outputs.branch }} is now a supported backport target - apply the \"backport ${{ steps.parse.outputs.branch }}\" label to a merged PR against main to backport a fix to it. See docs/backporting.md."

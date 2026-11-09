@@ -3,6 +3,12 @@ name: PR title
 on:
   pull_request_target:
     types: [opened, edited, synchronize, reopened]
+    # Scoped to main so backport.yml's auto-opened backport PRs (base:
+    # release-X.Y, title prefixed "[Backport release-X.Y] ...") never hit
+    # this check - that prefix is deliberately not itself a Conventional
+    # Commits type, and the original PR's title already passed this exact
+    # check once, on main, before it was ever eligible to be backported.
+    branches: ["main"]
 
 permissions:
   pull-requests: read
