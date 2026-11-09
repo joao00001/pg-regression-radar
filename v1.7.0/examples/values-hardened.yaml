@@ -1,0 +1,60 @@
+mode: manager
+serviceAccount:
+  # manager needs in-cluster API access (reconciliation + leader election)
+  automountServiceAccountToken: true
+postgres:
+  dsn: "<replace-with-your-postgres-dsn>"
+  clusterName: production-cluster
+  namespace: database
+
+alerting:
+  destinationPolicy: allowlist
+  allowedDestinations: "alertmanager.monitoring.svc.cluster.local"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+manager:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+networkPolicy:
+  enabled: true
+  ingressCIDR: 10.0.0.0/24
+  egress:
+    postgresCIDRs:
+      - 10.10.0.0/16
+    apiServerCIDRs:
+      - 10.20.0.0/16
+    alertRelayCIDRs:
+      - 10.30.0.0/16
+
+resourceQuota:
+  enabled: true
+  hard:
+    requests.cpu: "2"
+    requests.memory: "1Gi"
+    limits.cpu: "4"
+    limits.memory: "2Gi"
+    pods: "20"
+
+limitRange:
+  enabled: true
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
