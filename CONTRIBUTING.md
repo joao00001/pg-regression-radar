@@ -137,6 +137,17 @@ to a given component.
   stops you from pushing the same branch again under a new PR later if
   needed.
 
+## Editing the home page or the roadmap
+
+The docs home page (`docs/index.md`) and the roadmap (`docs/roadmap.md`) are
+not versioned: they look the same for every docs version and go live as soon
+as your PR merges, without waiting for a release. If your PR *only* edits
+those two pages, a maintainer applies the `docs-unversioned` label. If a
+labeled PR also changes any other file, a bot comments with a warning — split
+those changes into a separate PR (or the label comes off). See
+[CI/CD](https://joao00001.github.io/pg-regression-radar/latest/ci-cd/#unversioned-pages-home-and-roadmap)
+for how this works.
+
 ## Backporting a merged pull request
 
 If your fix should also ship in an already-released tool version (not just the

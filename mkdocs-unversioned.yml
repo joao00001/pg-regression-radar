@@ -1,0 +1,40 @@
+# Builds the version-independent pages (home + roadmap) of the docs site.
+# These are published once, at the root of the gh-pages branch, from `main` --
+# never per release, so they look identical whichever tool version a reader
+# picks in the version selector. See .github/workflows/docs.yml's
+# `deploy-unversioned` job and scripts/publish_unversioned_docs.py.
+#
+# Everything not listed here (theme, markdown extensions, hooks, ...) is
+# inherited from mkdocs.yml; the sections below replace the versioned-only
+# parts.
+INHERIT: mkdocs.yml
+
+site_dir: site-unversioned
+
+# Only the two unversioned pages (plus static assets). Every other page is
+# part of the versioned build; links to them from these two pages are
+# rewritten to the `latest` docs by hooks.py's `on_page_markdown`.
+exclude_docs: |
+  /*.md
+  !/index.md
+  !/roadmap.md
+  /adr/
+  /examples/
+  /policies/
+
+# No `mike` plugin / `extra.version`: there's no version selector here.
+plugins:
+  - search
+
+extra:
+  pgrr_build: unversioned
+  version: !!null ~
+
+extra_javascript:
+  - javascripts/nav-data.js
+  - javascripts/nav-flyout.js
+
+nav:
+  - Home: index.md
+  - Documentation: https://joao00001.github.io/pg-regression-radar/latest/
+  - Roadmap: roadmap.md

@@ -1,7 +1,6 @@
 name: Docs
 
-# Two independent concerns, deliberately split into two jobs that trigger
-# differently:
+# Three jobs that trigger differently:
 #
 #   `check`  — does docs/ still build cleanly? Runs on every push/PR to main
 #              that touches docs content, same as every other quality gate
@@ -14,6 +13,14 @@ name: Docs
 #              path also supports rebuilding a tagged docs version from a
 #              newer ref (e.g. main) when a docs-only fix was merged after the
 #              tag was cut, without moving the tag or re-triggering release.yml.
+#   `deploy-unversioned` — publish the home page and the roadmap, which are
+#              NOT versioned: one copy at the site root, built from `main`
+#              (mkdocs-unversioned.yml), identical whichever version the
+#              reader picks. Runs on every push to main (a no-op when
+#              nothing changed) and after every tag deploy, so those pages
+#              go live on merge instead of waiting for a release. PRs that
+#              only touch them carry the `docs-unversioned` label, checked
+#              by docs-unversioned-guard.yml.
 #
 # That split exists on purpose: this workflow used to redeploy the live
 # site on every push to main that touched docs/**, which meant the public
@@ -21,16 +28,18 @@ name: Docs
 # nothing stopped someone from reading about a `feat` on the site and then
 # finding it's not in any tagged image yet. `release.yml` never had this
 # problem (it's gated on `push: tags:` already); this workflow now matches
-# that same guarantee: what's live at
-# https://joao00001.github.io/pg-regression-radar/ only ever reflects a
-# real, tagged release, exactly like the container images and Helm chart.
+# that same guarantee: the versioned docs live at
+# https://joao00001.github.io/pg-regression-radar/latest/ (and /vX.Y.Z/) only
+# ever reflect a real, tagged release, exactly like the container images and
+# Helm chart. The one deliberate exception is the unversioned pages (home,
+# roadmap): they describe the project, not a particular release, so they
+# aren't tied to one.
 #
 # mike also solves the versioning half of that: every tag gets its own
 # permanent, browsable copy of the site (a version selector renders in the
 # header via Material for MkDocs' native mike integration — see
 # mkdocs.yml's `extra.version` block), the `latest` alias always points at
-# the newest *stable* (non-prerelease) tag, and visiting the site's root
-# redirects to whatever `latest` currently is. Pre-release tags (anything
+# the newest *stable* (non-prerelease) tag. Pre-release tags (anything
 # containing a `-`, e.g. `v1.0.0-rc1`) still get their own permanent,
 # linkable copy of the docs, they just never become `latest`.
 #
@@ -65,7 +74,9 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "mkdocs-unversioned.yml"
       - "hooks.py"
+      - "scripts/publish_unversioned_docs.py"
       - "requirements-docs.txt"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
@@ -121,8 +132,11 @@ jobs:
       - name: Install MkDocs Material
         run: pip install -r requirements-docs.txt
 
-      - name: Build (strict — broken nav/links fail the build)
+      - name: Build versioned docs (strict — broken nav/links fail the build)
         run: mkdocs build --strict
+
+      - name: Build unversioned pages (strict)
+        run: mkdocs build --strict -f mkdocs-unversioned.yml
 
   deploy:
     name: Deploy versioned site (mike)
@@ -201,5 +215,75 @@ jobs:
             mike deploy --push --branch gh-pages "$TAG"
           else
             mike deploy --push --update-aliases --branch gh-pages "$TAG" latest
-            mike set-default --push --branch gh-pages latest
           fi
+          # No `mike set-default`: the site root is the unversioned home
+          # page (deploy-unversioned below), not a redirect to `latest`.
+
+  deploy-unversioned:
+    name: Deploy unversioned pages (home, roadmap)
+    needs: [deploy]
+    # `deploy` only runs for tags/manual runs, so it's skipped on a plain push
+    # to main; that must not stop this job. When `deploy` did run, wait for it
+    # (this job also re-redirects any older version `deploy` just published
+    # from a tag that predates the unversioned pages).
+    if: >-
+      !cancelled() && github.event_name != 'pull_request'
+      && (needs.deploy.result == 'success' || needs.deploy.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # A separate group from `deploy`: a pending run of this job must never
+    # displace a pending tag deploy (a group holds only one pending run).
+    # The push below retries, since mike may move gh-pages in between.
+    concurrency:
+      group: docs-deploy-unversioned
+      cancel-in-progress: false
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - name: Install MkDocs Material
+        run: pip install -r requirements-docs.txt
+
+      - name: Build unversioned pages
+        run: mkdocs build --strict -f mkdocs-unversioned.yml
+
+      - name: Publish to gh-pages
+        env:
+          SITE_URL: https://joao00001.github.io/pg-regression-radar/
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            python scripts/publish_unversioned_docs.py \
+              --site site-unversioned --target gh-pages --site-url "$SITE_URL"
+            git -C gh-pages add --all
+            if git -C gh-pages diff --cached --quiet; then
+              echo "Unversioned pages already up to date."
+              exit 0
+            fi
+            git -C gh-pages commit -m "docs: publish unversioned pages from ${GITHUB_SHA::7}"
+            if git -C gh-pages push origin HEAD:gh-pages; then
+              exit 0
+            fi
+            echo "::warning::push rejected (attempt ${attempt}); gh-pages moved, retrying."
+            git -C gh-pages fetch origin gh-pages
+            git -C gh-pages reset --hard origin/gh-pages
+          done
+          echo "::error::could not push to gh-pages after 3 attempts."
+          exit 1

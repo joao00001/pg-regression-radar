@@ -176,7 +176,7 @@ Publishes a release: builds, scans, signs, and pushes every artifact this repo s
 
 **Proven against real releases:** this workflow has run for real against `v1.0.0` and `v1.0.1` — real pushes to `ghcr.io`, real keyless signing via GitHub's OIDC-to-Fulcio exchange, and a real Helm OCI chart push all succeeded, including the `linux/arm64` cross-compilation. The one real failure found so far was in `v1.0.0`'s `helm-chart` job: `cosign sign` failed with `UNAUTHORIZED` because `helm registry login` writes credentials to a different config file than cosign's default keychain reads. Fixed in `v1.0.1` by adding a separate `docker/login-action` step before the cosign step. Not independently confirmed: an actual `arm64` machine pulling and running the resulting multi-arch image, as opposed to the cross-platform build itself succeeding.
 
-## `docs.yml` — two independent jobs: `check` (every PR/push) and `deploy` (only on a release tag)
+## `docs.yml` — `check` (every PR/push), `deploy` (release tags) and `deploy-unversioned` (home + roadmap)
 
 Builds this documentation site with MkDocs Material and publishes a **permanently versioned** copy of it to GitHub Pages at <https://joao00001.github.io/pg-regression-radar/> using [mike](https://github.com/jimporter/mike) — every tag gets its own browsable, never-overwritten copy of the site, a version selector renders in the header (Material's native mike integration, see `mkdocs.yml`'s `extra.version` block), and a `latest` alias always points at the newest *stable* release.
 
@@ -185,13 +185,29 @@ This used to be one job that redeployed the live site on every push to `main` to
 | Job | Trigger | Publishes? |
 |---|---|---|
 | `check` | Push or PR to `main` (PRs path-filtered to `docs/**`/`mkdocs.yml`/`hooks.py`/`requirements-docs.txt`; plain pushes to `main` unconditionally, matching `ci.yml`'s own pattern) | No — `mkdocs build --strict` only, same broken-link/nav gate as before, just never publishes anything. |
-| `deploy` | Push of a `v*` tag, or `workflow_dispatch` with an explicit `tag` input (for re-running a failed deploy — it checks out that exact tag, never whatever ref the workflow happens to run from) | Yes — via `mike deploy`/`mike set-default`, straight to the `gh-pages` branch. |
+| `deploy` | Push of a `v*` tag, or `workflow_dispatch` with an explicit `tag` input (for re-running a failed deploy — it checks out that exact tag, never whatever ref the workflow happens to run from) | Yes — via `mike deploy`, straight to the `gh-pages` branch. |
+| `deploy-unversioned` | Every push to `main`, and after every `deploy` (so after a tag push or manual run) | Yes — the [unversioned pages](#unversioned-pages-home-and-roadmap) only, built from `main`; a no-op when nothing changed. |
 
 `deploy` runs unconditionally on every tag push, with no path filter (mirroring `release.yml`'s own tag-triggered, always-runs behavior) — a release always gets a matching docs deploy, even when that specific tag's commit didn't touch anything under `docs/`.
 
-**Stable vs. pre-release tags:** a tag containing a `-` (this repo's existing release-candidate convention, e.g. `v1.0.0-rc1`) is deployed as its own permanent, linkable version but never becomes the `latest` alias — only a tag with no `-` (a real `vX.Y.Z` release) moves `latest`, and with it, what a visitor sees by default at the site's root.
+**Stable vs. pre-release tags:** a tag containing a `-` (this repo's existing release-candidate convention, e.g. `v1.0.0-rc1`) is deployed as its own permanent, linkable version but never becomes the `latest` alias — only a tag with no `-` (a real `vX.Y.Z` release) moves `latest`, and with it, what a visitor sees at `/latest/`.
 
 **One-time manual prerequisite:** Settings → Pages → Source must be "Deploy from a branch", branch `gh-pages`, folder `/ (root)` — **not** "GitHub Actions". mike commits the built site directly to the `gh-pages` branch itself (see [mike's own "How It Works"](https://github.com/jimporter/mike#how-it-works)); there's no artifact-upload step here for the old "GitHub Actions" Pages source to serve.
+
+### Unversioned pages (home and roadmap)
+
+The home page (`docs/index.md`) and the [Roadmap](https://joao00001.github.io/pg-regression-radar/roadmap/) (`docs/roadmap.md`) are **not versioned**. They describe the project, not a particular release — editing the roadmap has nothing to do with how a given version works — so they look the same whichever version a reader picks in the version selector, and a change to them is live as soon as it merges, without waiting for a release.
+
+- **Layout on `gh-pages`:** the unversioned pages are the site root (`/` and `/roadmap/`); mike's versions live in their own directories next to them (`/latest/`, `/v1.5.0/`, ...). Visiting `/latest/` redirects to that version's first docs page, since its build has no home page of its own. `mike set-default` is deliberately not used — it would make the root a redirect to `latest`.
+- **Two builds:** `mkdocs.yml` builds the versioned docs and excludes those two pages (`exclude_docs`); `mkdocs-unversioned.yml` (which `INHERIT`s `mkdocs.yml`) builds only them. Both run in `check`.
+- **Links across the boundary** are rewritten by `hooks.py`'s `on_page_markdown`, so pages keep using ordinary relative links: a versioned page's `[Roadmap](roadmap.md)` becomes the root roadmap URL, and the unversioned pages' links to any other page point at the `latest` docs. The versioned nav's "Home" and "Roadmap" entries are absolute links to the root pages.
+- **Publishing:** `scripts/publish_unversioned_docs.py` replaces everything at the `gh-pages` root that isn't a mike version, alias or `versions.json`, so removed or renamed unversioned files don't linger. It also turns the `index.html` and `roadmap/index.html` of every already-published version that still contains its own copy (releases cut before this split) into redirects to the root pages, so those old versions change retroactively too.
+
+**The `docs-unversioned` label:** apply it to a pull request that only edits `docs/index.md` and/or `docs/roadmap.md`, to flag that merging it changes those pages for every docs version at once. Everything else under `docs/` is versioned and reaches the site only with a release, so such edits belong in a separate PR.
+
+## `docs-unversioned-guard.yml` — on PR label changes
+
+Runs on `pull_request_target` (so it can comment on fork PRs; nothing from the PR is ever checked out or executed — it only reads the PR's file list through the API) whenever a PR to `main` is opened, reopened, pushed to, labeled or unlabeled. If the PR carries the `docs-unversioned` label and changes **any file other than `docs/index.md` and `docs/roadmap.md`** (a renamed file's old path counts too), `scripts/check_docs_unversioned.py` posts a warning comment listing the offending files. The comment is kept up to date on every push and deleted once the PR only touches the two pages again or the label is removed. It never fails the check — it's an alert for the author and reviewers, who decide whether to split the PR or drop the label.
 
 **Changelog, on the site itself:** `docs/changelog.md` isn't a real file in the repo — `hooks.py`'s `on_pre_build` hook copies the root `CHANGELOG.md` into it at build time (rewriting the two relative links that would otherwise break a directory level deeper: `CONTRIBUTING.md` → an absolute GitHub blob URL, `docs/roadmap.md` → `roadmap.md`) and it's listed in `mkdocs.yml`'s `nav` as a top-level "Changelog" page. Because it's built fresh per version, each mike-deployed version of the site shows `CHANGELOG.md` exactly as it existed at that tag — a real per-release changelog, not just a link out to GitHub.
 
