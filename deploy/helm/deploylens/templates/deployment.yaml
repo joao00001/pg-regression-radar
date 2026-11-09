@@ -64,6 +64,28 @@ spec:
             - --alert-template=$(ALERT_TEMPLATE)
             {{- end }}
             - --source-type={{ .Values.ingester.sourceType }}
+            {{- if eq .Values.ingester.sourceType "otlp" }}
+            {{- range .Values.ingester.otlp.spanNames }}
+            - {{ printf "--otlp-span-name=%s" . | quote }}
+            {{- end }}
+            {{- range $k, $v := .Values.ingester.otlp.matchAttributes }}
+            - {{ printf "--otlp-match-attribute=%s=%s" $k $v | quote }}
+            {{- end }}
+            {{- if .Values.ingester.otlp.includeFailedSpans }}
+            - --otlp-include-failed
+            {{- end }}
+            {{- if .Values.ingester.otlp.timestamp }}
+            - {{ printf "--otlp-timestamp=%s" .Values.ingester.otlp.timestamp | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.otlpExport.endpoint }}
+            - {{ printf "--otlp-endpoint=%s" .Values.otlpExport.endpoint | quote }}
+            - {{ printf "--otlp-encoding=%s" .Values.otlpExport.encoding | quote }}
+            - {{ printf "--otlp-timeout=%ds" (int .Values.otlpExport.timeoutSeconds) | quote }}
+            {{- if .Values.otlpExport.gzip }}
+            - --otlp-gzip
+            {{- end }}
+            {{- end }}
             {{- if .Values.ingester.webhookSecret }}
             - --webhook-secret=$(WEBHOOK_SECRET)
             {{- end }}
@@ -125,6 +147,13 @@ spec:
                   name: {{ include "deploylens.fullname" . }}-secret
                   key: stateDsn
                   optional: true
+            {{- if and .Values.otlpExport.endpoint .Values.otlpExport.headers }}
+            - name: OTEL_EXPORTER_OTLP_LOGS_HEADERS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "deploylens.fullname" . }}-secret
+                  key: otlpHeaders
+            {{- end }}
             {{- if .Values.ingester.webhookSecret }}
             - name: WEBHOOK_SECRET
               valueFrom:

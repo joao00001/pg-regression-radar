@@ -131,6 +131,28 @@ ingester:
   # in the X-Webhook-Token header; requests without it are rejected with 401.
   # Strongly recommended for any deployment reachable from outside the cluster.
   webhookSecret: ""
+  # otlp configures sourceType "otlp" (deploys detected from OTLP/HTTP trace
+  # spans; see docs/otlp-deploy-events.md). Point an OpenTelemetry Collector's
+  # otlphttp exporter at http://<service>:<webhookPort>/webhook; it appends
+  # /v1/traces itself. At least one of spanNames/matchAttributes is required
+  # so a full trace stream never turns every span into a deploy.
+  otlp:
+    spanNames: []
+    matchAttributes: {}
+    includeFailedSpans: false
+    # "end" (default) or "start": which span timestamp is the deploy time.
+    timestamp: ""
+
+# Export every detected regression as an OTLP log record (see
+# docs/otlp-export.md). Disabled while endpoint is empty.
+otlpExport:
+  endpoint: ""        # OTLP/HTTP base URL, e.g. http://otel-collector:4318
+  encoding: protobuf  # or json
+  gzip: false
+  timeoutSeconds: 10
+  # headers is "k=v,k2=v2" (OTEL_EXPORTER_OTLP_HEADERS format), kept in the
+  # chart Secret rather than on the command line / in the CR.
+  headers: ""
 
 # Alerting settings. See docs/alerting.md for the full list of supported
 # formats and the custom template's available fields.
@@ -199,6 +221,10 @@ networkPolicy:
     alertRelayCIDRs: []
     alertRelayPorts:
       - 443
+    # CIDRs for the OTLP collector receiving otlpExport log records.
+    otlpCIDRs: []
+    otlpPorts:
+      - 4318
     # DNS access (CoreDNS / kube-dns) for service discovery.
     dns:
       # If set false, ensure at least one other egress destination is allowed

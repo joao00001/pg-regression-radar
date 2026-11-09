@@ -96,6 +96,16 @@ Every *other* test in this project stops short of proving the full detection pip
 
 `internal/e2e/pipeline_integration_test.go` closes that gap: it drives a real Collector against a real Postgres, feeds the real samples into a real `correlation.Engine`, and asserts a real HTTP POST fires from `alerting.WebhookNotifier` — with a control query that must *not* be flagged, so the test can't pass just by flagging everything indiscriminately after any deploy.
 
+## OpenTelemetry pipeline validation
+
+The OTLP pieces are unit-tested with `httptest` servers and a test-only protobuf reader (`internal/telemetry/otlpdeploy`, `internal/telemetry/otlpexport`, `internal/ingester/otlp_test.go`, `internal/controller/otlp_export_test.go`). Beyond that, `scripts/validate-otel-example.sh` runs the worked example from [OpenTelemetry / Prometheus Sample Source](otel-prometheus-source.md#worked-example-postgresql-otel-collector-prometheus) against real containers (PostgreSQL, OpenTelemetry Collector contrib, Prometheus) and needs only Docker, `curl` and `python3`:
+
+```bash
+bash scripts/validate-otel-example.sh
+```
+
+The OTLP deploy and export paths were also checked by hand against a real Collector (`otlphttp` exporter → ingester with `--source-type otlp`; the controller's exporter → a Collector with the `debug` exporter), in both protobuf+gzip and JSON encodings. `deploy/helm/deploylens/tests/otlp.sh` renders the chart's OTLP values (needs `helm`).
+
 ## Manual end-to-end smoke test (real container) {#manual-e2e-real-container}
 
 None of the tests above build the Docker image or run it as a container — they exercise Go source directly. The **"Manual E2E (real container)"** workflow (`.github/workflows/e2e-manual.yml`) does: it builds the operator image from the [Dockerfile](https://github.com/joao00001/pg-regression-radar/blob/main/Dockerfile), runs it as a real container against a real PostgreSQL container (`pg_stat_statements` preloaded), generates real before/after query traffic, POSTs a real deploy webhook to the running container's `/webhook` endpoint, and asserts a real alert HTTP request lands on a mock receiver — the operator treated as an opaque black box, the same way it runs in Kubernetes.

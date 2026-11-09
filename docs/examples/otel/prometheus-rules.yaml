@@ -1,0 +1,31 @@
+# Recording rule producing the metric internal/telemetry/promsource reads:
+#
+#   pg_regression_radar_query_mean_exec_time_ms{queryid="...", query="..."}
+#
+# Value = mean execution time in MILLISECONDS of the query over the rate()
+# window, i.e. (exec ms added) / (calls added). It is an average over the
+# window, not pg_stat_statements' lifetime mean_exec_time, which reacts far
+# too slowly to a regression.
+#
+# promsource reads these evaluated points with query_range as-is (it never
+# applies rate()/avg itself), so the rule must emit exactly one series per
+# queryid.
+groups:
+  - name: pg_regression_radar_otel
+    # Match Prometheus' evaluation_interval and promsource's Config.Step.
+    interval: 10s
+    rules:
+      - record: pg_regression_radar_query_mean_exec_time_ms
+        # - The window must span several top_query collection intervals
+        #   (10s here, 60s by default => use [5m] with the default).
+        # - `sum by` collapses the per-(database,user) rows that share a
+        #   queryid, and drops everything but queryid and query.
+        # - `> 0` on the calls rate removes idle queries instead of emitting
+        #   0/0 = NaN, so a query that stops running simply has no points.
+        # - The exec-time counter is in SECONDS (see otel-collector.yaml), so
+        #   `1000 *` converts the result to milliseconds.
+        expr: |
+          1000 *
+          sum by (queryid, query) (rate(pg_regression_radar_query_exec_time_seconds_total[1m]))
+          /
+          sum by (queryid, query) (rate(pg_regression_radar_query_calls_total[1m]) > 0)

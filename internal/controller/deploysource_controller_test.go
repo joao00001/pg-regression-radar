@@ -145,3 +145,109 @@ func TestDeploySourceReconcile_RegistersAndUnregistersRoute(t *testing.T) {
 		t.Fatalf("expected route to be unregistered after delete, mux still has %d routes", mux.Len())
 	}
 }
+
+const otlpDeployTraceJSON = `{"resourceSpans":[{"resource":{"attributes":[` +
+	`{"key":"service.name","value":{"stringValue":"checkout"}},` +
+	`{"key":"k8s.namespace.name","value":{"stringValue":"shop"}},` +
+	`{"key":"vcs.ref.head.revision","value":{"stringValue":"abc123"}}]},` +
+	`"scopeSpans":[{"spans":[{"traceId":"0123456789abcdef0123456789abcdef","spanId":"0123456789abcdef",` +
+	`"name":"deploy","startTimeUnixNano":"1700000000000000000","endTimeUnixNano":"1700000001000000000","status":{"code":1}}]}]}]}`
+
+func postOTLP(mux http.Handler, path string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, path, bytes.NewBufferString(otlpDeployTraceJSON))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	return rec
+}
+
+// TestDeploySourceReconcile_OTLPRegistersBothRoutes verifies the
+// OTLP/HTTP exporter's convention (endpoint + "/v1/traces") reaches the
+// handler, that spans become deploy events in the watch's Store, and that
+// both routes go away together.
+func TestDeploySourceReconcile_OTLPRegistersBothRoutes(t *testing.T) {
+	registry := NewRegistry()
+	watchKey := types.NamespacedName{Name: "watch-x", Namespace: "default"}
+	store := &ingester.Store{}
+	registry.Set(watchKey, &WatchRuntime{Store: store})
+
+	src := &radarv1alpha1.DeploySource{
+		ObjectMeta: metav1.ObjectMeta{Name: "src-otlp", Namespace: "default"},
+		Spec: radarv1alpha1.DeploySourceSpec{
+			PostgresWatchRef: "watch-x",
+			SourceType:       "otlp",
+			OTLP:             &radarv1alpha1.OTLPDeployConfig{SpanNames: []string{"deploy"}},
+		},
+	}
+	mux := NewDynamicMux()
+	r := newDeploySourceReconciler(t, registry, mux, src)
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "src-otlp", Namespace: "default"}}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	var got radarv1alpha1.DeploySource
+	if err := r.Get(context.Background(), req.NamespacedName, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Status.Phase != radarv1alpha1.DeploySourcePhaseReady {
+		t.Fatalf("phase = %q (%s)", got.Status.Phase, got.Status.Message)
+	}
+	if mux.Len() != 2 {
+		t.Fatalf("expected 2 routes (base + /v1/traces), got %d", mux.Len())
+	}
+	for _, p := range []string{"/webhook/default/src-otlp", "/webhook/default/src-otlp/v1/traces"} {
+		if rec := postOTLP(mux, p); rec.Code != http.StatusOK {
+			t.Fatalf("POST %s = %d: %s", p, rec.Code, rec.Body.String())
+		}
+	}
+	events := store.All()
+	if len(events) != 1 {
+		// The same span posted twice has the same deterministic ID.
+		t.Fatalf("expected the two identical posts to dedupe to 1 event, got %d: %+v", len(events), events)
+	}
+	if events[0].App != "checkout" || events[0].Revision != "abc123" || events[0].Namespace != "shop" {
+		t.Fatalf("unexpected event: %+v", events[0])
+	}
+
+	if err := r.Delete(context.Background(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if mux.Len() != 0 {
+		t.Fatalf("both routes must be unregistered, %d left", mux.Len())
+	}
+}
+
+// TestDeploySourceReconcile_OTLPInvalidMappingFails verifies a mapping that
+// would match every span (or nothing) is surfaced as Failed/InvalidSpec
+// instead of registering a route that silently drops or floods events.
+func TestDeploySourceReconcile_OTLPInvalidMappingFails(t *testing.T) {
+	registry := NewRegistry()
+	registry.Set(types.NamespacedName{Name: "watch-x", Namespace: "default"}, &WatchRuntime{Store: &ingester.Store{}})
+	src := &radarv1alpha1.DeploySource{
+		ObjectMeta: metav1.ObjectMeta{Name: "src-bad", Namespace: "default"},
+		Spec: radarv1alpha1.DeploySourceSpec{
+			PostgresWatchRef: "watch-x",
+			SourceType:       "otlp",
+		},
+	}
+	mux := NewDynamicMux()
+	r := newDeploySourceReconciler(t, registry, mux, src)
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "src-bad", Namespace: "default"}}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatalf("reconcile should not requeue-error on a spec problem: %v", err)
+	}
+	var got radarv1alpha1.DeploySource
+	if err := r.Get(context.Background(), req.NamespacedName, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Status.Phase != radarv1alpha1.DeploySourcePhaseFailed {
+		t.Fatalf("phase = %q, want Failed", got.Status.Phase)
+	}
+	if mux.Len() != 0 {
+		t.Fatalf("no route may be registered, got %d", mux.Len())
+	}
+}

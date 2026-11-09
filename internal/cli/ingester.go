@@ -40,12 +40,13 @@ import (
 func RunIngester(args []string) int {
 	fs := flag.NewFlagSet("ingester", flag.ContinueOnError)
 	listen := fs.String("listen", ":8080", "HTTP listen address for webhook endpoint")
-	sourceType := fs.String("source-type", "generic", "Webhook source type: argocd, argo-rollouts, flux, generic")
+	sourceType := fs.String("source-type", "generic", "Webhook source type: argocd, argo-rollouts, flux, generic, otlp (OTLP/HTTP traces; see --otlp-span-name)")
 	sourceName := fs.String("source-name", "default", "Unique name for this DeploySource")
 	postgresWatchRef := fs.String("postgres-watch-ref", "", "PostgresWatch to associate events with")
 	appName := fs.String("app-name", "", "Filter events to a specific application name (empty = all)")
 	clusterName := fs.String("cluster-name", "", "Kubernetes cluster identity to stamp on DeployEvents when the webhook payload doesn't carry one (e.g. Argo Rollouts, Flux without eventMetadata)")
 	webhookSecret := fs.String("webhook-secret", "", "Shared secret for webhook authentication; when set, every POST to /webhook must include this value in the X-Webhook-Token header (401 otherwise). Recommended for internet-facing deployments. Prefer passing this via an environment variable reference rather than a CLI flag to avoid exposure in process listings.")
+	otlpDeploy := registerOTLPDeployFlags(fs)
 	versionFlag := fs.Bool("version", false, "Print version information and exit")
 	dryRun := fs.Bool("dry-run", false, "Validate configuration, then exit without starting the webhook server")
 	if err := fs.Parse(args); err != nil {
@@ -58,6 +59,26 @@ func RunIngester(args []string) int {
 	if *versionFlag {
 		fmt.Println(buildinfo.String("ingester"))
 		return 0
+	}
+
+	otlpMapping, err := otlpDeploy.mapping(*sourceType)
+	if err != nil {
+		slog.Error("invalid OTLP flags", "err", err)
+		return 1
+	}
+
+	source := v1alpha1.DeploySource{
+		Name:             *sourceName,
+		SourceType:       *sourceType,
+		PostgresWatchRef: *postgresWatchRef,
+		AppName:          *appName,
+		ClusterName:      *clusterName,
+		WebhookSecret:    *webhookSecret,
+		OTLP:             otlpMapping,
+	}
+	if err := ingester.ValidateSource(source); err != nil {
+		slog.Error("invalid deploy source configuration", "err", err)
+		return 1
 	}
 
 	if *dryRun {
@@ -77,14 +98,6 @@ func RunIngester(args []string) int {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 	store := ingester.NewStore()
-	source := v1alpha1.DeploySource{
-		Name:             *sourceName,
-		SourceType:       *sourceType,
-		PostgresWatchRef: *postgresWatchRef,
-		AppName:          *appName,
-		ClusterName:      *clusterName,
-		WebhookSecret:    *webhookSecret,
-	}
 
 	mux := newIngesterMux(store, source, *webhookSecret, logger)
 
@@ -123,7 +136,7 @@ func newIngesterMux(store *ingester.Store, source v1alpha1.DeploySource, webhook
 	handler := ingester.NewHandler(store, source, logger)
 
 	mux := http.NewServeMux()
-	mux.Handle("/webhook", handler)
+	registerWebhookRoutes(mux, handler, source.SourceType)
 	if webhookSecret != "" {
 		mux.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
 			got := r.Header.Get("X-Webhook-Token")

@@ -4,7 +4,7 @@
 
 ## Overview
 
-`internal/correlation.Engine` depends only on a two-method `SampleSource` interface (`SamplesInRange`, `AllQueryIDs` — see [Roadmap § OpenTelemetry as a pluggable analysis input](roadmap.md#opentelemetry-as-a-pluggable-analysis-input-in-detail)), not concretely on `internal/collector.Collector`. `internal/telemetry/promsource.Source` is a second implementation of that same interface, backed by PromQL queries against a Prometheus HTTP API instead of a direct database connection. This page covers what it does and, more importantly, what it currently cannot do without extra setup — that second part matters more here than for most pages.
+`internal/correlation.Engine` depends only on a two-method `SampleSource` interface (`SamplesInRange`, `AllQueryIDs` — `internal/correlation/engine.go`), not concretely on `internal/collector.Collector`. `internal/telemetry/promsource.Source` is a second implementation of that same interface, backed by PromQL queries against a Prometheus HTTP API instead of a direct database connection. This page covers what it does and, more importantly, what it currently cannot do without extra setup — that second part matters more here than for most pages.
 
 ## The real gap: per-query attribution isn't there yet, out of the box
 
@@ -18,7 +18,26 @@ Concretely: pointing `promsource.Config.MetricName` at `postgresql_query_executi
 - A Prometheus recording rule computed over whatever that custom pipeline exposes, producing the mean-execution-time-in-milliseconds shape `promsource.Source` expects (see below) — keeping the PromQL complexity in Prometheus config rather than in this project's Go code.
 - A future `postgresqlreceiver` release that adds per-query attribution to the metric itself, at which point `Config.MetricName`/`Config.QueryIDLabel` point at it directly with no code change here.
 
-This is deliberately staying "bring your own per-query metric" rather than "here's a broken one-liner that looks like it works." See [Roadmap](roadmap.md#opentelemetry-as-a-pluggable-analysis-input-in-detail) for why this is still worth shipping as Phase 1a regardless: the seam is real, and the moment any of the three options above exists in a given fleet, this package is what plugs it in — no changes to `internal/correlation` or to this package itself.
+This is deliberately staying "bring your own per-query metric" rather than "here's a broken one-liner that looks like it works." The seam is real, and the moment any of the three options above exists in a given fleet, this package is what plugs it in — no changes to `internal/correlation` or to this package itself.
+
+## Worked example: PostgreSQL → OTel Collector → Prometheus
+
+[`docs/examples/otel/`](https://github.com/joao00001/pg-regression-radar/tree/main/docs/examples/otel) ships a complete, validated pipeline that produces exactly the metric this source reads:
+
+| File | Role |
+|---|---|
+| `otel-collector.yaml` | `postgresqlreceiver` (with `db.server.top_query` enabled) → `transform` (promotes `postgresql.queryid`/`db.query.text` to `queryid`/`query`) → `signal_to_metrics` connector (calls and exec-time counters per queryid) → `delta_to_cumulative` → `prometheusexporter`. |
+| `prometheus.yml` | Scrapes the Collector's exporter. |
+| `prometheus-rules.yaml` | Recording rule `pg_regression_radar_query_mean_exec_time_ms{queryid,query}`. |
+
+Things the example gets right that are easy to miss:
+
+- The per-query signal is a **log record**, so the Collector needs the `signal_to_metrics` connector to turn it into metrics; `prometheusexporter` alone never sees it.
+- `postgresql.total_exec_time` is in **seconds**, so the recording rule multiplies by `1000` to produce the milliseconds this source expects.
+- `prometheusexporter` only exposes cumulative counters, hence `delta_to_cumulative`.
+- The monitoring role needs `pg_monitor`; without it other roles' statements show up as `<insufficient privilege>` and are dropped.
+
+`scripts/validate-otel-example.sh` runs the whole stack in Docker (PostgreSQL, Collector contrib, Prometheus), slows a probe query from ~10 ms to ~60 ms mid-run, and asserts through the Prometheus API that the recording rule carries numeric `queryid` labels, query text and values that track the slowdown. Point `metricName` at `pg_regression_radar_query_mean_exec_time_ms` to consume it.
 
 ## Value semantics: mean exec time in milliseconds, per point
 
@@ -38,11 +57,12 @@ avg by (queryid) (
 
 | Field | Default | Notes |
 |---|---|---|
-| `BaseURL` | *(required)* | Prometheus HTTP API base, e.g. `http://prometheus:9090`. |
+| `BaseURL` | *(required)* | Prometheus HTTP API base, e.g. `http://prometheus:9090`. Must be `http(s)` and must not embed credentials; a trailing slash is trimmed. |
 | `MetricName` | *(required)* | See above — no default is safe to assume. |
 | `QueryIDLabel` | `queryid` | Label carrying the queryid as a base-10 integer string. Always parsed with `strconv.ParseInt`, never through a JSON-number/float path, so values past `2^53` (routine for `pg_stat_statements` queryids, which are `int64`) don't silently lose precision. |
 | `QueryTextLabel` | `query` | Optional; set to `-` to disable. Populates `QuerySample.QueryText`/`Fingerprint` for display and for the queryid-rotation fallback described in [Collector Internals](collector-internals.md#queryid-is-not-a-stable-identifier-across-a-deploy) — a queryid-only feed still satisfies `SampleSource` without it. |
 | `Step` | `15s` | `query_range` resolution; should match or exceed the underlying scrape interval. |
+| `BearerToken` | *(none)* | Sent as `Authorization: Bearer …` for Prometheus endpoints behind an authenticating proxy. From a `PostgresWatch`, set `spec.sampleSource.prometheus.bearerTokenSecretRef` (see below). |
 | `HTTPClient` / `Timeout` | 10s timeout | `HTTPClient` set explicitly takes precedence; set its own `Timeout` in that case. |
 
 ## Using it from a PostgresWatch CRD (cmd/manager)
@@ -73,7 +93,9 @@ spec:
 
 `dsn`/`dsnSecretRef` are not required, and not read, when `sampleSource.type` is `prometheus` — `internal/controller.PostgresWatchReconciler` skips DSN resolution entirely in that mode (see `usesPrometheusSampleSource` in `internal/controller/postgreswatch_controller.go`). `capturePlans: true` combined with `sampleSource.type: prometheus` is rejected at reconcile time with a clear error, rather than silently ignored: `EXPLAIN`-based plan-diff capture needs the direct database connection this mode deliberately doesn't have. Every other field (`windowMinutes`, `minExecutions`, `alerting`, `autoAbort`, `periodicDetection`, …) works exactly the same regardless of which `sampleSource` is active — the only things this field changes are which `correlation.SampleSource` implementation `internal/correlation.Engine` runs against and whether a direct database connection exists at all.
 
-See [`SampleSourceConfig`](https://github.com/joao00001/pg-regression-radar/blob/main/api/v1alpha1/postgreswatch_types.go) in `api/v1alpha1/postgreswatch_types.go` for the full field reference (`type`, and `prometheus.{url,metricName,queryIDLabel,queryTextLabel,stepSeconds}`), each mirroring `promsource.Config` one-to-one.
+`bearerTokenSecretRef` (`name` + `key`) reads a bearer token from a Secret in the watch's namespace. Like `dsnSecretRef`, the Secret must carry the label `pg-regression-radar.io/allow-postgreswatch-access=true`, otherwise the watch fails with a consent error; the token's value is part of the spec hash, so rotating it restarts the watch's workers.
+
+See [`SampleSourceConfig`](https://github.com/joao00001/pg-regression-radar/blob/main/api/v1alpha1/postgreswatch_types.go) in `api/v1alpha1/postgreswatch_types.go` for the full field reference (`type`, and `prometheus.{url,metricName,queryIDLabel,queryTextLabel,stepSeconds,bearerTokenSecretRef}`), each mirroring `promsource.Config` one-to-one.
 
 ## Usage example (direct Go construction)
 
@@ -133,10 +155,13 @@ for _, qid := range ids {
 
 ## Failure behavior
 
-`SamplesInRange` and `AllQueryIDs` return `nil` on any error — unreachable Prometheus, a non-`success` API response, a malformed body, or the wrong `resultType` — rather than an error, matching `correlation.SampleSource`'s signature and the same "unknown queryid returns nothing" contract `internal/collector.Collector`'s own implementation follows. There is currently no metric or log distinguishing "no data in range" from "Prometheus is unreachable"; that is a natural follow-up once this source has real usage.
+`SamplesInRange` and `AllQueryIDs` still return `nil` on any error — unreachable Prometheus, a non-`success` API response, a malformed body, or the wrong `resultType` — to match `correlation.SampleSource`'s signature and the "unknown queryid returns nothing" contract of `internal/collector.Collector`. Failures are no longer silent, though:
+
+- Counter `pg_regression_radar_promsource_query_errors_total{operation}` (`samples_in_range` or `all_query_ids`) increments on every failed query, so "no data in range" can be told apart from "Prometheus is unreachable".
+- A warning is logged at most once per minute per operation. A `401`/`403` adds a hint to check the bearer token.
 
 ## See also
 
-- [Roadmap § OpenTelemetry as a pluggable analysis input](roadmap.md#opentelemetry-as-a-pluggable-analysis-input-in-detail) — the phased plan this package is Phase 1a of.
+- [OTLP Deploy Events](otlp-deploy-events.md) and [OTLP Regression Export](otlp-export.md) — the other two OpenTelemetry integration points.
 - [Collector Internals](collector-internals.md) — the existing, default `SampleSource` implementation this package is an alternative to, including the `queryid`-fingerprint fallback this package's `QueryTextLabel` also participates in.
 - [Detection Algorithm](detection-algorithm.md) — how `SamplesInRange`'s output is actually consumed.

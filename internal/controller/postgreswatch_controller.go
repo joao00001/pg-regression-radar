@@ -206,7 +206,13 @@ func (r *PostgresWatchReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		}
 	}
 
-	specHash := hashPostgresWatchSpec(watch.Spec, dsn)
+	secrets, err := r.resolveWatchSecrets(ctx, &watch)
+	if err != nil {
+		log.Error(err, "unable to resolve referenced secrets")
+		return r.markFailed(ctx, &watch, err)
+	}
+
+	specHash := hashPostgresWatchSpec(watch.Spec, dsn, secrets.promBearerToken, secrets.otlpHeaders)
 
 	if rt, ok := r.Registry.Get(req.NamespacedName); ok && rt.SpecHash == specHash {
 		// Already running with this exact effective config: just refresh
@@ -219,7 +225,7 @@ func (r *PostgresWatchReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	// goroutine or double-register Prometheus metrics.
 	r.stopWatch(req.NamespacedName)
 
-	rt, err := r.startWatch(req.NamespacedName, watch.DeepCopy(), dsn, specHash)
+	rt, err := r.startWatch(req.NamespacedName, watch.DeepCopy(), dsn, secrets, specHash)
 	if err != nil {
 		log.Error(err, "unable to start watch worker")
 		return r.markFailed(ctx, &watch, err)
@@ -506,7 +512,7 @@ func (r *PostgresWatchReconciler) dsnSecretClientFromSecret(ctx context.Context,
 // goroutines. The runtime's context is intentionally independent from ctx
 // (the short-lived Reconcile context) — its lifetime is controlled solely
 // by Registry and stopWatch.
-func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *radarv1alpha1.PostgresWatch, dsn, specHash string) (*WatchRuntime, error) {
+func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *radarv1alpha1.PostgresWatch, dsn string, secrets watchSecrets, specHash string) (*WatchRuntime, error) {
 	// capturePlans needs EXPLAIN/pg_store_plans access over the same
 	// direct database connection the "collector" sampleSource type
 	// (Collector) holds; "prometheus" has no such connection, by design
@@ -551,6 +557,9 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 			QueryIDLabel:   promCfg.QueryIDLabel,
 			QueryTextLabel: promCfg.QueryTextLabel,
 			Step:           time.Duration(promCfg.StepSeconds) * time.Second,
+			BearerToken:    secrets.promBearerToken,
+			Logger:         r.Logger,
+			Registerer:     promReg,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("create prometheus sample source: %w", err)
@@ -651,9 +660,27 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		autoAbortThreshold = parseFloatOr(watch.Spec.AutoAbort.ConfidenceThreshold, 0.99)
 	}
 
-	workerCtx, cancel := context.WithCancel(context.Background())
+	exporter, err := r.buildOTLPExporter(key, watch, secrets.otlpHeaders, promReg)
+	if err != nil {
+		return nil, err
+	}
+
+	workerCtx, cancelWorkers := context.WithCancel(context.Background())
+	cancel := func() {
+		cancelWorkers()
+		if exporter != nil {
+			// Flush what's queued without making a spec change or deletion
+			// wait on an unreachable collector.
+			go func() {
+				ctx, done := context.WithTimeout(context.Background(), otlpFlushTimeout)
+				defer done()
+				_ = exporter.Close(ctx)
+			}()
+		}
+	}
 
 	rt := &WatchRuntime{
+		OTLPExporter:            exporter,
 		Store:                   &ingester.Store{},
 		Collector:               col,
 		SampleSource:            sampleSrc,
@@ -767,6 +794,9 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 					r.Logger.Error("postgreswatch: alert notify failed", "watch", key.String(), "regression", res.Name, "err", err)
 				}
 				cancel()
+				if rt.OTLPExporter != nil {
+					rt.OTLPExporter.Export(res)
+				}
 
 				recCtx, recCancel := context.WithTimeout(context.Background(), 15*time.Second)
 				if err := r.recordRegression(recCtx, key, res); err != nil {
@@ -809,6 +839,9 @@ func (r *PostgresWatchReconciler) periodicPollLoop(ctx context.Context, key type
 					r.Logger.Error("postgreswatch: periodic alert notify failed", "watch", key.String(), "regression", res.Name, "err", err)
 				}
 				cancel()
+				if rt.OTLPExporter != nil {
+					rt.OTLPExporter.Export(res)
+				}
 
 				recCtx, recCancel := context.WithTimeout(context.Background(), 15*time.Second)
 				if err := r.recordRegression(recCtx, key, res); err != nil {
@@ -964,15 +997,26 @@ func (r *PostgresWatchReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // affect the running worker's configuration, including the resolved DSN
 // (so rotating a referenced Secret's value also triggers a restart on the
 // next reconcile, even though DSNSecretRef itself didn't change).
-func hashPostgresWatchSpec(spec radarv1alpha1.PostgresWatchSpec, resolvedDSN string) string {
+func hashPostgresWatchSpec(spec radarv1alpha1.PostgresWatchSpec, resolvedDSN string, resolvedSecrets ...string) string {
 	spec.DSN = resolvedDSN
 	spec.DSNSecretRef = nil
 	//nolint:staticcheck // SA1019: intentional use of the deprecated field for hash compatibility
 	spec.RemoteClusterSecretRef = nil
 	spec.RemoteClusterRef = ""
 	b, _ := json.Marshal(spec)
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
+	h := sha256.New()
+	h.Write(b)
+	// Rotating a referenced token/header Secret must restart the worker, so
+	// the resolved values (not just the references) are part of the hash.
+	// Length-prefixed so adjacent values cannot be confused with each other.
+	// Empty values are skipped so watches that use none of these Secrets keep
+	// the hash they had before the Secrets existed (no restart on upgrade).
+	for i, v := range resolvedSecrets {
+		if v != "" {
+			fmt.Fprintf(h, "\x00%d:%d:%s", i, len(v), v)
+		}
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func parseFloatOr(s string, fallback float64) float64 {

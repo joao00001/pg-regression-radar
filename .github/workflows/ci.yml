@@ -46,6 +46,9 @@ jobs:
       - name: Run security-hardening render test
         run: bash deploy/helm/deploylens/tests/security-hardening.sh
 
+      - name: Run OTLP render test
+        run: bash deploy/helm/deploylens/tests/otlp.sh
+
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest

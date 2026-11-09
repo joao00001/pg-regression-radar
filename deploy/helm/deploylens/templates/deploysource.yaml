@@ -8,4 +8,21 @@ metadata:
 spec:
   postgresWatchRef: {{ include "deploylens.fullname" . }}-default
   sourceType: {{ .Values.ingester.sourceType | quote }}
+  {{- if eq .Values.ingester.sourceType "otlp" }}
+  otlp:
+    {{- with .Values.ingester.otlp.spanNames }}
+    spanNames:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.ingester.otlp.matchAttributes }}
+    matchAttributes:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- if .Values.ingester.otlp.includeFailedSpans }}
+    includeFailedSpans: true
+    {{- end }}
+    {{- if .Values.ingester.otlp.timestamp }}
+    timestamp: {{ .Values.ingester.otlp.timestamp | quote }}
+    {{- end }}
+  {{- end }}
 {{- end }}

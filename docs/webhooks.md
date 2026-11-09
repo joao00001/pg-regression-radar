@@ -4,9 +4,9 @@
 
 ## Overview
 
-The Ingester (`internal/ingester`) normalises webhook payloads from four source types into a single `DeployEvent` — see [API Reference](api-reference.md) for that shape. Every `DeployEvent` carries a `cluster` field so multi-cluster setups can tell deploys apart; this page covers how each source populates it.
+The Ingester (`internal/ingester`) normalises webhook payloads (or OTLP trace spans) from five source types into a single `DeployEvent` — see [API Reference](api-reference.md) for that shape. Every `DeployEvent` carries a `cluster` field so multi-cluster setups can tell deploys apart; this page covers how each source populates it.
 
-A fifth source, **Kubernetes-native watch**, doesn't send a webhook at all — see [below](#native-kubernetes-watch-no-webhook) — and is only available in `manager` mode (CRD-driven), not via the standalone `operator`/`ingester` binaries' `--source-type` flag. See [Configuration Reference: Source-type capabilities by mode](configuration.md#source-type-capabilities-by-mode) for the full accepted-values comparison.
+A fifth source, **OpenTelemetry spans**, reuses the same `/webhook` route to accept OTLP/HTTP traces instead of a tool-specific payload (see [OTLP Deploy Events](otlp-deploy-events.md)). A sixth, **Kubernetes-native watch**, doesn't send a webhook at all — see [below](#native-kubernetes-watch-no-webhook) — and is only available in `manager` mode (CRD-driven), not via the standalone `operator`/`ingester` binaries' `--source-type` flag. See [Configuration Reference: Source-type capabilities by mode](configuration.md#source-type-capabilities-by-mode) for the full accepted-values comparison.
 
 ## Supported sources
 
@@ -16,6 +16,7 @@ A fifth source, **Kubernetes-native watch**, doesn't send a webhook at all — s
 | **Argo Rollouts** | Rollout promotion webhook | Set `--source-type argo-rollouts` |
 | **Flux** | Notification Controller event | Set `--source-type flux` |
 | **Generic** | Any JSON matching `DeployEvent` schema | Useful for custom CI systems |
+| **OpenTelemetry (OTLP)** | A trace span (e.g. `deploy`) arriving over OTLP/HTTP | Set `--source-type otlp` / `sourceType: otlp`; point an OTel Collector `otlphttp` exporter at `/webhook` — see [OTLP Deploy Events](otlp-deploy-events.md) |
 | **Kubernetes-native** | Deployment/StatefulSet rollout completes | `manager` mode only; `sourceType: kubernetes` on a `DeploySource` CR — no webhook, no GitOps tool required |
 
 ## Cluster attribution

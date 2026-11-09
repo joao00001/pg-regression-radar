@@ -106,6 +106,8 @@ nav:
       - Detection Algorithm: detection-algorithm.md
       - Collector Internals: collector-internals.md
       - OpenTelemetry / Prometheus Sample Source: otel-prometheus-source.md
+      - OTLP Deploy Events: otlp-deploy-events.md
+      - OTLP Regression Export: otlp-export.md
       - Multi-Cluster (Fleet) Mode: multi-cluster.md
       - Security Model & Threat Model: security-model.md
       - Deployment Security (Helm): deployment-security.md

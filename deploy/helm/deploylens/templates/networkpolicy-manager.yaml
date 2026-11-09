@@ -30,10 +30,11 @@ spec:
   {{- $hasPostgres := gt (len .Values.networkPolicy.egress.postgresCIDRs) 0 }}
   {{- $hasAPIServers := gt (len .Values.networkPolicy.egress.apiServerCIDRs) 0 }}
   {{- $hasAlertRelay := gt (len .Values.networkPolicy.egress.alertRelayCIDRs) 0 }}
+  {{- $hasOTLP := gt (len .Values.networkPolicy.egress.otlpCIDRs) 0 }}
   {{- $hasDNS := .Values.networkPolicy.egress.dns.enabled }}
   policyTypes:
     - Ingress
-    {{- if or $hasPostgres $hasAPIServers $hasAlertRelay $hasDNS }}
+    {{- if or $hasPostgres $hasAPIServers $hasAlertRelay $hasOTLP $hasDNS }}
     - Egress
     {{- end }}
   ingress:
@@ -58,7 +59,7 @@ spec:
         - protocol: TCP
           port: {{ .Values.manager.ports.ctrlMetrics }}
     {{- end }}
-  {{- if or $hasPostgres $hasAPIServers $hasAlertRelay $hasDNS }}
+  {{- if or $hasPostgres $hasAPIServers $hasAlertRelay $hasOTLP $hasDNS }}
   egress:
     {{- range .Values.networkPolicy.egress.postgresCIDRs }}
     - to:
@@ -97,6 +98,16 @@ spec:
             cidr: {{ . | quote }}
       ports:
         {{- range $.Values.networkPolicy.egress.alertRelayPorts }}
+        - protocol: TCP
+          port: {{ . }}
+        {{- end }}
+    {{- end }}
+    {{- range .Values.networkPolicy.egress.otlpCIDRs }}
+    - to:
+        - ipBlock:
+            cidr: {{ . | quote }}
+      ports:
+        {{- range $.Values.networkPolicy.egress.otlpPorts }}
         - protocol: TCP
           port: {{ . }}
         {{- end }}

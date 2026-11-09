@@ -66,6 +66,66 @@ spec:
                   "kubernetes", this is not just a filter: it is the name of the
                   Deployment or StatefulSet to watch, and is required.
                 type: string
+              otlp:
+                description: |-
+                  otlp selects which OTLP spans represent a deploy and how their
+                  attributes map to DeployEvent fields. Required when sourceType is
+                  "otlp"; ignored otherwise.
+                properties:
+                  appAttribute:
+                    description: |-
+                      appAttribute names the attribute holding the application name.
+                      Default: service.name.
+                    type: string
+                  clusterAttribute:
+                    description: |-
+                      clusterAttribute names the attribute holding the destination
+                      cluster. Default: k8s.cluster.name.
+                    type: string
+                  imageTagAttribute:
+                    description: |-
+                      imageTagAttribute names the attribute holding the image tag.
+                      Default: container.image.tags (first element), falling back to
+                      container.image.tag.
+                    type: string
+                  includeFailedSpans:
+                    description: |-
+                      includeFailedSpans also accepts spans whose status is ERROR. Off by
+                      default: a failed deploy did not change what the database runs.
+                    type: boolean
+                  matchAttributes:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      matchAttributes lists attribute key/value pairs that must all be
+                      present on the span, or on its resource, with exactly these values.
+                      Span attributes take precedence over resource attributes.
+                    type: object
+                  namespaceAttribute:
+                    description: |-
+                      namespaceAttribute names the attribute holding the Kubernetes
+                      namespace. Default: k8s.namespace.name.
+                    type: string
+                  revisionAttribute:
+                    description: |-
+                      revisionAttribute names the attribute holding the deployed revision.
+                      Default: vcs.ref.head.revision, falling back to service.version.
+                    type: string
+                  spanNames:
+                    description: spanNames lists span names (exact match) that represent
+                      a deploy.
+                    items:
+                      type: string
+                    type: array
+                  timestamp:
+                    description: |-
+                      timestamp selects which span timestamp becomes the deploy time:
+                      "end" (default, when the deploy finished) or "start".
+                    enum:
+                    - end
+                    - start
+                    type: string
+                type: object
               postgresWatchRef:
                 description: |-
                   postgresWatchRef is the name of the PostgresWatch (in the same
@@ -83,12 +143,27 @@ spec:
                   API and synthesise a DeployEvent whenever its rollout completes on a
                   new revision — no ArgoCD, Argo Rollouts, or Flux installation
                   required. See docs/webhooks.md#native-kubernetes-watch.
+                  "otlp" turns the webhook route into an OTLP/HTTP traces receiver
+                  (POST <path>/v1/traces, protobuf or JSON, optionally gzip): spans
+                  selected by spec.otlp become DeployEvents, so an OpenTelemetry
+                  Collector's otlphttp exporter can feed deploys straight in. See
+                  docs/otlp-deploy-events.md.
                 enum:
                 - argocd
                 - argo-rollouts
                 - flux
                 - generic
                 - kubernetes
+                - otlp
+                type: string
+              webhookSecret:
+                description: |-
+                  webhookSecret is the shared secret used to authenticate incoming webhook
+                  requests via the X-Webhook-Token header. When non-empty, every POST to
+                  this source's webhook path must include this value in the X-Webhook-Token
+                  header; requests without it or with a wrong value are rejected with 401.
+                  Store this value in a Kubernetes Secret and reference it with
+                  valueFrom.secretKeyRef rather than inlining it here.
                 type: string
               workloadKind:
                 description: |-

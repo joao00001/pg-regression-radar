@@ -81,7 +81,7 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	var src radarv1alpha1.DeploySource
 	if err := r.Get(ctx, req.NamespacedName, &src); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.Mux.Unregister(webhookPath(req.NamespacedName))
+			r.unregisterRoutes(req.NamespacedName)
 			log.Info("deploysource deleted, webhook route removed")
 			return ctrl.Result{}, nil
 		}
@@ -91,7 +91,7 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	watchKey := types.NamespacedName{Namespace: req.Namespace, Name: src.Spec.PostgresWatchRef}
 	rt, ok := r.Registry.Get(watchKey)
 	if !ok {
-		r.Mux.Unregister(webhookPath(req.NamespacedName))
+		r.unregisterRoutes(req.NamespacedName)
 
 		src.Status.Phase = radarv1alpha1.DeploySourcePhasePending
 		src.Status.ObservedGeneration = src.Generation
@@ -121,7 +121,7 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		// Kubernetes API, not by an inbound webhook. Unregister any stale
 		// route left over from before sourceType was changed to
 		// "kubernetes", then report Ready without a webhookPath.
-		r.Mux.Unregister(webhookPath(req.NamespacedName))
+		r.unregisterRoutes(req.NamespacedName)
 
 		src.Status.Phase = radarv1alpha1.DeploySourcePhaseReady
 		src.Status.ObservedGeneration = src.Generation
@@ -141,17 +141,47 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
-	handler := ingester.NewHandler(rt.Store, dto.DeploySource{
+	source := dto.DeploySource{
 		Name:             req.Name,
 		Namespace:        req.Namespace,
 		PostgresWatchRef: src.Spec.PostgresWatchRef,
 		SourceType:       sourceType,
 		AppName:          src.Spec.AppName,
 		WebhookSecret:    src.Spec.WebhookSecret,
-	}, r.Logger)
+		OTLP:             otlpMapping(src.Spec.OTLP),
+	}
+	if err := ingester.ValidateSource(source); err != nil {
+		// Serving a half-configured OTLP route would silently ingest
+		// nothing, so drop the route and surface the reason instead.
+		r.unregisterRoutes(req.NamespacedName)
+		src.Status.Phase = radarv1alpha1.DeploySourcePhaseFailed
+		src.Status.ObservedGeneration = src.Generation
+		src.Status.WebhookPath = ""
+		src.Status.Message = "invalid spec: " + err.Error()
+		setCondition(&src.Status.Conditions, metav1.Condition{
+			Type:               "Ready",
+			Status:             metav1.ConditionFalse,
+			Reason:             "InvalidSpec",
+			Message:            src.Status.Message,
+			ObservedGeneration: src.Generation,
+		})
+		if uerr := r.Status().Update(ctx, &src); uerr != nil {
+			return ctrl.Result{}, uerr
+		}
+		log.Info("deploysource has an invalid spec, route not registered", "err", err)
+		return ctrl.Result{}, nil
+	}
+
+	handler := ingester.NewHandler(rt.Store, source, r.Logger)
 
 	path := webhookPath(req.NamespacedName)
 	r.Mux.Register(path, handler)
+	if sourceType == "otlp" {
+		// OTLP/HTTP exporters append /v1/traces to the configured endpoint.
+		r.Mux.Register(otlpTracesPath(path), handler)
+	} else {
+		r.Mux.Unregister(otlpTracesPath(path))
+	}
 
 	log.Info("deploysource webhook route registered", "path", path, "sourceType", sourceType)
 
@@ -178,4 +208,32 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 // and the path is fully derivable from `kubectl get deploysource`.
 func webhookPath(key types.NamespacedName) string {
 	return "/webhook/" + key.Namespace + "/" + key.Name
+}
+
+// otlpTracesPath is the extra route an "otlp" DeploySource serves so that an
+// otlphttp exporter configured with the webhook path as its base endpoint
+// (which appends /v1/traces) works without a traces_endpoint override.
+func otlpTracesPath(path string) string { return path + "/v1/traces" }
+
+func (r *DeploySourceReconciler) unregisterRoutes(key types.NamespacedName) {
+	path := webhookPath(key)
+	r.Mux.Unregister(path)
+	r.Mux.Unregister(otlpTracesPath(path))
+}
+
+func otlpMapping(c *radarv1alpha1.OTLPDeployConfig) *dto.OTLPSpanMapping {
+	if c == nil {
+		return nil
+	}
+	return &dto.OTLPSpanMapping{
+		SpanNames:          c.SpanNames,
+		MatchAttributes:    c.MatchAttributes,
+		IncludeFailedSpans: c.IncludeFailedSpans,
+		AppAttribute:       c.AppAttribute,
+		NamespaceAttribute: c.NamespaceAttribute,
+		ClusterAttribute:   c.ClusterAttribute,
+		RevisionAttribute:  c.RevisionAttribute,
+		ImageTagAttribute:  c.ImageTagAttribute,
+		Timestamp:          c.Timestamp,
+	}
 }

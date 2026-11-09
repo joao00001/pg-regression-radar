@@ -36,7 +36,12 @@ type DeploySourceSpec struct {
 	// API and synthesise a DeployEvent whenever its rollout completes on a
 	// new revision — no ArgoCD, Argo Rollouts, or Flux installation
 	// required. See docs/webhooks.md#native-kubernetes-watch.
-	// +kubebuilder:validation:Enum=argocd;argo-rollouts;flux;generic;kubernetes
+	// "otlp" turns the webhook route into an OTLP/HTTP traces receiver
+	// (POST <path>/v1/traces, protobuf or JSON, optionally gzip): spans
+	// selected by spec.otlp become DeployEvents, so an OpenTelemetry
+	// Collector's otlphttp exporter can feed deploys straight in. See
+	// docs/otlp-deploy-events.md.
+	// +kubebuilder:validation:Enum=argocd;argo-rollouts;flux;generic;kubernetes;otlp
 	// +kubebuilder:default=generic
 	SourceType string `json:"sourceType,omitempty"`
 
@@ -62,6 +67,65 @@ type DeploySourceSpec struct {
 	// valueFrom.secretKeyRef rather than inlining it here.
 	// +optional
 	WebhookSecret string `json:"webhookSecret,omitempty"`
+
+	// otlp selects which OTLP spans represent a deploy and how their
+	// attributes map to DeployEvent fields. Required when sourceType is
+	// "otlp"; ignored otherwise.
+	// +optional
+	OTLP *OTLPDeployConfig `json:"otlp,omitempty"`
+}
+
+// OTLPDeployConfig selects which OTLP spans represent a finished deploy and
+// which span/resource attributes populate the resulting DeployEvent. At
+// least one of spanNames or matchAttributes must be set, so a receiver
+// that is handed a full trace stream never turns every span into a deploy.
+type OTLPDeployConfig struct {
+	// spanNames lists span names (exact match) that represent a deploy.
+	// +optional
+	SpanNames []string `json:"spanNames,omitempty"`
+
+	// matchAttributes lists attribute key/value pairs that must all be
+	// present on the span, or on its resource, with exactly these values.
+	// Span attributes take precedence over resource attributes.
+	// +optional
+	MatchAttributes map[string]string `json:"matchAttributes,omitempty"`
+
+	// includeFailedSpans also accepts spans whose status is ERROR. Off by
+	// default: a failed deploy did not change what the database runs.
+	// +optional
+	IncludeFailedSpans bool `json:"includeFailedSpans,omitempty"`
+
+	// appAttribute names the attribute holding the application name.
+	// Default: service.name.
+	// +optional
+	AppAttribute string `json:"appAttribute,omitempty"`
+
+	// namespaceAttribute names the attribute holding the Kubernetes
+	// namespace. Default: k8s.namespace.name.
+	// +optional
+	NamespaceAttribute string `json:"namespaceAttribute,omitempty"`
+
+	// clusterAttribute names the attribute holding the destination
+	// cluster. Default: k8s.cluster.name.
+	// +optional
+	ClusterAttribute string `json:"clusterAttribute,omitempty"`
+
+	// revisionAttribute names the attribute holding the deployed revision.
+	// Default: vcs.ref.head.revision, falling back to service.version.
+	// +optional
+	RevisionAttribute string `json:"revisionAttribute,omitempty"`
+
+	// imageTagAttribute names the attribute holding the image tag.
+	// Default: container.image.tags (first element), falling back to
+	// container.image.tag.
+	// +optional
+	ImageTagAttribute string `json:"imageTagAttribute,omitempty"`
+
+	// timestamp selects which span timestamp becomes the deploy time:
+	// "end" (default, when the deploy finished) or "start".
+	// +kubebuilder:validation:Enum=end;start
+	// +optional
+	Timestamp string `json:"timestamp,omitempty"`
 }
 
 // DeploySourcePhase summarises whether the webhook route backing this

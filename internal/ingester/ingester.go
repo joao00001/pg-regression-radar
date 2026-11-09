@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/joao00001/pg-regression-radar/internal/telemetry/otlpdeploy"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -43,6 +44,7 @@ var ValidSourceTypes = map[string]bool{
 	"argo-rollouts": true,
 	"flux":          true,
 	"generic":       true,
+	"otlp":          true,
 }
 
 // maxWebhookBodyBytes bounds how much of an incoming webhook request body
@@ -189,6 +191,23 @@ type Handler struct {
 	store  *Store
 	source v1alpha1.DeploySource
 	logger *slog.Logger
+	// otlp is the compiled span matcher for SourceType "otlp"; otlpErr holds
+	// the reason it could not be built, in which case every request is
+	// answered with 500 instead of silently ingesting nothing.
+	otlp    *otlpdeploy.Matcher
+	otlpErr error
+}
+
+// ValidateSource reports configuration errors that would make a Handler for
+// source unusable, so callers can surface them before registering a route.
+func ValidateSource(source v1alpha1.DeploySource) error {
+	if source.SourceType != "otlp" {
+		return nil
+	}
+	if source.OTLP == nil {
+		return fmt.Errorf("source type otlp requires an otlp span mapping (spanNames and/or matchAttributes)")
+	}
+	return otlpdeploy.ValidateMapping(*source.OTLP)
 }
 
 // NewHandler creates a new Handler.
@@ -196,7 +215,15 @@ func NewHandler(store *Store, source v1alpha1.DeploySource, logger *slog.Logger)
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &Handler{store: store, source: source, logger: logger}
+	h := &Handler{store: store, source: source, logger: logger}
+	if source.SourceType == "otlp" {
+		if source.OTLP == nil {
+			h.otlpErr = fmt.Errorf("otlp span mapping is not configured")
+		} else {
+			h.otlp, h.otlpErr = otlpdeploy.NewMatcher(*source.OTLP)
+		}
+	}
+	return h
 }
 
 // ServeHTTP handles an incoming webhook POST request. The payload shape differs
@@ -221,6 +248,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
+	}
+
+	if h.source.SourceType == "otlp" {
+		h.serveOTLP(w, r)
+		return
 	}
 
 	// Bound how much body a single request can make json.Decode read,

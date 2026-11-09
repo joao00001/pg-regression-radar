@@ -60,6 +60,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/planner"
 	"github.com/joao00001/pg-regression-radar/internal/storage"
 	"github.com/joao00001/pg-regression-radar/internal/storage/postgres"
+	"github.com/joao00001/pg-regression-radar/internal/telemetry/otlpexport"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -92,8 +93,10 @@ func runOperator(args []string, logOutput io.Writer) int {
 	pagerdutyRoutingKey := fs.String("pagerduty-routing-key", "", "PagerDuty Events API v2 routing key; required when --alert-format=pagerduty")
 	alertTemplate := fs.String("alert-template", "", "Go text/template source (inline) for --alert-format=custom — see docs/alerting.md#custom-format. Alternative to --alert-template-file; takes precedence when both are set")
 	alertTemplateFile := fs.String("alert-template-file", "", "Path to a Go text/template file for --alert-format=custom, when passing the source inline via --alert-template isn't convenient")
-	sourceType := fs.String("source-type", "generic", "Deploy source type: argocd, argo-rollouts, flux, generic")
+	sourceType := fs.String("source-type", "generic", "Deploy source type: argocd, argo-rollouts, flux, generic, otlp (OTLP/HTTP traces; see --otlp-span-name)")
 	webhookSecret := fs.String("webhook-secret", "", "Shared secret for webhook authentication; when set, every POST to /webhook must include this value in the X-Webhook-Token header (401 otherwise). Recommended for internet-facing deployments. Prefer passing this via an environment variable reference rather than a CLI flag to avoid exposure in process listings.")
+	otlpDeploy := registerOTLPDeployFlags(fs)
+	otlpExport := registerOTLPExportFlags(fs)
 	windowMinutes := fs.Int("window-minutes", 30, "Analysis window (minutes before/after deploy)")
 	minExecutions := fs.Int64("min-executions", 10, "Minimum query executions per window")
 	latencyThreshold := fs.Float64("latency-threshold", 0.20, "Minimum relative latency increase to flag")
@@ -194,6 +197,31 @@ func runOperator(args []string, logOutput io.Writer) int {
 		logger.Error("invalid alerting destination policy configuration", "err", err)
 		return 1
 	}
+	otlpMapping, err := otlpDeploy.mapping(*sourceType)
+	if err != nil {
+		logger.Error("invalid OTLP flags", "err", err)
+		return 1
+	}
+	source := v1alpha1.DeploySource{
+		Name:          "operator-default",
+		SourceType:    *sourceType,
+		ClusterName:   *clusterName,
+		WebhookSecret: *webhookSecret,
+		OTLP:          otlpMapping,
+	}
+	if err := ingester.ValidateSource(source); err != nil {
+		logger.Error("invalid deploy source configuration", "err", err)
+		return 1
+	}
+	otlpExportCfg, otlpExportEnabled, err := otlpExport.config(alertCfg.AllowedDestinations, alertCfg.DestinationPolicy,
+		otlpResourceAttributes(map[string]string{
+			"k8s.cluster.name":   *clusterName,
+			"k8s.namespace.name": *namespace,
+		}), logger, reg)
+	if err != nil {
+		logger.Error("invalid OTLP export configuration", "err", err)
+		return 1
+	}
 	if *securityProfile != string(radarv1alpha1.SecurityProfileControlled) && *securityProfile != string(radarv1alpha1.SecurityProfileHardened) {
 		logger.Error("invalid --security-profile value", "value", *securityProfile,
 			"allowed", []string{string(radarv1alpha1.SecurityProfileControlled), string(radarv1alpha1.SecurityProfileHardened)})
@@ -263,12 +291,6 @@ func runOperator(args []string, logOutput io.Writer) int {
 
 	// ---- Ingester ----
 	store := &ingester.Store{}
-	source := v1alpha1.DeploySource{
-		Name:          "operator-default",
-		SourceType:    *sourceType,
-		ClusterName:   *clusterName,
-		WebhookSecret: *webhookSecret,
-	}
 	webhookHandler := ingester.NewHandler(store, source, logger)
 
 	// ---- Correlation Engine ----
@@ -286,6 +308,22 @@ func runOperator(args []string, logOutput io.Writer) int {
 	if err != nil {
 		logger.Error("failed to configure alerting", "err", err)
 		return 1
+	}
+
+	// ---- OTLP regression export (optional; see docs/otlp-export.md) ----
+	var otlpExporter *otlpexport.Exporter
+	if otlpExportEnabled {
+		otlpExporter, err = otlpexport.New(otlpExportCfg)
+		if err != nil {
+			logger.Error("failed to configure OTLP export", "err", err)
+			return 1
+		}
+		defer func() {
+			flushCtx, cancelFlush := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFlush()
+			_ = otlpExporter.Close(flushCtx)
+		}()
+		logger.Info("operator: exporting regressions as OTLP logs", "url", otlpExporter.URL())
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -387,7 +425,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 
 	// ---- HTTP servers ----
 	webhookMux := http.NewServeMux()
-	webhookMux.Handle("/webhook", webhookHandler)
+	registerWebhookRoutes(webhookMux, webhookHandler, *sourceType)
 	webhookMux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -567,6 +605,9 @@ func runOperator(args []string, logOutput io.Writer) int {
 					if err := notifier.Notify(ctx, r); err != nil {
 						logger.Error("operator: notify failed", "err", err, "regression", r.Name)
 					}
+					if otlpExporter != nil {
+						otlpExporter.Export(r)
+					}
 				}
 			}
 		}
@@ -605,6 +646,9 @@ func runOperator(args []string, logOutput io.Writer) int {
 						notifier.ObserveDetectedRegression(r)
 						if err := notifier.Notify(ctx, r); err != nil {
 							logger.Error("operator: periodic notify failed", "err", err, "regression", r.Name)
+						}
+						if otlpExporter != nil {
+							otlpExporter.Export(r)
 						}
 					}
 				}
