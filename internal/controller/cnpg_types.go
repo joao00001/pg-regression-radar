@@ -101,7 +101,7 @@ func (in *cnpgClusterList) DeepCopyObject() runtime.Object {
 	}
 	out := new(cnpgClusterList)
 	out.TypeMeta = in.TypeMeta
-	in.ListMeta.DeepCopyInto(&out.ListMeta)
+	in.DeepCopyInto(&out.ListMeta)
 	if in.Items != nil {
 		out.Items = make([]cnpgCluster, len(in.Items))
 		for i := range in.Items {
