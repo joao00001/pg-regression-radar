@@ -1,0 +1,47 @@
+name: Docs unversioned label guard
+
+# Guards the `docs-unversioned` PR label. The label marks a PR that only edits
+# the docs pages that live outside mike's per-release versioning -- the home
+# page (docs/index.md) and the roadmap (docs/roadmap.md) -- so that merging it
+# updates them for every docs version at once (see docs.yml's
+# `deploy-unversioned` job). If a labeled PR also touches anything else, this
+# posts a warning comment on the PR (and keeps it up to date, deleting it once
+# the PR is clean or the label is removed). It's an alert, never a failing
+# check.
+#
+# `pull_request_target` so the comment can be posted on PRs from forks (a
+# plain `pull_request` token is read-only there). That's safe here because
+# nothing from the PR is ever checked out or executed: the default checkout
+# is the base branch, and the PR is only read through the REST API.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+    branches: ["main"]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: docs-unversioned-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: Check files changed by docs-unversioned PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (base branch, never the PR)
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - name: Check the PR's changed files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python scripts/check_docs_unversioned.py

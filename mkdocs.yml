@@ -42,6 +42,15 @@ theme:
 hooks:
   - hooks.py
 
+# This config builds the *versioned* docs only. The home page and the
+# roadmap are deliberately independent of tool versions: they're built from
+# `main` by mkdocs-unversioned.yml and published once, at the site root --
+# see .github/workflows/docs.yml. Links to them from versioned pages are
+# rewritten to those root URLs by hooks.py's `on_page_markdown`.
+exclude_docs: |
+  /index.md
+  /roadmap.md
+
 # Declaring `plugins:` explicitly replaces MkDocs' implicit default plugin
 # list (which is just `search`) rather than adding to it — `search` is
 # listed here for that reason, not because it's new. `mike` wires up
@@ -55,6 +64,7 @@ plugins:
   - mike
 
 extra:
+  pgrr_build: versioned
   version:
     provider: mike
     # Show the alias (e.g. "latest") next to the version number in the
@@ -90,9 +100,11 @@ markdown_extensions:
 # header downward to reveal its pages — see docs/javascripts/nav-flyout.js
 # and hooks.py, which feeds it the tree below). "Home" has nothing that
 # needs grouping, so it stays a standalone entry per the "pages that don't
-# need it can stay on their own" rule.
+# need it can stay on their own" rule. "Home" and "Roadmap" are absolute
+# links to the unversioned site (see `exclude_docs` above), identical from
+# every version.
 nav:
-  - Home: index.md
+  - Home: https://joao00001.github.io/pg-regression-radar/
   - Changelog: changelog.md
   - Get Started:
       - Installation: installation.md
@@ -126,6 +138,6 @@ nav:
       - CI/CD: ci-cd.md
       - Backporting: backporting.md
       - Branch Protection: branch-protection.md
-      - Roadmap: roadmap.md
+      - Roadmap: https://joao00001.github.io/pg-regression-radar/roadmap/
       - Page Template: TEMPLATE.md
       - Contributing Guide: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md

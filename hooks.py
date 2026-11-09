@@ -30,13 +30,56 @@ every section. This hook walks the resolved Navigation object (which,
 server/build-side, always has the complete tree, unlike any single
 rendered page) and writes it as a plain JSON data file next to the other
 built JS, once, at build time.
+
+It also implements the split between versioned docs and the unversioned home
+page/roadmap (mkdocs.yml vs. mkdocs-unversioned.yml): rewriting links between
+the two, and giving each version's root a redirect in place of the home page.
 """
 
 import json
 import os
+import posixpath
 import re
 
 _nav = None
+
+# Pages that live outside mike's per-release versioning: published once, at
+# the site root, from `main` (see mkdocs-unversioned.yml and
+# .github/workflows/docs.yml's `deploy-unversioned` job). Source path under
+# docs/ -> path under the site root.
+UNVERSIONED_PAGES = {"index.md": "", "roadmap.md": "roadmap/"}
+
+# Matches either an inline code span (returned untouched) or the
+# `](target.md#frag)` part of an inline Markdown link whose target is a
+# relative .md path.
+_LINK_RE = re.compile(
+    r"(?P<code>(`+)[^`]*?\2)"
+    r"|\]\((?P<path>(?![a-z][a-z0-9+.-]*:|#|/)[^)#\s]*\.md)(?P<frag>#[^)\s]*)?\)",
+    re.IGNORECASE,
+)
+_FENCE_RE = re.compile(r"^\s*(```|~~~)")
+
+REDIRECT_MARKER = "pgrr-redirect"
+
+
+def _is_unversioned(config):
+    return (config.get("extra") or {}).get("pgrr_build") == "unversioned"
+
+
+def redirect_html(url):
+    """A tiny meta-refresh page (plus a script that keeps the URL's #fragment)
+    marked with REDIRECT_MARKER so scripts/publish_unversioned_docs.py can tell
+    it apart from a real rendered page."""
+    return (
+        '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'
+        "<title>Redirecting...</title>\n"
+        f'<link rel="canonical" href="{url}">\n'
+        '<meta name="robots" content="noindex">\n'
+        f'<meta http-equiv="refresh" content="0; url={url}">\n'
+        f'<script>location.replace({json.dumps(url)} + location.hash);</script>\n'
+        f"<!-- {REDIRECT_MARKER} -->\n"
+        f'</head><body>Redirecting to <a href="{url}">{url}</a>...</body></html>\n'
+    )
 
 
 def on_pre_build(config, **kwargs):
@@ -61,6 +104,8 @@ def on_pre_build(config, **kwargs):
     - `docs/roadmap.md#...` needs the now-redundant `docs/` prefix
       stripped, since changelog.md itself now lives inside docs/.
     """
+    if _is_unversioned(config):
+        return
     repo_root = os.path.dirname(os.path.abspath(config["config_file_path"]))
     src = os.path.join(repo_root, "CHANGELOG.md")
     if not os.path.exists(src):
@@ -82,6 +127,54 @@ def on_pre_build(config, **kwargs):
     os.makedirs(dest_dir, exist_ok=True)
     with open(os.path.join(dest_dir, "changelog.md"), "w", encoding="utf-8") as f:
         f.write(content)
+
+
+def _rewrite_target(src_uri, path, frag, config):
+    """Return the replacement URL for a relative `.md` link found on page
+    `src_uri`, or None to leave it for MkDocs to resolve as usual.
+
+    Versioned build: links to an unversioned page point at its one canonical
+    copy at the site root. Unversioned build: links to any other page point at
+    the `latest` docs, since that's what a version-less page can sensibly
+    reference."""
+    site_url = config["site_url"].rstrip("/") + "/"
+    resolved = posixpath.normpath(posixpath.join(posixpath.dirname(src_uri), path))
+    if _is_unversioned(config):
+        if resolved in UNVERSIONED_PAGES:
+            return None
+        page = resolved[: -len(".md")]
+        if page == "index" or page.endswith("/index"):
+            page = page[: -len("index")]
+        else:
+            page += "/"
+        return site_url + "latest/" + page + (frag or "")
+    if resolved in UNVERSIONED_PAGES:
+        return site_url + UNVERSIONED_PAGES[resolved] + (frag or "")
+    return None
+
+
+def on_page_markdown(markdown, page, config, files):
+    """Rewrite relative links that cross the versioned/unversioned boundary
+    (see UNVERSIONED_PAGES), skipping fenced and inline code so documentation
+    that shows example Markdown isn't altered."""
+
+    def sub(match):
+        if match.group("code"):
+            return match.group(0)
+        url = _rewrite_target(page.file.src_uri, match.group("path"), match.group("frag"), config)
+        return match.group(0) if url is None else f"]({url})"
+
+    out = []
+    in_fence = False
+    for line in markdown.split("\n"):
+        if _FENCE_RE.match(line):
+            in_fence = not in_fence
+            out.append(line)
+        elif in_fence:
+            out.append(line)
+        else:
+            out.append(_LINK_RE.sub(sub, line))
+    return "\n".join(out)
 
 
 def _serialize(items):
@@ -125,3 +218,9 @@ def on_post_build(config, **kwargs):
         f.write("window.PGRR_NAV_TREE = ")
         json.dump(tree, f)
         f.write(";\n")
+
+    if not _is_unversioned(config):
+        # The home page isn't part of a versioned build (see UNVERSIONED_PAGES),
+        # so a version's own root needs somewhere to land.
+        with open(os.path.join(config["site_dir"], "index.html"), "w", encoding="utf-8") as f:
+            f.write(redirect_html("installation/"))
