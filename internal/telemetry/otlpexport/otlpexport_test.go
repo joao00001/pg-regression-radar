@@ -616,7 +616,7 @@ func TestNew_Validation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer e.Close(context.Background())
+	defer func() { _ = e.Close(context.Background()) }()
 	if _, err := New(Config{Endpoint: "http://c", Registerer: reg}); err == nil {
 		t.Error("double registration on the same registry should fail, not panic")
 	}
