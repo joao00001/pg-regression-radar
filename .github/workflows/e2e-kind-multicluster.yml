@@ -1,0 +1,555 @@
+name: E2E (kind, multi-cluster fleet mode)
+
+# Manually-triggered, real-two-Kubernetes-clusters proof of the "fleet
+# mode" surface documented in docs/multi-cluster.md: a manager running in
+# one cluster (the "hub") reconciling a PostgresWatch whose DSN and
+# CloudNativePG Cluster both live in a *different* cluster (the "spoke"),
+# reached entirely through a PostgresRadarCluster-registered kubeconfig.
+#
+# This closes the last of the three gaps docs/multi-cluster.md's own
+# "Known gaps and deliberate scope cuts" section used to list:
+#
+#   1. spec.cnpgClusterRef (internal/controller/cnpg_cluster.go) validates
+#      a *real* CloudNativePG `Cluster` object's status (not a fake/unit
+#      test stand-in) before a PostgresWatch is allowed to start.
+#   2. PostgresRadarClusterReconciler
+#      (internal/controller/postgresradarcluster_controller.go) actually
+#      detects a registered cluster's kubeconfig going bad (rotated away
+#      from, revoked, or simply pointed at an address that stops
+#      answering) and recovering, against a *real* second API server, not
+#      a syntactically-valid-but-nothing-listens kubeconfig.
+#   3. The whole remoteClusterRef path (PostgresRadarCluster lookup ->
+#      kubeconfig Secret -> remote client -> remote Secret read) is proven
+#      against a real second Kubernetes cluster end to end, not just
+#      sigs.k8s.io/controller-runtime/pkg/client/fake on the hub side.
+#
+# What this workflow does, in order:
+#
+#   1. Creates two real kind clusters on the same runner: "hub" (runs this
+#      commit's manager, via the project's own Helm chart, exactly as
+#      e2e-kind.yml does for the single-cluster case) and "spoke" (runs the
+#      real upstream CloudNativePG operator and a real Cluster CR).
+#   2. Builds a least-privilege kubeconfig for the hub to reach the spoke:
+#      a spoke-side ServiceAccount+Role+RoleBinding granting `get` on
+#      exactly the one DSN Secret and exactly the one Cluster object this
+#      run needs — precisely the recipe docs/multi-cluster.md's
+#      "Generating and storing the kubeconfig Secret" section documents —
+#      minted into a kubeconfig Secret on the hub, labeled with the
+#      required consent label.
+#   3. Registers a PostgresRadarCluster on the hub pointing at that Secret,
+#      and a PostgresWatch using both spec.remoteClusterRef and the new
+#      spec.cnpgClusterRef.
+#   4. Asserts PostgresWatch reaches status.phase=Running (DSN resolved
+#      and the CloudNativePG Cluster validated, both over the network
+#      against the spoke's real API server) and PostgresRadarCluster
+#      reaches status.ready=true with a populated status.conditions /
+#      status.lastProbeTime (the new health-check reconciler's probe
+#      succeeding for real).
+#   5. Rotates the kubeconfig Secret to a deliberately invalid token,
+#      confirms PostgresRadarCluster flips to status.ready=false (and
+#      PostgresWatch to status.phase=Failed) within one health-check
+#      interval, then restores the original kubeconfig and confirms both
+#      recover — proving the "detects kubeconfig rotation/expiration"
+#      half of docs/multi-cluster.md's design, which a single, unchanging
+#      kubeconfig could never exercise.
+#
+# Deliberately out of scope here (already covered elsewhere, not specific
+# to multi-cluster wiring):
+#
+#   - The full traffic-generation -> webhook -> PerformanceRegression
+#     "Detected" assertion e2e-kind.yml already proves. Once resolveDSN
+#     successfully returns a DSN — whether that DSN came from the hub's
+#     own client or, as here, a remote one — the rest of the pipeline
+#     (Collector, correlation engine, webhook ingestion) runs identically;
+#     that pipeline's correctness is not what changes when the DSN comes
+#     from a second cluster, so re-proving it here would mostly duplicate
+#     e2e-kind.yml at several extra minutes of CI time. This workflow
+#     still runs a real Collector against a real Postgres instance (the
+#     spoke's CloudNativePG-managed one) long enough to confirm
+#     status.trackedQueryIds > 0, which is as far as the multi-cluster-
+#     specific DSN-resolution path can be distinguished from the single-
+#     cluster one.
+#   - spec.remoteClusterSecretRef (the deprecated, pre-registry path) is
+#     not exercised here; e2e-kind.yml and this workflow together now
+#     cover the "no remote cluster" and "remoteClusterRef" cases, and
+#     remoteClusterSecretRef shares its entire implementation with
+#     remoteClusterRef from the point the kubeconfig bytes are in hand
+#     (see docs/multi-cluster.md's migration section) — only the Secret
+#     lookup path differs, which internal/controller's own unit tests
+#     already cover without needing a second real cluster.
+#
+# Modeled closely on e2e-kind.yml's structure and conventions (see that
+# file's own header for the reasoning behind helm/kind-action, the
+# run-e2e-kind label gate, and the single-job/no-build-split choice) —
+# differences below are called out where this workflow's two-cluster shape
+# requires them.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    types: [labeled, synchronize]
+
+permissions:
+  contents: read
+
+env:
+  HUB_CLUSTER_NAME: pgrr-e2e-hub
+  SPOKE_CLUSTER_NAME: pgrr-e2e-spoke
+  HUB_NAMESPACE: pgrr-e2e
+  SPOKE_NAMESPACE: pgrr-e2e-spoke
+  PG_CLUSTER_NAME: pgrr-e2e-pg
+  MANAGER_IMAGE: pg-regression-radar/manager:e2e-kind-mc
+  CNPG_VERSION: "1.30.0"
+  CNPG_MINOR: "1.30"
+  RELEASE_FULLNAME: pgrr-e2e-mc-mgr
+  RADAR_CLUSTER_NAME: pgrr-e2e-spoke-cluster
+
+jobs:
+  e2e-kind-multicluster:
+    name: Real two-kind-cluster fleet mode (remoteClusterRef + cnpgClusterRef + health checks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Same opt-in gate as e2e-kind.yml, on its own label so either suite
+    # can be run independently of the other.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+        (
+          (github.event.action == 'labeled' && github.event.label.name == 'run-e2e-kind-multicluster') ||
+          (github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'run-e2e-kind-multicluster'))
+        )
+      )
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build the manager image
+        run: docker build --target manager -t "${MANAGER_IMAGE}" .
+
+      - name: Create hub kind cluster
+        uses: helm/kind-action@v1
+        with:
+          version: v0.31.0
+          cluster_name: ${{ env.HUB_CLUSTER_NAME }}
+          wait: 90s
+
+      - name: Create spoke kind cluster
+        # helm/kind-action merges each cluster's kubeconfig into the
+        # default location (~/.kube/config) under context "kind-<name>"
+        # rather than replacing it, so both "kind-pgrr-e2e-hub" and
+        # "kind-pgrr-e2e-spoke" contexts coexist afterwards — every step
+        # below picks the right one explicitly via `kubectl --context`.
+        # kind's own default behavior (confirmed against this exact
+        # version during authoring) also attaches every cluster's nodes to
+        # the same single Docker network ("kind"), which is what lets the
+        # hub's manager Pod reach the spoke's control-plane container by
+        # its Docker-network IP in the "Build the least-privilege spoke
+        # kubeconfig" step below — no Ingress, LoadBalancer, or manual
+        # Docker network wiring required.
+        uses: helm/kind-action@v1
+        with:
+          version: v0.31.0
+          cluster_name: ${{ env.SPOKE_CLUSTER_NAME }}
+          wait: 90s
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+        with:
+          version: v3.19.0
+
+      - name: Load the manager image into the hub cluster
+        run: kind load docker-image "${MANAGER_IMAGE}" --name "${HUB_CLUSTER_NAME}"
+
+      - name: Install the CloudNativePG operator on the spoke cluster
+        run: |
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" apply --server-side -f \
+            "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${CNPG_MINOR}/releases/cnpg-${CNPG_VERSION}.yaml"
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" rollout status deployment \
+            -n cnpg-system cnpg-controller-manager --timeout=180s
+
+      - name: Create a real CloudNativePG Cluster on the spoke
+        # Same single-instance, pg_stat_statements-enabled shape as
+        # e2e-kind.yml's Cluster — see that file's own comment for why.
+        run: |
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" create namespace "${SPOKE_NAMESPACE}"
+          cat <<EOF | kubectl --context "kind-${SPOKE_CLUSTER_NAME}" apply -f -
+          apiVersion: postgresql.cnpg.io/v1
+          kind: Cluster
+          metadata:
+            name: ${PG_CLUSTER_NAME}
+            namespace: ${SPOKE_NAMESPACE}
+          spec:
+            instances: 1
+            storage:
+              size: 1Gi
+            postgresql:
+              parameters:
+                pg_stat_statements.max: "10000"
+                pg_stat_statements.track: "all"
+            resources:
+              requests:
+                cpu: "100m"
+                memory: "256Mi"
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
+          EOF
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" wait \
+            --for=condition=Ready "cluster/${PG_CLUSTER_NAME}" --timeout=300s
+
+      - name: Dump CloudNativePG state on failure
+        if: failure()
+        run: |
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" get cluster "${PG_CLUSTER_NAME}" -o yaml || true
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" get pods -o wide || true
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n cnpg-system logs deploy/cnpg-controller-manager --tail=200 || true
+
+      - name: Generate real query traffic against the spoke Postgres (as the app role)
+        # A throwaway client Pod running directly on the spoke cluster
+        # (where ${PG_CLUSTER_NAME}-app's in-cluster Service DNS resolves),
+        # authenticated as the real "app" role from the real CloudNativePG-
+        # generated Secret — the same reasoning e2e-kind.yml's own traffic-
+        # generation step documents: the Collector (running on the hub,
+        # reached over the remote client) connects as "app" too, and
+        # pg_stat_statements only shows a non-superuser role its own
+        # statements, so this is the only traffic that status.trackedQueryIds
+        # below can ever observe. This workflow only needs *some* query
+        # activity to confirm the remote scrape path is genuinely live (see
+        # this file's own header for why a full before/after regression
+        # assertion is out of scope here), so there is no "after" phase or
+        # pg_stat_statements_reset() boundary to manage.
+        run: |
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            run pgrr-e2e-mc-probe --image=postgres:16 --restart=Never \
+            --command -- sleep 3600
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            wait --for=condition=Ready pod/pgrr-e2e-mc-probe --timeout=120s
+
+          PGURI="$(kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            get secret "${PG_CLUSTER_NAME}-app" -o jsonpath='{.data.uri}' | base64 -d)"
+          echo "::add-mask::${PGURI}"
+
+          for i in $(seq 1 10); do
+            kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+              exec pgrr-e2e-mc-probe -- psql "$PGURI" -c \
+              "SELECT pg_sleep(0.01) /* pgrr_e2e_kind_mc_probe */;" >/dev/null
+            sleep 1
+          done
+
+      - name: Expose the spoke Postgres primary and publish an externally-reachable DSN Secret
+        # The crux of why this step exists at all: spec.cnpgClusterRef and
+        # spec.remoteClusterRef/kubeconfigSecretRef only ever grant the hub
+        # *API-server* access to the spoke cluster (reading Secrets and
+        # Cluster objects over Kubernetes' own authenticated HTTPS API) —
+        # they say nothing about whether the hub's network can actually
+        # route a plain Postgres wire-protocol TCP connection to whatever
+        # host:port a DSN names. Those are two genuinely separate planes
+        # (control plane vs. data plane), and CloudNativePG's own generated
+        # "${PG_CLUSTER_NAME}-app" Secret's host field
+        # ("${PG_CLUSTER_NAME}-rw.${SPOKE_NAMESPACE}") is only resolvable
+        # and routable *inside* the spoke cluster's own pod/Service network
+        # — a manager Pod running on the hub (a different cluster, with its
+        # own separate CoreDNS and Service CIDR) cannot reach it, even
+        # though both kind clusters happen to share one Docker network at
+        # the infrastructure level.
+        #
+        # A real production hub/spoke deployment is expected to already
+        # have *some* cross-cluster data-plane path for the hub to reach
+        # the spoke's Postgres (a shared VPC, a service-mesh multi-cluster
+        # mesh, Submariner, a VPN, or simply a CloudNativePG Service of
+        # type LoadBalancer/ExternalName with a real routable address) —
+        # providing one is an infrastructure concern for the operator, not
+        # something this project can or should set up generically. This
+        # step's NodePort + rewritten-Secret combination is this
+        # workflow's own stand-in for "that path already exists", built
+        # from what a bare kind-on-Docker test rig has on hand (fixed node
+        # ports on the shared Docker network): it is a CI-only bridge,
+        # not a production deployment pattern, and docs/multi-cluster.md
+        # says so explicitly rather than presenting this as a recommended
+        # setup.
+        run: |
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            expose pod "$(kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+              get cluster "${PG_CLUSTER_NAME}" -o jsonpath='{.status.currentPrimary}')" \
+            --name="${PG_CLUSTER_NAME}-external" --port=5432 --target-port=5432 \
+            --type=NodePort --overrides='{"spec":{"ports":[{"port":5432,"targetPort":5432,"nodePort":30543}]}}'
+
+          SPOKE_IP="$(docker inspect "${SPOKE_CLUSTER_NAME}-control-plane" \
+            --format '{{ .NetworkSettings.Networks.kind.IPAddress }}')"
+          echo "SPOKE_IP=${SPOKE_IP}" >> "$GITHUB_ENV"
+
+          PG_USERNAME="$(kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            get secret "${PG_CLUSTER_NAME}-app" -o jsonpath='{.data.username}' | base64 -d)"
+          PG_PASSWORD="$(kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            get secret "${PG_CLUSTER_NAME}-app" -o jsonpath='{.data.password}' | base64 -d)"
+          PG_DBNAME="$(kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            get secret "${PG_CLUSTER_NAME}-app" -o jsonpath='{.data.dbname}' | base64 -d)"
+          EXTERNAL_URI="postgresql://${PG_USERNAME}:${PG_PASSWORD}@${SPOKE_IP}:30543/${PG_DBNAME}"
+          echo "::add-mask::${EXTERNAL_URI}"
+
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            create secret generic "${PG_CLUSTER_NAME}-app-external" \
+            --from-literal=uri="${EXTERNAL_URI}"
+          # checkSecretConsent (internal/controller/secret_consent.go) is
+          # enforced identically regardless of which client fetched the
+          # Secret — the hub's own client for a local dsnSecretRef, or (as
+          # here) the cached remote client built from the spoke kubeconfig
+          # for a cross-cluster one. The least-privilege Role/RoleBinding
+          # created in the next step scopes *who* can even be asked to read
+          # this Secret; this label is the separate, in-code "and do you,
+          # the Secret's owner, actually want it read this way" opt-in
+          # docs/multi-cluster.md documents — set here, on the spoke
+          # cluster, on the real Secret object, exactly as a real operator
+          # managing that cluster would do it.
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            label secret "${PG_CLUSTER_NAME}-app-external" \
+            pg-regression-radar.io/allow-postgreswatch-access=true
+
+      - name: Build the least-privilege spoke kubeconfig
+        # Exactly the recipe docs/multi-cluster.md's "Generating and
+        # storing the kubeconfig Secret" section documents: a dedicated
+        # ServiceAccount, a Role granting `get` on exactly the one DSN
+        # Secret CloudNativePG generated (${PG_CLUSTER_NAME}-app) plus
+        # exactly the one Cluster object spec.cnpgClusterRef names, bound
+        # to that ServiceAccount only, with a minted token as the
+        # kubeconfig's sole credential.
+        #
+        # insecure-skip-tls-verify (rather than embedding the spoke's CA
+        # cert) keeps this step independent of kind's own internal PKI
+        # layout. buildRemoteClient (internal/controller/remote_client.go)
+        # only rejects exec-based auth, auth-provider plugins, and
+        # proxy-url entries — a static bearer token with
+        # insecure-skip-tls-verify is an accepted static-credential shape,
+        # the same one docs/multi-cluster.md's own example kubeconfig uses.
+        run: |
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            create serviceaccount pg-regression-radar-reader
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            create role pg-regression-radar-dsn-reader \
+            --verb=get --resource=secrets --resource-name="${PG_CLUSTER_NAME}-app-external"
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            create role pg-regression-radar-cluster-reader \
+            --verb=get --resource=clusters.postgresql.cnpg.io --resource-name="${PG_CLUSTER_NAME}"
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            create rolebinding pg-regression-radar-dsn-reader \
+            --role=pg-regression-radar-dsn-reader \
+            --serviceaccount="${SPOKE_NAMESPACE}:pg-regression-radar-reader"
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            create rolebinding pg-regression-radar-cluster-reader \
+            --role=pg-regression-radar-cluster-reader \
+            --serviceaccount="${SPOKE_NAMESPACE}:pg-regression-radar-reader"
+
+          TOKEN="$(kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" \
+            create token pg-regression-radar-reader --duration=1h)"
+          echo "::add-mask::${TOKEN}"
+
+          cat > /tmp/spoke-scoped.kubeconfig <<EOF
+          apiVersion: v1
+          kind: Config
+          clusters:
+          - name: spoke
+            cluster:
+              server: https://${SPOKE_IP}:6443
+              insecure-skip-tls-verify: true
+          contexts:
+          - name: spoke
+            context:
+              cluster: spoke
+              user: spoke-reader
+              namespace: ${SPOKE_NAMESPACE}
+          current-context: spoke
+          users:
+          - name: spoke-reader
+            user:
+              token: ${TOKEN}
+          EOF
+
+      - name: Install pg-regression-radar on the hub cluster (Helm chart, mode=manager)
+        run: |
+          kubectl config use-context "kind-${HUB_CLUSTER_NAME}"
+          kubectl create namespace "${HUB_NAMESPACE}"
+          helm install "${RELEASE_FULLNAME}" deploy/helm/deploylens \
+            --namespace "${HUB_NAMESPACE}" \
+            --set mode=manager \
+            --set fullnameOverride="${RELEASE_FULLNAME}" \
+            --set manager.image.repository="pg-regression-radar/manager" \
+            --set manager.image.tag="e2e-kind-mc" \
+            --set manager.image.pullPolicy=Never \
+            --set manager.replicaCount=1 \
+            --set manager.leaderElection.enabled=false \
+            --set manager.createDefaultWatch=false \
+            --set manager.clusterHealthCheckInterval=15s \
+            --wait --timeout=180s
+
+      - name: Create the kubeconfig Secret on the hub
+        run: |
+          kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" \
+            create secret generic spoke-kubeconfig \
+            --from-file=kubeconfig=/tmp/spoke-scoped.kubeconfig
+          kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" \
+            label secret spoke-kubeconfig \
+            pg-regression-radar.io/allow-postgreswatch-access=true
+
+      - name: Register the PostgresRadarCluster and apply the PostgresWatch
+        run: |
+          cat <<EOF | kubectl --context "kind-${HUB_CLUSTER_NAME}" apply -f -
+          apiVersion: radar.pgregressionradar.io/v1alpha1
+          kind: PostgresRadarCluster
+          metadata:
+            name: ${RADAR_CLUSTER_NAME}
+          spec:
+            kubeconfigSecretRef:
+              namespace: ${HUB_NAMESPACE}
+              name: spoke-kubeconfig
+              key: kubeconfig
+            namespace: ${SPOKE_NAMESPACE}
+          ---
+          apiVersion: radar.pgregressionradar.io/v1alpha1
+          kind: PostgresWatch
+          metadata:
+            name: pgrr-e2e-mc-watch
+            namespace: ${HUB_NAMESPACE}
+          spec:
+            clusterName: ${PG_CLUSTER_NAME}
+            remoteClusterRef: ${RADAR_CLUSTER_NAME}
+            cnpgClusterRef: ${PG_CLUSTER_NAME}
+            dsnSecretRef:
+              name: ${PG_CLUSTER_NAME}-app-external
+              key: uri
+            scrapeIntervalSeconds: 5
+            windowMinutes: 5
+            minExecutions: 3
+          EOF
+
+      - name: Wait for PostgresWatch=Running and PostgresRadarCluster.status.ready=true
+        run: |
+          echo "Waiting for PostgresWatch phase=Running..."
+          for i in $(seq 1 30); do
+            phase="$(kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" \
+              get postgreswatch pgrr-e2e-mc-watch -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+            [ "$phase" = "Running" ] && break
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "::error::PostgresWatch never reached phase=Running (last seen: '${phase}')"
+              kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" get postgreswatch pgrr-e2e-mc-watch -o yaml || true
+              exit 1
+            fi
+          done
+
+          echo "Waiting for PostgresRadarCluster status.ready=true..."
+          for i in $(seq 1 30); do
+            ready="$(kubectl --context "kind-${HUB_CLUSTER_NAME}" \
+              get postgresradarcluster "${RADAR_CLUSTER_NAME}" -o jsonpath='{.status.ready}' 2>/dev/null || true)"
+            [ "$ready" = "true" ] && break
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "::error::PostgresRadarCluster never reached status.ready=true (last seen: '${ready}')"
+              kubectl --context "kind-${HUB_CLUSTER_NAME}" get postgresradarcluster "${RADAR_CLUSTER_NAME}" -o yaml || true
+              exit 1
+            fi
+          done
+
+          kubectl --context "kind-${HUB_CLUSTER_NAME}" get postgresradarcluster "${RADAR_CLUSTER_NAME}" -o yaml
+
+      - name: Confirm the Collector is actually scraping the remote (spoke) Postgres
+        run: |
+          echo "Waiting for status.trackedQueryIds > 0..."
+          for i in $(seq 1 30); do
+            tracked="$(kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" \
+              get postgreswatch pgrr-e2e-mc-watch -o jsonpath='{.status.trackedQueryIds}' 2>/dev/null || true)"
+            if [ -n "$tracked" ] && [ "$tracked" -gt 0 ] 2>/dev/null; then
+              echo "status.trackedQueryIds=${tracked} — the remote DSN path is live."
+              break
+            fi
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "::error::status.trackedQueryIds never exceeded 0 (last seen: '${tracked}') — remote Collector never scraped anything."
+              exit 1
+            fi
+          done
+
+      - name: Rotate the kubeconfig Secret to an invalid credential
+        # Simulates exactly the scenario docs/multi-cluster.md's "Known
+        # gaps" section used to call out as untested against a real second
+        # cluster: a kubeconfig that genuinely stops authenticating.
+        run: |
+          cp /tmp/spoke-scoped.kubeconfig /tmp/spoke-scoped.kubeconfig.bak
+          sed -i 's/token: .*/token: invalid-rotated-away-token/' /tmp/spoke-scoped.kubeconfig
+          kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" \
+            create secret generic spoke-kubeconfig \
+            --from-file=kubeconfig=/tmp/spoke-scoped.kubeconfig \
+            --dry-run=client -o yaml | kubectl --context "kind-${HUB_CLUSTER_NAME}" apply -f -
+
+      - name: Confirm the health-check reconciler detects the bad credential
+        run: |
+          echo "Waiting for PostgresRadarCluster status.ready=false..."
+          for i in $(seq 1 30); do
+            ready="$(kubectl --context "kind-${HUB_CLUSTER_NAME}" \
+              get postgresradarcluster "${RADAR_CLUSTER_NAME}" -o jsonpath='{.status.ready}' 2>/dev/null || true)"
+            [ "$ready" = "false" ] && break
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "::error::PostgresRadarCluster never flipped to status.ready=false after the kubeconfig was rotated to an invalid token (last seen: '${ready}')"
+              kubectl --context "kind-${HUB_CLUSTER_NAME}" get postgresradarcluster "${RADAR_CLUSTER_NAME}" -o yaml || true
+              exit 1
+            fi
+          done
+          kubectl --context "kind-${HUB_CLUSTER_NAME}" get postgresradarcluster "${RADAR_CLUSTER_NAME}" -o yaml
+
+      - name: Restore the valid kubeconfig and confirm recovery
+        run: |
+          kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" \
+            create secret generic spoke-kubeconfig \
+            --from-file=kubeconfig=/tmp/spoke-scoped.kubeconfig.bak \
+            --dry-run=client -o yaml | kubectl --context "kind-${HUB_CLUSTER_NAME}" apply -f -
+
+          echo "Waiting for PostgresRadarCluster status.ready=true again..."
+          for i in $(seq 1 30); do
+            ready="$(kubectl --context "kind-${HUB_CLUSTER_NAME}" \
+              get postgresradarcluster "${RADAR_CLUSTER_NAME}" -o jsonpath='{.status.ready}' 2>/dev/null || true)"
+            [ "$ready" = "true" ] && break
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "::error::PostgresRadarCluster never recovered to status.ready=true after the kubeconfig was restored (last seen: '${ready}')"
+              exit 1
+            fi
+          done
+
+          echo "Waiting for PostgresWatch phase=Running again..."
+          for i in $(seq 1 30); do
+            phase="$(kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" \
+              get postgreswatch pgrr-e2e-mc-watch -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+            [ "$phase" = "Running" ] && break
+            sleep 2
+            if [ "$i" -eq 30 ]; then
+              echo "::error::PostgresWatch never recovered to phase=Running after the kubeconfig was restored (last seen: '${phase}')"
+              exit 1
+            fi
+          done
+          echo "Fleet mode recovered cleanly after a simulated credential rotation."
+
+      - name: Collect cluster diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-diagnostics
+          kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" get postgreswatch,performanceregression -o yaml \
+            > /tmp/e2e-diagnostics/hub-resources.yaml 2>&1 || true
+          kubectl --context "kind-${HUB_CLUSTER_NAME}" get postgresradarcluster -o yaml \
+            > /tmp/e2e-diagnostics/postgresradarcluster.yaml 2>&1 || true
+          kubectl --context "kind-${HUB_CLUSTER_NAME}" -n "${HUB_NAMESPACE}" logs "deploy/${RELEASE_FULLNAME}-manager" --all-containers --tail=1000 \
+            > /tmp/e2e-diagnostics/manager.log 2>&1 || true
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n "${SPOKE_NAMESPACE}" get cluster "${PG_CLUSTER_NAME}" -o yaml \
+            > /tmp/e2e-diagnostics/cnpg-cluster.yaml 2>&1 || true
+          kubectl --context "kind-${SPOKE_CLUSTER_NAME}" -n cnpg-system logs deploy/cnpg-controller-manager --tail=1000 \
+            > /tmp/e2e-diagnostics/cnpg-controller-manager.log 2>&1 || true
+          echo "--- Collected diagnostics ---"
+          ls -la /tmp/e2e-diagnostics
+
+      - name: Upload cluster diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-kind-multicluster-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/e2e-diagnostics
+          retention-days: 14
+          if-no-files-found: warn

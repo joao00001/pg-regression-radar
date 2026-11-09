@@ -71,9 +71,15 @@ type KubeconfigSecretSelector struct {
 // cluster, as last verified by the controller during reconciliation.
 type PostgresRadarClusterStatus struct {
 	// ready is true when the kubeconfig was last read and validated
-	// successfully.
+	// successfully. Deliberately not omitempty: this is a tri-state-ish
+	// signal (absent/never-probed vs. explicitly false vs. true) that a
+	// JSON consumer (kubectl -o jsonpath, a dashboard, an alert rule)
+	// needs to tell "unhealthy" apart from "not yet reconciled" — Go's
+	// encoding/json silently drops false bool fields tagged omitempty,
+	// which would make a real, actively-detected failure indistinguishable
+	// from a PostgresRadarCluster that simply hasn't been probed yet.
 	// +optional
-	Ready bool `json:"ready,omitempty"`
+	Ready bool `json:"ready"`
 
 	// message carries a human-readable explanation, populated when ready
 	// is false.
@@ -83,6 +89,28 @@ type PostgresRadarClusterStatus struct {
 	// observedGeneration is the .metadata.generation last reconciled.
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+
+	// conditions holds the detailed history of the periodic health check
+	// PostgresRadarClusterReconciler runs against this cluster (a
+	// lightweight discovery.ServerVersion() call — see
+	// docs/multi-cluster.md#cluster-health-checks for exactly what is and
+	// isn't verified). A type="Ready" condition is always present once the
+	// cluster has been reconciled at least once; ready/message above are
+	// kept in sync with it (status: "True" => ready=true) purely for
+	// backward compatibility with anything that already reads those two
+	// plain fields instead of walking conditions.
+	// +optional
+	// +patchMergeKey=type
+	// +patchStrategy=merge
+	// +listType=map
+	// +listMapKey=type
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type"`
+
+	// lastProbeTime is when the health check that produced the current
+	// Ready condition last ran, regardless of outcome. Absent until the
+	// first health check completes.
+	// +optional
+	LastProbeTime *metav1.Time `json:"lastProbeTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true

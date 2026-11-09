@@ -24,6 +24,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,10 +46,13 @@ const (
 )
 
 // remoteClientScheme is the scheme used for clients built against remote
-// ("spoke") clusters. Today the only thing PostgresWatchReconciler ever
-// reads from a remote cluster is the Secret named by spec.dsnSecretRef (see
-// resolveDSN in postgreswatch_controller.go), so registering anything beyond
-// corev1 would be surface area with no caller.
+// ("spoke") clusters. PostgresWatchReconciler reads two kinds of objects
+// from a remote cluster through it: the Secret named by spec.dsnSecretRef
+// (always — see resolveDSN in postgreswatch_controller.go) and, when
+// spec.cnpgClusterRef is also set, a CloudNativePG Cluster object (see
+// cnpg_cluster.go) — hence corev1 and the cnpgCluster shadow type below,
+// and nothing else: registering anything further would be surface area
+// with no caller.
 var remoteClientScheme = func() *runtime.Scheme {
 	s := runtime.NewScheme()
 	if err := corev1.AddToScheme(s); err != nil {
@@ -57,6 +61,13 @@ var remoteClientScheme = func() *runtime.Scheme {
 		// constructed; a panic here would only ever fire in a broken build.
 		panic(fmt.Sprintf("controller: register corev1 in remote client scheme: %v", err))
 	}
+	// Registers postgresql.cnpg.io/v1, Kind=Cluster (see cnpg_types.go) so
+	// a remote client built from a PostgresRadarCluster/remoteClusterRef
+	// kubeconfig can also resolve spec.cnpgClusterRef against the spoke
+	// cluster's own CloudNativePG installation — the common case, since
+	// CloudNativePG is what generates the DSN Secret a remote cluster is
+	// usually registered to read in the first place.
+	AddCNPGToScheme(s)
 	return s
 }()
 
@@ -226,6 +237,29 @@ func hashKubeconfig(kubeconfig []byte) string {
 // before any REST config — let alone any real client — is built from
 // content a PostgresWatch's owner supplied, not the manager operator.
 func buildRemoteClient(kubeconfig []byte) (client.Client, error) {
+	restConfig, err := buildRemoteRESTConfig(kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	cl, err := client.New(restConfig, client.Options{Scheme: remoteClientScheme})
+	if err != nil {
+		return nil, fmt.Errorf("build client for remote cluster: %w", err)
+	}
+	return cl, nil
+}
+
+// buildRemoteRESTConfig parses and validates kubeconfig exactly as
+// buildRemoteClient does, but returns the intermediate *rest.Config
+// instead of wrapping it in a controller-runtime client.Client.
+// PostgresRadarClusterReconciler's health check (postgresradarcluster_controller.go)
+// uses this directly to build a client-go discovery.DiscoveryClient — a
+// plain REST config is all that needs, and routing it through
+// client.Client (which assumes a registered Scheme and typed/unstructured
+// object machinery discovery has no use for) would be a pointless detour.
+// Factored out of buildRemoteClient specifically so both callers share one
+// kubeconfig-parsing/validation code path rather than two copies drifting
+// apart over time.
+func buildRemoteRESTConfig(kubeconfig []byte) (*rest.Config, error) {
 	rawConfig, err := clientcmd.Load(kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("parse kubeconfig: %w", err)
@@ -238,12 +272,7 @@ func buildRemoteClient(kubeconfig []byte) (client.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("build rest config from kubeconfig: %w", err)
 	}
-
-	cl, err := client.New(restConfig, client.Options{Scheme: remoteClientScheme})
-	if err != nil {
-		return nil, fmt.Errorf("build client for remote cluster: %w", err)
-	}
-	return cl, nil
+	return restConfig, nil
 }
 
 // validateKubeconfigAuth rejects a remoteClusterSecretRef kubeconfig that

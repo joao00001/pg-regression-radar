@@ -93,6 +93,7 @@ Exposed routes once running: `POST /webhook` (receives deploy events), `GET /eve
 | `--alerting-destination-policy` | `permissive` | Manager-wide destination validation strategy: `permissive` (default), `allowlist`, or `relay-only` — see [Alerting: destination policies](alerting.md#destination-policies) |
 | `--alerting-destination-policy-relay-url` | `` | Fixed relay endpoint for `--alerting-destination-policy=relay-only`. Required when the policy is `relay-only` |
 | `--health-probe-bind-address` | `:8081` | `/healthz` and `/readyz` |
+| `--cluster-health-check-interval` | `5m` | How often `PostgresRadarClusterReconciler` re-probes each registered remote cluster's kubeconfig (a lightweight `discovery.ServerVersion()` call), independent of whether any `PostgresWatch` currently references it — see [Multi-Cluster: Cluster health checks](multi-cluster.md#cluster-health-checks) |
 | `--version` | `false` | Print version, commit, and build date, then exit |
 | `--dry-run` | `false` | Validate that a Kubernetes API server config can be resolved (in-cluster or via kubeconfig), then exit without starting the manager |
 
@@ -142,6 +143,7 @@ All four binaries share two flags:
 | `remoteClusterRef` | *(none)* | Preferred remote-cluster path: name of a pre-registered `PostgresRadarCluster` (cluster-scoped). The manager reads that registry entry's kubeconfig Secret and resolves `dsnSecretRef` through the referenced remote cluster — see [Multi-Cluster (Fleet) Mode](multi-cluster.md). |
 | `remoteClusterSecretRef` | *(none)* | **Deprecated** direct Secret path: Secret (in the hub cluster) holding a kubeconfig for a remote cluster to resolve `dsnSecretRef` against instead of the hub. Still accepted in `controlled` security-profile mode for backward compatibility, rejected in `hardened` mode. Same consent-label requirement as `dsnSecretRef` above, and the kubeconfig itself must use a static credential (no `exec`/`auth-provider`/`proxy-url`) — see [Multi-Cluster: Kubeconfig restrictions](multi-cluster.md#kubeconfig-restrictions). |
 | `remoteNamespace` | *(same name as the watch's own namespace)* | Namespace to look up `dsnSecretRef` in on the remote cluster; meaningful alongside either `remoteClusterRef` or `remoteClusterSecretRef` — see [Multi-Cluster (Fleet) Mode: What actually happens on reconcile](multi-cluster.md#what-actually-happens-on-reconcile) |
+| `cnpgClusterRef` | *(none)* | Name of a CloudNativePG `Cluster` object (`postgresql.cnpg.io/v1`) that must exist and be healthy before the watch starts — read through the same client (hub or remote) and namespace as `dsnSecretRef`. See [Multi-Cluster: Remote CloudNativePG Cluster validation](multi-cluster.md#remote-cloudnativepg-cluster-validation). When used alongside `remoteClusterRef`/`remoteClusterSecretRef`, the kubeconfig's own embedded RBAC must also grant `get` on this object. |
 | `scrapeIntervalSeconds` | `60` | How often to read `pg_stat_statements` |
 | `windowMinutes` | `30` | Analysis window (minutes before/after deploy) |
 | `minExecutions` | `10` | Min query executions per window |
@@ -196,5 +198,5 @@ In short: if you're running the standalone `operator`/`ingester` binaries, `kube
 - [Deploy Sources & Webhooks](webhooks.md) — `--source-type` and `sourceType` per webhook source.
 - [Auto-Abort (Argo Rollouts)](auto-abort.md) — `autoAbort.enabled`/`autoAbort.confidenceThreshold` in depth, including the RBAC gate.
 - [Periodic (Deploy-Independent) Detection](periodic-detection.md) — `--periodic-detection`/`periodicDetection.*` in depth, including the false-positive caveat and re-arm suppression model.
-- [Multi-Cluster (Fleet) Mode](multi-cluster.md) — `remoteClusterSecretRef` in depth, including the hub-spoke RBAC split.
+- [Multi-Cluster (Fleet) Mode](multi-cluster.md) — `remoteClusterRef`, `cnpgClusterRef`, and cluster health checks in depth, including the hub-spoke RBAC split.
 - [API Versioning & Compatibility](api-versioning.md) — what `v1alpha1` guarantees (and doesn't) for the CRDs documented above.

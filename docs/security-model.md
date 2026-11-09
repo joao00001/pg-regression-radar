@@ -6,7 +6,7 @@
 
 This page defines the security contract for `cmd/manager` mode: trust assumptions, protected assets, authorization boundaries, and profile-specific operational rules. It is intentionally concrete: an administrator should be able to answer (a) who can create each CRD, (b) which Secrets may be read, (c) where the manager may connect, and (d) what changes between `controlled`, `hardened`, and `relay-only`.
 
-The model applies to the Kubernetes/CRD deployment path (`PostgresWatch` + `DeploySource`), including fleet mode via `spec.remoteClusterRef` (and deprecated `spec.remoteClusterSecretRef` for backward compatibility). It does **not** cover host/OS hardening, cloud IAM design outside Kubernetes, or arbitrary third-party webhook endpoints beyond the controls listed here.
+The model applies to the Kubernetes/CRD deployment path (`PostgresWatch` + `DeploySource`), including fleet mode via `spec.remoteClusterRef` (and deprecated `spec.remoteClusterSecretRef` for backward compatibility) plus the optional `spec.cnpgClusterRef` remote CloudNativePG `Cluster` health check, which reuses the same kubeconfig and trust boundary. It does **not** cover host/OS hardening, cloud IAM design outside Kubernetes, or arbitrary third-party webhook endpoints beyond the controls listed here.
 
 ## Security profiles
 
@@ -84,7 +84,7 @@ Practical example:
 | Boundary | Crossing event | Main risk | Mitigation |
 |---|---|---|---|
 | Tenant authoring CRDs -> manager reading Secrets | A `PostgresWatch` references `dsnSecretRef` plus `remoteClusterRef`/deprecated `remoteClusterSecretRef` | Confused deputy (manager reads Secrets broader than author's own rights) | Secret consent label check before use ([Multi-Cluster: Secret consent label](multi-cluster.md#secret-consent-label)) |
-| Hub cluster -> spoke cluster Kubernetes API | Kubeconfig from `remoteClusterRef` registry (or deprecated `remoteClusterSecretRef`) is used to build remote client | Credential/plugin abuse, proxy-based traffic redirection | Kubeconfig auth restrictions (`exec`, `auth-provider`, `proxy-url` rejected) ([Multi-Cluster: Kubeconfig restrictions](multi-cluster.md#kubeconfig-restrictions)) |
+| Hub cluster -> spoke cluster Kubernetes API | Kubeconfig from `remoteClusterRef` registry (or deprecated `remoteClusterSecretRef`) is used to build remote client, to read `dsnSecretRef` and, when `cnpgClusterRef` is set, a CloudNativePG `Cluster`'s status | Credential/plugin abuse, proxy-based traffic redirection | Kubeconfig auth restrictions (`exec`, `auth-provider`, `proxy-url` rejected) ([Multi-Cluster: Kubeconfig restrictions](multi-cluster.md#kubeconfig-restrictions)) |
 | Manager -> external alert endpoint | Notifier sends payloads to configured destination | SSRF/data exfiltration to unsafe endpoints | URL validation + optional strict allowlist ([Alerting: Destination validation](alerting.md#destination-validation-ssrf-hardening)) |
 
 ### Operator responsibilities vs Kubernetes responsibilities
@@ -262,7 +262,7 @@ EOF
 
 ## See also
 
-- [Multi-Cluster (Fleet) Mode](multi-cluster.md) — remote-cluster kubeconfig flow, trust boundaries, and known gaps.
+- [Multi-Cluster (Fleet) Mode](multi-cluster.md) — remote-cluster kubeconfig flow, trust boundaries, and operational considerations.
 - [Configuration Reference](configuration.md) — `PostgresWatch` and `DeploySource` fields used in this contract.
 - [Alerting](alerting.md) — destination validation, allowlist behavior, and SSRF caveats.
 - [Deploy Sources & Webhooks](webhooks.md) — webhook authentication and source integration surface.

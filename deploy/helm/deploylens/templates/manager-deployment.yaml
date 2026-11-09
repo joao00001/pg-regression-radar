@@ -43,6 +43,9 @@ spec:
             - --pg-metrics-bind-address=:{{ .Values.manager.ports.pgMetrics }}
             - --metrics-bind-address=:{{ .Values.manager.ports.ctrlMetrics }}
             - --health-probe-bind-address=:{{ .Values.manager.ports.healthProbe }}
+            {{- if .Values.manager.clusterHealthCheckInterval }}
+            - {{ printf "--cluster-health-check-interval=%s" .Values.manager.clusterHealthCheckInterval | quote }}
+            {{- end }}
             {{- if .Values.alerting.allowedDestinations }}
             - {{ printf "--alerting-allowed-destinations=%s" .Values.alerting.allowedDestinations | quote }}
             {{- end }}

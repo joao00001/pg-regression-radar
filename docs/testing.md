@@ -215,10 +215,26 @@ kubectl -n pgrr-e2e get performanceregressions
 kind delete cluster --name pgrr-e2e
 ```
 
+## Real two-cluster end-to-end test (fleet mode) {#e2e-kind-multicluster}
+
+Everything above — including the real-cluster test directly above this section — runs the manager and the Postgres it watches in the *same* `kind` cluster. None of it can catch a bug specific to fleet mode (see [Multi-Cluster (Fleet) Mode](multi-cluster.md)): resolving a DSN through a registered `PostgresRadarCluster`'s kubeconfig, validating a `cnpgClusterRef` against a real CloudNativePG `Cluster` object reached over that same remote connection, or the health-check reconciler actually detecting a kubeconfig that stops authenticating. The **"E2E (kind, multi-cluster fleet mode)"** workflow (`.github/workflows/e2e-kind-multicluster.yml`) closes that gap:
+
+1. Creates two real `kind` clusters on one runner: `hub` (runs this commit's manager, via the Helm chart, as a real in-cluster Deployment) and `spoke` (runs the real CloudNativePG operator and a real `Cluster`).
+2. Builds a least-privilege kubeconfig scoped to exactly the one DSN Secret and the one `Cluster` object this run needs — the same recipe [Multi-Cluster: Remote cluster RBAC](multi-cluster.md#remote-cluster-rbac) documents — and registers it as a `PostgresRadarCluster` on the hub.
+3. Applies a `PostgresWatch` using both `spec.remoteClusterRef` and `spec.cnpgClusterRef`, and asserts it reaches `status.phase: Running` and that the `PostgresRadarCluster` reaches `status.ready: true` with a populated `status.conditions`/`status.lastProbeTime` — both resolved and validated entirely over the network against the spoke's real API server.
+4. Confirms `status.trackedQueryIds` rises above zero, proving the Collector is genuinely scraping the remote (spoke) Postgres through the cross-cluster DSN path, not a cached or stale value.
+5. Rotates the registered kubeconfig Secret to a deliberately invalid token and asserts `PostgresRadarCluster.status.ready` flips to `false` (and `PostgresWatch.status.phase` to `Failed`) within one health-check interval, then restores the original kubeconfig and asserts both recover — proving the health-check reconciler's detection and the existing evict-on-failure cache behavior against a real, live credential rotation, not a syntactically-valid-but-unreachable address.
+
+Deliberately out of scope — see the workflow's own header comment for the full reasoning: a full traffic-generation/webhook/`PerformanceRegression`-detection pass (already proven by `e2e-kind.yml` above; re-proving it here would mostly duplicate that workflow, since nothing about regression *detection* changes based on which cluster the DSN came from) and `spec.remoteClusterSecretRef` (the deprecated path, already covered by `internal/controller`'s own unit tests without needing a second real cluster).
+
+Because both `kind` clusters in this test run on the same Docker network, but a real hub and spoke in production normally don't share one, the workflow also has to bridge the Postgres *data-plane* connection — CloudNativePG's own generated DSN Secret names an in-cluster Service DNS host, which only resolves inside the spoke cluster itself. The workflow exposes the Postgres primary via a fixed `NodePort` and publishes a second Secret with that externally-reachable address for `dsnSecretRef` to point at instead. This NodePort bridge is a CI-only stand-in for whatever real cross-cluster network path (shared VPC, service mesh, VPN, or a CloudNativePG Service of type `LoadBalancer`) a production hub/spoke deployment is expected to already have — not a deployment pattern to copy. See [Multi-Cluster: The hub-spoke model](multi-cluster.md#the-hub-spoke-model) for why: `remoteClusterRef`/`cnpgClusterRef` only ever grant the hub *Kubernetes API* access to the spoke (an authenticated HTTPS call to read a Secret or a CRD's status) — they say nothing about, and cannot provide, network routability for the plain Postgres TCP connection the Collector makes once it has the DSN in hand.
+
+It's `workflow_dispatch`-only by default, opt-in via the `run-e2e-kind-multicluster` PR label — see [CI/CD](ci-cd.md#e2e-kind-multiclusteryml-manual-workflow_dispatch-or-opt-in-via-the-run-e2e-kind-multicluster-pr-label) for the exact trigger conditions.
+
 ## See also
 
 - [CI/CD](ci-cd.md) — which of these run automatically, and on what trigger.
-- [Detection Algorithm](detection-algorithm.md) — what `internal/e2e` and the two e2e workflows are all ultimately proving.
-- [Multi-Cluster (Fleet) Mode](multi-cluster.md) — the remote-cluster DSN-resolution path this single-cluster kind test doesn't cover.
-- [Roadmap](roadmap.md) — the ArgoCD and CloudNativePG-operand-image `pg_store_plans` follow-ups the kind e2e workflow deliberately leaves out.
+- [Detection Algorithm](detection-algorithm.md) — what `internal/e2e` and the e2e workflows are all ultimately proving.
+- [Multi-Cluster (Fleet) Mode](multi-cluster.md) — the remote-cluster DSN-resolution, `cnpgClusterRef`, and cluster health-check paths the two real-cluster kind workflows above prove end to end.
+- [Roadmap](roadmap.md) — the ArgoCD and CloudNativePG-operand-image `pg_store_plans` follow-ups the single-cluster kind e2e workflow deliberately leaves out.
 - [Contributing](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md) — what's expected of tests in a PR.
