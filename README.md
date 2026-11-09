@@ -29,25 +29,25 @@ Today that's answered manually: open Grafana, look at `pg_stat_statements`, try 
 ## Why pg-regression-radar
 
 **Detection you can trust**
-- 🔬 **Real statistics, not an eyeballed graph.** E-divisive change-point location confirmed by Welch's t-test — see [Detection Algorithm](https://joao00001.github.io/pg-regression-radar/detection-algorithm/).
-- 🕒 **Deploy-correlated *and* deploy-independent.** Ties regressions to ArgoCD/Argo Rollouts/Flux/generic/Kubernetes deploy events, or runs on a rolling schedule with no deploy at all — see [Periodic Detection](https://joao00001.github.io/pg-regression-radar/periodic-detection/).
-- 🧭 **Plan-diff correlation.** Captures `EXPLAIN (FORMAT JSON, GENERIC_PLAN)` around a regression to tell "planner picked a worse plan" apart from "the same plan just got slower."
+- **Real statistics, not an eyeballed graph.** E-divisive change-point location confirmed by Welch's t-test — see [Detection Algorithm](https://joao00001.github.io/pg-regression-radar/detection-algorithm/).
+- **Deploy-correlated *and* deploy-independent.** Ties regressions to ArgoCD/Argo Rollouts/Flux/generic/Kubernetes deploy events, or runs on a rolling schedule with no deploy at all — see [Periodic Detection](https://joao00001.github.io/pg-regression-radar/periodic-detection/).
+- **Plan-diff correlation.** Captures `EXPLAIN (FORMAT JSON, GENERIC_PLAN)` around a regression to tell "planner picked a worse plan" apart from "the same plan just got slower."
 
 **Runs the way your fleet actually looks**
-- ⚙️ **Two deployment modes, one engine.** A zero-RBAC standalone CLI (`cmd/operator`) for a single cluster, or a CRD-driven, highly-available controller (`cmd/manager`, leader-elected) for a whole fleet — see [Architecture Overview](https://joao00001.github.io/pg-regression-radar/architecture/).
-- 🌐 **Multi-cluster (fleet) mode.** One manager watches any number of `PostgresWatch` CRs, including Postgres clusters living in entirely different Kubernetes clusters — see [Multi-Cluster (Fleet) Mode](https://joao00001.github.io/pg-regression-radar/multi-cluster/).
-- 🔌 **Plugs into what you already run.** Native `pg_stat_statements` scraping, or an OpenTelemetry/Prometheus-backed sample source for fleets that already run an OTel Collector — see [OTel/Prometheus Sample Source](https://joao00001.github.io/pg-regression-radar/otel-prometheus-source/).
+- **Two deployment modes, one engine.** A zero-RBAC standalone CLI (`cmd/operator`) for a single cluster, or a CRD-driven, highly-available controller (`cmd/manager`, leader-elected) for a whole fleet — see [Architecture Overview](https://joao00001.github.io/pg-regression-radar/architecture/).
+- **Multi-cluster (fleet) mode.** One manager watches any number of `PostgresWatch` CRs, including Postgres clusters living in entirely different Kubernetes clusters — see [Multi-Cluster (Fleet) Mode](https://joao00001.github.io/pg-regression-radar/multi-cluster/).
+- **Plugs into what you already run.** Native `pg_stat_statements` scraping, or an OpenTelemetry/Prometheus-backed sample source for fleets that already run an OTel Collector — see [OTel/Prometheus Sample Source](https://joao00001.github.io/pg-regression-radar/otel-prometheus-source/).
 
 **Closes the loop, safely**
-- 🛑 **Opt-in auto-abort.** Aborts a bad Argo Rollouts canary itself the instant a regression clears your confidence bar — disabled by default, scoped per `PostgresWatch` — see [Auto-Abort](https://joao00001.github.io/pg-regression-radar/auto-abort/).
-- 📣 **Alerts wherever your team already looks.** Slack, Microsoft Teams, PagerDuty, or a custom `text/template` webhook — see [Alerting](https://joao00001.github.io/pg-regression-radar/alerting/).
-- 📜 **A persistent audit trail.** `cmd/manager` mode records every regression as a `PerformanceRegression` CR (`kubectl get performanceregressions -A`), not just a one-off Slack message.
+- **Opt-in auto-abort.** Aborts a bad Argo Rollouts canary itself the instant a regression clears your confidence bar — disabled by default, scoped per `PostgresWatch` — see [Auto-Abort](https://joao00001.github.io/pg-regression-radar/auto-abort/).
+- **Alerts wherever your team already looks.** Slack, Microsoft Teams, PagerDuty, or a custom `text/template` webhook — see [Alerting](https://joao00001.github.io/pg-regression-radar/alerting/).
+- **A persistent audit trail.** `cmd/manager` mode records every regression as a `PerformanceRegression` CR (`kubectl get performanceregressions -A`), not just a one-off Slack message.
 
 **Ships like it's meant for production**
-- 🔒 **Signed, attested, and verifiable.** Every release's container images and Helm chart are Cosign keyless-signed with SLSA provenance and an SBOM, traceable back to the exact source commit — see [Supply Chain Verification](https://joao00001.github.io/pg-regression-radar/supply-chain/).
-- 🛡️ **A documented threat model**, not an afterthought — three security profiles (`controlled` / `hardened` / `relay-only`) with explicit rules for which Secrets may be read and where the manager may connect — see [Security Model](https://joao00001.github.io/pg-regression-radar/security-model/).
-- ✅ **Officially supports PostgreSQL 16, 17, and 18** (community, CloudNativePG, EDB Postgres Advanced/Extended Server), verified in CI on every single PR — see [Support Matrix](https://joao00001.github.io/pg-regression-radar/support-matrix/).
-- 🏗️ **Engineering rigor to match:** 16 CI/CD workflows gate every change — unit tests, real-Postgres integration tests across all three supported versions, real-envtest controller tests, containerized single- and multi-cluster e2e, `golangci-lint`, `gosec`, `govulncheck`, CodeQL, DCO sign-off, and a maintained-release-branch backport pipeline — see [CI/CD](https://joao00001.github.io/pg-regression-radar/ci-cd/) and [Backporting](https://joao00001.github.io/pg-regression-radar/backporting/).
+- **Signed, attested, and verifiable.** Every release's container images and Helm chart are Cosign keyless-signed with SLSA provenance and an SBOM, traceable back to the exact source commit — see [Supply Chain Verification](https://joao00001.github.io/pg-regression-radar/supply-chain/).
+- **A documented threat model**, not an afterthought — three security profiles (`controlled` / `hardened` / `relay-only`) with explicit rules for which Secrets may be read and where the manager may connect — see [Security Model](https://joao00001.github.io/pg-regression-radar/security-model/).
+- **Officially supports PostgreSQL 16, 17, and 18** (community, CloudNativePG, EDB Postgres Advanced/Extended Server), verified in CI on every single PR — see [Support Matrix](https://joao00001.github.io/pg-regression-radar/support-matrix/).
+- **Engineering rigor to match:** 16 CI/CD workflows gate every change — unit tests, real-Postgres integration tests across all three supported versions, real-envtest controller tests, containerized single- and multi-cluster e2e, `golangci-lint`, `gosec`, `govulncheck`, CodeQL, DCO sign-off, and a maintained-release-branch backport pipeline — see [CI/CD](https://joao00001.github.io/pg-regression-radar/ci-cd/) and [Backporting](https://joao00001.github.io/pg-regression-radar/backporting/).
 
 ## Architecture
 
@@ -68,6 +68,21 @@ flowchart LR
 4. **Alerting** fires a Slack-compatible webhook with the query text, latency before/after, change factor, and confidence score.
 
 See [Architecture Overview](https://joao00001.github.io/pg-regression-radar/architecture/) for the full package layout and the two ways to run it.
+
+## See it in practice
+
+A concrete, reproducible walkthrough (full script in [Regression Scenario Example](https://joao00001.github.io/pg-regression-radar/examples/regression-scenario/)):
+
+1. `checkout-api` deploys as revision `v1`. Baseline latency for a frequently-run query: ~3ms.
+2. Revision `v2` ships and silently drops the index behind `orders.customer_id`. The same query now takes ~49ms.
+3. The Correlation Engine's E-divisive change-point detection locates the shift, Welch's t-test confirms it's statistically significant (not noise), and the result is tied back to the `v2` deploy event.
+
+```text
+regression detected: app=checkout-api namespace=demo revision=v2 query_id=123456
+latency_before_ms=3.1 latency_after_ms=48.7 change=15.7x confidence=0.98
+```
+
+No manual Grafana digging, no cross-referencing deploy timestamps by eye — just the query, the deploy, and the confidence behind the call. The full example is scripted end-to-end, from `docker run postgres` to this exact output, in about 10 minutes.
 
 ## Quick start
 
