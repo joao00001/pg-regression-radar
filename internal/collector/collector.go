@@ -864,6 +864,8 @@ func (c *Collector) resolveColumns(ctx context.Context) {
 // column names appropriate for the detected server version (see
 // resolveColumns). Both branches alias their timing columns to
 // total_exec_time/mean_exec_time so scrape's Scan targets don't need to vary.
+// PostgreSQL hides other roles' query IDs from unprivileged readers; exclude
+// those NULL IDs so they cannot abort a scrape of the reader's own statements.
 func (c *Collector) queryStatStatements() string {
 	execCol, meanCol := "total_exec_time", "mean_exec_time"
 	if c.legacyTimingColumns {
@@ -881,7 +883,8 @@ SELECT
     %s                        AS total_exec_time,
     %s                        AS mean_exec_time
 FROM pg_stat_statements
-WHERE query NOT LIKE '%%pg_stat_statements%%'
+WHERE queryid IS NOT NULL
+  AND query NOT LIKE '%%pg_stat_statements%%'
 ORDER BY %s DESC
 LIMIT 500
 `, maxQueryTextLen+1, execCol, meanCol, execCol)

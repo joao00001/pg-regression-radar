@@ -157,6 +157,77 @@ func TestIntegration_Scrape_RealPostgres(t *testing.T) {
 	}
 }
 
+func TestIntegration_Scrape_RestrictedRole(t *testing.T) {
+	dsn := os.Getenv("PGRR_TEST_DSN")
+	if dsn == "" {
+		t.Skip("PGRR_TEST_DSN not set; skipping Collector integration test")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	setup, err := sql.Open("postgres", dsn)
+	if err != nil {
+		t.Fatalf("open setup connection: %v", err)
+	}
+	defer setup.Close()
+	releasePGStatStatementsLock := testutil.AcquirePGStatStatementsTestLock(t, ctx, setup)
+	defer releasePGStatStatementsLock()
+
+	if _, err := setup.ExecContext(ctx, `CREATE EXTENSION IF NOT EXISTS pg_stat_statements`); err != nil {
+		t.Fatalf("CREATE EXTENSION pg_stat_statements: %v", err)
+	}
+	const role = "pgrr_collector_restricted"
+	if _, err := setup.ExecContext(ctx, `CREATE ROLE `+role+` NOLOGIN`); err != nil {
+		t.Fatalf("create restricted role: %v", err)
+	}
+	defer func() {
+		if _, err := setup.ExecContext(context.Background(), `DROP ROLE `+role); err != nil {
+			t.Errorf("drop restricted role: %v", err)
+		}
+	}()
+	if _, err := setup.ExecContext(ctx, `SELECT pg_stat_statements_reset()`); err != nil {
+		t.Fatalf("pg_stat_statements_reset: %v", err)
+	}
+	if _, err := setup.ExecContext(ctx, `SELECT pg_sleep(0.01) /* pgrr_collector_hidden_probe */`); err != nil {
+		t.Fatalf("generate another role's query: %v", err)
+	}
+
+	c := newTestCollector(t, Config{DSN: dsn, ClusterName: "restricted-role-test"})
+	// Keep SET ROLE and the scrape on the same unprivileged session.
+	c.db.SetMaxOpenConns(1)
+	defer c.db.Close()
+	if _, err := c.db.ExecContext(ctx, `SET ROLE `+role); err != nil {
+		t.Fatalf("SET ROLE: %v", err)
+	}
+	const marker = "pgrr_collector_restricted_probe"
+	if _, err := c.db.ExecContext(ctx, `SELECT pg_sleep(0.01) /* `+marker+` */`); err != nil {
+		t.Fatalf("generate restricted role's query: %v", err)
+	}
+	var hiddenRows int
+	if err := c.db.QueryRowContext(ctx, `SELECT count(*) FROM pg_stat_statements WHERE queryid IS NULL`).Scan(&hiddenRows); err != nil {
+		t.Fatalf("count hidden statistics rows: %v", err)
+	}
+	if hiddenRows == 0 {
+		t.Fatal("expected other roles' query IDs to be hidden from the restricted role")
+	}
+
+	if err := c.scrape(ctx); err != nil {
+		t.Fatalf("scrape as restricted role: %v", err)
+	}
+	for _, qid := range c.AllQueryIDs() {
+		for _, sample := range c.SamplesInRange(qid, time.Now().Add(-time.Minute), time.Now().Add(time.Minute)) {
+			if strings.Contains(sample.QueryText, marker) {
+				if sample.Calls != 1 {
+					t.Errorf("expected one probe execution, got %d", sample.Calls)
+				}
+				return
+			}
+		}
+	}
+	t.Fatal("restricted role's own query was not collected")
+}
+
 // TestIntegration_Ping_RealPostgres proves Ping's two real checks (network
 // reachability and the pg_stat_statements extension actually being
 // installed) against a live server, complementing
