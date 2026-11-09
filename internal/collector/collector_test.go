@@ -561,6 +561,19 @@ func TestCollector_QueryStatStatements_UsesConfiguredMaxQueryTextLen(t *testing.
 	}
 }
 
+func TestCollector_QueryStatStatements_ExcludesHiddenQueryIDs(t *testing.T) {
+	for _, legacy := range []bool{false, true} {
+		t.Run(fmt.Sprintf("legacy=%t", legacy), func(t *testing.T) {
+			col := newTestCollector(t, Config{})
+			col.legacyTimingColumns = legacy
+			got := col.queryStatStatements()
+			if !regexp.MustCompile(`WHERE\s+queryid IS NOT NULL\s+AND query NOT LIKE`).MatchString(got) {
+				t.Fatalf("expected SQL to exclude hidden query IDs before ordering and limiting rows, got:\n%s", got)
+			}
+		})
+	}
+}
+
 func TestCollector_QueryStatStatements_ZeroValueCollectorFallsBackToDefaultBudget(t *testing.T) {
 	// queryStatStatements is only called on Collectors built through New() in
 	// production, but keeping the helper safe on a truly zero-value Collector
