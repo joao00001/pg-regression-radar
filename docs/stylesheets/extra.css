@@ -206,6 +206,9 @@
 }
 
 /* ---- Code blocks: a dark card with the code in an inset panel ----
+   `.pgrr-term` (the docs playground, assets/playground/playground.css) shares
+   the card, the header row and every colour token below, so the playground's
+   terminal can never drift from the code blocks it is meant to match.
    Two layers, in both color schemes: the card (lighter, thin border) holds
    the header row -- the block's `title="..."` or, from
    docs/javascripts/code-header.js, its language, plus the copy button --
@@ -214,7 +217,8 @@
    `language-*` class that `pygments_lang_class` puts on the block; with no
    JS, or on a page whose build doesn't set it, the card simply has no
    header row. */
-.md-typeset .highlight {
+.md-typeset .highlight,
+.md-typeset .pgrr-term {
   /* Dark (the default, and the slate scheme). */
   --pgrr-card-bg: #1d1f1f;
   --pgrr-card-border: #3a3d3d;
@@ -251,7 +255,8 @@
 }
 
 /* Light scheme: the same card and inset panel, inverted. */
-[data-md-color-scheme="default"] .md-typeset .highlight {
+[data-md-color-scheme="default"] .md-typeset .highlight,
+[data-md-color-scheme="default"] .md-typeset .pgrr-term {
   --pgrr-card-bg: #f1f2f2;
   --pgrr-card-border: #d4d8d8;
   --pgrr-panel-bg: #ffffff;
@@ -277,7 +282,8 @@
 }
 
 /* The header row: Material's `.filename` (a block with a title) and ours. */
-.md-typeset .highlight > .filename {
+.md-typeset .highlight > .filename,
+.md-typeset .pgrr-term > .filename {
   display: flex;
   align-items: center;
   min-height: 36px;
@@ -291,7 +297,8 @@
   line-height: 1.3;
 }
 
-.md-typeset .highlight > .filename::before {
+.md-typeset .highlight > .filename::before,
+.md-typeset .pgrr-term > .filename::before {
   content: none;
 }
 

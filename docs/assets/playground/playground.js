@@ -85,6 +85,7 @@ const state = {
   running: false,
   result: null, // { request, response }
   selected: null,
+  sqlOpen: false,
 };
 
 function applyScenario(sc) {
@@ -95,77 +96,127 @@ function applyScenario(sc) {
 applyScenario(SCENARIOS[0]);
 
 // ---- rendering ----------------------------------------------------------
+//
+// The whole UI is drawn as terminal sessions in the docs' code-block cards
+// (`.pgrr-term`, sharing extra.css's card, header row and colour tokens).
 
 const els = {};
 
-function field(label, input, hint) {
-  return h('label', { class: 'pgrr-field' }, h('span', { class: 'pgrr-field-label' }, label), input, hint && h('span', { class: 'pgrr-hint' }, hint));
+const OPTIONS = [
+  { key: 'callsPerScrape', flag: '--calls-per-scrape', min: 1, max: 100, step: 1, note: 'calls/query/scrape (playground)' },
+  { key: 'windowMinutes', flag: '--window-minutes', min: 2, max: 30, step: 1, note: 'each side of the deploy' },
+  { key: 'minSamples', flag: '--min-samples', min: 2, max: 100, step: 1, note: 'observations per window' },
+  { key: 'minExecutions', flag: '--min-executions', min: 1, max: 100000, step: 1, note: 'executions per window' },
+  { key: 'latencyChangeThreshold', flag: '--latency-threshold', min: 0.01, max: 5, step: 0.01, note: '0.2 = 20% slower' },
+  { key: 'pValueThreshold', flag: '--p-value-threshold', min: 0.001, max: 0.5, step: 0.001, note: 'Welch t-test (playground)' },
+];
+
+const FILES = [
+  { key: 'setupSql', name: 'schema.sql', label: 'Schema and data', rows: 14, hint: 'runs once, before the workload' },
+  { key: 'workloadSql', name: 'workload.sql', label: 'Workload (one statement per line)', rows: 5, hint: 'one statement per line; :id becomes a random id on every call' },
+  { key: 'deploySql', name: 'deploy.sql', label: 'The deploy (runs halfway through)', rows: 6, hint: 'runs once, halfway through the timeline' },
+];
+
+function term(title, ...screen) {
+  return h('section', { class: 'pgrr-term' },
+    h('div', { class: 'filename' }, title),
+    h('div', { class: 'pgrr-screen' }, ...screen));
 }
 
-function numberInput(key, { min, max, step = 1 }) {
-  return h('input', {
-    type: 'number', min, max, step, value: state.params[key],
-    onchange: (e) => { const v = Number(e.target.value); if (Number.isFinite(v)) state.params[key] = v; },
+const prompt = (...kids) => h('div', { class: 'pgrr-line' }, h('span', { class: 'pgrr-ps' }, '$'), ' ', ...kids);
+
+function optionRow(opt, last) {
+  const input = h('input', {
+    type: 'number', min: opt.min, max: opt.max, step: opt.step, value: state.params[opt.key],
+    'aria-label': `${opt.flag} (${opt.note})`,
+    style: `width:${String(opt.step < 1 ? 5 : 6)}ch`,
+    onchange: (e) => { const v = Number(e.target.value); if (Number.isFinite(v)) state.params[opt.key] = v; },
   });
+  return h('div', { class: `pgrr-opt${last ? ' pgrr-last' : ''}` },
+    h('span', { class: 'pgrr-optmain' },
+      h('span', { class: 'pgrr-flag' }, opt.flag), '=', input,
+      h('span', { class: 'pgrr-bs', 'aria-hidden': 'true' }, last ? '' : ' \\')),
+    h('span', { class: 'pgrr-comment-inline' }, opt.note));
 }
 
-function sqlArea(key, label, rows) {
-  return h('label', { class: 'pgrr-field pgrr-wide' },
-    h('span', { class: 'pgrr-field-label' }, label),
+function fileCard(f) {
+  return term(f.name,
+    h('p', { class: 'pgrr-comment' }, f.hint),
     h('textarea', {
-      rows, spellcheck: 'false', value: state.params[key],
-      oninput: (e) => { state.params[key] = e.target.value; state.custom = true; markCustom(); },
-    }, state.params[key]));
+      rows: f.rows, spellcheck: 'false', autocapitalize: 'off', autocomplete: 'off', 'aria-label': f.label,
+      oninput: (e) => { state.params[f.key] = e.target.value; state.custom = true; markCustom(); },
+    }, state.params[f.key]));
 }
 
 function markCustom() {
-  els.scenarioNote.textContent = state.custom ? 'Custom SQL: the verdict is whatever the engine decides.' : state.scenario.blurb;
+  els.scenarioNote.textContent = state.custom ? 'custom SQL: the verdict is whatever the engine decides' : state.scenario.blurb;
+  els.cmdName.textContent = state.custom ? 'custom' : state.scenario.id;
   for (const b of els.scenarioButtons) b.setAttribute('aria-pressed', String(!state.custom && b.dataset.id === state.scenario.id));
+}
+
+function setSqlOpen(open) {
+  state.sqlOpen = open;
+  els.sqlToggle.setAttribute('aria-expanded', String(open));
+  els.sqlToggle.querySelector('.pgrr-chev').textContent = open ? '▾' : '▸';
+  els.files.hidden = !open;
 }
 
 function renderForm() {
   els.scenarioButtons = SCENARIOS.map((sc) => h('button', {
-    type: 'button', class: 'pgrr-chip', 'data-id': sc.id, 'aria-pressed': String(sc.id === state.scenario.id),
+    type: 'button', class: 'pgrr-scn', 'data-id': sc.id, 'aria-pressed': String(sc.id === state.scenario.id),
     onclick: () => { applyScenario(sc); renderForm(); },
-  }, sc.title));
-  els.scenarioNote = h('p', { class: 'pgrr-note' }, state.scenario.blurb);
+  }, h('span', { class: 'pgrr-mark-sel', 'aria-hidden': 'true' }, '❯'), h('span', { class: 'pgrr-scn-id' }, sc.id), h('span', { class: 'pgrr-scn-title' }, sc.title)));
+  els.scenarioNote = h('p', { class: 'pgrr-comment' }, state.scenario.blurb);
+  els.cmdName = h('span', { class: 'pgrr-arg' }, state.scenario.id);
 
-  els.run = h('button', { type: 'button', class: 'pgrr-run', onclick: run }, 'Run simulation');
-  els.status = h('p', { class: 'pgrr-status', role: 'status', 'aria-live': 'polite' });
-  els.bar = h('progress', { class: 'pgrr-progress', max: 1, value: 0, hidden: true });
+  els.run = h('button', { type: 'button', class: 'pgrr-run', onclick: run }, '⏎ Run simulation');
+  els.status = h('p', { class: 'pgrr-log', role: 'status', 'aria-live': 'polite' });
+  els.bar = h('span', { class: 'pgrr-bar', role: 'progressbar', 'aria-label': 'Simulation progress', 'aria-valuemin': '0', hidden: true });
 
-  const form = h('div', { class: 'pgrr-form' },
-    h('div', { class: 'pgrr-chips', role: 'group', 'aria-label': 'Scenario' }, els.scenarioButtons),
+  els.sqlToggle = h('button', { type: 'button', class: 'pgrr-toggle', 'aria-expanded': 'false', 'aria-controls': 'pgrr-files', onclick: () => setSqlOpen(!state.sqlOpen) },
+    h('span', { class: 'pgrr-ps' }, '$'), ' playground edit ', h('span', { class: 'pgrr-flag' }, '--sql'), ' ', h('span', { class: 'pgrr-chev', 'aria-hidden': 'true' }, '▸'),
+    h('span', { class: 'pgrr-comment-inline' }, 'schema, workload and deploy'));
+  els.files = h('div', { id: 'pgrr-files', class: 'pgrr-files', hidden: true }, FILES.map(fileCard));
+
+  const main = term('Playground',
+    prompt('playground ', h('span', { class: 'pgrr-cmd' }, 'scenarios')),
+    h('div', { class: 'pgrr-scenarios', role: 'group', 'aria-label': 'Scenario' }, els.scenarioButtons),
     els.scenarioNote,
-    h('div', { class: 'pgrr-grid' },
-      field('Calls per query, per 30 s scrape', numberInput('callsPerScrape', { min: 1, max: 100 }), 'Traffic'),
-      field('Analysis window (min)', numberInput('windowMinutes', { min: 2, max: 30 }), 'Each side of the deploy'),
-      field('Min samples', numberInput('minSamples', { min: 2, max: 100 }), '--min-samples'),
-      field('Min executions', numberInput('minExecutions', { min: 1, max: 100000 }), '--min-executions'),
-      field('Latency change threshold', numberInput('latencyChangeThreshold', { min: 0.01, max: 5, step: 0.01 }), 'Fraction, 0.2 = 20%'),
-      field('p-value threshold', numberInput('pValueThreshold', { min: 0.001, max: 0.5, step: 0.001 }), 'Welch t-test')),
-    h('details', {},
-      h('summary', {}, 'Edit the SQL'),
-      h('p', { class: 'pgrr-hint' }, 'Runs in a real PostgreSQL in your browser tab. :id becomes a random id on each call. One workload statement per line.'),
-      sqlArea('setupSql', 'Schema and data', 14),
-      sqlArea('workloadSql', 'Workload (one statement per line)', 5),
-      sqlArea('deploySql', 'The deploy (runs halfway through)', 6)),
-    h('div', { class: 'pgrr-actions' }, els.run, els.bar, els.status));
-  els.form.replaceChildren(form);
+    prompt('playground ', h('span', { class: 'pgrr-cmd' }, 'run'), ' ', els.cmdName, ' \\'),
+    h('div', { class: 'pgrr-opts' }, OPTIONS.map((o, i) => optionRow(o, i === OPTIONS.length - 1))),
+    els.sqlToggle,
+    h('div', { class: 'pgrr-runrow' }, els.run, els.bar),
+    els.status);
+
+  els.form.replaceChildren(main, els.files);
+  setSqlOpen(state.sqlOpen);
 }
 
+const STATUS_MARK = { Detected: '✖', NoRegression: '✔', InsufficientData: '?' };
+
 function badge(status) {
-  return h('span', { class: `pgrr-badge pgrr-${status}` }, status);
+  return h('span', { class: `pgrr-badge pgrr-${status}` }, h('span', { 'aria-hidden': 'true' }, `${STATUS_MARK[status] ?? '•'} `), status);
 }
 
 const fmtMs = (v) => (v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v.toFixed(3));
+
+// A tiny JSON highlighter with the code blocks' token colours.
+function highlightJson(text) {
+  const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return esc.replace(/("(?:\\.|[^"\\])*")(\s*:)?|\b(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)\b|\b(true|false|null)\b/gi,
+    (m, str, colon, num, kw) => {
+      if (str) return colon ? `<span class="pgrr-t-key">${str}</span>${colon}` : `<span class="pgrr-t-str">${str}</span>`;
+      if (num !== undefined) return `<span class="pgrr-t-num">${num}</span>`;
+      return `<span class="pgrr-t-kw">${kw}</span>`;
+    });
+}
 
 function renderResults() {
   const r = state.result;
   if (!r) { els.results.replaceChildren(); return; }
   const { response, request } = r;
   if (response.error) {
-    els.results.replaceChildren(h('p', { class: 'pgrr-error' }, `Engine error: ${response.error}`));
+    els.results.replaceChildren(term('Output', h('p', { class: 'pgrr-error' }, `error: ${response.error}`)));
     return;
   }
   const rows = response.results.map((res) => h('tr', {
@@ -176,34 +227,42 @@ function renderResults() {
   },
   h('td', {}, badge(res.status)),
   h('td', { class: 'pgrr-q' }, h('code', {}, res.query)),
-  h('td', { class: 'pgrr-num' }, res.status === 'InsufficientData' ? '-' : `${fmtMs(res.meanLatencyBefore)} → ${fmtMs(res.meanLatencyAfter)} ms`),
-  h('td', { class: 'pgrr-num' }, res.status === 'InsufficientData' ? '-' : `×${res.latencyChangeFactor.toFixed(2)}`),
-  h('td', { class: 'pgrr-num' }, res.status === 'Detected' ? res.confidenceScore.toFixed(3) : '-')));
+  h('td', { class: 'pgrr-num', 'data-label': 'mean' }, res.status === 'InsufficientData' ? '-' : `${fmtMs(res.meanLatencyBefore)} → ${fmtMs(res.meanLatencyAfter)} ms`),
+  h('td', { class: 'pgrr-num', 'data-label': 'change' }, res.status === 'InsufficientData' ? '-' : `×${res.latencyChangeFactor.toFixed(2)}`),
+  h('td', { class: 'pgrr-num', 'data-label': 'confidence' }, res.status === 'Detected' ? res.confidenceScore.toFixed(3) : '-')));
 
   const table = h('table', { class: 'pgrr-table' },
-    h('thead', {}, h('tr', {}, ...['Verdict', 'Query', 'Mean before → after', 'Change', 'Confidence'].map((t) => h('th', {}, t)))),
+    h('thead', {}, h('tr', {}, ...['Verdict', 'Query', 'Before → after', 'Change', 'Confidence'].map((t) => h('th', {}, t)))),
     h('tbody', {}, rows));
 
   const detected = response.results.filter((x) => x.status === 'Detected').length;
-  const summary = h('p', { class: 'pgrr-summary' }, detected
+  const summary = h('p', { class: `pgrr-summary${detected ? ' pgrr-flagged' : ''}` }, detected
     ? `${detected} of ${response.results.length} queries flagged. Select a row to see its series.`
     : `No regression reported across ${response.results.length} queries. Select a row to see its series.`);
 
-  const chartBox = h('div', { class: 'pgrr-chart' });
-  els.chartBox = chartBox;
+  els.chartBox = h('div', { class: 'pgrr-chart' });
 
   const lastRows = request.snapshots[request.snapshots.length - 1].rows;
+  const pre = h('pre', { class: 'pgrr-json', hidden: true, id: 'pgrr-json' });
+  pre.innerHTML = highlightJson(JSON.stringify(lastRows, null, 2));
   const download = h('a', {
-    class: 'pgrr-download', download: 'pg_stat_statements-snapshots.json',
+    class: 'pgrr-download', hidden: true, download: 'pg_stat_statements-snapshots.json',
     href: URL.createObjectURL(new Blob([JSON.stringify(request, null, 2)], { type: 'application/json' })),
-  }, 'Download the snapshots (JSON)');
-  const raw = h('details', {},
-    h('summary', {}, 'What the engine received'),
-    h('p', { class: 'pgrr-hint' }, `${request.snapshots.length} snapshots of pg_stat_statements, one every 30 s of virtual time. The last one:`),
-    h('pre', {}, JSON.stringify(lastRows, null, 2)),
-    download);
+  }, '$ download pg_stat_statements-snapshots.json');
+  const rawComment = h('p', { class: 'pgrr-comment', hidden: true }, `${request.snapshots.length} snapshots of pg_stat_statements, one every 30 s of virtual time; the last one:`);
+  const rawToggle = h('button', { type: 'button', class: 'pgrr-toggle', 'aria-expanded': 'false', 'aria-controls': 'pgrr-json',
+    onclick: () => {
+      const open = rawToggle.getAttribute('aria-expanded') !== 'true';
+      rawToggle.setAttribute('aria-expanded', String(open));
+      rawToggle.querySelector('.pgrr-chev').textContent = open ? '▾' : '▸';
+      pre.hidden = download.hidden = rawComment.hidden = !open;
+    } },
+  h('span', { class: 'pgrr-ps' }, '$'), ' cat ', h('span', { class: 'pgrr-arg' }, 'snapshots.json'), ' ', h('span', { class: 'pgrr-chev', 'aria-hidden': 'true' }, '▸'),
+  h('span', { class: 'pgrr-comment-inline' }, 'what the engine received'));
 
-  els.results.replaceChildren(summary, table, chartBox, raw);
+  els.results.replaceChildren(term('Output',
+    prompt('playground ', h('span', { class: 'pgrr-cmd' }, 'report'), ' ', h('span', { class: 'pgrr-arg' }, state.custom ? 'custom' : state.scenario.id)),
+    summary, table, els.chartBox, rawToggle, rawComment, pre, download));
   drawChart();
 }
 
@@ -270,17 +329,33 @@ function drawChart() {
   }
 
   const legend = h('ul', { class: 'pgrr-legend' },
-    h('li', {}, h('i', { class: 'pgrr-sw pgrr-sw-int' }), 'Mean of the calls since the previous scrape (what the radar analyses)'),
+    h('li', {}, h('i', { class: 'pgrr-sw pgrr-sw-int' }), 'mean of the calls since the previous scrape (what the radar analyses)'),
     h('li', {}, h('i', { class: 'pgrr-sw pgrr-sw-cum' }), 'pg_stat_statements.mean_exec_time (cumulative since the last reset)'),
-    series.points.some((p) => p.reset) && h('li', {}, h('i', { class: 'pgrr-sw pgrr-sw-reset' }), 'Counter reset detected'));
-  els.chartBox.replaceChildren(h('code', { class: 'pgrr-chart-title' }, res.query), g, legend);
+    series.points.some((p) => p.reset) && h('li', {}, h('i', { class: 'pgrr-sw pgrr-sw-reset' }), 'counter reset detected'));
+  els.chartBox.replaceChildren(h('p', { class: 'pgrr-comment pgrr-chart-title' }, res.query), g, legend);
 }
 
 // ---- run ----------------------------------------------------------------
 
-function setStatus(text, busy = false) {
-  els.status.textContent = text;
-  els.status.classList.toggle('pgrr-busy', busy);
+const BAR_CELLS = 24;
+const barText = (done, total) => {
+  const filled = Math.round((done / total) * BAR_CELLS);
+  return `${'█'.repeat(filled)}${'░'.repeat(BAR_CELLS - filled)} ${done}/${total}`;
+};
+
+const SPIN = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+let spinTimer;
+function spin(on) {
+  clearInterval(spinTimer);
+  if (!on) return;
+  const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  let i = 0;
+  els.bar.textContent = still ? '…' : SPIN[0];
+  if (!still) spinTimer = setInterval(() => { els.bar.textContent = SPIN[(i = (i + 1) % SPIN.length)]; }, 90);
+}
+
+function setStatus(text) {
+  els.status.textContent = text ? `> ${text}` : '';
 }
 
 async function run() {
@@ -288,16 +363,22 @@ async function run() {
   state.running = true;
   els.run.disabled = true;
   els.bar.hidden = false;
-  els.bar.removeAttribute('value'); // indeterminate while loading
+  els.bar.removeAttribute('aria-valuenow');
+  els.bar.removeAttribute('aria-valuemax');
   try {
-    setStatus('Loading PostgreSQL and the detection engine (first run only)…', true);
+    setStatus('Loading PostgreSQL and the detection engine (first run only)…');
+    spin(true);
     const [pg] = await Promise.all([loadPostgres(), loadEngine()]);
+    spin(false);
 
+    let lastPhase = '';
     const request = await simulate(pg, { ...state.params }, ({ done, total, phase }) => {
-      els.bar.max = total; els.bar.value = done;
-      setStatus(`${phase}: scrape ${done} of ${total}`, true);
+      els.bar.setAttribute('aria-valuemax', String(total));
+      els.bar.setAttribute('aria-valuenow', String(done));
+      els.bar.textContent = barText(done, total);
+      if (phase !== lastPhase) { lastPhase = phase; setStatus(phase); }
     });
-    setStatus('Analysing with the correlation engine…', true);
+    setStatus('Analysing with the correlation engine…');
     const response = JSON.parse(globalThis.pgrrAnalyse(JSON.stringify(request)));
     state.result = { request, response };
     state.selected = (response.results?.find((x) => x.status === 'Detected') ?? response.results?.[0])?.queryid ?? null;
@@ -306,6 +387,7 @@ async function run() {
     setStatus(expected ? `Done. This scenario is expected to report ${expected}.` : 'Done.');
   } catch (err) {
     console.error(err);
+    spin(false);
     setStatus(`Something went wrong: ${err.message || err}`);
   } finally {
     state.running = false;
@@ -317,7 +399,7 @@ async function run() {
 function init() {
   if (!ROOT) return;
   ROOT.replaceChildren();
-  els.form = h('div');
+  els.form = h('div', { class: 'pgrr-form' });
   els.results = h('div', { class: 'pgrr-results', 'aria-live': 'polite' });
   ROOT.append(els.form, els.results);
   renderForm();
