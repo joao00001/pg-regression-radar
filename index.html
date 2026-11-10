@@ -1696,11 +1696,24 @@
 </div>
 </section>
 <h2 id="the-problem">The problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h2>
-<p>Teams running Postgres on Kubernetes (CloudNativePG, Zalando, Crunchy, Percona...) deploy applications many times a day via GitOps (ArgoCD, Flux, Argo Rollouts). When query latency spikes, the first question in every post-mortem is:</p>
-<p class="pgrr-question">Which deploy caused this?</p>
-<p>Today that question is answered manually: open Grafana, look at <code>pg_stat_statements</code>, try to recall when the last deploy happened, cross-reference timestamps by eye. No open-source tool closes that loop automatically.</p>
-<p><strong>pg-regression-radar does.</strong></p>
-<h2 id="regression-capture">Regression capture<a class="headerlink" href="#regression-capture" title="Permanent link">&para;</a></h2>
+<div class="pgrr-problem">
+<div class="pgrr-problem-lead">
+<p class="pgrr-problem-ctx">Teams running Postgres on Kubernetes (CloudNativePG, Zalando, Crunchy, Percona...) deploy applications many times a day via GitOps (ArgoCD, Flux, Argo Rollouts). When query latency spikes, the first question in every post-mortem is:</p>
+<p class="pgrr-question">Which <em>deploy</em> caused this?</p>
+</div>
+<div class="pgrr-problem-today">
+<p class="pgrr-problem-label">Answered by hand, today</p>
+<ul class="pgrr-manual">
+<li>Open Grafana</li>
+<li>Look at <code>pg_stat_statements</code></li>
+<li>Try to recall when the last deploy happened</li>
+<li>Cross-reference timestamps by eye</li>
+</ul>
+<p class="pgrr-problem-note">No open-source tool closes that loop automatically.</p>
+<p class="pgrr-problem-answer"><strong>pg-regression-radar does.</strong></p>
+</div>
+</div>
+<h2 class="pgrr-title" id="regression-capture"><span class="pgrr-kick">Live detection</span>Watch a regression <em>get caught</em><span class="pgrr-sub">A deploy lands, latency steps up, and the change point is attributed to it.</span><a class="headerlink" href="#regression-capture" title="Permanent link">&para;</a></h2>
 <div class="pgrr-radar">
 <div class="pgrr-radar-bar">
 <span class="pgrr-radar-status" aria-hidden="true">Watching 4 queries</span>
@@ -1713,7 +1726,7 @@
 <p class="pgrr-radar-note">Simulated data. Hover the chart to pause and inspect it, or inject a deploy.</p>
 <p class="pgrr-radar-live" role="status"></p>
 </div>
-<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<h2 class="pgrr-title" id="how-it-works"><span class="pgrr-kick">Architecture</span>From scrape to <em>alert</em><span class="pgrr-sub">Four components turn pg_stat_statements and deploy webhooks into a single answer.</span><a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <div class="pgrr-diagram">
 <svg viewBox="0 0 1280 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pgrr-arch-title pgrr-arch-desc">
 <title id="pgrr-arch-title">pg-regression-radar architecture</title>
