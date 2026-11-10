@@ -137,7 +137,6 @@
 }
 
 .md-tabs__link {
-  margin-top: 0.45rem;
   color: var(--md-default-fg-color--light);
   font-size: 0.72rem;
   font-weight: 500;
@@ -151,12 +150,26 @@
   color: var(--md-default-fg-color);
 }
 
-.md-tabs__item--active {
-  box-shadow: inset 0 -1.5px 0 var(--pgrr-accent);
+/* the current tab is a pill, not an underline */
+.md-tabs__item {
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+}
+
+.md-tabs__link {
+  margin-top: 0.32rem;
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  transition: color 0.15s, background-color 0.2s;
 }
 
 .md-tabs__item--active .md-tabs__link {
   color: var(--md-default-fg-color);
+  background: color-mix(in srgb, var(--md-default-fg-color) 9%, transparent);
+}
+
+.md-tabs__link:hover:not(:where(.md-tabs__item--active *)) {
+  background: color-mix(in srgb, var(--md-default-fg-color) 5%, transparent);
 }
 
 /* The tab row is 0.5rem thinner than Material assumes (2.4rem), so the
@@ -1543,7 +1556,7 @@
    The page's own name in the header, and its tab in the menu on every page
    (docs/javascripts/theme-toggle.js), are set letter by letter in math symbols
    (Our math -> ουг mατℏ). The real words stay for screen readers and as the
-   link's title, and show while the link is hovered or focused. The font is the
+   link's title. The font is the
    unversioned site's copy, by absolute URL so the versioned docs reach it too;
    without it the stack falls back to any installed math font. */
 @font-face {
