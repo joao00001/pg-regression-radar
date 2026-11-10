@@ -122,6 +122,133 @@
     }
   }
 
+  // ---- live data above each card ---------------------------------------------------
+  // Real field names from the docs (pg_stat_statements row, DeployEvent,
+  // PerformanceRegression); the values are made up and change on every loop.
+  var APPS = [["checkout-api", "v42"], ["billing", "v118"], ["search-svc", "v9"], ["orders", "v57"]];
+  var QUERIES = [["8675309", 4.2], ["2241907", 2.8], ["5530418", 6.1], ["9017734", 3.4]];
+  var scenario = null;
+
+  function rnd(a, b) { return a + Math.random() * (b - a); }
+  function pick(list, last) {
+    var x;
+    do { x = list[Math.floor(Math.random() * list.length)]; } while (x === last && list.length > 1);
+    return x;
+  }
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function clock(base, plus) {
+    var d = new Date(base + plus * 1000);
+    return pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()) + ":" + pad(d.getUTCSeconds()) + "Z";
+  }
+  function commas(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+
+  var lastApp = null, lastQuery = null;
+  function newScenario() {
+    var app = lastApp = pick(APPS, lastApp);
+    var q = lastQuery = pick(QUERIES, lastQuery);
+    var before = q[1] * rnd(0.85, 1.2);
+    var factor = +rnd(2.4, 5.2).toFixed(2);
+    var after = before * factor;
+    var pv = +rnd(0.0008, 0.012).toFixed(4);
+    var now = Date.now();
+    var rev = Math.floor(rnd(0x1000000, 0xfffffff)).toString(16);
+    scenario = {
+      app: app[0], tag: app[1], qid: q[0], before: before.toFixed(1), after: after.toFixed(1), factor: factor.toFixed(2),
+      calls: commas(Math.floor(rnd(1800, 9400))), samples: Math.floor(rnd(8, 30)),
+      p: pv, conf: Math.min(0.99, 1 - pv).toFixed(2), rev: rev.slice(0, 7),
+      src: pick(["argocd", "rollouts", "flux"]), deployAt: clock(now, -150), changeAt: clock(now, -150 + Math.floor(rnd(50, 110)))
+    };
+  }
+
+  // each entry: [label, value, accent?] pairs per line
+  function lines(n, c) {
+    switch (n) {
+      case 0: return [[["queryid ", c.qid]], [["calls ", c.calls], [" · mean ", c.before + " ms"]]];
+      case 1: return [[[c.src + " · ", c.app]], [["rev ", c.rev], [" · ", c.tag]]];
+      case 2: return [[["scrape ", "every 60s"]], [[c.samples + " samples · mean ", c.before + " ms"]]];
+      case 3: return [[["DeployEvent ", c.deployAt]], [["production · ", "prod-cluster"]]];
+      case 4: return [[["every ", "15m"]], [["window ", "60m"], [" · ", "no deploy"]]];
+      case 5: return [[["change point ", c.changeAt]], [["p = ", c.p.toFixed(4)], [" · confidence ", c.conf, 1]]];
+      case 6: return [[[c.before + " → ", c.after + " ms", 1]], [["× ", c.factor, 1], [" · confidence ", c.conf]]];
+      case 7: return [[["status ", "Detected", 1]], [["plan ", "Index Scan → Seq Scan"]]];
+    }
+  }
+
+  // x (centre, or right edge for the schedule), first line y, anchor
+  var SPOT = {
+    0: [135, 56], 1: [135, 236], 2: [475, 56], 3: [475, 236],
+    4: [662, 27, "end"], 5: [810, 328], 6: [1145, 56], 7: [1145, 236]
+  };
+
+  var dataEls = {};
+  function buildData() {
+    var tail = svg.lastElementChild;
+    for (var n in SPOT) {
+      var g = document.createElementNS(NS, "g");
+      g.setAttribute("class", "pgrr-data");
+      g.setAttribute("aria-hidden", "true");
+      for (var l = 0; l < 2; l++) {
+        var t = document.createElementNS(NS, "text");
+        t.setAttribute("class", "pgrr-d pgrr-d" + l + (SPOT[n][2] ? " pgrr-d--end" : ""));
+        t.setAttribute("x", SPOT[n][0]);
+        t.setAttribute("y", SPOT[n][1] + l * 19);
+        g.appendChild(t);
+      }
+      svg.appendChild(g);
+      dataEls[n] = g;
+    }
+  }
+
+  function fill(g, n) {
+    var ls = lines(+n, scenario);
+    for (var l = 0; l < 2; l++) {
+      var t = g.childNodes[l];
+      while (t.firstChild) t.removeChild(t.firstChild);
+      ls[l].forEach(function (part) {
+        var a = document.createElementNS(NS, "tspan");
+        a.textContent = part[0];
+        t.appendChild(a);
+        var v = document.createElementNS(NS, "tspan");
+        v.setAttribute("class", "pgrr-dv" + (part[2] ? " pgrr-dv--a" : ""));
+        v.textContent = part[1];
+        t.appendChild(v);
+      });
+    }
+  }
+
+  function dataIn(n) {
+    var g = dataEls[n];
+    if (!g || !scenario) return;
+    fill(g, n);
+    g.style.transition = "none";
+    g.setAttribute("class", "pgrr-data");
+    void g.getBoundingClientRect();
+    g.style.transition = "";
+    g.setAttribute("class", "pgrr-data is-on");
+  }
+  function dataOut(n) {
+    var g = dataEls[n];
+    if (g) g.setAttribute("class", "pgrr-data is-out");
+  }
+  function dataClear() {
+    for (var n in dataEls) dataEls[n].setAttribute("class", "pgrr-data");
+  }
+
+  // [time, node, "in" | "out"]: data shows as the light leaves/arrives, holds, then lifts away
+  var dataMain = [
+    [0.05, 0, "in"], [0.05, 1, "in"], [1.75, 0, "out"], [1.75, 1, "out"],
+    [0.9, 2, "in"], [0.9, 3, "in"], [2.9, 2, "out"], [2.9, 3, "out"],
+    [2.0, 5, "in"], [4.5, 5, "out"],
+    [3.35, 6, "in"], [3.35, 7, "in"], [5.6, 6, "out"], [5.6, 7, "out"]
+  ];
+  var dataAlt = [
+    [0.1, 4, "in"], [2.6, 4, "out"],
+    [2.0, 5, "in"], [4.5, 5, "out"],
+    [3.35, 6, "in"], [3.35, 7, "in"], [5.6, 6, "out"], [5.6, 7, "out"]
+  ];
+
+  buildData();
+
   var running = false, visible = true, t0 = 0, prevT = -1, prevCycle = 0;
 
   function frame(ts) {
@@ -132,6 +259,7 @@
     var t = el - cycle * CYCLE;
     var odd = cycle % 2 === 1;
     var steps = odd ? alt : main;
+    if (prevT < 0 || cycle !== prevCycle) newScenario();
 
     for (var q = 0; q < beams.length; q++) place(beams[q], 0);
     for (var s = 0; s < steps.length; s++) {
@@ -148,6 +276,12 @@
       var crossed = cycle === prevCycle ? (prevT < at && t >= at) : (at <= t);
       if (crossed) hits[h][1].forEach(function (n) { hit(n, hits[h][2]); });
     }
+    var ev = odd ? dataAlt : dataMain;
+    for (var d = 0; d < ev.length; d++) {
+      var dt = ev[d][0];
+      var due = cycle === prevCycle && prevT >= 0 ? (prevT < dt && t >= dt) : (dt <= t);
+      if (due) { if (ev[d][2] === "in") dataIn(ev[d][1]); else dataOut(ev[d][1]); }
+    }
     prevT = t; prevCycle = cycle;
     requestAnimationFrame(frame);
   }
@@ -161,6 +295,7 @@
   function stop() {
     running = false;
     for (var q = 0; q < beams.length; q++) place(beams[q], 0);
+    dataClear();
   }
 
   if ("IntersectionObserver" in window) {
