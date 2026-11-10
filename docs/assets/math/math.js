@@ -853,7 +853,7 @@
     requestAnimationFrame(tick);
   }
 
-  // The page's name and its own menu tab in the header are written with math symbols,
+  // The page's name in the header is written with math symbols,
   // letter by letter (Our math -> ουг mατℏ). The real words stay for screen
   // readers and as the link's title, and they come back, scrambling in, while
   // the pointer or the keyboard focus is on a link.
@@ -899,13 +899,6 @@
     if (tops.length > 1) {
       var span = tops[tops.length - 1];
       convert(span, span.textContent.trim(), null);
-    }
-    var links = document.querySelectorAll(".md-tabs__link");
-    for (var i = 0; i < links.length; i++) {
-      var a = links[i], plain = a.textContent.trim();
-      if (!plain || !(/our-math\/?$/.test(a.getAttribute("href") || "") || (a.parentNode && /--active/.test(a.parentNode.className)))) continue;
-      a.setAttribute("title", plain);
-      convert(a, plain, a);
     }
   })();
 

@@ -1538,3 +1538,37 @@
   position: relative;
   top: var(--pgrr-name-drop, -0.04rem);
 }
+
+/* ---- "Our math", written with math symbols ----
+   The page's own name in the header, and its tab in the menu on every page
+   (docs/javascripts/theme-toggle.js), are set letter by letter in math symbols
+   (Our math -> ουг mατℏ). The real words stay for screen readers and as the
+   link's title, and show while the link is hovered or focused. The font is the
+   unversioned site's copy, by absolute URL so the versioned docs reach it too;
+   without it the stack falls back to any installed math font. */
+@font-face {
+  font-family: "PGRR Math";
+  src: url("https://joao00001.github.io/pg-regression-radar/assets/math/fonts/noto-sans-math.woff2") format("woff2");
+  font-display: swap;
+}
+
+.pgrr-sym {
+  font-family: "PGRR Math", "STIX Two Math", "Cambria Math", "Apple Symbols", serif;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: none;
+}
+
+.md-tabs__link .pgrr-sym {
+  font-size: 0.75rem;
+  letter-spacing: 0;
+}
+
+.pgrr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
