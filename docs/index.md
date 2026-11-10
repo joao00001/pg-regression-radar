@@ -8,6 +8,8 @@ hide:
 <section class="pgrr-hero" markdown="1">
 <div markdown="1">
 
+<span class="pgrr-kicker">PostgreSQL on Kubernetes</span>
+
 # pg-regression-radar
 
 <p class="pgrr-lead">Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.</p>
@@ -16,28 +18,15 @@ hide:
 [How it works](#how-it-works){ .md-button }
 
 </div>
-<div class="pgrr-hero-code" markdown="1">
-
-```json title="PerformanceRegression"
-{
-  "name": "argocd-my-app-1234567890-q8675309",
-  "namespace": "production",
-  "deployEventId": "argocd-my-app-1234567890",
-  "queryId": 8675309,
-  "queryText": "SELECT * FROM orders WHERE user_id = $1",
-  "status": "Detected",
-  "confidenceScore": 0.98,
-  "meanLatencyBefore": 4.2,
-  "meanLatencyAfter": 13.7,
-  "latencyChangeFactor": 3.26,
-  "externalCauseSuspected": false,
-  "planDiffSummary": "root node changed from Index Scan to Seq Scan",
-  "createdAt": "2026-08-11T12:35:00Z"
-}
-```
-
-<p class="pgrr-hero-cap" markdown="1">What a detection looks like. See the [API reference](api-reference.md#performanceregression).</p>
-
+<div class="pgrr-alert" aria-label="Example alert">
+<div class="pgrr-alert-head"><span>Example alert</span><span class="pgrr-pill">Regression</span></div>
+<div class="pgrr-alert-body">
+<div class="pgrr-row"><span>Query</span><code>SELECT * FROM orders WHERE customer_id = $1</code></div>
+<div class="pgrr-row"><span>Latency</span><span><s>4.1 ms</s> &rarr; <b>38.6 ms</b><span class="pgrr-factor">&times;9.4</span></span></div>
+<div class="pgrr-row"><span>Deploy</span><code>checkout-api &middot; revision=v2</code></div>
+<div class="pgrr-row"><span>Confidence</span><span><b>0.97</b><span class="pgrr-meter"><i style="width: 97%"></i></span></span></div>
+</div>
+<p class="pgrr-alert-note">Illustrative values.</p>
 </div>
 </section>
 
@@ -50,21 +39,6 @@ Teams running Postgres on Kubernetes (CloudNativePG, Zalando, Crunchy, Percona..
 Today that question is answered manually: open Grafana, look at `pg_stat_statements`, try to recall when the last deploy happened, cross-reference timestamps by eye. No open-source tool closes that loop automatically.
 
 **pg-regression-radar does.**
-
-## Regression capture
-
-<div class="pgrr-radar">
-<div class="pgrr-radar-bar">
-<span class="pgrr-radar-status" aria-hidden="true">Live · 4 queries</span>
-<button type="button" class="pgrr-radar-inject">Inject deploy</button>
-</div>
-<div class="pgrr-radar-stage">
-<canvas class="pgrr-radar-canvas" role="img" aria-label="Animated chart of query latency on a log scale. Deploys appear as dashed markers; after one, a query steps up and is flagged as a regression."></canvas>
-<div class="pgrr-radar-tip" hidden></div>
-</div>
-<p class="pgrr-radar-note">Simulated data. Hover the chart to pause and inspect it, or inject a deploy.</p>
-<p class="pgrr-radar-live" role="status"></p>
-</div>
 
 ## How it works
 
