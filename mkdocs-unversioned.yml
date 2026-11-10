@@ -32,7 +32,7 @@ extra:
   pgrr_build: unversioned
   version: !!null ~
 
-# roadmap.css / roadmap.js style the roadmap's card layout; they are only wired
+# roadmap.css / roadmap.js style the roadmap's ruled-grid layout; they are only wired
 # into this build because the versioned docs have no roadmap page.
 extra_css:
   - stylesheets/extra.css
