@@ -199,21 +199,76 @@
     }
   }
 
+  // ---- text effect: letters scramble through glyphs and resolve left to right ----------
+  var GLYPHS = "abcdef0123456789$&=>%#@*+-|:<~";
+  var NB = " ";
+  var SCR_IN = 220, SCR_OUT = 150;
+
+  function glyph(i, k, now) {
+    var h = Math.sin((i + 1) * 12.9898 + k * 78.233 + Math.floor(now / 52) * 37.719) * 43758.5453;
+    return GLYPHS.charAt(Math.floor((h - Math.floor(h)) * GLYPHS.length));
+  }
+  function rand01(i, k) {
+    var h = Math.sin((i + 1) * 91.345 + k * 17.17) * 43758.5453;
+    return h - Math.floor(h);
+  }
+
+  // build the tspans for a node's two lines and the per-character timing
   function fill(g, n) {
     var ls = lines(+n, scenario);
+    g._chars = [];
+    g._segs = [];
     for (var l = 0; l < 2; l++) {
       var t = g.childNodes[l];
       while (t.firstChild) t.removeChild(t.firstChild);
+      var idx = 0;
       ls[l].forEach(function (part) {
-        var a = document.createElementNS(NS, "tspan");
-        a.textContent = part[0];
-        t.appendChild(a);
-        var v = document.createElementNS(NS, "tspan");
-        v.setAttribute("class", "pgrr-dv" + (part[2] ? " pgrr-dv--a" : ""));
-        v.textContent = part[1];
-        t.appendChild(v);
+        [[part[0], false], [part[1], !!part[2]]].forEach(function (seg, k) {
+          var el = document.createElementNS(NS, "tspan");
+          if (k) el.setAttribute("class", "pgrr-dv" + (seg[1] ? " pgrr-dv--a" : ""));
+          el.textContent = seg[0];
+          t.appendChild(el);
+          var si = g._segs.push({ el: el, text: seg[0] }) - 1;
+          for (var c = 0; c < seg[0].length; c++, idx++) {
+            g._chars.push({ seg: si, c: c, ch: seg[0].charAt(c), d: idx * 22 + rand01(idx, l) * 110 + l * 130, r: rand01(idx, l + 5), idx: idx + l * 40 });
+          }
+        });
       });
     }
+  }
+
+  function render(g, now) {
+    var a = g._anim;
+    if (!a) return;
+    var e = now - a.t0, done = true;
+    var out = g._segs.map(function () { return ""; });
+    for (var i = 0; i < g._chars.length; i++) {
+      var c = g._chars[i], ch = c.ch, show;
+      if (ch === " ") { out[c.seg] += NB; if (a.mode === "in" ? e < c.d : false) done = false; continue; }
+      if (a.mode === "in") {
+        var te = e - c.d, dur = SCR_IN + c.r * 160;
+        if (te < 0) { show = NB; done = false; }
+        else if (te < dur) { show = glyph(c.idx, c.r, now); done = false; }
+        else show = ch;
+      } else {
+        var oe = e - c.d * 0.55, od = SCR_OUT + c.r * 120;
+        if (oe < 0) { show = ch; done = false; }
+        else if (oe < od) { show = glyph(c.idx, c.r, now); done = false; }
+        else show = NB;
+      }
+      out[c.seg] += show;
+    }
+    for (var k = 0; k < g._segs.length; k++) {
+      if (g._segs[k].shown !== out[k]) { g._segs[k].el.textContent = out[k]; g._segs[k].shown = out[k]; }
+    }
+    if (done) {
+      if (a.mode === "in") for (var m = 0; m < g._segs.length; m++) g._segs[m].el.textContent = g._segs[m].text;
+      g._anim = null;
+    }
+  }
+
+  function tickData(now) {
+    for (var n in dataEls) if (dataEls[n]._anim) render(dataEls[n], now);
   }
 
   function dataIn(n) {
@@ -225,26 +280,30 @@
     void g.getBoundingClientRect();
     g.style.transition = "";
     g.setAttribute("class", "pgrr-data is-on");
+    g._anim = { mode: "in", t0: performance.now() };
+    render(g, g._anim.t0);
   }
   function dataOut(n) {
     var g = dataEls[n];
-    if (g) g.setAttribute("class", "pgrr-data is-out");
+    if (!g || !g._chars) return;
+    g.setAttribute("class", "pgrr-data is-out");
+    g._anim = { mode: "out", t0: performance.now() };
   }
   function dataClear() {
-    for (var n in dataEls) dataEls[n].setAttribute("class", "pgrr-data");
+    for (var n in dataEls) { dataEls[n]._anim = null; dataEls[n].setAttribute("class", "pgrr-data"); }
   }
 
   // [time, node, "in" | "out"]: data shows as the light leaves/arrives, holds, then lifts away
   var dataMain = [
-    [0.05, 0, "in"], [0.05, 1, "in"], [1.75, 0, "out"], [1.75, 1, "out"],
-    [0.9, 2, "in"], [0.9, 3, "in"], [2.9, 2, "out"], [2.9, 3, "out"],
-    [2.0, 5, "in"], [4.5, 5, "out"],
-    [3.35, 6, "in"], [3.35, 7, "in"], [5.6, 6, "out"], [5.6, 7, "out"]
+    [0.05, 0, "in"], [0.05, 1, "in"], [2.1, 0, "out"], [2.1, 1, "out"],
+    [0.9, 2, "in"], [0.9, 3, "in"], [3.3, 2, "out"], [3.3, 3, "out"],
+    [2.0, 5, "in"], [5.0, 5, "out"],
+    [3.35, 6, "in"], [3.35, 7, "in"], [6.0, 6, "out"], [6.0, 7, "out"]
   ];
   var dataAlt = [
-    [0.1, 4, "in"], [2.6, 4, "out"],
-    [2.0, 5, "in"], [4.5, 5, "out"],
-    [3.35, 6, "in"], [3.35, 7, "in"], [5.6, 6, "out"], [5.6, 7, "out"]
+    [0.1, 4, "in"], [2.9, 4, "out"],
+    [2.0, 5, "in"], [5.0, 5, "out"],
+    [3.35, 6, "in"], [3.35, 7, "in"], [6.0, 6, "out"], [6.0, 7, "out"]
   ];
 
   buildData();
@@ -276,6 +335,7 @@
       var crossed = cycle === prevCycle ? (prevT < at && t >= at) : (at <= t);
       if (crossed) hits[h][1].forEach(function (n) { hit(n, hits[h][2]); });
     }
+    tickData(performance.now());
     var ev = odd ? dataAlt : dataMain;
     for (var d = 0; d < ev.length; d++) {
       var dt = ev[d][0];
