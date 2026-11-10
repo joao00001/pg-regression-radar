@@ -13,7 +13,8 @@ hide:
 
 <p class="pgrr-lead">Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.</p>
 
-[Get started](playground.md){ .md-button .md-button--primary }
+[Try it in your browser](playground.md){ .md-button .md-button--primary }
+[Install](installation.md){ .md-button }
 [How it works](#how-it-works){ .md-button }
 
 </div>
@@ -62,7 +63,7 @@ hide:
 <li>Try to recall when the last deploy happened</li>
 <li>Cross-reference timestamps by eye</li>
 </ul>
-<p class="pgrr-problem-note">No open-source tool closes that loop automatically.</p>
+<p class="pgrr-problem-note">Few tools connect those dots for you.</p>
 <p class="pgrr-problem-answer"><strong>pg-regression-radar does.</strong></p>
 </div>
 
