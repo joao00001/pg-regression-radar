@@ -130,109 +130,6 @@
 }
 
 /* The example alert: the code-block card, with a message inside. */
-.pgrr-home .pgrr-alert {
-  padding: 2px;
-  border: 1px solid var(--h-border);
-  border-radius: 16px;
-  background: var(--h-card);
-  box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.55);
-}
-
-.pgrr-home .pgrr-alert-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  height: 34px;
-  padding: 0 12px 0 14px;
-  color: var(--h-muted);
-  font-size: 0.62rem;
-}
-
-.pgrr-home .pgrr-pill {
-  padding: 1px 9px;
-  border: 1px solid var(--h-bad-border);
-  border-radius: 999px;
-  background: var(--h-bad-bg);
-  color: var(--h-bad);
-  font-size: 0.58rem;
-  font-weight: 650;
-}
-
-.pgrr-home .pgrr-alert-body {
-  display: grid;
-  gap: 11px;
-  padding: 14px 16px 15px;
-  border-radius: 14px;
-  background: var(--h-panel);
-}
-
-.pgrr-home .pgrr-row {
-  display: grid;
-  grid-template-columns: 5.2em 1fr;
-  gap: 10px;
-  align-items: baseline;
-  font-size: 0.64rem;
-  line-height: 1.4;
-}
-
-.pgrr-home .pgrr-row > span:first-child {
-  color: var(--h-muted);
-}
-
-.pgrr-home .pgrr-row code {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--h-fg);
-  font-size: 0.62rem;
-  word-break: break-word;
-}
-
-.pgrr-home .pgrr-row b {
-  color: var(--h-fg);
-  font-weight: 650;
-}
-
-.pgrr-home .pgrr-row s {
-  color: var(--h-muted);
-  text-decoration: none;
-}
-
-.pgrr-home .pgrr-factor {
-  margin-left: 6px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--h-bad-bg);
-  color: var(--h-bad);
-  font-size: 0.58rem;
-  font-weight: 650;
-}
-
-.pgrr-home .pgrr-meter {
-  display: inline-block;
-  vertical-align: middle;
-  width: 76px;
-  height: 6px;
-  margin-left: 8px;
-  border-radius: 999px;
-  background: var(--h-chip);
-  overflow: hidden;
-}
-
-.pgrr-home .pgrr-meter i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--h-accent-solid);
-}
-
-.pgrr-home .pgrr-alert-note {
-  margin: 0;
-  padding: 7px 14px 8px;
-  color: var(--h-muted);
-  font-size: 0.56rem;
-}
 
 /* ---- Section headings ---- */
 .pgrr-home h2 {
@@ -545,32 +442,6 @@
   padding: 40px var(--h-pad) 34px;
 }
 
-.pgrr-home .pgrr-hero .pgrr-alert {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 28px var(--h-pad);
-  border: 0;
-  border-left: 1px solid var(--h-border);
-  border-radius: 0;
-  background: var(--h-card);
-  box-shadow: none;
-}
-
-.pgrr-home .pgrr-alert-head {
-  padding: 0 0 10px;
-  height: auto;
-}
-
-.pgrr-home .pgrr-alert-body {
-  border: 1px solid var(--h-border);
-  border-radius: 10px;
-}
-
-.pgrr-home .pgrr-alert-note {
-  padding: 8px 0 0;
-}
-
 .pgrr-home .pgrr-hero .md-button {
   border-radius: 8px;
 }
@@ -580,7 +451,7 @@
     padding: 28px var(--h-pad) 24px;
   }
 
-  .pgrr-home .pgrr-hero .pgrr-alert {
+  .pgrr-home .pgrr-hero .pgrr-hero-code {
     border-left: 0;
     border-top: 1px solid var(--h-border);
   }
@@ -1177,4 +1048,65 @@
     linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
     radial-gradient(60% 80% at 100% 100%, var(--h-glow), transparent 70%),
     var(--h-hero-bg);
+}
+
+/* ----------------------------------------------------------------------
+ * Hero code cell
+ *
+ * The right half of the hero shows a real code block from the API reference
+ * (a PerformanceRegression), in the site's normal code-block card: title bar,
+ * copy button, syntax colors.
+ * -------------------------------------------------------------------- */
+.pgrr-home .pgrr-hero .pgrr-hero-code {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 26px 22px 22px;
+  border-left: 1px solid var(--h-border);
+  background: var(--h-card);
+}
+
+.pgrr-home .pgrr-hero-code .highlight,
+.pgrr-home .pgrr-hero-code pre {
+  margin: 0;
+}
+
+.pgrr-home .pgrr-hero-code .highlight code,
+.pgrr-home .pgrr-hero-code pre code {
+  font-size: 0.5rem;
+  line-height: 1.7;
+}
+
+.pgrr-home .pgrr-hero-cap {
+  margin: 12px 0 0;
+  color: var(--h-muted);
+  font-size: 0.58rem;
+}
+
+.pgrr-home .pgrr-hero-cap a {
+  color: var(--h-accent);
+}
+
+/* Two columns (a little more room for the code than for the text) from 62em;
+   below that the title cell sits over the code cell. */
+@media (min-width: 62em) {
+  .pgrr-home .pgrr-hero {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  .pgrr-home .pgrr-hero h1 {
+    font-size: 1.95rem;
+  }
+}
+
+@media (max-width: 61.9375em) {
+  .pgrr-home .pgrr-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pgrr-home .pgrr-hero .pgrr-hero-code {
+    border-left: 0;
+    border-top: 1px solid var(--h-border);
+  }
 }
