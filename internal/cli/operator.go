@@ -102,6 +102,8 @@ func runOperator(args []string, logOutput io.Writer) int {
 	minExecutions := fs.Int64("min-executions", correlation.DefaultMinExecutions, "Minimum query executions, summed over the observations, per window; not applied to sample sources that report no call counts")
 	latencyThreshold := fs.Float64("latency-threshold", 0.20, "Minimum relative latency increase to flag")
 	changePointTolerance := fs.Duration("changepoint-tolerance", 0, "Max distance between the E-divisive change point and the deploy timestamp still attributed to that deploy (0 = auto: 20% of window, floor 2m)")
+	multipleTesting := fs.String("multiple-testing", "none", "Control the false-discovery rate across the queries of one analysis pass: none (default, each query judged on its own p-value), bh (Benjamini-Hochberg) or by (Benjamini-Yekutieli, valid under any dependence, stricter) — see docs/detection-algorithm.md#controlling-false-positives-across-many-queries")
+	adjustAutocorrelation := fs.Bool("adjust-autocorrelation", false, "Widen Welch's t-test for serial correlation between consecutive scrapes (effective sample size, Zwiers and von Storch 1995), so correlated noise is not mistaken for a regression — see docs/detection-algorithm.md#controlling-false-positives-across-many-queries")
 	maxQueryTextLen := fs.Int("max-query-text-len", 200, "Max query text length (characters) stored per sample before truncation for alerting/fingerprinting")
 	retentionMinutes := fs.Int("retention-minutes", 180, "How long (minutes) the collector retains in-memory query samples before pruning them; should stay well above 2x --window-minutes")
 	capturePlans := fs.Bool("capture-plans", false, "Capture periodic EXPLAIN (GENERIC_PLAN) plan snapshots for tracked queries and attach a plan-diff summary to detected regressions; requires PostgreSQL 16+ (no-op, logged once, on older servers) and adds one extra planner invocation per tracked query per scrape cycle — see docs/detection-algorithm.md")
@@ -146,6 +148,12 @@ func runOperator(args []string, logOutput io.Writer) int {
 	}
 	if *maxQueryTextLen <= 0 {
 		slog.Error("--max-query-text-len must be positive", "value", *maxQueryTextLen)
+		return 1
+	}
+
+	multipleTestingMode, err := correlation.ParseMultipleTesting(*multipleTesting)
+	if err != nil {
+		slog.Error("invalid --multiple-testing", "err", err)
 		return 1
 	}
 
@@ -303,6 +311,8 @@ func runOperator(args []string, logOutput io.Writer) int {
 		LatencyChangeThreshold: *latencyThreshold,
 		ChangePointTolerance:   *changePointTolerance,
 		PeriodicWindowMinutes:  *periodicWindowMinutes,
+		MultipleTesting:        multipleTestingMode,
+		AutocorrelationAdjust:  *adjustAutocorrelation,
 	}, col, logger)
 
 	// ---- Alerting ----

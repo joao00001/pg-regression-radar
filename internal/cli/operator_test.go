@@ -192,3 +192,25 @@ func TestRunOperator_ValidSecurityProfileHardened(t *testing.T) {
 		t.Errorf("RunOperator(--security-profile=hardened) rejected the flag (exit 2)")
 	}
 }
+
+func TestRunOperator_RejectsUnknownMultipleTestingMode(t *testing.T) {
+	t.Parallel()
+	// The mode is validated before anything is dialed, so an unreachable DSN
+	// is enough: a bad value must fail with 1 on its own.
+	if got := cli.RunOperator([]string{"--dsn", unreachableDSN, "--multiple-testing", "bonferroni"}); got != 1 {
+		t.Errorf("RunOperator(--multiple-testing=bonferroni) = %d, want 1", got)
+	}
+}
+
+func TestRunOperator_AcceptsMultipleTestingModesAndAutocorrelationFlag(t *testing.T) {
+	t.Parallel()
+	// Accepted values get past flag parsing and mode validation and then stop
+	// at the unreachable Postgres in --dry-run, which is exit 1 for a different
+	// reason; an unknown flag or a bad mode would not reach it.
+	for _, mode := range []string{"none", "bh", "by", "BH"} {
+		args := []string{"--dsn", unreachableDSN, "--dry-run", "--multiple-testing", mode, "--adjust-autocorrelation"}
+		if got := cli.RunOperator(args); got != 1 {
+			t.Errorf("RunOperator(%v) = %d, want 1 (connectivity check fails)", args, got)
+		}
+	}
+}

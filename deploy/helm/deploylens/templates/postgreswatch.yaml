@@ -19,6 +19,8 @@ spec:
   minExecutions: {{ .Values.analysis.minExecutions }}
   latencyChangeThreshold: {{ .Values.analysis.latencyThreshold | quote }}
   pValueThreshold: {{ .Values.analysis.pValueThreshold | quote }}
+  multipleTesting: {{ .Values.analysis.multipleTesting | quote }}
+  adjustAutocorrelation: {{ .Values.analysis.adjustAutocorrelation }}
   slackWebhookUrl: {{ .Values.alerting.slackWebhookUrl | quote }}
   {{- if or .Values.alerting.format .Values.alerting.url .Values.alerting.pagerDutyRoutingKey .Values.alerting.customTemplate .Values.alerting.destinationPolicy }}
   alerting:

@@ -112,6 +112,11 @@ analysis:
   minExecutions: 100
   latencyThreshold: "0.20"
   pValueThreshold: "0.05"
+  # none | bh | by: control the false-discovery rate across the queries of one
+  # analysis pass (see docs/detection-algorithm.md). Off by default.
+  multipleTesting: "none"
+  # Widen Welch's t-test for correlation between consecutive scrapes.
+  adjustAutocorrelation: false
 
 # Deploy-independent ("periodic") regression detection: also analyses every
 # tracked query on its own rolling schedule, instead of only around

@@ -94,9 +94,46 @@ The two segments actually defined by the change point E-divisive found (not the 
   A `confidenceScore` of 0.98 therefore leaves at least a one-in-six chance that the shift is noise, under that prior, and usually more.
 - **It is optimistic, because the split was chosen from the same data.** Stage 1 picks the most extreme split and stage 2 tests it as if it had been fixed in advance. This is the known problem of maximally selected statistics, whose p-values need a correction that accounts for the search (Miller and Siegmund, 1982; Lausen and Schumacher, 1992; see the R [`maxstat`](https://cran.r-universe.dev/maxstat/doc/manual.html) package). E-divisive means itself judges significance with a permutation test over the whole search, not with a t-test at the chosen split. Measured with this project's own E-divisive and Welch code on series with no change at all (1,500 per row, 30 to 240 points): with independent noise, 35-39% had p < 0.05 and 11-17% had p < 0.01 at the split E-divisive chose; with first-order autocorrelation of 0.5 and 0.8, 60-90% and 85-99% had p < 0.05. Through the whole engine (120 samples per side, `--latency-threshold` 0.20, change-point tolerance, p threshold), the share of no-change analyses reported as `Detected` was 0-2% with independent noise but up to 8% with autocorrelated, heavy-tailed noise, and lowering the p threshold from 0.05 to 0.01 barely changed that (5.5-6%). Those false detections have tiny p-values, so they also clear `autoAbort.confidenceThreshold`. These are simulated series (AR(1) log-latency, 100 calls per interval), not production traces. See the [Roadmap](roadmap.md) for the calibration work.
 - **It says nothing about the cause.** The deploy is blamed because the change point falls close to it in time. A confident shift near a deploy can still come from load, a plan flip or a neighbour.
-- **It is per query.** Across hundreds of queries and many deploys, some will clear any threshold by chance; the p-value does not account for that.
+- **It is per query.** Across hundreds of queries and many deploys, some will clear any threshold by chance; the p-value does not account for that. [Controlling false positives across many queries](#controlling-false-positives-across-many-queries) describes the opt-in correction.
 
 In practice: treat `pValue` as the number to read, `confidenceScore` as a threshold knob (`autoAbort.confidenceThreshold: "0.99"` means `pValue <= 0.01`), and the change factor and `detectedChangeAt` as the evidence a person should look at. `pValue` is absent, not zero, when the test did not run, for example for an `InsufficientData` result.
+
+## Controlling false positives across many queries
+
+One pass judges every tracked query, up to the top 500 that `pg_stat_statements` keeps, and periodic detection repeats that on every tick. Each query is tested against `pValueThreshold` on its own, so the chance that some unchanged query is reported grows with the number of queries. Two opt-in settings address the two ways the per-query p-value goes wrong at that scale. Both are off by default, and with both off every p-value and verdict is exactly what it was before they existed.
+
+| Setting | Flag / `PostgresWatch` field | What it does |
+|---|---|---|
+| Multiple-testing control | `--multiple-testing` / `multipleTesting`: `none` (default), `bh`, `by` | Applies the Benjamini-Hochberg (`bh`) or Benjamini-Yekutieli (`by`) step-up across the queries of one pass, at level `pValueThreshold`, and demotes the detections that do not survive to `NoRegression`. |
+| Autocorrelation adjustment | `--adjust-autocorrelation` / `adjustAutocorrelation` | Widens Welch's t-test for correlation between consecutive scrapes. |
+
+### Multiple-testing control
+
+The step-up procedures bound the expected *share* of false detections among the queries a pass reports (the false-discovery rate), not the chance of any false detection, which is what a Bonferroni correction would bound and is far stricter. `bh` ([Benjamini and Hochberg, 1995](https://doi.org/10.1111/j.2517-6161.1995.tb02031.x)) is valid when the p-values are independent or positively dependent, which is the usual situation for queries that share one server's load ([Benjamini and Yekutieli, 2001](https://doi.org/10.1214/aos/1013699998)). `by` divides the level by the harmonic sum `1 + 1/2 + ... + 1/m`, which makes it valid under any dependence and costs a factor of about seven at 500 queries.
+
+The family is every query the pass could judge, meaning every result that is not `InsufficientData`. A query that failed a gate (too small a change, no change point, a change point far from the deploy) counts toward `m` as a test that did not reject. Only queries already marked `Detected` can be rejected, so the correction can remove a detection but never add one. A demoted result keeps its raw `pValue`, so it can still be inspected, and loses its `confidenceScore` and `detectedChangeAt`.
+
+Counting the unrejected queries is what makes the statement hold for the whole pass, and it is also what makes it strict: among 500 judged queries the smallest p-value must be below `0.05 / 500 = 0.0001` to survive. That is the intended trade, and it has a real cost in sensitivity for modest regressions in noisy queries (see the table below). It does not correct across passes: a deploy that is re-analysed as its post-deploy window fills, and each periodic tick, is a new pass.
+
+### Autocorrelation adjustment
+
+Consecutive scrapes of one query are not independent, since a cache warming, a batch job or a noisy neighbour moves many scrapes the same way, and Welch's test treats each scrape as a new observation. With `--adjust-autocorrelation` each segment's `n` observations are replaced by an effective sample size `n (1 - r) / (1 + r)`, where `r` is the lag-1 autocorrelation of the two segments pooled, each around its own mean (the AR(1) correction of [Zwiers and von Storch, 1995](https://doi.org/10.1175/1520-0442(1995)008%3C0336:TSCIAI%3E2.0.CO;2)). The effective size is held between 2 and `n`, and a negative `r` is not used to enlarge the sample, so the adjustment can only raise a p-value. On pairs of equal-mean AR(1) segments of 30 points with `r = 0.7`, plain Welch called 43% significant at 0.05 and the adjusted test 11% (4,000 pairs). The correction is approximate: with short segments `r` is estimated with a downward bias, so the test stays somewhat liberal, and it does nothing about the selection effect described under [what the p-value means](#what-the-p-value-and-the-confidence-score-mean).
+
+### What it buys and what it costs
+
+The table runs this project's own engine on 500 simulated queries per pass with no change at all, plus five queries with a real +50% regression at the deploy, over 120 passes (deploy-triggered, 30-minute windows, one-minute scrapes, 200 calls per scrape). Each cell is false detections per pass / share of the five real regressions found. The noise is simulated (lognormal latency, AR(1) where stated), not production traces.
+
+| Noise in each query's latency | `none` | `bh` | adjustment only | `bh` + adjustment |
+|---|---|---|---|---|
+| independent, CV 15% | 0 / 100% | 0 / 100% | 0 / 100% | 0 / 100% |
+| independent, CV 30% | 2.9 / 95% | 0.5 / 91% | 2.9 / 95% | 0.4 / 88% |
+| independent, CV 60% | 15.4 / 57% | 0.2 / 7% | 14.0 / 56% | 0.1 / 5% |
+| 5% of scrapes spike 4x, CV 15% | 7.7 / 80% | 0.0 / 15% | 6.0 / 77% | 0.0 / 14% |
+| autocorrelated, `r` = 0.7, CV 30% | 32.6 / 64% | 31.1 / 63% | 21.5 / 55% | 3.2 / 17% |
+
+Three things stand out. Quiet queries produce no false detections to begin with, because the `latencyChangeThreshold` gate removes them. For independent but noisy queries, `bh` removes nearly all the chance detections. For autocorrelated queries `bh` alone does almost nothing, because the p-values are already too small before it runs and a correction cannot repair them; it works only together with the adjustment. And in every noisy case the cost is sensitivity: a +50% regression in a query whose latency varies by 60% is not distinguishable from noise across 500 tests, and the table shows it. If that matters more than the false detections, leave the settings off and rank by the change factor instead.
+
+The comparison is a design choice grounded in the literature on change-point detection for performance testing. [MongoDB's deployment](https://arxiv.org/abs/2003.00584) and [DataStax's Hunter](https://arxiv.org/abs/2301.03034) do not apply false-discovery-rate control; they filter on a minimum effect size, rank by magnitude and work on reducing noise, and both state that the method does not handle correlated noise. Online false-discovery-rate procedures such as [ADDIS](https://arxiv.org/abs/1905.11465) assume independent p-values, which overlapping analysis windows do not give, and exact post-selection p-values for change points ([Jewell, Fearnhead and Witten](https://arxiv.org/abs/1910.04291)) assume independent Gaussian noise with a known variance and cover other detection algorithms than E-divisive means.
 
 ## Both stages must agree
 
@@ -161,5 +198,5 @@ This guarantees at most one `PerformanceRegression` per distinct query per `Anal
 
 - [Architecture Overview](architecture.md) — where the Correlation Engine sits in the overall pipeline.
 - [Collector Internals](collector-internals.md) — how the samples this algorithm consumes are collected and retained.
-- [Configuration Reference](configuration.md) — `--window-minutes`, `--min-executions`, `--latency-threshold`, `--changepoint-tolerance`, `--capture-plans`, and the `PostgresWatch` equivalents.
+- [Configuration Reference](configuration.md) — `--window-minutes`, `--min-executions`, `--latency-threshold`, `--changepoint-tolerance`, `--multiple-testing`, `--adjust-autocorrelation`, `--capture-plans`, and the `PostgresWatch` equivalents.
 - [Testing](testing.md) — `internal/e2e`'s full-pipeline integration test proves this algorithm against real `pg_stat_statements` data, not synthetic samples.

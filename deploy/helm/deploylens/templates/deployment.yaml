@@ -93,6 +93,10 @@ spec:
             - --min-samples={{ .Values.analysis.minSamples }}
             - --min-executions={{ .Values.analysis.minExecutions }}
             - --latency-threshold={{ .Values.analysis.latencyThreshold }}
+            - --multiple-testing={{ .Values.analysis.multipleTesting }}
+            {{- if .Values.analysis.adjustAutocorrelation }}
+            - --adjust-autocorrelation
+            {{- end }}
             - --retention-minutes={{ .Values.postgres.retentionMinutes }}
             - --state-backend={{ .Values.state.backend }}
             - --state-dsn=$(STATE_DSN)

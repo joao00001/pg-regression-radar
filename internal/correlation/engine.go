@@ -88,6 +88,18 @@ type Config struct {
 	// 60-minute one; the floor keeps short windows from getting an
 	// unreasonably tiny allowance.
 	ChangePointTolerance time.Duration
+	// MultipleTesting controls the false-discovery rate across the queries of
+	// one analysis pass: the zero value (or MultipleTestingNone) judges each
+	// query on its own p-value, MultipleTestingBH and MultipleTestingBY
+	// demote the detections whose p-value does not survive the
+	// Benjamini-Hochberg or Benjamini-Yekutieli step-up at level
+	// PValueThreshold. See MultipleTesting.
+	MultipleTesting MultipleTesting
+	// AutocorrelationAdjust widens Welch's t-test for serial correlation
+	// between consecutive scrapes by shrinking each segment to its effective
+	// sample size. Off by default, which keeps p-values exactly as before. See
+	// welchTTestAutocorrelated.
+	AutocorrelationAdjust bool
 }
 
 func (c *Config) defaults() {
@@ -271,7 +283,7 @@ func (e *Engine) analyseWindow(
 	// rotated pair happened to win the fingerprint dedup above.
 	sort.Slice(results, func(i, j int) bool { return results[i].QueryID < results[j].QueryID })
 
-	return results
+	return e.controlFalseDiscoveries(results)
 }
 
 // latestFingerprint returns the Fingerprint of whichever sample in samples
@@ -465,7 +477,11 @@ func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []pgs
 	// split): we test the two segments E-divisive actually found.
 	preSeg := series[:cp.Index]
 	postSeg := series[cp.Index:]
-	_, pValue := welchTTest(preSeg, postSeg)
+	test := welchTTest
+	if e.cfg.AutocorrelationAdjust {
+		test = welchTTestAutocorrelated
+	}
+	_, pValue := test(preSeg, postSeg)
 
 	e.logger.Debug("correlation: t-test result",
 		"query_id", queryID,

@@ -168,6 +168,29 @@ type PostgresWatchSpec struct {
 	// +kubebuilder:default="0.05"
 	PValueThreshold string `json:"pValueThreshold,omitempty"`
 
+	// multipleTesting controls the false-discovery rate across the queries
+	// of one analysis pass. A pass judges up to the top 500 queries, so even
+	// with every individual test at pValueThreshold some unchanged queries
+	// are flagged by chance. "none" (the default) judges each query on its own
+	// p-value, as before. "bh" applies the Benjamini-Hochberg step-up at level
+	// pValueThreshold and "by" the stricter Benjamini-Yekutieli step-up, which
+	// holds under any dependence between queries. Both only remove detections,
+	// at a cost in sensitivity. See
+	// docs/detection-algorithm.md#controlling-false-positives-across-many-queries.
+	// +optional
+	// +kubebuilder:default="none"
+	// +kubebuilder:validation:Enum=none;bh;by
+	MultipleTesting string `json:"multipleTesting,omitempty"`
+
+	// adjustAutocorrelation widens Welch's t-test for serial correlation
+	// between consecutive scrapes by shrinking each segment to its effective
+	// sample size, so correlated noise (a cache warming, a batch job) is less
+	// often mistaken for a regression. It can only raise p-values. Off by
+	// default. See
+	// docs/detection-algorithm.md#controlling-false-positives-across-many-queries.
+	// +optional
+	AdjustAutocorrelation bool `json:"adjustAutocorrelation,omitempty"`
+
 	// criticalQueryIDs bypass minSamples and minExecutions so SLA-critical queries are
 	// always evaluated even when rarely called.
 	// +optional

@@ -44,6 +44,8 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--latency-threshold` | `0.20` | Min relative latency increase to flag (e.g. 0.20 = 20%) |
 | `--max-query-text-len` | `200` | Max query text length (characters) stored per sample before truncation for alerting and fingerprint fallback — see [Collector Internals](collector-internals.md) |
 | `--retention-minutes` | `180` | How long the collector keeps in-memory query samples before pruning them — see [Collector Internals](collector-internals.md) |
+| `--multiple-testing` | `none` | Control the false-discovery rate across the queries of one analysis pass: `none`, `bh` (Benjamini-Hochberg) or `by` (Benjamini-Yekutieli) — see [Detection Algorithm](detection-algorithm.md#controlling-false-positives-across-many-queries) |
+| `--adjust-autocorrelation` | `false` | Widen Welch's t-test for correlation between consecutive scrapes — see [Detection Algorithm](detection-algorithm.md#controlling-false-positives-across-many-queries) |
 | `--changepoint-tolerance` | `0` (auto) | Max distance between the E-divisive change point and the deploy timestamp still attributed to that deploy (0 = auto: 20% of window, floor 2m) |
 | `--state-backend` | `memory` | State persistence backend: `memory` or `postgres` — see [Persistence](persistence.md) |
 | `--state-dsn` | `` | Postgres DSN for the state backend when `--state-backend=postgres` (defaults to `--dsn`) |
@@ -166,6 +168,8 @@ All four binaries share two flags:
 | `minExecutions` | `100` | Min query executions per window, summed over the observations |
 | `latencyChangeThreshold` | `"0.20"` | Min relative latency increase to flag (e.g. `"0.20"` = 20%) |
 | `pValueThreshold` | `"0.05"` | Welch's t-test significance cutoff |
+| `multipleTesting` | `none` | `none`, `bh` or `by`: control the false-discovery rate across the queries of one analysis pass — see [Detection Algorithm](detection-algorithm.md#controlling-false-positives-across-many-queries) |
+| `adjustAutocorrelation` | `false` | Widen Welch's t-test for correlation between consecutive scrapes — see [Detection Algorithm](detection-algorithm.md#controlling-false-positives-across-many-queries) |
 | `criticalQueryIDs` | `[]` | Queries that bypass `minSamples` and `minExecutions` |
 | `slackWebhookUrl` | `""` | Slack incoming-webhook URL for this watch. **Deprecated**: use `alerting` instead (equivalent to `alerting.format: slack`); ignored entirely whenever `alerting` is set |
 | `alerting.format` | `""` (→ `slack`) | Notification payload layout: `slack`, `teams`, `pagerduty`, or `custom` — see [Alerting](alerting.md) |
@@ -217,7 +221,7 @@ In short: if you're running the standalone `operator`/`ingester` binaries, `kube
 ## See also
 
 - [Getting Started](getting-started.md) — these flags/fields used in full runnable commands.
-- [Detection Algorithm](detection-algorithm.md) — what `--window-minutes`, `--min-samples`, `--min-executions`, `--latency-threshold`, and `--changepoint-tolerance` actually control.
+- [Detection Algorithm](detection-algorithm.md) — what `--window-minutes`, `--min-samples`, `--min-executions`, `--latency-threshold`, `--changepoint-tolerance`, `--multiple-testing` and `--adjust-autocorrelation` actually control.
 - [Persistence](persistence.md) — the `--state-*` flags in depth.
 - [Deploy Sources & Webhooks](webhooks.md) — `--source-type` and `sourceType` per webhook source.
 - [Auto-Abort (Argo Rollouts)](auto-abort.md) — `autoAbort.enabled`/`autoAbort.confidenceThreshold` in depth, including the RBAC gate.
