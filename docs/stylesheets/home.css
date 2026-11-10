@@ -1147,3 +1147,34 @@
 .pgrr-radar-note::before {
   z-index: 3;
 }
+
+/* ----------------------------------------------------------------------
+ * One black for the content cells
+ *
+ * The step cards, the architecture diagram and the chart stage all sit on the
+ * same absolute black as the hero's title cell (white in the light scheme),
+ * instead of the slightly lifted --h-panel.
+ * -------------------------------------------------------------------- */
+.pgrr-home .pgrr-card {
+  background: var(--h-hero-bg);
+}
+
+.pgrr-home .pgrr-card:hover,
+.pgrr-home .pgrr-card:focus-within {
+  background: var(--h-card);
+}
+
+.pgrr-home .pgrr-diagram {
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    var(--h-hero-bg);
+}
+
+.pgrr-radar-stage {
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    radial-gradient(60% 80% at 100% 100%, var(--h-glow), transparent 70%),
+    var(--h-hero-bg);
+}
