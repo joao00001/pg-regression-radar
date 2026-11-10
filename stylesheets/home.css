@@ -483,3 +483,645 @@
     font-size: 1.7rem;
   }
 }
+
+/* ======================================================================
+ * Grid layout
+ *
+ * The page is one framed sheet cut into cells by hairlines, like a ruled
+ * blueprint: the hero, diagram and cards are cells that touch, and each
+ * section is a band with a rule above it. Same content and colors as above,
+ * only the containers change (no floating rounded cards).
+ * ==================================================================== */
+.pgrr-home {
+  --h-grid: rgba(255, 255, 255, 0.045);
+  --h-pad: 28px;
+  position: relative;
+  margin: 0 0 8px;
+  background: transparent;
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-grid: rgba(0, 0, 0, 0.05);
+}
+
+/* Text sits inside the frame with a gutter; cells below go edge to edge. */
+.pgrr-home > p,
+.pgrr-home > ul,
+.pgrr-home > ol {
+  margin-inline: var(--h-pad);
+}
+
+/* Section bands */
+.pgrr-home h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 18px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: var(--h-card);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Hero: two cells split by a rule, over a faint ruled grid */
+.pgrr-home .pgrr-hero {
+  gap: 0;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    radial-gradient(70% 100% at 0% 0%, var(--h-glow), transparent 70%),
+    var(--h-panel);
+}
+
+.pgrr-home .pgrr-hero > div:first-child {
+  padding: 40px var(--h-pad) 34px;
+}
+
+.pgrr-home .pgrr-hero .pgrr-alert {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 28px var(--h-pad);
+  border: 0;
+  border-left: 1px solid var(--h-border);
+  border-radius: 0;
+  background: var(--h-card);
+  box-shadow: none;
+}
+
+.pgrr-home .pgrr-alert-head {
+  padding: 0 0 10px;
+  height: auto;
+}
+
+.pgrr-home .pgrr-alert-body {
+  border: 1px solid var(--h-border);
+  border-radius: 10px;
+}
+
+.pgrr-home .pgrr-alert-note {
+  padding: 8px 0 0;
+}
+
+.pgrr-home .pgrr-hero .md-button {
+  border-radius: 8px;
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-home .pgrr-hero > div:first-child {
+    padding: 28px var(--h-pad) 24px;
+  }
+
+  .pgrr-home .pgrr-hero .pgrr-alert {
+    border-left: 0;
+    border-top: 1px solid var(--h-border);
+  }
+}
+
+/* The question: its own full-width cell */
+.pgrr-home .pgrr-question {
+  margin: 1.1em var(--h-pad) 1.1em;
+}
+
+/* Diagram: a cell on the ruled grid */
+.pgrr-home .pgrr-diagram {
+  margin: 0;
+  padding: 22px 16px;
+  border: 0;
+  border-top: 1px solid var(--h-border);
+  border-radius: 0;
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    var(--h-panel);
+}
+
+/* Cards: touching cells; the container color shows through as the rules */
+.pgrr-home .pgrr-cards {
+  gap: 1px;
+  margin: 0;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-border);
+}
+
+.pgrr-home .pgrr-card {
+  gap: 6px;
+  padding: 22px var(--h-pad) 20px;
+  border: 0;
+  border-radius: 0;
+  background: var(--h-panel);
+  transition: background-color 0.15s;
+}
+
+.pgrr-home .pgrr-card:hover,
+.pgrr-home .pgrr-card:focus-within {
+  background: var(--h-card);
+}
+
+.pgrr-home .pgrr-num {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--h-border);
+  border-radius: 6px;
+  background: var(--h-card);
+  color: var(--h-accent);
+}
+
+/* Where to go next: ruled rows (doubled class beats Material's list margins) */
+.pgrr-home.pgrr-home > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pgrr-home.pgrr-home > ul > li {
+  margin: 0;
+  padding: 12px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  font-size: 0.68rem;
+}
+
+.pgrr-home.pgrr-home > ul > li:first-child {
+  border-top: 0;
+}
+
+/* Footer band */
+.pgrr-home .pgrr-foot {
+  margin: 0;
+  padding: 14px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: var(--h-card);
+}
+
+/* ----------------------------------------------------------------------
+ * Infinite rules
+ *
+ * The lines are not a card border: each rule runs out to the edge of the
+ * window and the content column sits between two vertical lines that run the
+ * full height of the page body. Where the left navigation is visible the
+ * horizontal rules start exactly on the left column line (so they never strike
+ * through the menu text, and each junction is clean) and keep going right; below that width there is no sidebar and
+ * they run both ways. The extra length is clipped by .md-main so it never
+ * causes a scrollbar or crosses the header/footer.
+ * -------------------------------------------------------------------- */
+.pgrr-home {
+  --h-rule-left: -100vw;
+  --h-rule-width: 200vw;
+}
+
+@media (min-width: 76.25em) {
+  .pgrr-home {
+    --h-rule-left: 0;
+    --h-rule-width: 100vw;
+  }
+}
+
+.md-main:has(.pgrr-home) {
+  overflow: clip;
+}
+
+/* the two column lines */
+.pgrr-home::before,
+.pgrr-home::after {
+  content: "";
+  position: absolute;
+  top: -100vh;
+  bottom: -100vh;
+  width: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-home::before {
+  left: 0;
+}
+
+.pgrr-home::after {
+  right: 0;
+}
+
+/* Band marker as a background so the band's pseudo-elements stay free for
+   its top and bottom rules. */
+.pgrr-home h2 {
+  position: relative;
+  padding-left: calc(var(--h-pad) + 17px);
+  background:
+    linear-gradient(var(--h-accent-solid), var(--h-accent-solid)) var(--h-pad) 50% / 7px 7px no-repeat,
+    var(--h-card);
+}
+
+.pgrr-home h2::before,
+.pgrr-home h2::after {
+  content: "";
+  position: absolute;
+  left: var(--h-rule-left);
+  width: var(--h-rule-width);
+  height: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-home h2::before {
+  top: -1px;
+}
+
+/* Every band closes with a rule too: this is the top rule of the diagram and
+   of the first list row, drawn here because the diagram scrolls sideways on
+   small screens and would clip its own pseudo-elements. */
+.pgrr-home h2::after {
+  bottom: -1px;
+}
+
+/* full-width rules for the other ruled cells */
+.pgrr-home .pgrr-hero,
+.pgrr-home .pgrr-cards,
+.pgrr-home.pgrr-home > ul > li,
+.pgrr-home .pgrr-foot {
+  position: relative;
+}
+
+.pgrr-home .pgrr-hero::before,
+.pgrr-home .pgrr-cards::before,
+.pgrr-home.pgrr-home > ul > li::before,
+.pgrr-home .pgrr-foot::before,
+.pgrr-home .pgrr-foot::after {
+  content: "";
+  position: absolute;
+  left: var(--h-rule-left);
+  width: var(--h-rule-width);
+  height: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-hero::before {
+  top: 0;
+}
+
+.pgrr-home .pgrr-cards::before,
+.pgrr-home.pgrr-home > ul > li::before,
+.pgrr-home .pgrr-foot::before {
+  top: -1px;
+}
+
+.pgrr-home .pgrr-foot::after {
+  bottom: 0;
+}
+
+.pgrr-home.pgrr-home > ul > li:first-child::before {
+  display: none;
+}
+
+/* ======================================================================
+ * Regression capture (docs/javascripts/home-radar.js)
+ *
+ * A toolbar cell (status and button) above a chart cell
+ * on the same ruled grid. The chart itself is drawn on a canvas by the script,
+ * using the --h-* tokens of the page, so it follows the color scheme.
+ * ==================================================================== */
+.pgrr-radar {
+  position: relative;
+}
+
+.pgrr-radar-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px var(--h-pad);
+  border-bottom: 1px solid var(--h-border);
+  background: var(--h-panel);
+}
+
+.pgrr-radar-bar::after,
+.pgrr-radar-note::before {
+  content: "";
+  position: absolute;
+  left: var(--h-rule-left);
+  width: var(--h-rule-width);
+  height: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-radar-bar::after {
+  bottom: -1px;
+}
+
+.pgrr-radar-status {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--h-muted);
+  font: 500 0.58rem/1.3 var(--md-code-font-family, ui-monospace, monospace);
+  transition: color 0.25s;
+}
+
+.pgrr-radar-status.is-alert {
+  color: var(--h-accent);
+}
+
+.pgrr-radar-inject {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  padding: 0.5em 1.1em 0.5em 0.95em;
+  border: 0;
+  border-radius: 8px;
+  background: var(--h-accent-solid);
+  color: #fff;
+  font: 650 0.64rem/1 var(--md-text-font-family, inherit);
+  cursor: pointer;
+  overflow: hidden;
+  transition: filter 0.15s, transform 0.1s;
+}
+
+.pgrr-radar-inject::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  animation: pgrr-radar-live 1.6s ease-out infinite;
+}
+
+.pgrr-radar-inject:hover {
+  filter: brightness(1.12);
+}
+
+.pgrr-radar-inject:active {
+  transform: scale(0.97);
+}
+
+.pgrr-radar-inject.is-pressed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.55), transparent 60%);
+  animation: pgrr-radar-flash 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes pgrr-radar-live {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+  100% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
+}
+
+@keyframes pgrr-radar-flash {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(60%); }
+}
+
+.pgrr-radar-stage {
+  position: relative;
+  height: 320px;
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    radial-gradient(60% 80% at 100% 100%, var(--h-glow), transparent 70%),
+    var(--h-panel);
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+
+.pgrr-radar-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pgrr-radar-tip {
+  position: absolute;
+  z-index: 2;
+  min-width: 11.5em;
+  padding: 10px 12px 9px;
+  border: 1px solid var(--h-border);
+  border-radius: 10px;
+  background: var(--h-card);
+  box-shadow: 0 14px 30px -14px rgba(0, 0, 0, 0.6);
+  color: var(--h-fg);
+  font-size: 0.58rem;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.pgrr-radar-tip[hidden] {
+  display: none;
+}
+
+.pgrr-tip-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--h-border);
+  font: 650 0.6rem/1.3 var(--md-code-font-family, ui-monospace, monospace);
+}
+
+.pgrr-tip-head span {
+  color: var(--h-muted);
+  font-weight: 500;
+}
+
+.pgrr-tip-row {
+  display: grid;
+  grid-template-columns: 1fr auto 3.6em;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.pgrr-tip-row span {
+  color: var(--h-muted);
+}
+
+.pgrr-tip-row b {
+  font: 650 0.58rem/1.4 var(--md-code-font-family, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.pgrr-tip-row em {
+  color: var(--h-accent);
+  font: normal 650 0.56rem/1.4 var(--md-code-font-family, ui-monospace, monospace);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pgrr-tip-row.is-hot span,
+.pgrr-tip-row.is-hot b {
+  color: var(--h-accent);
+}
+
+.pgrr-radar-note {
+  position: relative;
+  margin: 0;
+  padding: 10px var(--h-pad) 11px;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-card);
+  color: var(--h-muted);
+  font-size: 0.56rem;
+}
+
+.pgrr-radar-note::before {
+  top: -1px;
+}
+
+.pgrr-radar-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-radar-stage {
+    height: 260px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-radar-inject::before,
+  .pgrr-radar-inject.is-pressed::after {
+    animation: none;
+  }
+}
+
+/* ======================================================================
+ * Hero title cell: a radar scope instead of a grid.
+ *
+ * Pure black (white in the light scheme), thin concentric rings fading out
+ * from the top-left corner, a red sweep turning around that corner, and a few
+ * blips that flash when the sweep reaches them. The sweep period (--sweep)
+ * and each blip's animation delay (set inline in index.md from the blip's
+ * angle) are tied together so the flashes line up with the beam.
+ * ==================================================================== */
+.pgrr-home {
+  --h-hero-bg: #000;
+  --h-ring: rgba(255, 255, 255, 0.085);
+  --sweep: 8s;
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-hero-bg: #fff;
+  --h-ring: rgba(0, 0, 0, 0.09);
+}
+
+.pgrr-home .pgrr-hero {
+  background: transparent;
+}
+
+.pgrr-home .pgrr-hero > div:first-child {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(70% 90% at 0% 0%, var(--h-glow), transparent 70%),
+    var(--h-hero-bg);
+}
+
+/* rings */
+.pgrr-home .pgrr-hero > div:first-child::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: repeating-radial-gradient(circle at 0 0, transparent 0 63px, var(--h-ring) 63px 64px);
+  -webkit-mask-image: radial-gradient(circle at 0 0, #000 0, #000 120px, transparent 600px);
+  mask-image: radial-gradient(circle at 0 0, #000 0, #000 120px, transparent 600px);
+  pointer-events: none;
+}
+
+/* sweep: a conic wedge turning around the corner */
+.pgrr-home .pgrr-hero > div:first-child::after {
+  content: "";
+  position: absolute;
+  left: -640px;
+  top: -640px;
+  width: 1280px;
+  height: 1280px;
+  z-index: -1;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 250deg,
+    color-mix(in srgb, var(--h-accent-solid) 26%, transparent) 359deg,
+    color-mix(in srgb, var(--h-accent) 42%, transparent) 360deg
+  );
+  -webkit-mask-image: radial-gradient(circle, #000 0, #000 30%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 0, #000 30%, transparent 68%);
+  animation: pgrr-sweep var(--sweep) linear infinite;
+  will-change: transform;
+  pointer-events: none;
+}
+
+@keyframes pgrr-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* blips */
+.pgrr-home .pgrr-blips {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-blips i {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--h-accent);
+  opacity: 0.22;
+  animation: pgrr-blip var(--sweep) linear infinite;
+  animation-delay: var(--d, 0s);
+}
+
+@keyframes pgrr-blip {
+  0% {
+    opacity: 1;
+    transform: scale(1.5);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--h-accent) 70%, transparent);
+  }
+  10% {
+    box-shadow: 0 0 0 16px transparent;
+  }
+  40% {
+    opacity: 0.22;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.22;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-home .pgrr-hero > div:first-child::after {
+    animation: none;
+    transform: rotate(120deg);
+  }
+
+  .pgrr-home .pgrr-blips i {
+    animation: none;
+    opacity: 0.6;
+  }
+}
