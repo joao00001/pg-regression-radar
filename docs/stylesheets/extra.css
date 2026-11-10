@@ -43,10 +43,6 @@
   background-color: #050505;
 }
 
-[data-md-color-scheme="slate"] .md-typeset code {
-  background-color: #111111;
-}
-
 /* ---- Light mode: true white ---- */
 [data-md-color-scheme="default"] {
   --md-default-bg-color: #ffffff;
@@ -962,4 +958,36 @@
   .pgrr-toc-dot {
     transition: none !important;
   }
+
+/* ---- Inline code: a chip in the same card colors ----
+   More contrast than Material's flat tint: a lighter fill, a thin border and
+   brighter text, in both color schemes. Only inline code (not inside a `pre`);
+   callouts, the roadmap and the home page set their own and win by
+   specificity (this selector is kept low with :where). */
+[data-md-color-scheme="slate"] {
+  --pgrr-chip-bg: #1f2222;
+  --pgrr-chip-border: #3f4343;
+  --pgrr-chip-fg: #f4f6f4;
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-chip-bg: #eceeee;
+  --pgrr-chip-border: #d0d5d5;
+  --pgrr-chip-fg: #14181a;
+}
+
+.md-typeset code:where(:not(pre) > code) {
+  padding: 0.1em 0.42em;
+  border: 1px solid var(--pgrr-chip-border);
+  border-radius: 6px;
+  background-color: var(--pgrr-chip-bg);
+  color: var(--pgrr-chip-fg);
+  font-size: 0.84em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* In a callout the chip borrows the callout's own border color. */
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) code {
+  border-color: var(--pgrr-adm-border);
 }
