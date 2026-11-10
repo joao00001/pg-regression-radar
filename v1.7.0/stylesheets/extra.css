@@ -971,6 +971,7 @@
   .pgrr-toc-dot {
     transition: none !important;
   }
+}
 
 /* ---- Inline code: a chip in the same card colors ----
    More contrast than Material's flat tint: a lighter fill, a thin border and
