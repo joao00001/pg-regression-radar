@@ -61,7 +61,7 @@ The simplest way to get pg-regression-radar: a single unified CLI, `pg-regressio
 
 ```bash
 go install github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@latest
-# or pin a release: @v0.1.0
+# or pin a release, e.g. @v1.7.0 (see the releases page for the latest tag)
 ```
 
 This places a single `pg-regression-radar` binary in `$(go env GOPATH)/bin`. From there:
