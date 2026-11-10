@@ -196,38 +196,145 @@
 
 .pgrr-home .pgrr-edge {
   fill: none;
-  stroke: var(--h-icon);
-  stroke-width: 1.7;
-  stroke-dasharray: 5 6;
-  animation: pgrr-dash 1.6s linear infinite;
+  stroke: var(--h-border);
+  stroke-width: 1.5;
 }
 
 .pgrr-home .pgrr-edge--accent {
-  stroke: var(--h-accent);
+  stroke: var(--h-accent-border);
 }
 
 .pgrr-home .pgrr-edge--idle {
-  opacity: 0.6;
-  animation-duration: 3.2s;
+  stroke-dasharray: 4 6;
 }
 
 .pgrr-home .pgrr-arrowhead {
-  fill: var(--h-icon);
+  fill: var(--h-border);
 }
 
 .pgrr-home .pgrr-arrowhead--accent {
+  fill: var(--h-accent-border);
+}
+
+/* Beams (home-flow.js): a soft gradient light travels along an edge. Only opacity
+   and gradient positions change, never fills, so nothing repaints a card. */
+.pgrr-home .pgrr-beam {
+  fill: none;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-beam--core {
+  stroke-width: 2.2;
+}
+
+.pgrr-home .pgrr-beam--glow {
+  stroke-width: 7;
+}
+
+.pgrr-home .pgrr-beam-stop {
+  stop-color: var(--h-fg);
+}
+
+.pgrr-home .pgrr-beam-stop--accent {
+  stop-color: var(--h-accent);
+}
+
+/* Nodes only brighten their outline and icon as the light arrives. */
+.pgrr-home .pgrr-node {
+  transition: stroke 1s ease-out;
+}
+
+.pgrr-home .pgrr-node.pgrr-hit {
+  stroke: color-mix(in srgb, var(--h-fg) 55%, var(--h-border));
+  transition-duration: 0s;
+}
+
+.pgrr-home .pgrr-ic {
+  transition: stroke 1s ease-out;
+}
+
+.pgrr-home .pgrr-ic.pgrr-hit {
+  stroke: var(--h-fg);
+  transition-duration: 0s;
+}
+
+/* Live data above each card: slides up and fades in as the light arrives, holds,
+   then lifts away. Opacity and transform only. */
+.pgrr-home .pgrr-data {
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(9px);
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-data.is-on {
+  opacity: 1;
+  filter: blur(0);
+  transform: none;
+  transition: opacity 0.5s ease-out, filter 0.8s ease-out, transform 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+
+.pgrr-home .pgrr-data.is-out {
+  opacity: 0;
+  filter: blur(5px);
+  transform: translateY(-9px);
+  transition: opacity 0.55s ease-in 0.1s, filter 0.65s ease-in, transform 0.7s cubic-bezier(0.5, 0, 0.9, 0.4);
+}
+
+.pgrr-home .pgrr-d {
+  fill: var(--h-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  text-anchor: middle;
+  white-space: pre;
+}
+
+.pgrr-home .pgrr-d--end {
+  text-anchor: end;
+}
+
+.pgrr-home .pgrr-dv {
+  fill: var(--h-fg);
+}
+
+.pgrr-home .pgrr-dv--a {
   fill: var(--h-accent);
 }
 
-@keyframes pgrr-dash {
-  to {
-    stroke-dashoffset: -22;
-  }
+/* The engine "works" for a moment: a short light runs once around its border. */
+.pgrr-home .pgrr-bbeam-rect {
+  fill: none;
+  stroke: var(--h-accent);
+  stroke-linecap: round;
+  pointer-events: none;
+  stroke-dasharray: 22 78;
+  animation: pgrr-bbeam 1.7s cubic-bezier(0.45, 0, 0.35, 1) forwards;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pgrr-home .pgrr-edge {
-    animation: none;
+.pgrr-home .pgrr-bbeam-rect--core {
+  stroke-width: 1.8;
+}
+
+.pgrr-home .pgrr-bbeam-rect--glow {
+  stroke-width: 5;
+  opacity: 0.22;
+}
+
+@keyframes pgrr-bbeam {
+  0% {
+    stroke-dashoffset: 8;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -92;
+    opacity: 0;
   }
 }
 
