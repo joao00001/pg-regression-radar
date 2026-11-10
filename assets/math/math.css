@@ -1,0 +1,925 @@
+/*
+ * "Our math": styles for docs/our-math.md. It builds on the home page's ruled
+ * sheet (home.css, scoped to .pgrr-home: tokens, section bands, the hero and
+ * its ASCII field) and adds what a derivation needs: numbered equations in
+ * native MathML, a two-column "text | experiment" row, plots, controls and
+ * readouts in the mono face.
+ */
+
+@font-face {
+  font-family: "PGRR Math";
+  src: url("fonts/noto-sans-math.woff2") format("woff2");
+  font-display: swap;
+}
+
+.pgrr-math {
+  --m-mono: var(--md-code-font-family, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  --m-math: "PGRR Math", "STIX Two Math", "Cambria Math", "Latin Modern Math", math;
+  --m-a: var(--h-accent);
+  --m-b: #5ab0ff;
+  --m-c: #e8b04b;
+  --m-ok: #52c98a;
+  counter-reset: pgrr-eq;
+}
+
+[data-md-color-scheme="default"] .pgrr-math {
+  --m-b: #1f6fd1;
+  --m-c: #a86a00;
+  --m-ok: #17803f;
+}
+
+/* ---- Equations -------------------------------------------------------- */
+.pgrr-math math {
+  font-family: var(--m-math);
+  font-size: 1.12em;
+  color: var(--h-fg);
+}
+
+.pgrr-math p math,
+.pgrr-math li math,
+.pgrr-math td math {
+  font-size: 1.04em;
+}
+
+.pgrr-math .pgrr-eq {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1.1rem 0;
+  padding: 1rem 3rem 1rem 1rem;
+  border-block: 1px solid var(--h-border);
+  overflow-x: auto;
+  counter-increment: pgrr-eq;
+}
+
+.pgrr-math .pgrr-eq::after {
+  content: "(" counter(pgrr-eq) ")";
+  position: absolute;
+  right: 0.9rem;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--h-muted);
+  font: 500 0.6rem/1 var(--m-mono);
+  letter-spacing: 0.06em;
+}
+
+.pgrr-math .pgrr-eq--hero {
+  margin: 0;
+  padding: 1.1rem 1rem;
+  border: 0;
+  background: none;
+}
+
+.pgrr-math .pgrr-eq--hero::after {
+  content: none;
+}
+
+.pgrr-math .pgrr-eq math {
+  font-size: 1.25em;
+}
+
+/* Variables that carry meaning keep one color wherever they appear. */
+.pgrr-math .m-a { color: var(--m-a); }
+.pgrr-math .m-b { color: var(--m-b); }
+.pgrr-math .m-c { color: var(--m-c); }
+
+.pgrr-math .pgrr-where {
+  margin: 0.2rem 0 0;
+  color: var(--h-muted);
+  font-size: 0.64rem;
+  line-height: 1.7;
+}
+
+/* ---- Rows: prose | experiment ------------------------------------------ */
+.pgrr-math .pgrr-sec {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+  border-top: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
+}
+
+.pgrr-math .pgrr-sec--wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pgrr-math .pgrr-text {
+  min-width: 0;
+  padding: 30px var(--h-pad) 32px;
+  font-size: 0.7rem;
+  line-height: 1.75;
+}
+
+.pgrr-math .pgrr-text > :first-child {
+  margin-top: 0;
+}
+
+.pgrr-math .pgrr-text > :last-child {
+  margin-bottom: 0;
+}
+
+.pgrr-math .pgrr-text h3 {
+  margin: 0 0 0.9rem;
+  color: var(--h-fg);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.pgrr-math .pgrr-text h3 .pgrr-sn {
+  margin-right: 0.55em;
+  color: var(--m-a);
+  font: 600 0.62rem/1 var(--m-mono);
+  letter-spacing: 0.12em;
+}
+
+.pgrr-math .pgrr-text p {
+  margin: 0 0 0.9em;
+}
+
+.pgrr-math .pgrr-lab {
+  position: relative;
+  min-width: 0;
+  padding: 22px var(--h-pad) 24px;
+  border-left: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
+}
+
+.pgrr-math .pgrr-lab--full {
+  border-left: 0;
+  border-top: 1px solid var(--h-border);
+}
+
+@media (max-width: 62em) {
+  .pgrr-math .pgrr-sec {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pgrr-math .pgrr-lab {
+    border-left: 0;
+    border-top: 1px solid var(--h-border);
+  }
+}
+
+/* Margin note: a ruled aside. */
+.pgrr-math .pgrr-note {
+  margin: 1.2rem 0;
+  padding: 0.7rem 0 0;
+  border-top: 1px solid var(--h-border);
+  font-size: 0.64rem;
+  line-height: 1.65;
+}
+
+.pgrr-math .pgrr-note > b:first-child {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--m-a);
+  font: 600 0.54rem/1 var(--m-mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.pgrr-math .pgrr-note p {
+  margin: 0;
+}
+
+.pgrr-math code {
+  font-size: 0.92em;
+}
+
+/* ---- Pipeline ----------------------------------------------------------- */
+.pgrr-math .pgrr-pipe {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-top: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
+}
+
+.pgrr-math .pgrr-stage {
+  --lit: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  padding: 22px 14px 20px;
+  border-left: 1px solid var(--h-border);
+  transition: opacity 0.35s;
+  cursor: default;
+}
+
+.pgrr-math .pgrr-stage:first-child {
+  border-left: 0;
+}
+
+.pgrr-math .pgrr-stage .pgrr-n {
+  color: var(--h-muted);
+  font: 600 0.54rem/1 var(--m-mono);
+  letter-spacing: 0.14em;
+  transition: color 0.3s;
+}
+
+.pgrr-math .pgrr-stage b {
+  color: var(--h-fg);
+  font-size: 0.7rem;
+  line-height: 1.25;
+}
+
+.pgrr-math .pgrr-stage math {
+  font-size: 0.95em;
+  color: var(--h-muted);
+  transition: color 0.3s;
+}
+
+.pgrr-math .pgrr-stage small {
+  color: var(--h-muted);
+  font-size: 0.58rem;
+  line-height: 1.5;
+}
+
+/* the light that walks the stages, one after the other */
+.pgrr-math .pgrr-stage::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--m-a), transparent);
+  opacity: 0;
+  transform: translateX(-30%);
+}
+
+.pgrr-math .pgrr-pipe.is-idle .pgrr-stage::before {
+  animation: pgrr-beam 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  animation-delay: calc(var(--i) * 0.9s);
+}
+
+@keyframes pgrr-beam {
+  0% { opacity: 0; transform: translateX(-30%); }
+  6% { opacity: 1; }
+  14% { opacity: 1; transform: translateX(30%); }
+  22%, 100% { opacity: 0; transform: translateX(30%); }
+}
+
+.pgrr-math .pgrr-stage.is-pass .pgrr-n,
+.pgrr-math .pgrr-stage.is-pass math {
+  color: var(--m-a);
+}
+
+.pgrr-math .pgrr-stage.is-stop .pgrr-n,
+.pgrr-math .pgrr-stage.is-stop math {
+  color: var(--h-bad);
+}
+
+.pgrr-math .pgrr-stage::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: transparent;
+  transition: background-color 0.4s;
+}
+
+.pgrr-math .pgrr-stage.is-pass::after { background: var(--m-a); }
+.pgrr-math .pgrr-stage.is-stop::after { background: var(--h-bad); }
+
+.pgrr-math .pgrr-stage.is-skip {
+  opacity: 0.38;
+}
+
+@media (max-width: 62em) {
+  .pgrr-math .pgrr-pipe {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pgrr-math .pgrr-stage {
+    border-left: 0;
+    border-top: 1px solid var(--h-border);
+  }
+
+  .pgrr-math .pgrr-stage:nth-child(even) {
+    border-left: 1px solid var(--h-border);
+  }
+
+  .pgrr-math .pgrr-stage:nth-child(-n + 2) {
+    border-top: 0;
+  }
+}
+
+/* ---- Plots ------------------------------------------------------------- */
+.pgrr-math .pgrr-plot {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  font-family: var(--m-mono);
+}
+
+.pgrr-math .pgrr-plot text {
+  fill: var(--h-muted);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.pgrr-math .pgrr-plot .ax {
+  stroke: var(--h-border);
+  stroke-width: 1;
+}
+
+.pgrr-math .pgrr-plot .gd {
+  stroke: var(--h-grid);
+  stroke-width: 1;
+}
+
+.pgrr-math .pgrr-plot .ln {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.pgrr-math .pgrr-plot .ln--a { stroke: var(--m-a); }
+.pgrr-math .pgrr-plot .ln--b { stroke: var(--m-b); }
+.pgrr-math .pgrr-plot .ln--c { stroke: var(--m-c); }
+.pgrr-math .pgrr-plot .ln--m { stroke: var(--h-muted); }
+.pgrr-math .pgrr-plot .ln--dash { stroke-dasharray: 5 4; }
+
+.pgrr-math .pgrr-plot .dot {
+  fill: var(--h-fg);
+  opacity: 0.55;
+}
+
+.pgrr-math .pgrr-plot .dot--a { fill: var(--m-a); opacity: 0.85; }
+.pgrr-math .pgrr-plot .dot--b { fill: var(--m-b); opacity: 0.85; }
+
+.pgrr-math .pgrr-plot .fill-a { fill: color-mix(in srgb, var(--m-a) 18%, transparent); stroke: none; }
+.pgrr-math .pgrr-plot .fill-b { fill: color-mix(in srgb, var(--m-b) 16%, transparent); stroke: none; }
+.pgrr-math .pgrr-plot .fill-m { fill: color-mix(in srgb, var(--h-muted) 16%, transparent); stroke: none; }
+.pgrr-math .pgrr-plot .band { fill: color-mix(in srgb, var(--m-ok) 13%, transparent); }
+
+.pgrr-math .pgrr-plot .vl {
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.pgrr-math .pgrr-plot .vl--deploy { stroke: var(--m-c); }
+.pgrr-math .pgrr-plot .vl--cp { stroke: var(--m-a); stroke-dasharray: none; }
+.pgrr-math .pgrr-plot .lbl-a { fill: var(--m-a); }
+.pgrr-math .pgrr-plot .lbl-b { fill: var(--m-b); }
+.pgrr-math .pgrr-plot .lbl-c { fill: var(--m-c); }
+
+.pgrr-math .pgrr-plot .drag {
+  cursor: ew-resize;
+}
+
+.pgrr-math .pgrr-plot .knob {
+  fill: var(--h-hero-bg);
+  stroke: var(--m-a);
+  stroke-width: 2;
+}
+
+.pgrr-math .pgrr-plot path,
+.pgrr-math .pgrr-plot line,
+.pgrr-math .pgrr-plot rect {
+  transition: opacity 0.25s;
+}
+
+/* ---- Parameters and readouts (read-only: the figures play themselves) ----------- */
+.pgrr-math .pgrr-params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.pgrr-math .pgrr-params > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pgrr-math .pgrr-params dt {
+  margin: 0;
+  color: var(--h-muted);
+  font: 500 0.54rem/1.2 var(--m-mono);
+  letter-spacing: 0.04em;
+}
+
+.pgrr-math .pgrr-params dd {
+  margin: 0;
+  min-width: 3.2ch;
+  color: var(--m-a);
+  font: 600 0.62rem/1.2 var(--m-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* the plots dissolve with blur between states, like the home diagram's data */
+.pgrr-math .pgrr-plot {
+  transition: opacity 0.45s ease-out, filter 0.55s ease-out;
+}
+
+.pgrr-math .pgrr-plot.is-swap {
+  opacity: 0;
+  filter: blur(7px);
+  transition-duration: 0.35s, 0.4s;
+  transition-timing-function: ease-in;
+}
+
+.pgrr-math .pgrr-kv {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 16px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--h-border);
+  border-left: 1px solid var(--h-border);
+}
+
+.pgrr-math .pgrr-kv > div {
+  flex: 1 1 6.4rem;
+  min-width: 0;
+  padding: 9px 11px 10px;
+  border-right: 1px solid var(--h-border);
+  border-bottom: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
+}
+
+.pgrr-math .pgrr-kv dt {
+  margin: 0;
+  color: var(--h-muted);
+  font: 500 0.54rem/1.2 var(--m-mono);
+  letter-spacing: 0.04em;
+}
+
+.pgrr-math .pgrr-kv dd {
+  margin: 6px 0 0;
+  color: var(--h-fg);
+  font: 600 0.82rem/1 var(--m-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.pgrr-math .pgrr-kv dd.is-a { color: var(--m-a); }
+.pgrr-math .pgrr-kv dd.is-ok { color: var(--m-ok); }
+.pgrr-math .pgrr-kv dd.is-bad { color: var(--h-bad); }
+
+.pgrr-math .pgrr-verdict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--h-border);
+  font-size: 0.64rem;
+  line-height: 1.5;
+}
+
+.pgrr-math .pgrr-verdict b {
+  flex: none;
+  padding: 4px 8px;
+  border: 1px solid currentColor;
+  font: 600 0.52rem/1 var(--m-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.pgrr-math .pgrr-verdict[data-v="Detected"] b { color: var(--m-a); }
+.pgrr-math .pgrr-verdict[data-v="NoRegression"] b { color: var(--m-ok); }
+.pgrr-math .pgrr-verdict[data-v="InsufficientData"] b { color: var(--m-c); }
+
+.pgrr-math .pgrr-cap {
+  margin: 10px 0 0;
+  color: var(--h-muted);
+  font: 500 0.54rem/1.6 var(--m-mono);
+  letter-spacing: 0.04em;
+}
+
+.pgrr-math .pgrr-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 10px 0 0;
+  color: var(--h-muted);
+  font: 500 0.54rem/1.4 var(--m-mono);
+  letter-spacing: 0.06em;
+}
+
+.pgrr-math .pgrr-legend i {
+  display: inline-block;
+  width: 14px;
+  height: 0;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-top: 2px solid currentColor;
+}
+
+.pgrr-math .pgrr-legend .lg-a { color: var(--m-a); }
+.pgrr-math .pgrr-legend .lg-b { color: var(--m-b); }
+.pgrr-math .pgrr-legend .lg-c { color: var(--m-c); }
+.pgrr-math .pgrr-legend .lg-dash i { border-top-style: dashed; }
+
+/* ---- Tables and references ------------------------------------------------ */
+.pgrr-math .pgrr-tbl {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  font: 500 0.6rem/1.4 var(--m-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.pgrr-math .pgrr-tbl th,
+.pgrr-math .pgrr-tbl td {
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--h-border);
+  text-align: right;
+}
+
+.pgrr-math .pgrr-tbl th:first-child,
+.pgrr-math .pgrr-tbl td:first-child {
+  text-align: left;
+}
+
+.pgrr-math .pgrr-tbl th {
+  color: var(--h-muted);
+  font-size: 0.5rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pgrr-math .pgrr-tblwrap {
+  overflow-x: auto;
+}
+
+.pgrr-math .pgrr-refs li {
+  line-height: 1.65;
+}
+
+.pgrr-math .pgrr-refs .pgrr-rn {
+  display: inline-block;
+  min-width: 2.2rem;
+  color: var(--m-a);
+  font: 600 0.56rem/1 var(--m-mono);
+}
+
+.pgrr-math .pgrr-limits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
+}
+
+.pgrr-math .pgrr-limits > div + div {
+  border-left: 1px solid var(--h-border);
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-math .pgrr-limits { grid-template-columns: 1fr; }
+  .pgrr-math .pgrr-limits > div + div { border-left: 0; border-top: 1px solid var(--h-border); }
+}
+
+.pgrr-math .pgrr-limits > div {
+  padding: 22px var(--h-pad) 24px;
+  background: var(--h-hero-bg);
+  font-size: 0.66rem;
+  line-height: 1.7;
+}
+
+.pgrr-math .pgrr-limits b {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--h-fg);
+  font-size: 0.74rem;
+}
+
+.pgrr-math .pgrr-limits p {
+  margin: 0;
+  color: var(--h-muted);
+}
+
+/* ---- Title block: a technical note, not the home hero ----------------------- */
+.pgrr-math .pgrr-paper {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  background: var(--h-hero-bg);
+}
+
+.pgrr-math .pgrr-paper-main {
+  padding: 56px var(--h-pad) 40px;
+}
+
+.pgrr-math .pgrr-paper-kick {
+  margin: 0 0 22px;
+  color: var(--m-a);
+  font: 600 0.54rem/1 var(--m-mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.pgrr-math .pgrr-paper-kick span {
+  margin: 0 0.5em;
+  color: var(--h-muted);
+}
+
+.pgrr-math .pgrr-paper h1 {
+  margin: 0 0 28px;
+  color: var(--h-muted);
+  font-size: clamp(2.8rem, 1.4rem + 5vw, 4.6rem);
+  font-weight: 200;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+
+.pgrr-math .pgrr-paper h1 em {
+  color: var(--h-fg);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.pgrr-math .pgrr-abstract {
+  max-width: 34rem;
+  padding-left: 16px;
+  border-left: 1px solid var(--h-border);
+  font-size: 0.72rem;
+  line-height: 1.75;
+}
+
+.pgrr-math .pgrr-abstract b {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--h-muted);
+  font: 500 0.52rem/1 var(--m-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.pgrr-math .pgrr-abstract p {
+  margin: 0;
+}
+
+.pgrr-math .pgrr-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 26px;
+  margin-top: 26px;
+}
+
+.pgrr-math .pgrr-rules math {
+  color: var(--h-muted);
+  font-size: 1.25em;
+}
+
+.pgrr-math .pgrr-paper-fig {
+  position: relative;
+  margin: 0;
+  padding: 40px var(--h-pad) 30px;
+  border-left: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
+}
+
+.pgrr-math .pgrr-paper-fig .ln--a {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--m-a) 70%, transparent));
+}
+
+.pgrr-math .pgrr-paper-fig figcaption {
+  margin-top: 12px;
+  color: var(--h-muted);
+  font-size: 0.58rem;
+  line-height: 1.6;
+}
+
+.pgrr-math .pgrr-paper-fig figcaption b {
+  margin-right: 6px;
+  color: var(--m-a);
+  font: 600 0.52rem/1 var(--m-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pgrr-math .pgrr-toc {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--h-border);
+}
+
+.pgrr-math .pgrr-toc a {
+  flex: 1 1 0;
+  min-width: 5.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 10px 15px 16px;
+  border-left: 1px solid var(--h-border);
+  color: var(--h-fg);
+  font-size: 0.66rem;
+  font-weight: 600;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.pgrr-math .pgrr-toc a:first-child {
+  border-left: 0;
+}
+
+.pgrr-math .pgrr-toc a span {
+  color: var(--m-a);
+  font: 600 0.52rem/1 var(--m-mono);
+  letter-spacing: 0.14em;
+}
+
+.pgrr-math .pgrr-toc a:hover,
+.pgrr-math .pgrr-toc a:focus-visible {
+  background: color-mix(in srgb, var(--m-a) 6%, transparent);
+  color: var(--m-a);
+}
+
+@media (max-width: 62em) {
+  .pgrr-math .pgrr-paper {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pgrr-math .pgrr-paper-fig {
+    border-left: 0;
+    border-top: 1px solid var(--h-border);
+  }
+
+  .pgrr-math .pgrr-toc a {
+    border-top: 1px solid var(--h-border);
+  }
+}
+
+/* ---- Reveal on scroll (math.js adds .is-in) ------------------------------------- */
+.pgrr-math .pgrr-reveal {
+  opacity: 0;
+  translate: 0 14px;
+  transition: opacity 0.7s cubic-bezier(0.16, 0.8, 0.24, 1), translate 0.7s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+
+.pgrr-math .pgrr-reveal.is-in {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-math .pgrr-reveal {
+    opacity: 1;
+    translate: none;
+    transition: none;
+  }
+
+  .pgrr-math .pgrr-pipe.is-idle .pgrr-stage::before {
+    animation: none;
+  }
+
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-math .pgrr-text,
+  .pgrr-math .pgrr-lab {
+    padding-inline: 18px;
+  }
+
+  .pgrr-math .pgrr-eq {
+    justify-content: flex-start;
+    padding-right: 2.6rem;
+  }
+}
+
+/* ---- Backgrounds (math-bg.js) --------------------------------------------------- */
+.pgrr-math .pgrr-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.pgrr-math .pgrr-paper,
+.pgrr-math h2.pgrr-title {
+  position: relative;
+  isolation: isolate;
+}
+
+/* contour map behind the title block */
+.pgrr-math .pgrr-bg--topo {
+  -webkit-mask-image: radial-gradient(ellipse 90% 100% at 30% 40%, #000 20%, transparent 85%);
+  mask-image: radial-gradient(ellipse 90% 100% at 30% 40%, #000 20%, transparent 85%);
+}
+
+.pgrr-math .pgrr-bg--topo svg {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  fill: none;
+  stroke: var(--h-fg);
+  stroke-linecap: round;
+  animation: pgrr-drift 70s ease-in-out infinite alternate;
+}
+
+.pgrr-math .pgrr-bg--topo path {
+  stroke-width: 1;
+  stroke-opacity: 0.1;
+  opacity: 0;
+  filter: blur(6px);
+}
+
+.pgrr-math .pgrr-bg--topo path.is-index {
+  stroke-width: 1.6;
+  stroke-opacity: 0.17;
+}
+
+.pgrr-math .pgrr-bg--topo.is-in path {
+  opacity: 1;
+  filter: blur(0);
+  transition: opacity 1.4s ease-out, filter 1.6s ease-out;
+  transition-delay: calc(var(--i) * 90ms);
+}
+
+@keyframes pgrr-drift {
+  from { transform: translate(-1.5%, -1%) scale(1.02); }
+  to { transform: translate(1.5%, 1.2%) scale(1.14); }
+}
+
+.pgrr-math .pgrr-bg--topo.is-still svg {
+  animation: none;
+}
+
+/* dimension lines on the plots (drafting convention) */
+.pgrr-math .pgrr-plot .dm {
+  stroke: var(--h-muted);
+  stroke-width: 1;
+  fill: none;
+}
+
+.pgrr-math .pgrr-plot .dm-t {
+  fill: var(--h-muted);
+  font-size: 9.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-math .pgrr-bg--topo svg {
+    animation: none;
+  }
+
+  .pgrr-math .pgrr-bg--topo path {
+    opacity: 1;
+    filter: none;
+    transition: none;
+  }
+}
+
+/* the page's name and the menu are written with math symbols (math.js) */
+.pgrr-sym {
+  font-family: "PGRR Math", "STIX Two Math", "Cambria Math", "Apple Symbols", serif;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: none;
+}
+
+.md-header__title .md-header__topic .md-ellipsis .pgrr-sym {
+  font-size: 1.02rem;
+  letter-spacing: 0.12em;
+}
+
+.md-tabs__link .pgrr-sym {
+  font-size: 0.82rem;
+}
+
+.pgrr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* On this page the current tab is a pill, not an underline */
+.pgrr-on-math .md-tabs__item--active {
+  box-shadow: none;
+}
+
+.pgrr-on-math .md-tabs__link {
+  margin-top: 0.32rem;
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  transition: color 0.15s, background-color 0.2s;
+}
+
+.pgrr-on-math .md-tabs__item {
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+}
+
+.pgrr-on-math .md-tabs__item--active .md-tabs__link {
+  background: color-mix(in srgb, var(--md-default-fg-color) 9%, transparent);
+}
+
+.pgrr-on-math .md-tabs__link:hover:not(:where(.md-tabs__item--active *)) {
+  background: color-mix(in srgb, var(--md-default-fg-color) 5%, transparent);
+}

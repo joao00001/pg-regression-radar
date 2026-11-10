@@ -1,0 +1,2886 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/our-math/">
+      
+      
+        <link rel="prev" href="../playground/">
+      
+      
+        <link rel="next" href="../roadmap/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/brand/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>Our math - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="../stylesheets/roadmap.css">
+    
+      <link rel="stylesheet" href="../stylesheets/home.css">
+    
+      <link rel="stylesheet" href="../assets/math/math.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <script>
+    (function () {
+      try {
+        var shared = localStorage.getItem("pgrr.palette");
+        if (shared) {
+          localStorage.setItem(new URL("..", location).pathname + ".__palette", shared);
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#our-math" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Our math
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../playground/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Playground
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Our math
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="https://joao00001.github.io/pg-regression-radar/latest/installation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../roadmap/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../playground/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Playground
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Our math
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Our math
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Samples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Samples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1interval-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1Interval means
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2floors-and-the-pre-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2Floors and the pre-filter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#energy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Energy statistic
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Energy statistic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#3the-energy-statistic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3The energy statistic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tolerance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tolerance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tolerance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#4the-tolerance-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4The tolerance window
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#welch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Welch
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Welch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#5welchs-t-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5Welch's t-test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Confidence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Confidence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#6a-p-value-is-not-a-posterior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6A p-value is not a posterior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selection bias
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Selection bias">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#7maximally-selected-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §7Maximally selected statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#power" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Power">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#8sample-size-for-a-target-effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §8Sample size for a target effect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproduce
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Docs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression Scenario Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting Example
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply Chain Verification
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection Algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/otel-prometheus-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OpenTelemetry / Prometheus Sample Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/otlp-deploy-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OTLP Deploy Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/otlp-export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OTLP Regression Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cluster (Fleet) Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model & Threat Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment Security (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Versioning & Compatibility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy Sources & Webhooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-Abort (Argo Rollouts)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic (Deploy-Independent) Detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/backporting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backporting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch Protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page Template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" hidden>
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Samples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Samples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1interval-means" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1Interval means
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gates
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Gates">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#2floors-and-the-pre-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2Floors and the pre-filter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#energy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Energy statistic
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Energy statistic">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#3the-energy-statistic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3The energy statistic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tolerance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tolerance
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tolerance">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#4the-tolerance-window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4The tolerance window
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#welch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Welch
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Welch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#5welchs-t-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5Welch's t-test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Confidence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Confidence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#6a-p-value-is-not-a-posterior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6A p-value is not a posterior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selection bias
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Selection bias">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#7maximally-selected-statistics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §7Maximally selected statistics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#power" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Power">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#8sample-size-for-a-target-effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §8Sample size for a target effect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproduce" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproduce
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+  
+
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/our-math.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<div class="pgrr-home pgrr-math">
+<header class="pgrr-paper">
+<div class="pgrr-paper-main">
+<p class="pgrr-paper-kick">Technical note</p>
+<h1 id="our-math">Our <em>math</em><a class="headerlink" href="#our-math" title="Permanent link">&para;</a></h1>
+<div class="pgrr-abstract">
+<b>Abstract</b>
+<p>A <code>PerformanceRegression</code> is a verdict reached in seven steps from two cumulative counters. This note derives each step, states the assumptions it needs and measures where they fail. The figures run the engine's own arithmetic, in your browser.</p>
+</div>
+<div class="pgrr-rules">
+<math display="block"><mrow><mi>f</mi><mo>≥</mo><mn>1</mn><mo>+</mo><mi>θ</mi></mrow></math>
+<math display="block"><mrow><mrow><mo>|</mo><mover accent="true"><mi>τ</mi><mo>ˆ</mo></mover><mo>−</mo><msub><mi>t</mi><mi>d</mi></msub><mo>|</mo></mrow><mo>≤</mo><mi>τ</mi></mrow></math>
+<math display="block"><mrow><mi>p</mi><mo>≤</mo><mi>α</mi></mrow></math>
+</div>
+</div>
+<figure class="pgrr-paper-fig" data-w="hero">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 420 190" role="img" aria-label="The energy statistic scanning a latency series for its change point"></svg>
+<svg class="pgrr-plot" data-r="curve" viewBox="0 0 420 90" role="img" aria-hidden="true"></svg>
+<figcaption><b>Fig. 0</b> The split slides along the series; Q(k) is drawn as it goes, and the engine keeps the maximum.</figcaption>
+</figure>
+<nav aria-label="Contents" class="pgrr-toc">
+<a href="#lab"><span>Lab</span>Whole engine</a>
+<a href="#samples"><span>§1</span>Samples</a>
+<a href="#gates"><span>§2</span>Gates</a>
+<a href="#energy"><span>§3</span>Energy</a>
+<a href="#tolerance"><span>§4</span>Tolerance</a>
+<a href="#welch"><span>§5</span>Welch</a>
+<a href="#confidence"><span>§6</span>Confidence</a>
+<a href="#selection"><span>§7</span>Selection</a>
+<a href="#power"><span>§8</span>Power</a>
+</nav>
+</header>
+<h2 class="pgrr-title" id="pipeline"><span class="pgrr-kick">Overview</span>Seven steps from a counter to a <em>verdict</em><span class="pgrr-sub">Each stage can stop the analysis. The lab below plays a new query every few seconds; the stage that stops it turns red.</span><a class="headerlink" href="#pipeline" title="Permanent link">&para;</a></h2>
+<div class="pgrr-pipe is-idle" data-w="pipe">
+<div class="pgrr-stage" data-s="samples" style="--i:0"><span class="pgrr-n">01</span><b>Samples</b><math><mrow><msub><mi>x</mi><mi>t</mi></msub><mo>=</mo><mfrac><mrow><mi>Δ</mi><mi>T</mi></mrow><mrow><mi>Δ</mi><mi>C</mi></mrow></mfrac></mrow></math><small>Interval means from the cumulative counters.</small></div>
+<div class="pgrr-stage" data-s="floors" style="--i:1"><span class="pgrr-n">02</span><b>Floors</b><math><mrow><mi>n</mi><mo>≥</mo><mn>10</mn><mo>,</mo><mi>N</mi><mo>≥</mo><mn>100</mn></mrow></math><small>Enough points and calls to estimate a spread.</small></div>
+<div class="pgrr-stage" data-s="prefilter" style="--i:2"><span class="pgrr-n">03</span><b>Pre-filter</b><math><mrow><mi>f</mi><mo>−</mo><mn>1</mn><mo>≥</mo><mi>θ</mi></mrow></math><small>Cheap rejection of small shifts.</small></div>
+<div class="pgrr-stage" data-s="edivisive" style="--i:3"><span class="pgrr-n">04</span><b>E-divisive</b><math><mrow><mi>argmax</mi><mi>Q</mi><mo>(</mo><mi>k</mi><mo>)</mo></mrow></math><small>Where did the distribution change?</small></div>
+<div class="pgrr-stage" data-s="tolerance" style="--i:4"><span class="pgrr-n">05</span><b>Tolerance</b><math><mrow><mo>|</mo><mover accent="true"><mi>τ</mi><mo>ˆ</mo></mover><mo>−</mo><msub><mi>t</mi><mi>d</mi></msub><mo>|</mo><mo>≤</mo><mi>τ</mi></mrow></math><small>Was it this deploy?</small></div>
+<div class="pgrr-stage" data-s="welch" style="--i:5"><span class="pgrr-n">06</span><b>Welch</b><math><mrow><mi>p</mi><mo>≤</mo><mi>α</mi></mrow></math><small>Is the difference more than noise?</small></div>
+<div class="pgrr-stage" data-s="verdict" style="--i:6"><span class="pgrr-n">07</span><b>Verdict</b><math><mrow><mi>c</mi><mo>=</mo><mn>1</mn><mo>−</mo><mi>p</mi></mrow></math><small>Detected, with a score to rank it.</small></div>
+</div>
+<h2 class="pgrr-title" id="lab"><span class="pgrr-kick">Lab</span>Run the <em>whole engine</em><span class="pgrr-sub">The Go correlation engine's own arithmetic, on a new synthetic query every few seconds. Watch which stage stops it.</span><a class="headerlink" href="#lab" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec pgrr-sec--wide">
+<div class="pgrr-lab pgrr-lab--full" data-w="lab">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 720 300" role="img" aria-label="Interval-mean latency around the deploy, with the detected change point and its tolerance band"></svg>
+<svg class="pgrr-plot" data-r="curve" viewBox="0 0 720 96" role="img" aria-label="Energy statistic at every candidate split"></svg>
+<div class="pgrr-legend"><span class="lg-c"><i></i>deploy <math><msub><mi>t</mi><mi>d</mi></msub></math></span><span class="lg-a"><i></i>change point <math><mover accent="true"><mi>τ</mi><mo>ˆ</mo></mover></math></span><span class="lg-b lg-dash"><i></i>window means</span><span>shaded band: ±τ tolerance</span></div>
+<dl class="pgrr-params">
+<div>
+<dt>Regression size</dt>
+<dd data-o="size"></dd>
+</div>
+<div>
+<dt>Noise, per-call CV</dt>
+<dd data-o="cv"></dd>
+</div>
+<div>
+<dt>Calls per scrape</dt>
+<dd data-o="calls"></dd>
+</div>
+<div>
+<dt>Lands after deploy</dt>
+<dd data-o="lag"></dd>
+</div>
+<div>
+<dt>Autocorrelation φ</dt>
+<dd data-o="phi"></dd>
+</div>
+<div>
+<dt>Scrape interval</dt>
+<dd data-o="scrape"></dd>
+</div>
+</dl>
+<dl class="pgrr-kv" data-r="kv"></dl>
+<div class="pgrr-verdict" data-r="verdict" data-v="NoRegression" role="status"><b>—</b><span></span></div>
+<p class="pgrr-cap">Window 30 min each side · θ = 0.20 · α = 0.05 · floors 10 samples and 100 calls · tolerance max(2, 0.2 × 30) = 6 min.</p>
+</div>
+</div>
+<h2 class="pgrr-title" id="samples"><span class="pgrr-kick">Derivation</span>From counters to <em>samples</em><span class="pgrr-sub">The number PostgreSQL shows is not the number we analyse.</span><a class="headerlink" href="#samples" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec">
+<div class="pgrr-text">
+<h3 id="1interval-means"><span class="pgrr-sn">§1</span>Interval means<a class="headerlink" href="#1interval-means" title="Permanent link">&para;</a></h3>
+<p><code>pg_stat_statements</code> exposes two monotone counters per query: the calls <math><mi>C</mi></math> and the total execution time <math><mi>T</mi></math> in milliseconds, both accumulated since the last reset. Its <code>mean_exec_time</code> is their ratio, which is a mean over the whole history. We scrape both counters and analyse the mean of the calls made <em>since the previous scrape</em>:</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><msub><mi>x</mi><mi>t</mi></msub><mo>=</mo><mfrac><mrow><msub><mi>T</mi><mi>t</mi></msub><mo>−</mo><msub><mi>T</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub></mrow><mrow><msub><mi>C</mi><mi>t</mi></msub><mo>−</mo><msub><mi>C</mi><mrow><mi>t</mi><mo>−</mo><mn>1</mn></mrow></msub></mrow></mfrac><mo>=</mo><mfrac><mrow><mi>Δ</mi><msub><mi>T</mi><mi>t</mi></msub></mrow><mrow><mi>Δ</mi><msub><mi>C</mi><mi>t</mi></msub></mrow></mfrac></mrow></math>
+</div>
+<p>The cumulative mean is slow for a precise reason. If a query ran <math><msub><mi>n</mi><mtext>pre</mtext></msub></math> calls at mean <math><mi>μ</mi></math> and then <math><msub><mi>n</mi><mtext>post</mtext></msub></math> calls at <math><mrow><mi>μ</mi><mo>+</mo><mi>δ</mi></mrow></math>, the counter reports</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mfrac><mi>T</mi><mi>C</mi></mfrac><mo>=</mo><mi>μ</mi><mo>+</mo><mi>δ</mi><mo>·</mo><mfrac><msub><mi>n</mi><mtext>post</mtext></msub><mrow><msub><mi>n</mi><mtext>pre</mtext></msub><mo>+</mo><msub><mi>n</mi><mtext>post</mtext></msub></mrow></mfrac></mrow></math>
+</div>
+<p>so after a deploy it moves only by the share of calls made since. A step of +100% needs as many calls after the deploy as before it just to read +50%. The interval mean reads the step at the next scrape.</p>
+<div class="pgrr-note"><b>Resets</b><p>A counter that goes down (a restart, <code>pg_stat_statements_reset()</code>, a change in <code>stats_since</code>) makes <math><mrow><mi>Δ</mi><mi>C</mi></mrow></math> negative. That interval is discarded, not clamped, because its calls belong to no window. The cumulative mean jumps at a reset; the interval means do not.</p></div>
+</div>
+<div class="pgrr-lab" data-w="counters">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 520 280" role="img" aria-label="Cumulative mean versus interval mean after a step change in latency"></svg>
+<div class="pgrr-legend"><span class="lg-a"><i></i>interval mean <math><msub><mi>x</mi><mi>t</mi></msub></math></span><span class="lg-m lg-dash"><i></i>cumulative mean <math><mrow><mi>T</mi><mo>/</mo><mi>C</mi></mrow></math></span></div>
+<dl class="pgrr-params">
+<div>
+<dt>Step</dt>
+<dd data-o="size"></dd>
+</div>
+<div>
+<dt>Step lands at</dt>
+<dd data-o="at"></dd>
+</div>
+<div>
+<dt>Counter reset</dt>
+<dd data-o="reset"></dd>
+</div>
+</dl>
+<dl class="pgrr-kv" data-r="kv"></dl>
+</div>
+</div>
+<h2 class="pgrr-title" id="gates"><span class="pgrr-kick">Derivation</span>Gates before <em>statistics</em><span class="pgrr-sub">Floors decide when we are allowed to answer, not how often the answer is wrong.</span><a class="headerlink" href="#gates" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec">
+<div class="pgrr-text">
+<h3 id="2floors-and-the-pre-filter"><span class="pgrr-sn">§2</span>Floors and the pre-filter<a class="headerlink" href="#2floors-and-the-pre-filter" title="Permanent link">&para;</a></h3>
+<p>Both windows (before and after the deploy) must clear two floors. <strong>Samples</strong> protect the machinery: the t-test and the energy statistic estimate a spread from the data, so they need points, <math><mrow><mi>n</mi><mo>≥</mo><msub><mi>n</mi><mtext>min</mtext></msub><mo>=</mo><mn>10</mn></mrow></math>. <strong>Executions</strong> bound the precision of the window's mean: the standard error of a mean of <math><mi>N</mi></math> calls with per-call coefficient of variation <math><mtext>CV</mtext></math> is</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mtext>SE</mtext><mo>(</mo><mover accent="true"><mi>x</mi><mo>¯</mo></mover><mo>)</mo><mo>/</mo><mi>μ</mi><mo>=</mo><mfrac><mtext>CV</mtext><msqrt><mi>N</mi></msqrt></mfrac></mrow></math>
+</div>
+<p>With <math><mrow><mi>N</mi><mo>=</mo><mn>100</mn></mrow></math> and <math><mrow><mtext>CV</mtext><mo>=</mo><mn>1</mn></mrow></math>, a window mean is good to about ±10% at one standard error. Windows with fewer calls return <code>InsufficientData</code>, which is different from <code>NoRegression</code>: the first says "we could not tell".</p>
+<p>The pre-filter compares the call-weighted window means, <math><mrow><mover accent="true"><mi>x</mi><mo>¯</mo></mover><mo>=</mo><mfrac><mrow><mo>∑</mo><mi>Δ</mi><mi>T</mi></mrow><mrow><mo>∑</mo><mi>Δ</mi><mi>C</mi></mrow></mfrac></mrow></math>, and stops when</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>f</mi><mo>−</mo><mn>1</mn><mo>&lt;</mo><mi>θ</mi><mo>=</mo><mn>0.20</mn><mo>⟹</mo><mtext>NoRegression</mtext></mrow></math>
+</div>
+<p>It is an optimisation and a guard: the expensive stages run only on shifts big enough to matter.</p>
+</div>
+<div class="pgrr-lab" data-w="gates">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 520 220" role="img" aria-label="Standard error of a window mean as the number of calls grows"></svg>
+<dl class="pgrr-params">
+<div>
+<dt>Per-call CV</dt>
+<dd data-o="cv"></dd>
+</div>
+<div>
+<dt>Calls in the window</dt>
+<dd data-o="n"></dd>
+</div>
+<div>
+<dt>Scrapes in the window</dt>
+<dd data-o="s"></dd>
+</div>
+</dl>
+<dl class="pgrr-kv" data-r="kv"></dl>
+</div>
+</div>
+<h2 class="pgrr-title" id="energy"><span class="pgrr-kick">Stage 1</span>Finding the change with <em>energy</em><span class="pgrr-sub">E-divisive means asks whether two stretches of the series come from the same distribution, not only whether their means differ.</span><a class="headerlink" href="#energy" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec">
+<div class="pgrr-text">
+<h3 id="3the-energy-statistic"><span class="pgrr-sn">§3</span>The energy statistic<a class="headerlink" href="#3the-energy-statistic" title="Permanent link">&para;</a></h3>
+<p>For two samples <math><mrow><mi>A</mi><mo>=</mo><msub><mi>a</mi><mn>1</mn></msub><mo>…</mo><msub><mi>a</mi><msub><mi>n</mi><mi>a</mi></msub></msub></mrow></math> and <math><mrow><mi>B</mi><mo>=</mo><msub><mi>b</mi><mn>1</mn></msub><mo>…</mo><msub><mi>b</mi><msub><mi>n</mi><mi>b</mi></msub></msub></mrow></math> let <math><mrow><mi>D</mi><mo>(</mo><mi>A</mi><mo>,</mo><mi>B</mi><mo>)</mo></mrow></math> be the mean absolute distance across them. The energy distance of Székely and Rizzo <a href="#ref-1">[1]</a> compares the cross distance with the distances inside each sample:</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>ℰ</mi><mo>=</mo><mn>2</mn><msub><mi>D</mi><mrow><mi>a</mi><mi>b</mi></mrow></msub><mo>−</mo><msub><mi>D</mi><mrow><mi>a</mi><mi>a</mi></mrow></msub><mo>−</mo><msub><mi>D</mi><mrow><mi>b</mi><mi>b</mi></mrow></msub><mspace width="1em"></mspace><msub><mi>D</mi><mrow><mi>a</mi><mi>b</mi></mrow></msub><mo>=</mo><mfrac><mn>1</mn><mrow><msub><mi>n</mi><mi>a</mi></msub><msub><mi>n</mi><mi>b</mi></msub></mrow></mfrac><munder><mo>∑</mo><mrow><mi>i</mi><mo>,</mo><mi>j</mi></mrow></munder><mrow><mo>|</mo><msub><mi>a</mi><mi>i</mi></msub><mo>−</mo><msub><mi>b</mi><mi>j</mi></msub><mo>|</mo></mrow></mrow></math>
+</div>
+<p>It is zero exactly when the two samples have the same distribution (in the limit) and grows with any difference: location, spread or shape. Scaled by the sample sizes it becomes the statistic the engine evaluates at every admissible split <math><mi>k</mi></math> of the series, with within-sample distances averaged over unordered pairs <a href="#ref-2">[2]</a>:</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>Q</mi><mo>(</mo><mi>k</mi><mo>)</mo><mo>=</mo><mfrac><mrow><mn>2</mn><msub><mi>n</mi><mi>a</mi></msub><msub><mi>n</mi><mi>b</mi></msub></mrow><mrow><msub><mi>n</mi><mi>a</mi></msub><mo>+</mo><msub><mi>n</mi><mi>b</mi></msub></mrow></mfrac><mrow><mo>(</mo><msub><mi>D</mi><mrow><mi>a</mi><mi>b</mi></mrow></msub><mo>−</mo><mfrac><msub><mi>D</mi><mrow><mi>a</mi><mi>a</mi></mrow></msub><mn>2</mn></mfrac><mo>−</mo><mfrac><msub><mi>D</mi><mrow><mi>b</mi><mi>b</mi></mrow></msub><mn>2</mn></mfrac><mo>)</mo></mrow><mspace width="1em"></mspace><mover accent="true"><mi>τ</mi><mo>ˆ</mo></mover><mo>=</mo><munder><mi>argmax</mi><mrow><mi>m</mi><mo>≤</mo><mi>k</mi><mo>≤</mo><mi>n</mi><mo>−</mo><mi>m</mi></mrow></munder><mi>Q</mi><mo>(</mo><mi>k</mi><mo>)</mo></mrow></math>
+</div>
+<p>Here <math><mrow><msub><mi>n</mi><mi>a</mi></msub><mo>=</mo><mi>k</mi></mrow></math>, <math><mrow><msub><mi>n</mi><mi>b</mi></msub><mo>=</mo><mi>n</mi><mo>−</mo><mi>k</mi></mrow></math>, and <math><mrow><mi>m</mi><mo>=</mo><mo>max</mo><mo>(</mo><mn>3</mn><mo>,</mo><mo>⌊</mo><mi>n</mi><mo>/</mo><mn>10</mn><mo>⌋</mo><mo>)</mo></mrow></math> keeps a change from being "found" in the first or last few points. A split is kept only if <math><mrow><mi>Q</mi><mo>&gt;</mo><mn>0</mn></mrow></math>. Evaluating all splits costs <math><mrow><mi>O</mi><mo>(</mo><msup><mi>n</mi><mn>2</mn></msup><mo>)</mo></mrow></math> because moving the split one step changes each sum by one row and one column.</p>
+<div class="pgrr-note"><b>Why not just split at the deploy?</b><p>Rolling deploys and connection draining spread the shift over minutes, and the collector adds scrape granularity. Letting the data place the split gives the shift's real start, and the next stage asks whether that start is close enough to the deploy to blame it.</p></div>
+</div>
+<div class="pgrr-lab" data-w="energy">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 520 220" role="img" aria-label="A latency series with the split sliding along it"></svg>
+<svg class="pgrr-plot" data-r="curve" viewBox="0 0 520 120" role="img" aria-label="Q at every split"></svg>
+<div class="pgrr-legend"><span class="lg-b"><i></i>left of the split</span><span class="lg-a"><i></i>right of the split</span><span class="lg-c"><i></i>argmax Q</span></div>
+<dl class="pgrr-params">
+<div>
+<dt>Shift in the middle</dt>
+<dd data-o="size"></dd>
+</div>
+<div>
+<dt>Noise</dt>
+<dd data-o="cv"></dd>
+</div>
+</dl>
+<dl class="pgrr-kv" data-r="kv"></dl>
+</div>
+</div>
+<h2 class="pgrr-title" id="tolerance"><span class="pgrr-kick">Stage 1b</span>Was it <em>this</em> deploy?<span class="pgrr-sub">A change point is only evidence about a deploy if it is close to it.</span><a class="headerlink" href="#tolerance" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec">
+<div class="pgrr-text">
+<h3 id="4the-tolerance-window"><span class="pgrr-sn">§4</span>The tolerance window<a class="headerlink" href="#4the-tolerance-window" title="Permanent link">&para;</a></h3>
+<p>Let <math><msub><mi>t</mi><mi>d</mi></msub></math> be the deploy time and <math><mover accent="true"><mi>τ</mi><mo>ˆ</mo></mover></math> the located change. The change is attributed to the deploy only if</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mrow><mo>|</mo><mover accent="true"><mi>τ</mi><mo>ˆ</mo></mover><mo>−</mo><msub><mi>t</mi><mi>d</mi></msub><mo>|</mo></mrow><mo>≤</mo><mi>τ</mi><mo>=</mo><mo>max</mo><mo>(</mo><mn>2</mn><mtext> min</mtext><mo>,</mo><mn>0.2</mn><mi>W</mi><mo>)</mo></mrow></math>
+</div>
+<p>where <math><mi>W</mi></math> is the analysis window. Making the allowance a fraction of the window keeps the same relative slack for a tight 10-minute window and a loose 60-minute one; the floor keeps short windows from shrinking it to nothing.</p>
+<p>The order matters. The engine checks the tolerance <em>before</em> the significance test, so a shift that is very significant but starts twenty minutes before the deploy is reported as unrelated background change, never as a regression of this deploy. This is the step that turns a change detector into an attribution tool.</p>
+<div class="pgrr-note"><b>A trade-off, not a free parameter</b><p>A wide tolerance catches slow rollouts and attributes more unrelated shifts to the deploy. A narrow one does the opposite. Under a Poisson process of unrelated shifts the expected number of coincidences grows linearly in <math><mi>τ</mi></math>.</p></div>
+</div>
+<div class="pgrr-lab" data-w="tol">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 520 170" role="img" aria-label="Timeline with the deploy, the tolerance band and the located change point"></svg>
+<dl class="pgrr-params">
+<div>
+<dt>Window W</dt>
+<dd data-o="w"></dd>
+</div>
+<div>
+<dt>Located change <math><mover accent="true"><mi>τ</mi><mo>ˆ</mo></mover></math></dt>
+<dd data-o="cp"></dd>
+</div>
+</dl>
+<dl class="pgrr-kv" data-r="kv"></dl>
+</div>
+</div>
+<h2 class="pgrr-title" id="welch"><span class="pgrr-kick">Stage 2</span>Is it more than <em>noise</em>?<span class="pgrr-sub">Welch's t-test on the two segments the data itself found.</span><a class="headerlink" href="#welch" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec">
+<div class="pgrr-text">
+<h3 id="5welchs-t-test"><span class="pgrr-sn">§5</span>Welch's t-test<a class="headerlink" href="#5welchs-t-test" title="Permanent link">&para;</a></h3>
+<p>The two segments on either side of <math><mover accent="true"><mi>τ</mi><mo>ˆ</mo></mover></math> are compared without assuming equal variances. A latency regression often changes the spread as well as the mean, so the pooled-variance Student test would be the wrong tool <a href="#ref-3">[3]</a>:</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>t</mi><mo>=</mo><mfrac><mrow><msub><mover accent="true"><mi>x</mi><mo>¯</mo></mover><mi>b</mi></msub><mo>−</mo><msub><mover accent="true"><mi>x</mi><mo>¯</mo></mover><mi>a</mi></msub></mrow><msqrt><mrow><mfrac><msubsup><mi>s</mi><mi>a</mi><mn>2</mn></msubsup><msub><mi>n</mi><mi>a</mi></msub></mfrac><mo>+</mo><mfrac><msubsup><mi>s</mi><mi>b</mi><mn>2</mn></msubsup><msub><mi>n</mi><mi>b</mi></msub></mfrac></mrow></msqrt></mfrac></mrow></math>
+</div>
+<p>The reference distribution is Student's <math><mi>t</mi></math> with the Welch–Satterthwaite degrees of freedom,</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>ν</mi><mo>=</mo><mfrac><msup><mrow><mo>(</mo><mfrac><msubsup><mi>s</mi><mi>a</mi><mn>2</mn></msubsup><msub><mi>n</mi><mi>a</mi></msub></mfrac><mo>+</mo><mfrac><msubsup><mi>s</mi><mi>b</mi><mn>2</mn></msubsup><msub><mi>n</mi><mi>b</mi></msub></mfrac><mo>)</mo></mrow><mn>2</mn></msup><mrow><mfrac><msup><mrow><mo>(</mo><msubsup><mi>s</mi><mi>a</mi><mn>2</mn></msubsup><mo>/</mo><msub><mi>n</mi><mi>a</mi></msub><mo>)</mo></mrow><mn>2</mn></msup><mrow><msub><mi>n</mi><mi>a</mi></msub><mo>−</mo><mn>1</mn></mrow></mfrac><mo>+</mo><mfrac><msup><mrow><mo>(</mo><msubsup><mi>s</mi><mi>b</mi><mn>2</mn></msubsup><mo>/</mo><msub><mi>n</mi><mi>b</mi></msub><mo>)</mo></mrow><mn>2</mn></msup><mrow><msub><mi>n</mi><mi>b</mi></msub><mo>−</mo><mn>1</mn></mrow></mfrac></mrow></mfrac></mrow></math>
+</div>
+<p>and the two-sided p-value has a closed form through the regularised incomplete beta function, which is what the engine computes with a continued fraction <a href="#ref-4">[4]</a>:</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>p</mi><mo>=</mo><mi>P</mi><mo>(</mo><mo>|</mo><msub><mi>T</mi><mi>ν</mi></msub><mo>|</mo><mo>≥</mo><mo>|</mo><mi>t</mi><mo>|</mo><mo>)</mo><mo>=</mo><msub><mi>I</mi><mrow><mi>ν</mi><mo>/</mo><mo>(</mo><mi>ν</mi><mo>+</mo><msup><mi>t</mi><mn>2</mn></msup><mo>)</mo></mrow></msub><mo>(</mo><mfrac><mi>ν</mi><mn>2</mn></mfrac><mo>,</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>)</mo></mrow></math>
+</div>
+<p>The test is applied to the per-interval means <math><msub><mi>x</mi><mi>t</mi></msub></math>, not to individual calls. By the central limit theorem those are much closer to normal than the heavy-tailed per-call latencies, which is why a test that assumes normality is defensible here at all.</p>
+</div>
+<div class="pgrr-lab" data-w="welch">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 520 240" role="img" aria-label="Student t density with the two tails beyond the observed t shaded"></svg>
+<dl class="pgrr-params">
+<div>
+<dt>Change in the mean</dt>
+<dd data-o="d"></dd>
+</div>
+<div>
+<dt>Interval-mean CV</dt>
+<dd data-o="cv"></dd>
+</div>
+<div>
+<dt>Points before</dt>
+<dd data-o="na"></dd>
+</div>
+<div>
+<dt>Points after</dt>
+<dd data-o="nb"></dd>
+</div>
+</dl>
+<dl class="pgrr-kv" data-r="kv"></dl>
+</div>
+</div>
+<h2 class="pgrr-title" id="confidence"><span class="pgrr-kick">Interpretation</span>What the score <em>means</em><span class="pgrr-sub">confidenceScore is 1 − p. It ranks detections. It is not the probability that the regression is real.</span><a class="headerlink" href="#confidence" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec">
+<div class="pgrr-text">
+<h3 id="6a-p-value-is-not-a-posterior"><span class="pgrr-sn">§6</span>A p-value is not a posterior<a class="headerlink" href="#6a-p-value-is-not-a-posterior" title="Permanent link">&para;</a></h3>
+<p>The p-value answers "if nothing changed, how often would noise alone look at least this extreme?". Reading <math><mrow><mn>1</mn><mo>−</mo><mi>p</mi></mrow></math> as "the chance the change is real" inverts the conditional. How far apart the two can be is bounded, without any assumption about the prior, by the calibration of Sellke, Bayarri and Berger <a href="#ref-5">[5]</a>. For <math><mrow><mi>p</mi><mo>&lt;</mo><mn>1</mn><mo>/</mo><mi>e</mi></mrow></math> the Bayes factor in favour of "no change" is at least <math><mrow><mi>B</mi><mo>(</mo><mi>p</mi><mo>)</mo><mo>=</mo><mo>−</mo><mi>e</mi><mi>p</mi><mi>ln</mi><mi>p</mi></mrow></math>, so with even prior odds</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>P</mi><mo>(</mo><msub><mi>H</mi><mn>0</mn></msub><mo>∣</mo><mtext>data</mtext><mo>)</mo><mo>≥</mo><msup><mrow><mo>(</mo><mn>1</mn><mo>+</mo><mfrac><mn>1</mn><mrow><mo>−</mo><mi>e</mi><mi>p</mi><mi>ln</mi><mi>p</mi></mrow></mfrac><mo>)</mo></mrow><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow></math>
+</div>
+<div class="pgrr-tblwrap">
+<table class="pgrr-tbl">
+<thead>
+<tr>
+<th>p</th>
+<th>score 1 − p</th>
+<th>P(no change) ≥</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.05</td>
+<td>0.95</td>
+<td>0.29</td>
+</tr>
+<tr>
+<td>0.01</td>
+<td>0.99</td>
+<td>0.11</td>
+</tr>
+<tr>
+<td>0.001</td>
+<td>0.999</td>
+<td>0.018</td>
+</tr>
+<tr>
+<td>0.0001</td>
+<td>0.9999</td>
+<td>0.0025</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>A score of 0.95 can leave a 29% chance that nothing changed. That is why the score is documented as a ranking and a threshold input, and why it should not be quoted as a probability.</p>
+</div>
+<div class="pgrr-lab" data-w="sbb">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 520 250" role="img" aria-label="Lower bound on the probability of no change as a function of the p-value"></svg>
+<dl class="pgrr-params">
+<div>
+<dt>p-value</dt>
+<dd data-o="p"></dd>
+</div>
+</dl>
+<dl class="pgrr-kv" data-r="kv"></dl>
+</div>
+</div>
+<h2 class="pgrr-title" id="selection"><span class="pgrr-kick">Caveat</span>The <em>search</em> inflates significance<span class="pgrr-sub">Choosing the split from the data, then testing it as if it had been chosen in advance, is optimistic.</span><a class="headerlink" href="#selection" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec">
+<div class="pgrr-text">
+<h3 id="7maximally-selected-statistics"><span class="pgrr-sn">§7</span>Maximally selected statistics<a class="headerlink" href="#7maximally-selected-statistics" title="Permanent link">&para;</a></h3>
+<p>Stage 1 picks the split with the largest <math><mi>Q</mi></math>. Stage 2 then tests <em>that</em> split with a t-test whose reference distribution assumes the split was fixed beforehand. Under "no change" a t-statistic at a fixed split has <math><mrow><mi>p</mi><mo>∼</mo><mtext>Uniform</mtext><mo>(</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo>)</mo></mrow></math>, but the split <math><msup><mi>k</mi><mo>∗</mo></msup></math> that maximises a separation statistic is by construction the one where the two sides look most different, so the p-value <math><msub><mi>p</mi><mrow><mi>k</mi><mo>∗</mo></mrow></msub></math> at that split is too small:</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>P</mi><mrow><mo>(</mo><msub><mi>p</mi><mrow><mi>k</mi><mo>∗</mo></mrow></msub><mo>≤</mo><mi>α</mi><mo>∣</mo><msub><mi>H</mi><mn>0</mn></msub><mo>)</mo></mrow><mo>&gt;</mo><mi>α</mi></mrow></math>
+</div>
+<p>The statistical literature calls this the problem of maximally selected statistics and corrects for it with a p-value that accounts for the search <a href="#ref-6">[6]</a>. E-divisive means itself does so with a permutation test over the whole search <a href="#ref-1">[1]</a>.</p>
+<p>The figure draws series with <strong>no change at all</strong>, applies stages 1 and 2 exactly as the engine does, and histograms the p-values. A correct test would be flat. With independent noise the lab typically puts 35–39% of them below 0.05; with autocorrelated noise, far more.</p>
+<div class="pgrr-note"><b>What protects production</b><p>Three other gates sit around this one: the pre-filter (a real +20% is required), the tolerance (the located change must sit near the deploy) and the floors. Through the whole pipeline the measured share of no-change analyses reported as <code>Detected</code> is much lower than the raw p-value rate; the <a href="https://joao00001.github.io/pg-regression-radar/roadmap/">roadmap</a> tracks the calibration work.</p></div>
+</div>
+<div class="pgrr-lab" data-w="selection">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 520 250" role="img" aria-label="Histogram of p-values at the split E-divisive chose, on series with no change"></svg>
+<dl class="pgrr-params">
+<div>
+<dt>Points per series</dt>
+<dd data-o="n"></dd>
+</div>
+<div>
+<dt>Autocorrelation φ</dt>
+<dd data-o="phi"></dd>
+</div>
+</dl>
+<dl class="pgrr-kv" data-r="kv"></dl>
+<p class="pgrr-cap">Dashed line: what a correctly calibrated test would give.</p>
+</div>
+</div>
+<h2 class="pgrr-title" id="power"><span class="pgrr-kick">Design</span>How many calls you <em>need</em><span class="pgrr-sub">Sensitivity is bought with executions. This is the price list.</span><a class="headerlink" href="#power" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec">
+<div class="pgrr-text">
+<h3 id="8sample-size-for-a-target-effect"><span class="pgrr-sn">§8</span>Sample size for a target effect<a class="headerlink" href="#8sample-size-for-a-target-effect" title="Permanent link">&para;</a></h3>
+<p>To detect a relative change <math><mi>δ</mi></math> in the mean at size <math><mrow><mi>α</mi><mo>=</mo><mn>0.05</mn></mrow></math> (two-sided) with power <math><mrow><mn>1</mn><mo>−</mo><mi>β</mi><mo>=</mo><mn>0.8</mn></mrow></math>, a two-sample comparison needs, per window,</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>N</mi><mo>≈</mo><mfrac><mrow><mn>2</mn><msup><mrow><mo>(</mo><msub><mi>z</mi><mrow><mi>α</mi><mo>/</mo><mn>2</mn></mrow></msub><mo>+</mo><msub><mi>z</mi><mi>β</mi></msub><mo>)</mo></mrow><mn>2</mn></msup><mspace width="0.2em"></mspace><msup><mtext>CV</mtext><mn>2</mn></msup></mrow><msup><mi>δ</mi><mn>2</mn></msup></mfrac><mo>=</mo><mfrac><mrow><mn>15.7</mn><mspace width="0.2em"></mspace><msup><mtext>CV</mtext><mn>2</mn></msup></mrow><msup><mi>δ</mi><mn>2</mn></msup></mfrac></mrow></math>
+</div>
+<p>using <math><mrow><msub><mi>z</mi><mrow><mi>α</mi><mo>/</mo><mn>2</mn></mrow></msub><mo>=</mo><mn>1.96</mn></mrow></math> and <math><mrow><msub><mi>z</mi><mi>β</mi></msub><mo>=</mo><mn>0.84</mn></mrow></math>. The cost is quadratic in both noise and ambition: halving the smallest change you care about quadruples the calls you need. A query with CV = 1 needs about 390 calls per window to see +20% reliably, and about 1,570 to see +10%.</p>
+<p>This is the asymptotic normal approximation for means, and it ignores the search of §7, so it is optimistic for small windows. Treat it as a lower bound when choosing <code>--min-executions</code> and the window length.</p>
+</div>
+<div class="pgrr-lab" data-w="power">
+<svg class="pgrr-plot" data-r="chart" viewBox="0 0 520 250" role="img" aria-label="Calls needed per window as a function of the relative change to detect"></svg>
+<dl class="pgrr-params">
+<div>
+<dt>Per-call CV</dt>
+<dd data-o="cv"></dd>
+</div>
+<div>
+<dt>Smallest change δ</dt>
+<dd data-o="d"></dd>
+</div>
+</dl>
+<dl class="pgrr-kv" data-r="kv"></dl>
+</div>
+</div>
+<h2 class="pgrr-title" id="limits"><span class="pgrr-kick">Honesty</span>Where the math <em>stops</em><span class="pgrr-sub">The two assumptions that matter most, and what happens when they fail.</span><a class="headerlink" href="#limits" title="Permanent link">&para;</a></h2>
+<div class="pgrr-limits">
+<div><b>Independent intervals</b><p>The t-test and the permutation argument assume the interval means are independent. Serially correlated noise (a slow checkpoint, a cache warming) inflates the false-positive rate, as the selection lab shows with φ &gt; 0.</p></div>
+<div><b>Counters, not calls</b><p>The mean of an interval hides its composition: a shift in the mix of parameter values looks the same as a slower plan. That is why a detection carries a plan diff and an <code>externalCauseSuspected</code> flag.</p></div>
+</div>
+<h2 class="pgrr-title" id="reproduce"><span class="pgrr-kick">Reproducibility</span>The page runs the <em>engine's</em> math<span class="pgrr-sub">Not a re-implementation we hope is close.</span><a class="headerlink" href="#reproduce" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec pgrr-sec--wide">
+<div class="pgrr-text">
+<p>Every widget above calls one dependency-free module, <code>docs/assets/math/math-core.js</code>, a line-by-line port of <code>internal/correlation/engine.go</code>: the interval means, the minimum segment length, the incremental energy statistic, the Lanczos log-gamma, the incomplete beta continued fraction and the decision order of <code>evaluateQuery</code>. A Go test (<code>internal/correlation/mathpage_test.go</code>) feeds fixed series, generated by that module, to the real engine and fails if the verdict, the change point, <math><mi>t</mi></math>, <math><mi>ν</mi></math> or <math><mi>p</mi></math> differ, so the page cannot drift from the code without CI noticing. Noise in the lab is a seeded log-normal per call (so the mean of <math><mi>c</mi></math> calls has coefficient of variation <math><mrow><mtext>CV</mtext><mo>/</mo><msqrt><mi>c</mi></msqrt></mrow></math>), with optional AR(1) correlation, from a fixed seed so every figure is reproducible.</p>
+<p>For the full operational description of each stage, flag and CRD field, see the <a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/">Detection Algorithm</a> and the <a href="https://joao00001.github.io/pg-regression-radar/latest/configuration/">Configuration Reference</a>. To run the engine itself on a workload, open the <a href="https://joao00001.github.io/pg-regression-radar/playground/">Playground</a>.</p>
+</div>
+</div>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul class="pgrr-refs">
+<li id="ref-1"><span class="pgrr-rn">[1]</span>D. S. Matteson and N. A. James, “A nonparametric approach for multiple change point analysis of multivariate data”, <em>JASA</em> 109(505), 2014. <a href="https://doi.org/10.1080/01621459.2013.849605">doi:10.1080/01621459.2013.849605</a></li>
+<li id="ref-2"><span class="pgrr-rn">[2]</span>G. J. Székely and M. L. Rizzo, “Energy statistics: a class of statistics based on distances”, <em>Journal of Statistical Planning and Inference</em> 143(8), 2013.</li>
+<li id="ref-3"><span class="pgrr-rn">[3]</span>B. L. Welch, “The generalization of ‘Student's’ problem when several different population variances are involved”, <em>Biometrika</em> 34, 1947.</li>
+<li id="ref-4"><span class="pgrr-rn">[4]</span>W. H. Press et al., <em>Numerical Recipes</em>, §6.4 “Incomplete beta function” (continued fraction by the modified Lentz method).</li>
+<li id="ref-5"><span class="pgrr-rn">[5]</span>T. Sellke, M. J. Bayarri and J. O. Berger, “Calibration of p values for testing precise null hypotheses”, <em>The American Statistician</em> 55(1), 2001.</li>
+<li id="ref-6"><span class="pgrr-rn">[6]</span>R. Miller and D. Siegmund, “Maximally selected chi square statistics”, <em>Biometrics</em> 38, 1982; B. Lausen and M. Schumacher, “Maximally selected rank statistics”, <em>Biometrics</em> 48, 1992.</li>
+<li id="ref-7"><span class="pgrr-rn">[7]</span>D. Daly et al., “The use of change point detection to identify software performance regressions in a continuous integration system”, <em>ICPE</em> 2020. <a href="https://arxiv.org/abs/2003.00584">arXiv:2003.00584</a></li>
+</ul>
+<p class="pgrr-foot">Licensed under Apache 2.0 — see <a href="https://github.com/joao00001/pg-regression-radar/blob/main/LICENSE">LICENSE</a>.</p>
+</div>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+  
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.expand", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+        <script src="../javascripts/roadmap.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
+      
+        <script src="../javascripts/theme-toggle.js"></script>
+      
+        <script src="../javascripts/callouts.js"></script>
+      
+        <script src="../javascripts/steps.js"></script>
+      
+        <script src="../javascripts/toc-indicator.js"></script>
+      
+        <script src="../javascripts/home-radar.js"></script>
+      
+        <script src="../javascripts/home-ascii.js"></script>
+      
+        <script src="../javascripts/home-flow.js"></script>
+      
+        <script src="../assets/math/math-core.js"></script>
+      
+        <script src="../assets/math/math.js"></script>
+      
+        <script src="../assets/math/math-bg.js"></script>
+      
+    
+  </body>
+</html>
