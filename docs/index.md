@@ -12,7 +12,7 @@ hide:
 
 <p class="pgrr-lead">Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.</p>
 
-[Get started](installation.md){ .md-button .md-button--primary }
+[Get started](playground.md){ .md-button .md-button--primary }
 [How it works](#how-it-works){ .md-button }
 
 </div>
@@ -185,6 +185,7 @@ hide:
 
 ## Where to go next
 
+- Want to see it work first? Open the [playground](playground.md): no install needed.
 - New to the project? Start with [Installation](installation.md), then [Getting Started](getting-started.md).
 - Deciding between the two ways to run it? See [Architecture Overview](architecture.md).
 - Looking for a specific flag or CRD field? See [Configuration Reference](configuration.md).

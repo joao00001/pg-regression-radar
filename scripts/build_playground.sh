@@ -4,6 +4,9 @@
 # must come from the same Go toolchain, which is why they are built together.
 #
 # Usage: scripts/build_playground.sh
+#
+# To preview the page locally afterwards (the playground is an unversioned
+# page, see hooks.py): mkdocs serve -f mkdocs-unversioned.yml
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
