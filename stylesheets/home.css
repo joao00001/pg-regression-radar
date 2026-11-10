@@ -1,0 +1,482 @@
+/*
+ * Home page (docs/index.md): hero, architecture diagram, step and link cards.
+ *
+ * Loaded only by the unversioned build (mkdocs-unversioned.yml), like
+ * roadmap.css. Everything is scoped under .pgrr-home and uses the same two
+ * layers as the code blocks and callouts (a card with a thin border, and a
+ * darker inset panel) plus the purple accent, in both color schemes.
+ */
+
+.pgrr-home {
+  --h-card: #1d1f1f;
+  --h-border: #3a3d3d;
+  --h-panel: #0b0c0e;
+  --h-fg: #f4f6f4;
+  --h-muted: #a3a8a7;
+  --h-icon: #aeb2b1;
+  --h-chip: #242525;
+  --h-accent: #b69cff;
+  --h-accent-bg: #1c1733;
+  --h-accent-border: #4b3a8c;
+  --h-accent-solid: #7c4dff;
+  --h-bad: #f6a5ae;
+  --h-bad-bg: #2e1417;
+  --h-bad-border: #7a2530;
+  --h-dots: rgba(255, 255, 255, 0.09);
+  --h-glow: rgba(124, 77, 255, 0.22);
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-card: #f1f2f2;
+  --h-border: #d4d8d8;
+  --h-panel: #ffffff;
+  --h-fg: #1a1c1c;
+  --h-muted: #5d6362;
+  --h-icon: #646a6a;
+  --h-chip: #e3e6e6;
+  --h-accent: #6d28d9;
+  --h-accent-bg: #f3efff;
+  --h-accent-border: #cbbdf7;
+  --h-accent-solid: #6d28d9;
+  --h-bad: #8f1d2a;
+  --h-bad-bg: #fff0f1;
+  --h-bad-border: #f4b6bc;
+  --h-dots: rgba(0, 0, 0, 0.09);
+  --h-glow: rgba(109, 40, 217, 0.12);
+}
+
+/* The page has no table of contents; let the text use the width. */
+.md-content:has(.pgrr-home) .md-content__button {
+  display: none;
+}
+
+/* ---- Hero ---- */
+.pgrr-home .pgrr-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 28px 36px;
+  align-items: center;
+  margin: 8px 0 44px;
+  padding: 36px 32px;
+  border: 1px solid var(--h-border);
+  border-radius: 20px;
+  background:
+    radial-gradient(60% 90% at 0% 0%, var(--h-glow), transparent 70%),
+    radial-gradient(var(--h-dots) 1px, transparent 1.2px) 0 0 / 18px 18px,
+    var(--h-card);
+  overflow: hidden;
+}
+
+.pgrr-home .pgrr-kicker {
+  display: inline-block;
+  padding: 3px 11px;
+  border: 1px solid var(--h-accent-border);
+  border-radius: 999px;
+  background: var(--h-accent-bg);
+  color: var(--h-accent);
+  font-size: 0.6rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pgrr-home .pgrr-hero h1 {
+  margin: 14px 0 12px;
+  color: var(--h-fg);
+  font-size: 2.1rem;
+  font-weight: 750;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+.pgrr-home .pgrr-lead {
+  max-width: 30em;
+  margin: 0 0 22px;
+  color: var(--h-muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.pgrr-home .pgrr-hero .md-button {
+  margin: 0 8px 8px 0;
+  padding: 0.42em 1.25em;
+  border-color: var(--h-border);
+  border-radius: 12px;
+  color: var(--h-fg);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.pgrr-home .pgrr-hero .md-button:hover {
+  border-color: var(--h-accent);
+  background: var(--h-accent-bg);
+  color: var(--h-accent);
+}
+
+.pgrr-home .pgrr-hero .md-button--primary {
+  border-color: var(--h-accent-solid);
+  background: var(--h-accent-solid);
+  color: #fff;
+}
+
+.pgrr-home .pgrr-hero .md-button--primary:hover {
+  border-color: var(--h-accent-solid);
+  background: var(--h-accent-solid);
+  color: #fff;
+  filter: brightness(1.12);
+}
+
+/* The example alert: the code-block card, with a message inside. */
+.pgrr-home .pgrr-alert {
+  padding: 2px;
+  border: 1px solid var(--h-border);
+  border-radius: 16px;
+  background: var(--h-card);
+  box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.55);
+}
+
+.pgrr-home .pgrr-alert-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px 0 14px;
+  color: var(--h-muted);
+  font-size: 0.62rem;
+}
+
+.pgrr-home .pgrr-pill {
+  padding: 1px 9px;
+  border: 1px solid var(--h-bad-border);
+  border-radius: 999px;
+  background: var(--h-bad-bg);
+  color: var(--h-bad);
+  font-size: 0.58rem;
+  font-weight: 650;
+}
+
+.pgrr-home .pgrr-alert-body {
+  display: grid;
+  gap: 11px;
+  padding: 14px 16px 15px;
+  border-radius: 14px;
+  background: var(--h-panel);
+}
+
+.pgrr-home .pgrr-row {
+  display: grid;
+  grid-template-columns: 5.2em 1fr;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 0.64rem;
+  line-height: 1.4;
+}
+
+.pgrr-home .pgrr-row > span:first-child {
+  color: var(--h-muted);
+}
+
+.pgrr-home .pgrr-row code {
+  padding: 0;
+  background: none;
+  color: var(--h-fg);
+  font-size: 0.62rem;
+  word-break: break-word;
+}
+
+.pgrr-home .pgrr-row b {
+  color: var(--h-fg);
+  font-weight: 650;
+}
+
+.pgrr-home .pgrr-row s {
+  color: var(--h-muted);
+  text-decoration: none;
+}
+
+.pgrr-home .pgrr-factor {
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--h-bad-bg);
+  color: var(--h-bad);
+  font-size: 0.58rem;
+  font-weight: 650;
+}
+
+.pgrr-home .pgrr-meter {
+  display: inline-block;
+  vertical-align: middle;
+  width: 76px;
+  height: 6px;
+  margin-left: 8px;
+  border-radius: 999px;
+  background: var(--h-chip);
+  overflow: hidden;
+}
+
+.pgrr-home .pgrr-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--h-accent-solid);
+}
+
+.pgrr-home .pgrr-alert-note {
+  margin: 0;
+  padding: 7px 14px 8px;
+  color: var(--h-muted);
+  font-size: 0.56rem;
+}
+
+/* ---- Section headings ---- */
+.pgrr-home h2 {
+  margin: 2.2em 0 0.6em;
+  color: var(--h-fg);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.pgrr-home h2 .headerlink {
+  display: none;
+}
+
+/* ---- The question ---- */
+.pgrr-home .pgrr-question {
+  margin: 0.9em 0 1em;
+  padding: 2px 0 2px 18px;
+  border-left: 3px solid var(--h-accent-solid);
+  color: var(--h-fg);
+  font-size: 1.35rem;
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+/* ---- Architecture diagram ---- */
+.pgrr-home .pgrr-diagram {
+  margin: 1.2em 0 1.4em;
+  padding: 18px 14px;
+  border: 1px solid var(--h-border);
+  border-radius: 20px;
+  background: radial-gradient(var(--h-dots) 1px, transparent 1.2px) 0 0 / 18px 18px, var(--h-card);
+  overflow-x: auto;
+}
+
+.pgrr-home .pgrr-diagram svg {
+  display: block;
+  width: 100%;
+  min-width: 760px;
+  height: auto;
+}
+
+.pgrr-home .pgrr-node {
+  fill: var(--h-panel);
+  stroke: var(--h-border);
+  stroke-width: 1.5;
+}
+
+.pgrr-home .pgrr-node--engine {
+  fill: var(--h-accent-bg);
+  stroke: var(--h-accent-solid);
+  stroke-width: 2;
+}
+
+.pgrr-home .pgrr-node--idle {
+  fill: none;
+  stroke-dasharray: 5 5;
+}
+
+.pgrr-home .pgrr-t {
+  fill: var(--h-fg);
+  font-size: 17px;
+  font-weight: 650;
+  text-anchor: middle;
+}
+
+.pgrr-home .pgrr-t--engine {
+  fill: var(--h-accent);
+  font-size: 20px;
+  font-weight: 750;
+}
+
+.pgrr-home .pgrr-s {
+  fill: var(--h-muted);
+  font-size: 13.5px;
+  text-anchor: middle;
+}
+
+.pgrr-home .pgrr-t--idle,
+.pgrr-home .pgrr-s--idle {
+  opacity: 0.75;
+}
+
+.pgrr-home .pgrr-l {
+  fill: var(--h-muted);
+  font-size: 13.5px;
+  text-anchor: middle;
+}
+
+.pgrr-home .pgrr-l--idle {
+  font-style: italic;
+  text-anchor: start;
+  opacity: 0.8;
+}
+
+.pgrr-home .pgrr-ic {
+  fill: none;
+  stroke: var(--h-icon);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pgrr-home .pgrr-ic--engine {
+  stroke: var(--h-accent);
+}
+
+.pgrr-home .pgrr-edge {
+  fill: none;
+  stroke: var(--h-icon);
+  stroke-width: 1.7;
+  stroke-dasharray: 5 6;
+  animation: pgrr-dash 1.6s linear infinite;
+}
+
+.pgrr-home .pgrr-edge--accent {
+  stroke: var(--h-accent);
+}
+
+.pgrr-home .pgrr-edge--idle {
+  opacity: 0.6;
+  animation-duration: 3.2s;
+}
+
+.pgrr-home .pgrr-arrowhead {
+  fill: var(--h-icon);
+}
+
+.pgrr-home .pgrr-arrowhead--accent {
+  fill: var(--h-accent);
+}
+
+@keyframes pgrr-dash {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-home .pgrr-edge {
+    animation: none;
+  }
+}
+
+/* ---- Cards (steps and links) ---- */
+.pgrr-home .pgrr-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 12px;
+  margin: 1.1em 0;
+}
+
+.pgrr-home .pgrr-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px 15px;
+  border: 1px solid var(--h-border);
+  border-radius: 16px;
+  background: var(--h-card);
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.pgrr-home .pgrr-card p {
+  margin: 0;
+}
+
+.pgrr-home .pgrr-card:hover,
+.pgrr-home .pgrr-card:focus-within {
+  border-color: var(--h-accent-solid);
+}
+
+.pgrr-home .pgrr-num {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: var(--h-chip);
+  color: var(--h-fg);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.pgrr-home .pgrr-card-title {
+  color: var(--h-fg);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.pgrr-home .pgrr-card-desc {
+  color: var(--h-muted);
+  font-size: 0.64rem;
+  line-height: 1.55;
+}
+
+.pgrr-home .pgrr-card-desc code {
+  font-size: 0.58rem;
+}
+
+.pgrr-home .pgrr-card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+.pgrr-home .pgrr-card-links a::after {
+  content: " \2192";
+}
+
+/* Four steps: two by two, never three and one. */
+.pgrr-home .pgrr-cards--steps {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 34em) {
+  .pgrr-home .pgrr-cards--steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pgrr-home .pgrr-card-links a {
+  color: var(--h-accent);
+}
+
+.pgrr-home .pgrr-foot {
+  margin-top: 2.4em;
+  color: var(--h-muted);
+  font-size: 0.62rem;
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-home .pgrr-hero {
+    padding: 24px 18px;
+  }
+
+  .pgrr-home .pgrr-hero h1 {
+    font-size: 1.7rem;
+  }
+}
