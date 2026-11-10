@@ -57,7 +57,6 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
-nav:
-  - Home: index.md
-  - Documentation: https://joao00001.github.io/pg-regression-radar/latest/
-  - Roadmap: roadmap.md
+# The menu is derived from mkdocs.yml's `nav` by hooks.py's `on_config`, so it
+# always matches the versioned docs' menu (Home and Roadmap stay local pages;
+# every other entry links into the `latest` docs).

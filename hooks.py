@@ -41,6 +41,8 @@ import os
 import posixpath
 import re
 
+import yaml
+
 _nav = None
 
 # Pages that live outside mike's per-release versioning: published once, at
@@ -80,6 +82,68 @@ def redirect_html(url):
         f"<!-- {REDIRECT_MARKER} -->\n"
         f'</head><body>Redirecting to <a href="{url}">{url}</a>...</body></html>\n'
     )
+
+
+def _nav_title(config, src_uri):
+    """Title for a bare nav entry (a page listed without one): its first `# `
+    heading, like MkDocs itself would use, or the file name as a fallback."""
+    try:
+        with open(os.path.join(config["docs_dir"], src_uri), encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("# "):
+                    return line[2:].strip()
+    except OSError:
+        pass
+    return os.path.splitext(os.path.basename(src_uri))[0].replace("-", " ").title()
+
+
+def _unversioned_nav_item(title, target, config):
+    """One nav entry of the unversioned build, derived from mkdocs.yml's.
+
+    The home page and the roadmap stay local pages (so their tab shows as
+    active); every other page becomes an absolute link into the `latest`
+    docs, which is where this build can't reach but readers want to go.
+    Entries that already are URLs (the CHANGELOG/CONTRIBUTING links) stay."""
+    site_url = config["site_url"].rstrip("/") + "/"
+    if target == site_url:
+        target = "index.md"
+    elif target == site_url + UNVERSIONED_PAGES["roadmap.md"]:
+        target = "roadmap.md"
+    elif target.endswith(".md") and target not in UNVERSIONED_PAGES and "://" not in target:
+        title = title or _nav_title(config, target)
+        page = target[: -len(".md")]
+        page = page[: -len("index")] if page == "index" or page.endswith("/index") else page + "/"
+        target = site_url + "latest/" + page
+    return {title: target} if title else target
+
+
+def _unversioned_nav(items, config):
+    out = []
+    for item in items:
+        if isinstance(item, dict):
+            ((title, value),) = item.items()
+            if isinstance(value, list):
+                out.append({title: _unversioned_nav(value, config)})
+            else:
+                out.append(_unversioned_nav_item(title, value, config))
+        else:
+            out.append(_unversioned_nav_item(None, item, config))
+    return out
+
+
+def on_config(config, **kwargs):
+    """Give the unversioned build (home + roadmap) the same menu as the
+    versioned docs instead of a hand-copied one that drifts.
+
+    mkdocs-unversioned.yml inherits mkdocs.yml but only builds two pages, so
+    it can't reuse that `nav` as is (it names pages this build doesn't have).
+    Derive it from mkdocs.yml's `nav` here: see _unversioned_nav_item."""
+    if not _is_unversioned(config):
+        return config
+    base = os.path.join(os.path.dirname(os.path.abspath(config["config_file_path"])), "mkdocs.yml")
+    with open(base, encoding="utf-8") as f:
+        config["nav"] = _unversioned_nav(yaml.safe_load(f)["nav"], config)
+    return config
 
 
 def on_pre_build(config, **kwargs):
