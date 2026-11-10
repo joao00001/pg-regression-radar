@@ -13,6 +13,9 @@ theme:
   # any version other than `latest` — see
   # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#version-warning
   custom_dir: overrides
+  icon:
+    logo: pgrr/mark
+  favicon: assets/brand/favicon.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
