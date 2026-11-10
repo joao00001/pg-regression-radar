@@ -837,9 +837,7 @@
 .pgrr-home .pgrr-hero {
   position: relative;
   isolation: isolate;
-  background:
-    radial-gradient(45% 90% at 0% 0%, var(--h-glow), transparent 70%),
-    var(--h-hero-bg);
+  background: var(--h-hero-bg);
 }
 
 .pgrr-hero-ascii {
@@ -922,6 +920,22 @@
 .pgrr-home .pgrr-hero-code .highlight,
 .pgrr-home .pgrr-hero-code pre {
   margin: 0;
+}
+
+/* Frosted glass: the card and its inset panel are translucent and blur the
+   ASCII field behind them. Scoped to the home hero (.pgrr-hero-code only
+   exists there), so code blocks on the other pages are untouched. Browsers
+   without backdrop-filter keep the normal opaque card. */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .pgrr-home .pgrr-hero-code .highlight {
+    background-color: color-mix(in srgb, var(--pgrr-card-bg) 52%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+  }
+
+  .pgrr-home .pgrr-hero-code .highlight pre {
+    background-color: color-mix(in srgb, var(--pgrr-panel-bg) 55%, transparent);
+  }
 }
 
 .pgrr-home .pgrr-hero-code .highlight code,
