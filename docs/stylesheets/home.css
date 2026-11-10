@@ -182,6 +182,7 @@
 
 .pgrr-home .pgrr-row code {
   padding: 0;
+  border: 0;
   background: none;
   color: var(--h-fg);
   font-size: 0.62rem;
@@ -433,6 +434,8 @@
 }
 
 .pgrr-home .pgrr-card-desc code {
+  border-color: var(--h-border);
+  background-color: var(--h-panel);
   font-size: 0.58rem;
 }
 
