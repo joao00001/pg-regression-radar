@@ -25,16 +25,17 @@ still ships its own copy (releases cut before the roadmap was unversioned) into
 a redirect to the root roadmap, so the roadmap changes retroactively too.
 
 It also turns the `index.html` of those versions (the old home page each one
-shipped before the split) into a redirect to the version's own first docs page,
-`installation/`, which is exactly what a version built from the current
-mkdocs.yml does. That keeps the old home page from living on at `latest/`, and
-it cannot loop: the version's entry point is still `index.html`, which lands on
-a real docs page. It must NOT redirect to the root home page: `latest/` is a
-symlink to a version directory and the root's "Documentation" link points at
-`latest/`, so that would send "Documentation" straight back to the home page
-and make every old version's docs unreachable from the site. Versions that
-already redirect (marked with hooks.py's REDIRECT_MARKER) are left alone, and
-so is any version without an `installation/` page to land on.
+shipped before the split) into a redirect to the root home page, so the
+"Home" link of their menu, their logo and `latest/` land on the one home page
+instead of an outdated copy. Nothing on the site links to a version's bare
+root as a way into its docs (the root menu links to specific pages, e.g.
+`latest/installation/`), so this cannot loop. Versions that already redirect
+(built from the current mkdocs.yml, whose menu's "Home" already is the root
+page) are left alone. Which kind a version is gets read off its own pages: an
+old version's menu links "Home" to `..`, its own root. That also tells a root
+this script already pointed at the first docs page apart from a new version's
+own redirect to it: only the former has such a menu link, and it is pointed at
+the home page.
 
 It only touches the filesystem; committing and pushing is up to the caller.
 """
@@ -42,6 +43,7 @@ It only touches the filesystem; committing and pushing is up to the caller.
 import argparse
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -87,17 +89,34 @@ def copy_site(site, target):
             shutil.copy2(os.path.join(root, name), os.path.join(dest, name))
 
 
-def _redirect_page(path, url):
+# The menu entry an old version's pages have for its own (old) home page:
+# `<a href=".." class="md-nav__link"> ... Home`.
+_HOME_LINK_RE = re.compile(r'<a href="\.\./?" class="md-nav__link">\s*<span class="md-ellipsis">\s*Home\b')
+
+
+def _redirect_page(path, url, force=False):
     """Replace the real page at `path` with a redirect to `url`; False if it is
-    missing, a symlink, or already a redirect."""
+    missing, a symlink, or already a redirect (any redirect, unless `force`,
+    which only skips one that already goes to `url`)."""
     if not os.path.isfile(path) or os.path.islink(path):
         return False
     with open(path, encoding="utf-8", errors="replace") as f:
-        if REDIRECT_MARKER in f.read():
-            return False
+        text = f.read()
+    if REDIRECT_MARKER in text and not (force and f'url={url}"' not in text):
+        return False
     with open(path, "w", encoding="utf-8") as f:
         f.write(redirect_html(url))
     return True
+
+
+def _links_home_to_root(version_dir):
+    """True if the version's own pages link their menu's "Home" to the
+    version's root, i.e. that root is (or stands in for) its home page."""
+    path = os.path.join(version_dir, "installation", "index.html")
+    if not os.path.isfile(path):
+        return False
+    with open(path, encoding="utf-8", errors="replace") as f:
+        return _HOME_LINK_RE.search(f.read()) is not None
 
 
 def redirect_old_pages(target, names, site_url):
@@ -107,12 +126,12 @@ def redirect_old_pages(target, names, site_url):
         rel = os.path.join("roadmap", "index.html")
         if _redirect_page(os.path.join(target, name, rel), site_url + "roadmap/"):
             redirected.append(os.path.join(name, rel))
-        # The old home page: to the version's first docs page (never to the
-        # root home page, see the module docstring).
-        if os.path.isfile(os.path.join(target, name, "installation", "index.html")):
-            rel = "index.html"
-            if _redirect_page(os.path.join(target, name, rel), "installation/"):
-                redirected.append(os.path.join(name, rel))
+        # The old home page: to the root home page (see the module docstring).
+        rel = "index.html"
+        if _links_home_to_root(os.path.join(target, name)) and _redirect_page(
+            os.path.join(target, name, rel), site_url, force=True
+        ):
+            redirected.append(os.path.join(name, rel))
     return redirected
 
 
