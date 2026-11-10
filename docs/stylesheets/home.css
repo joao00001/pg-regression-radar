@@ -483,3 +483,299 @@
     font-size: 1.7rem;
   }
 }
+
+/* ======================================================================
+ * Grid layout
+ *
+ * The page is one framed sheet cut into cells by hairlines, like a ruled
+ * blueprint: the hero, diagram and cards are cells that touch, and each
+ * section is a band with a rule above it. Same content and colors as above,
+ * only the containers change (no floating rounded cards).
+ * ==================================================================== */
+.pgrr-home {
+  --h-grid: rgba(255, 255, 255, 0.045);
+  --h-pad: 28px;
+  position: relative;
+  margin: 0 0 8px;
+  background: transparent;
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-grid: rgba(0, 0, 0, 0.05);
+}
+
+/* Text sits inside the frame with a gutter; cells below go edge to edge. */
+.pgrr-home > p,
+.pgrr-home > ul,
+.pgrr-home > ol {
+  margin-inline: var(--h-pad);
+}
+
+/* Section bands */
+.pgrr-home h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 18px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: var(--h-card);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Hero: two cells split by a rule, over a faint ruled grid */
+.pgrr-home .pgrr-hero {
+  gap: 0;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    radial-gradient(70% 100% at 0% 0%, var(--h-glow), transparent 70%),
+    var(--h-panel);
+}
+
+.pgrr-home .pgrr-hero > div:first-child {
+  padding: 40px var(--h-pad) 34px;
+}
+
+.pgrr-home .pgrr-hero .pgrr-alert {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 28px var(--h-pad);
+  border: 0;
+  border-left: 1px solid var(--h-border);
+  border-radius: 0;
+  background: var(--h-card);
+  box-shadow: none;
+}
+
+.pgrr-home .pgrr-alert-head {
+  padding: 0 0 10px;
+  height: auto;
+}
+
+.pgrr-home .pgrr-alert-body {
+  border: 1px solid var(--h-border);
+  border-radius: 10px;
+}
+
+.pgrr-home .pgrr-alert-note {
+  padding: 8px 0 0;
+}
+
+.pgrr-home .pgrr-hero .md-button {
+  border-radius: 8px;
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-home .pgrr-hero > div:first-child {
+    padding: 28px var(--h-pad) 24px;
+  }
+
+  .pgrr-home .pgrr-hero .pgrr-alert {
+    border-left: 0;
+    border-top: 1px solid var(--h-border);
+  }
+}
+
+/* The question: its own full-width cell */
+.pgrr-home .pgrr-question {
+  margin: 1.1em var(--h-pad) 1.1em;
+}
+
+/* Diagram: a cell on the ruled grid */
+.pgrr-home .pgrr-diagram {
+  margin: 0;
+  padding: 22px 16px;
+  border: 0;
+  border-top: 1px solid var(--h-border);
+  border-radius: 0;
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    var(--h-panel);
+}
+
+/* Cards: touching cells; the container color shows through as the rules */
+.pgrr-home .pgrr-cards {
+  gap: 1px;
+  margin: 0;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-border);
+}
+
+.pgrr-home .pgrr-card {
+  gap: 6px;
+  padding: 22px var(--h-pad) 20px;
+  border: 0;
+  border-radius: 0;
+  background: var(--h-panel);
+  transition: background-color 0.15s;
+}
+
+.pgrr-home .pgrr-card:hover,
+.pgrr-home .pgrr-card:focus-within {
+  background: var(--h-card);
+}
+
+.pgrr-home .pgrr-num {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--h-border);
+  border-radius: 6px;
+  background: var(--h-card);
+  color: var(--h-accent);
+}
+
+/* Where to go next: ruled rows (doubled class beats Material's list margins) */
+.pgrr-home.pgrr-home > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pgrr-home.pgrr-home > ul > li {
+  margin: 0;
+  padding: 12px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  font-size: 0.68rem;
+}
+
+.pgrr-home.pgrr-home > ul > li:first-child {
+  border-top: 0;
+}
+
+/* Footer band */
+.pgrr-home .pgrr-foot {
+  margin: 0;
+  padding: 14px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: var(--h-card);
+}
+
+/* ----------------------------------------------------------------------
+ * Infinite rules
+ *
+ * The lines are not a card border: each rule runs out to the edge of the
+ * window and the content column sits between two vertical lines that run the
+ * full height of the page body. Where the left navigation is visible the
+ * horizontal rules start exactly on the left column line (so they never strike
+ * through the menu text, and each junction is clean) and keep going right; below that width there is no sidebar and
+ * they run both ways. The extra length is clipped by .md-main so it never
+ * causes a scrollbar or crosses the header/footer.
+ * -------------------------------------------------------------------- */
+.pgrr-home {
+  --h-rule-left: -100vw;
+  --h-rule-width: 200vw;
+}
+
+@media (min-width: 76.25em) {
+  .pgrr-home {
+    --h-rule-left: 0;
+    --h-rule-width: 100vw;
+  }
+}
+
+.md-main:has(.pgrr-home) {
+  overflow: clip;
+}
+
+/* the two column lines */
+.pgrr-home::before,
+.pgrr-home::after {
+  content: "";
+  position: absolute;
+  top: -100vh;
+  bottom: -100vh;
+  width: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-home::before {
+  left: 0;
+}
+
+.pgrr-home::after {
+  right: 0;
+}
+
+/* Band marker as a background so the band's pseudo-elements stay free for
+   its top and bottom rules. */
+.pgrr-home h2 {
+  position: relative;
+  padding-left: calc(var(--h-pad) + 17px);
+  background:
+    linear-gradient(var(--h-accent-solid), var(--h-accent-solid)) var(--h-pad) 50% / 7px 7px no-repeat,
+    var(--h-card);
+}
+
+.pgrr-home h2::before,
+.pgrr-home h2::after {
+  content: "";
+  position: absolute;
+  left: var(--h-rule-left);
+  width: var(--h-rule-width);
+  height: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-home h2::before {
+  top: -1px;
+}
+
+/* Every band closes with a rule too: this is the top rule of the diagram and
+   of the first list row, drawn here because the diagram scrolls sideways on
+   small screens and would clip its own pseudo-elements. */
+.pgrr-home h2::after {
+  bottom: -1px;
+}
+
+/* full-width rules for the other ruled cells */
+.pgrr-home .pgrr-hero,
+.pgrr-home .pgrr-cards,
+.pgrr-home.pgrr-home > ul > li,
+.pgrr-home .pgrr-foot {
+  position: relative;
+}
+
+.pgrr-home .pgrr-hero::before,
+.pgrr-home .pgrr-cards::before,
+.pgrr-home.pgrr-home > ul > li::before,
+.pgrr-home .pgrr-foot::before,
+.pgrr-home .pgrr-foot::after {
+  content: "";
+  position: absolute;
+  left: var(--h-rule-left);
+  width: var(--h-rule-width);
+  height: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-hero::before {
+  top: 0;
+}
+
+.pgrr-home .pgrr-cards::before,
+.pgrr-home.pgrr-home > ul > li::before,
+.pgrr-home .pgrr-foot::before {
+  top: -1px;
+}
+
+.pgrr-home .pgrr-foot::after {
+  bottom: 0;
+}
+
+.pgrr-home.pgrr-home > ul > li:first-child::before {
+  display: none;
+}
