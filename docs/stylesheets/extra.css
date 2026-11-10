@@ -319,11 +319,43 @@
   color: var(--pgrr-icon-hover);
 }
 
+/* "Report incorrect code" (docs/javascripts/code-header.js): an icon button
+   just left of the copy button. */
+.md-typeset .highlight .pgrr-report {
+  position: absolute;
+  top: 6px;
+  right: 44px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--pgrr-icon-fg);
+  transition: color 0.25s;
+}
+
+.md-typeset .highlight .pgrr-report:hover,
+.md-typeset .highlight .pgrr-report:focus-visible {
+  color: var(--pgrr-icon-hover);
+}
+
+.md-typeset .highlight .pgrr-report:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 1px;
+}
+
 /* A block with no header row (no language known): the copy button floats
    over the panel's corner instead. */
 .md-typeset .highlight:not(:has(> .filename)) .md-code__nav {
   top: 10px;
   right: 12px;
+}
+
+.md-typeset .highlight:not(:has(> .filename)) .pgrr-report {
+  top: 10px;
+  right: 46px;
 }
 
 /* Line-numbered tables keep their own layout inside the card. */
