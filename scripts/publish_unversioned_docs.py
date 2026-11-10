@@ -20,12 +20,18 @@ mike owns the per-version directories of the gh-pages branch (`v1.5.0/`,
 branch root: it replaces it with a fresh build of mkdocs-unversioned.yml, so
 the home page and the roadmap are identical whichever version a reader picks.
 
-It also turns the `index.html` and `roadmap/index.html` of every already
-published version that still ships its own copy (releases cut before these
-pages were unversioned) into redirects to the root copies, so those pages
-change retroactively too. Versions built from the current mkdocs.yml don't
-have a roadmap, and their `index.html` is already a redirect to their first
-docs page (marked with hooks.py's REDIRECT_MARKER); both are left alone.
+It also turns the `roadmap/index.html` of every already published version that
+still ships its own copy (releases cut before the roadmap was unversioned) into
+a redirect to the root roadmap, so the roadmap changes retroactively too.
+
+It deliberately leaves each version's `index.html` alone. Versions cut before
+the split still ship their own home page there, and that page is the version's
+entry point: `latest/` is a symlink to a version directory, and the root's
+"Documentation" link points at `latest/`. Redirecting that `index.html` to the
+root home page sends "Documentation" straight back to the home page and makes
+every old version's docs unreachable from the site. Versions built from the
+current mkdocs.yml already have an `index.html` that redirects to their first
+docs page (marked with hooks.py's REDIRECT_MARKER); both kinds are left alone.
 
 It only touches the filesystem; committing and pushing is up to the caller.
 """
@@ -81,7 +87,8 @@ def copy_site(site, target):
 def redirect_old_pages(target, names, site_url):
     redirected = []
     for name in sorted(names):
-        for rel, dest in (("index.html", ""), (os.path.join("roadmap", "index.html"), "roadmap/")):
+        # Only the roadmap: never a version's index.html (see the module docstring).
+        for rel, dest in ((os.path.join("roadmap", "index.html"), "roadmap/"),):
             path = os.path.join(target, name, rel)
             if not os.path.isfile(path) or os.path.islink(path):
                 continue
