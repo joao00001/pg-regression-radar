@@ -40,6 +40,21 @@ Today that question is answered manually: open Grafana, look at `pg_stat_stateme
 
 **pg-regression-radar does.**
 
+## Regression capture
+
+<div class="pgrr-radar">
+<div class="pgrr-radar-bar">
+<span class="pgrr-radar-status" aria-hidden="true">Live · 4 queries</span>
+<button type="button" class="pgrr-radar-inject">Inject deploy</button>
+</div>
+<div class="pgrr-radar-stage">
+<canvas class="pgrr-radar-canvas" role="img" aria-label="Animated chart of query latency on a log scale. Deploys appear as dashed markers; after one, a query steps up and is flagged as a regression."></canvas>
+<div class="pgrr-radar-tip" hidden></div>
+</div>
+<p class="pgrr-radar-note">Simulated data. Hover the chart to pause and inspect it, or inject a deploy.</p>
+<p class="pgrr-radar-live" role="status"></p>
+</div>
+
 ## How it works
 
 <div class="pgrr-diagram">
