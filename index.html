@@ -1677,15 +1677,24 @@
 <a class="md-button" href="#how-it-works">How it works</a></p>
 <div aria-hidden="true" class="pgrr-blips"><i style="--d: 2.13s; left: 390px; top: 40px"></i><i style="--d: 3.39s; left: 150px; top: 290px"></i><i style="--d: 2.68s; left: 440px; top: 262px"></i></div>
 </div>
-<div aria-label="Example alert" class="pgrr-alert">
-<div class="pgrr-alert-head"><span>Example alert</span><span class="pgrr-pill">Regression</span></div>
-<div class="pgrr-alert-body">
-<div class="pgrr-row"><span>Query</span><code>SELECT * FROM orders WHERE customer_id = $1</code></div>
-<div class="pgrr-row"><span>Latency</span><span><s>4.1 ms</s> &rarr; <b>38.6 ms</b><span class="pgrr-factor">&times;9.4</span></span></div>
-<div class="pgrr-row"><span>Deploy</span><code>checkout-api &middot; revision=v2</code></div>
-<div class="pgrr-row"><span>Confidence</span><span><b>0.97</b><span class="pgrr-meter"><i style="width: 97%"></i></span></span></div>
-</div>
-<p class="pgrr-alert-note">Illustrative values.</p>
+<div class="pgrr-hero-code">
+<div class="language-json highlight"><span class="filename">PerformanceRegression</span><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd-my-app-1234567890-q8675309"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"namespace"</span><span class="p">:</span><span class="w"> </span><span class="s2">"production"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"deployEventId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd-my-app-1234567890"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"queryId"</span><span class="p">:</span><span class="w"> </span><span class="mi">8675309</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"queryText"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SELECT * FROM orders WHERE user_id = $1"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Detected"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"confidenceScore"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.98</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"meanLatencyBefore"</span><span class="p">:</span><span class="w"> </span><span class="mf">4.2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"meanLatencyAfter"</span><span class="p">:</span><span class="w"> </span><span class="mf">13.7</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"latencyChangeFactor"</span><span class="p">:</span><span class="w"> </span><span class="mf">3.26</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"externalCauseSuspected"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"planDiffSummary"</span><span class="p">:</span><span class="w"> </span><span class="s2">"root node changed from Index Scan to Seq Scan"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"createdAt"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-08-11T12:35:00Z"</span>
+<span class="p">}</span>
+</code></pre></div>
+<p class="pgrr-hero-cap">What a detection looks like. See the <a href="https://joao00001.github.io/pg-regression-radar/latest/api-reference/#performanceregression">API reference</a>.</p>
 </div>
 </section>
 <h2 id="the-problem">The problem<a class="headerlink" href="#the-problem" title="Permanent link">&para;</a></h2>
