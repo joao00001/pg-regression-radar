@@ -44,7 +44,7 @@ func TestAnalysePeriodic_DetectsRegression(t *testing.T) {
 	engine := correlation.New(correlation.Config{
 		Namespace:              "production",
 		PeriodicWindowMinutes:  windowMinutes,
-		MinExecutions:          5,
+		MinSamples:             5,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}, src, nil)
@@ -92,7 +92,7 @@ func TestAnalysePeriodic_NoRegression(t *testing.T) {
 	src := &fakeSampleSource{data: map[int64][]collector.QuerySample{322: samples}}
 	engine := correlation.New(correlation.Config{
 		PeriodicWindowMinutes:  windowMinutes,
-		MinExecutions:          5,
+		MinSamples:             5,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}, src, nil)
@@ -120,7 +120,7 @@ func TestPeriodicTracker_FireSuppressRecoverRefire(t *testing.T) {
 	src := &fakeSampleSource{data: map[int64][]collector.QuerySample{}}
 	engine := correlation.New(correlation.Config{
 		PeriodicWindowMinutes:  windowMinutes,
-		MinExecutions:          5,
+		MinSamples:             5,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}, src, nil)

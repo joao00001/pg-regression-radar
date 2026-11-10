@@ -315,14 +315,15 @@ jobs:
             # 5s scrape interval, the ~20s "before"/"after" probe-traffic
             # windows below (10 iterations, 2s apart) can only *guarantee*
             # floor(20/5)=4 scrapes landing in each window in the worst-case
-            # ticker phase — so minExecutions must stay below that, not at
+            # ticker phase — so minSamples must stay below that, not at
             # its old value of 5, or a real, correctly-detected regression
             # can permanently read back as InsufficientData (the pre-window
             # can never gain more samples once time has passed it). 3 keeps
             # a safety margin under the guaranteed 4.
             scrapeIntervalSeconds: 5
             windowMinutes: 5
-            minExecutions: 3
+            minSamples: 3
+            minExecutions: 1
             latencyChangeThreshold: "0.20"
             pValueThreshold: "0.05"
           ---

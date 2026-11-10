@@ -19,7 +19,7 @@ interval mean = (total_exec_time_now - total_exec_time_prev) / (calls_now - call
 The engine runs its statistics on this series:
 
 - **Interval means are the series.** Stage 1 and stage 2 read the per-interval mean. The reported `MeanLatencyBefore`/`MeanLatencyAfter` are total time over total calls in each window, so busy intervals weigh more than quiet ones.
-- **Intervals with no calls are dropped.** They carry no latency information. The first sample of a `queryid` (nothing to subtract) is dropped too. `--min-executions` is checked against the samples that remain.
+- **Intervals with no calls are dropped.** They carry no latency information. The first sample of a `queryid` (nothing to subtract) is dropped too. `--min-samples` and `--min-executions` are checked against what remains, see [Minimum samples and minimum executions](#minimum-samples-and-minimum-executions).
 - **Resets are detected, not trusted.** The counters are considered restarted when `calls` or `total_exec_time` decreases (`pg_stat_statements_reset()`, a crash, or eviction once `pg_stat_statements.max` is exceeded), or, on PostgreSQL 17+, when `stats_since` changes. The second signal also catches a reset whose counters have already climbed past their old values by the next scrape. After a reset the counters start from zero, so the new values are the activity since the reset and are used as that interval. Each detection increments `pg_regression_radar_collector_stats_resets_detected_total`.
 - **History survives restarts.** Persisted rows hold only cumulative counters, so `Backfill` rebuilds the intervals from consecutive rows with the same rules.
 
@@ -28,6 +28,39 @@ The collector also exports the latest value as `pg_regression_radar_query_interv
 Samples that carry no interval data (a source that only exposes a mean, such as the [OTel/Prometheus source](otel-prometheus-source.md)) are analysed on that value as before. For that source, the configured metric must already be a per-interval mean.
 
 Limits: the series is made of interval means, so the t-test measures variation between scrape intervals, not between individual calls, and a long gap between scrapes yields one interval that spans the gap. Per-call variance (`stddev_exec_time`) is not used yet.
+
+## Minimum samples and minimum executions
+
+Two floors, applied to each of the pre- and post-deploy windows, decide whether a query has enough data for a verdict. A query that misses either one is reported as `InsufficientData` and, for deploy-triggered analysis, retried until the window closes.
+
+| Floor | Flag | Default | Counts |
+|---|---|---|---|
+| Samples | `--min-samples` | `10` | Observations: scrape intervals in which the query ran at least once. |
+| Executions | `--min-executions` | `100` | Calls to the query, summed over those observations. |
+
+They protect different things, which is why one number cannot do both jobs. Ten observations may be ten calls or ten million, and neither tells you how well the window's mean latency is known.
+
+**Samples** protect the machinery. E-divisive means and Welch's t-test estimate a spread from the observations themselves, so they need enough points to do it. The R `ecp` package, the reference implementation of E-divisive means ([Matteson and James, 2014](https://doi.org/10.1080/01621459.2013.849605)), defaults to a minimum of 30 observations between change points; MongoDB's production deployment of the same method ([Daly et al., ICPE 2020](https://arxiv.org/abs/2003.00584)) lowered it to 3 in exchange for faster notification. The default of 10 sits between them and matches what `--min-executions` effectively enforced before the two were separated.
+
+**Executions** protect the precision of the mean. The standard error of a mean of N calls is CV / sqrt(N), where CV is the coefficient of variation of per-call latency. To detect a relative change of delta with 5% significance and 80% power, each window needs roughly
+
+```text
+N = 2 * (1.96 + 0.84)^2 * CV^2 / delta^2  ~=  15.7 * CV^2 / delta^2
+```
+
+| Relative change to detect | CV = 1 | CV = 2 |
+|---|---|---|
+| 20% (the default `--latency-threshold`) | ~390 | ~1,570 |
+| 30% | ~175 | ~700 |
+| 50% | ~63 | ~250 |
+
+Below that, the test is not wrong, it is underpowered: a "no regression" verdict would mean "could not tell". The default of 100 is a floor under which a verdict is not worth reporting, not a promise of 80% power. Raise it for queries with heavy-tailed latency or when you need to catch small changes; lower it for demos and tests.
+
+What the floors do not do:
+
+- **They do not control false positives.** The p-value threshold does that. In simulations of per-call log-normal latency with Poisson traffic, Welch's t-test on per-interval means stayed close to its nominal 5% size even with one-call intervals, and a traffic step with no latency change stayed near 0% `Detected` through the full pipeline. The floors decide when to answer, not how often a wrong answer is raised.
+- **They do not merge intervals.** Merging consecutive intervals until each holds a minimum number of calls was tested and rejected: it left the test size unchanged, reduced the number of observations, cost power, and delayed detection (at 3 calls per interval, a +50% regression was found in 78% of trials unmerged and 0% when merged to 30 calls per observation, which left about a dozen observations per window).
+- **They need call counts.** Executions are known only for samples the Collector produced. A source that reports just a mean, such as the [OTel/Prometheus source](otel-prometheus-source.md), is gated by `--min-samples` alone.
 
 ## Stage 0: cheap pre-filter
 

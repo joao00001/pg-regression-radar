@@ -59,18 +59,18 @@ Step 7 remains intentionally **operational**, and genuinely open:
 
 <div class="rm-list" markdown="1">
 
-<div class="rm-item" data-status="proposed" data-area="Statistics" data-quarter="Q4 2026" markdown="1">
-<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q4 2026</span></div>
+<div class="rm-item" data-status="proposed" data-area="Statistics" data-quarter="Q1 2027" markdown="1">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q1 2027</span></div>
 
-<div class="rm-title" markdown="span">`MinExecutions` counts samples, not executions</div>
+<div class="rm-title" markdown="span">Welch's t-test ignores how many calls stand behind each observation</div>
 
-The flag counts scrape samples, not executions, so the threshold doesn't mean what its name says.
+Stage 2 weighs a one-call interval like a ten-thousand-call one, while the reported window means are call-weighted.
 { .rm-summary }
 
 <details markdown="1">
 <summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
 
-`Engine.computeChangeStats` compares `len(preSamples)` and `len(postSamples)` against `--min-executions`, so with a 60-second scrape ten samples may stand for ten executions or ten million. The flag name promises the second meaning and the code delivers the first. The fix is to separate a minimum number of samples per segment from a minimum number of executions behind each observation — which needs the per-interval execution count to be available on the sample.
+The reported `MeanLatencyBefore`/`MeanLatencyAfter` are total time over total calls, but the t-test compares unweighted per-interval means. A ratio-estimator test (mean = total time / total calls, with a cluster-robust variance that treats each scrape interval as a cluster) is consistent with the reported numbers and, in simulation with bursty traffic and log-normal latency, kept the 5% size while raising power for a +30% regression from 41% to 73% at 3 calls per interval. It would also make `--min-executions` act directly on the precision of the test. Per-call variance from `stddev_exec_time` is a further input that is not used yet.
 
 </details>
 </div>

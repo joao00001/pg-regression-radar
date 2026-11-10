@@ -28,6 +28,13 @@ import (
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
+// Default sample and execution floors; see Config.MinSamples and
+// Config.MinExecutions for what each protects.
+const (
+	DefaultMinSamples    int64 = 10
+	DefaultMinExecutions int64 = 100
+)
+
 // Config holds tuning parameters for the correlation engine.
 type Config struct {
 	// Namespace scopes periodic regressions when no DeployEvent exists to
@@ -36,7 +43,19 @@ type Config struct {
 	Namespace string
 	// WindowMinutes — wider windows reduce sensitivity to bursty load.
 	WindowMinutes int
-	// MinExecutions — guards against spurious regressions on rarely-called queries.
+	// MinSamples is the minimum number of latency observations (scrape
+	// intervals in which the query ran) required in each of the pre- and
+	// post-deploy windows. It protects the change-point search and Welch's
+	// t-test, which need enough points to estimate a spread.
+	MinSamples int64
+	// MinExecutions is the minimum number of executions of the query, summed
+	// over the observations, required in each window. It bounds the
+	// precision of the window's mean latency: the standard error of a mean of
+	// N calls is CV/sqrt(N), so a window with few calls cannot support either
+	// "regressed" or "did not regress". It is only checked for samples that
+	// carry per-interval call counts (see QuerySample.IntervalCalls); a source
+	// that reports only a mean latency, such as the OTel/Prometheus source, is
+	// gated by MinSamples alone.
 	MinExecutions int64
 	// LatencyChangeThreshold — raise in noisy environments to suppress alerts.
 	LatencyChangeThreshold float64
@@ -75,8 +94,11 @@ func (c *Config) defaults() {
 	if c.WindowMinutes == 0 {
 		c.WindowMinutes = 30
 	}
+	if c.MinSamples == 0 {
+		c.MinSamples = DefaultMinSamples
+	}
 	if c.MinExecutions == 0 {
-		c.MinExecutions = 10
+		c.MinExecutions = DefaultMinExecutions
 	}
 	if c.LatencyChangeThreshold == 0 {
 		c.LatencyChangeThreshold = 0.20
@@ -312,7 +334,7 @@ func latestSample(samples []collector.QuerySample) (collector.QuerySample, bool)
 // instant — that decision belongs to the caller, since only evaluateQuery
 // has one (ev.Timestamp) to check against at all.
 type changeStats struct {
-	// insufficientData means MinExecutions wasn't met in one or both
+	// insufficientData means MinSamples or MinExecutions wasn't met in one or both
 	// windows; every other field is zero-valued when this is true.
 	insufficientData bool
 	meanPre          float64
@@ -356,14 +378,20 @@ func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []col
 	// intervalSamples): the cumulative mean_exec_time is an average over the
 	// whole history since the last reset, so a regression barely moves it and
 	// a reset looks like a spurious step.
-	preSamples, postSamples = intervalSamples(preSamples, postSamples)
+	var intervals bool
+	preSamples, postSamples, intervals = intervalSamples(preSamples, postSamples)
 
-	// Require minimum sample counts in both windows to avoid false positives from sparse data.
-	if int64(len(preSamples)) < e.cfg.MinExecutions || int64(len(postSamples)) < e.cfg.MinExecutions {
+	// Two independent floors, both per window. MinSamples is about how many
+	// observations the statistics have to work with; MinExecutions is about
+	// how many calls stand behind the window's mean.
+	preExec, postExec := executions(preSamples), executions(postSamples)
+	tooFewSamples := int64(len(preSamples)) < e.cfg.MinSamples || int64(len(postSamples)) < e.cfg.MinSamples
+	tooFewExecutions := intervals && (preExec < e.cfg.MinExecutions || postExec < e.cfg.MinExecutions)
+	if tooFewSamples || tooFewExecutions {
 		// This is the routine, expected case for a deploy event analysed
 		// soon after it arrives — a real deploy webhook fires the moment
 		// the deploy completes, well before --scrape-interval has had time
-		// to accumulate --min-executions worth of post-deploy samples. On
+		// to accumulate --min-samples worth of post-deploy samples. On
 		// its own, this used to be indistinguishable in the logs from "the
 		// query has no regression" or "analysis never ran at all" — Debug
 		// rather than Info because a caller retrying via PendingSet logs
@@ -374,7 +402,11 @@ func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []col
 			"query_id", queryID,
 			"pre_samples", len(preSamples),
 			"post_samples", len(postSamples),
-			"min_executions", e.cfg.MinExecutions)
+			"min_samples", e.cfg.MinSamples,
+			"pre_executions", preExec,
+			"post_executions", postExec,
+			"min_executions", e.cfg.MinExecutions,
+			"executions_checked", intervals)
 		return changeStats{insufficientData: true}
 	}
 
@@ -642,14 +674,26 @@ func partitionAt(samples []collector.QuerySample, split time.Time) (pre, post []
 // call in it are kept: an interval with no calls says nothing about latency,
 // and the first sample of a queryid has no predecessor to subtract.
 //
-// Samples without interval data (a source that only exposes the cumulative
-// mean, such as the OTel/Prometheus source) are returned unchanged and are
-// analysed on MeanExecTimeMs, as before.
-func intervalSamples(pre, post []collector.QuerySample) ([]collector.QuerySample, []collector.QuerySample) {
+// Samples without interval data (a source that only exposes a mean, such as
+// the OTel/Prometheus source) are returned unchanged, with intervals=false,
+// and are analysed on MeanExecTimeMs, as before. Their execution counts are
+// unknown, so only the sample floor applies to them.
+func intervalSamples(pre, post []collector.QuerySample) (_, _ []collector.QuerySample, intervals bool) {
 	if !anyIntervalKnown(pre) && !anyIntervalKnown(post) {
-		return pre, post
+		return pre, post, false
 	}
-	return keepIntervals(pre), keepIntervals(post)
+	return keepIntervals(pre), keepIntervals(post), true
+}
+
+// executions sums the calls behind samples' interval latencies.
+func executions(samples []collector.QuerySample) int64 {
+	var n int64
+	for _, s := range samples {
+		if s.IntervalKnown {
+			n += s.IntervalCalls
+		}
+	}
+	return n
 }
 
 func anyIntervalKnown(samples []collector.QuerySample) bool {

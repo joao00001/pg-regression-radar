@@ -181,7 +181,8 @@ jobs:
             --source-type=generic \
             --slack-url="http://host.docker.internal:8090/webhook" \
             --window-minutes=5 \
-            --min-executions=5 \
+            --min-samples=5 \
+            --min-executions=1 \
             --latency-threshold=0.20
 
           echo "Waiting for the operator container to become healthy..."

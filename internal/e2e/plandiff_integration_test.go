@@ -235,7 +235,8 @@ func TestIntegration_FullPipeline_PlanDiffSummaryReflectsRealPlanChange(t *testi
 		// correlation.Config.defaults() would silently reinterpret as "use
 		// the default of 10" — defeating the small sample count chosen above
 		// for planHistorySize reasons.
-		MinExecutions:          2,
+		MinSamples:             2,
+		MinExecutions:          1,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}, col, logger)

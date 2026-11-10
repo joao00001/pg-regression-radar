@@ -201,7 +201,7 @@ spec:
                 type: string
               criticalQueryIDs:
                 description: |-
-                  criticalQueryIDs bypass minExecutions so SLA-critical queries are
+                  criticalQueryIDs bypass minSamples and minExecutions so SLA-critical queries are
                   always evaluated even when rarely called.
                 items:
                   format: int64
@@ -239,10 +239,22 @@ spec:
                   Raise it in high-churn environments to cut noise.
                 type: string
               minExecutions:
+                default: 100
+                description: |-
+                  minExecutions is the minimum number of executions of the query,
+                  summed over the observations, required in each of the pre- and
+                  post-deploy windows. It does not apply to sample sources that report
+                  no call counts (the Prometheus source), which are gated by minSamples
+                  alone.
+                format: int64
+                minimum: 1
+                type: integer
+              minSamples:
                 default: 10
                 description: |-
-                  minExecutions guards against false positives on rarely-called
-                  queries; both the pre- and post-deploy windows must meet this floor.
+                  minSamples is the minimum number of latency observations (scrape
+                  intervals in which the query ran) required in each of the pre- and
+                  post-deploy windows.
                 format: int64
                 minimum: 1
                 type: integer

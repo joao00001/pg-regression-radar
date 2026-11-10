@@ -98,7 +98,8 @@ func runOperator(args []string, logOutput io.Writer) int {
 	otlpDeploy := registerOTLPDeployFlags(fs)
 	otlpExport := registerOTLPExportFlags(fs)
 	windowMinutes := fs.Int("window-minutes", 30, "Analysis window (minutes before/after deploy)")
-	minExecutions := fs.Int64("min-executions", 10, "Minimum query executions per window")
+	minSamples := fs.Int64("min-samples", correlation.DefaultMinSamples, "Minimum latency observations (scrape intervals in which the query ran) per window")
+	minExecutions := fs.Int64("min-executions", correlation.DefaultMinExecutions, "Minimum query executions, summed over the observations, per window; not applied to sample sources that report no call counts")
 	latencyThreshold := fs.Float64("latency-threshold", 0.20, "Minimum relative latency increase to flag")
 	changePointTolerance := fs.Duration("changepoint-tolerance", 0, "Max distance between the E-divisive change point and the deploy timestamp still attributed to that deploy (0 = auto: 20% of window, floor 2m)")
 	maxQueryTextLen := fs.Int("max-query-text-len", 200, "Max query text length (characters) stored per sample before truncation for alerting/fingerprinting")
@@ -297,6 +298,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 	engine := correlation.New(correlation.Config{
 		Namespace:              *namespace,
 		WindowMinutes:          *windowMinutes,
+		MinSamples:             *minSamples,
 		MinExecutions:          *minExecutions,
 		LatencyChangeThreshold: *latencyThreshold,
 		ChangePointTolerance:   *changePointTolerance,

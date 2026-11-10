@@ -30,11 +30,14 @@ type PostgresWatch struct {
 	ScrapeIntervalSeconds int `json:"scrapeIntervalSeconds,omitempty"`
 	// WindowMinutes — wider windows smooth noise but delay detection.
 	WindowMinutes int `json:"windowMinutes,omitempty"`
-	// MinExecutions guards against false positives on rarely-called queries.
+	// MinSamples is the minimum number of latency observations per window.
+	MinSamples int64 `json:"minSamples,omitempty"`
+	// MinExecutions is the minimum number of executions per window, summed
+	// over the observations.
 	MinExecutions int64 `json:"minExecutions,omitempty"`
 	// LatencyChangeThreshold filters out noise; raise it in high-churn environments.
 	LatencyChangeThreshold float64 `json:"latencyChangeThreshold,omitempty"`
-	// CriticalQueryIDs bypass MinExecutions so SLA-critical queries are always checked.
+	// CriticalQueryIDs bypass MinSamples and MinExecutions so SLA-critical queries are always checked.
 	CriticalQueryIDs []int64 `json:"criticalQueryIDs,omitempty"`
 }
 

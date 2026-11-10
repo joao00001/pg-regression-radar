@@ -203,7 +203,8 @@ spec:
     key: uri
   scrapeIntervalSeconds: 5
   windowMinutes: 5
-  minExecutions: 5
+  minSamples: 5
+  minExecutions: 1
 ---
 apiVersion: radar.pgregressionradar.io/v1alpha1
 kind: DeploySource

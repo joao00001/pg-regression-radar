@@ -137,10 +137,21 @@ type PostgresWatchSpec struct {
 	// +kubebuilder:validation:Minimum=1
 	WindowMinutes int32 `json:"windowMinutes,omitempty"`
 
-	// minExecutions guards against false positives on rarely-called
-	// queries; both the pre- and post-deploy windows must meet this floor.
+	// minSamples is the minimum number of latency observations (scrape
+	// intervals in which the query ran) required in each of the pre- and
+	// post-deploy windows.
 	// +optional
 	// +kubebuilder:default=10
+	// +kubebuilder:validation:Minimum=1
+	MinSamples int64 `json:"minSamples,omitempty"`
+
+	// minExecutions is the minimum number of executions of the query,
+	// summed over the observations, required in each of the pre- and
+	// post-deploy windows. It does not apply to sample sources that report
+	// no call counts (the Prometheus source), which are gated by minSamples
+	// alone.
+	// +optional
+	// +kubebuilder:default=100
 	// +kubebuilder:validation:Minimum=1
 	MinExecutions int64 `json:"minExecutions,omitempty"`
 
@@ -157,7 +168,7 @@ type PostgresWatchSpec struct {
 	// +kubebuilder:default="0.05"
 	PValueThreshold string `json:"pValueThreshold,omitempty"`
 
-	// criticalQueryIDs bypass minExecutions so SLA-critical queries are
+	// criticalQueryIDs bypass minSamples and minExecutions so SLA-critical queries are
 	// always evaluated even when rarely called.
 	// +optional
 	CriticalQueryIDs []int64 `json:"criticalQueryIDs,omitempty"`

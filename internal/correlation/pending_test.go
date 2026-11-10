@@ -50,7 +50,7 @@ func TestPendingSet_RetriesUntilEnoughData(t *testing.T) {
 
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          1,
-		MinExecutions:          5,
+		MinSamples:             5,
 		LatencyChangeThreshold: 0.20,
 	}, src, nil)
 
@@ -118,7 +118,7 @@ func TestPendingSet_RetiresAfterWindowElapses(t *testing.T) {
 
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          1,
-		MinExecutions:          5,
+		MinSamples:             5,
 		LatencyChangeThreshold: 0.20,
 	}, src, nil)
 

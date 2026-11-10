@@ -176,7 +176,8 @@ func TestIntegration_Backfill_RestartRestoresStateAndCursor(t *testing.T) {
 	// comparison is meaningful. ---
 	cfg := correlation.Config{
 		WindowMinutes:          5,
-		MinExecutions:          int64(samplesPerPhase) - 2,
+		MinSamples:             int64(samplesPerPhase) - 2,
+		MinExecutions:          1,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}

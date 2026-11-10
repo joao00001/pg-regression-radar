@@ -88,10 +88,10 @@ spec:
       queryTextLabel: query
       stepSeconds: 15
   windowMinutes: 30
-  minExecutions: 10
+  minSamples: 10
 ```
 
-`dsn`/`dsnSecretRef` are not required, and not read, when `sampleSource.type` is `prometheus` — `internal/controller.PostgresWatchReconciler` skips DSN resolution entirely in that mode (see `usesPrometheusSampleSource` in `internal/controller/postgreswatch_controller.go`). `capturePlans: true` combined with `sampleSource.type: prometheus` is rejected at reconcile time with a clear error, rather than silently ignored: `EXPLAIN`-based plan-diff capture needs the direct database connection this mode deliberately doesn't have. Every other field (`windowMinutes`, `minExecutions`, `alerting`, `autoAbort`, `periodicDetection`, …) works exactly the same regardless of which `sampleSource` is active — the only things this field changes are which `correlation.SampleSource` implementation `internal/correlation.Engine` runs against and whether a direct database connection exists at all.
+`dsn`/`dsnSecretRef` are not required, and not read, when `sampleSource.type` is `prometheus` — `internal/controller.PostgresWatchReconciler` skips DSN resolution entirely in that mode (see `usesPrometheusSampleSource` in `internal/controller/postgreswatch_controller.go`). `capturePlans: true` combined with `sampleSource.type: prometheus` is rejected at reconcile time with a clear error, rather than silently ignored: `EXPLAIN`-based plan-diff capture needs the direct database connection this mode deliberately doesn't have. Every other field (`windowMinutes`, `minSamples`, `alerting`, `autoAbort`, `periodicDetection`, …) works exactly the same regardless of which `sampleSource` is active — the only things this field changes are which `correlation.SampleSource` implementation `internal/correlation.Engine` runs against and whether a direct database connection exists at all.
 
 `bearerTokenSecretRef` (`name` + `key`) reads a bearer token from a Secret in the watch's namespace. Like `dsnSecretRef`, the Secret must carry the label `pg-regression-radar.io/allow-postgreswatch-access=true`, otherwise the watch fails with a consent error; the token's value is part of the spec hash, so rotating it restarts the watch's workers.
 

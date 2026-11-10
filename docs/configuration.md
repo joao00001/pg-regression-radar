@@ -39,7 +39,8 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--otlp-gzip` | `false` | Gzip-compress export request bodies |
 | `--otlp-timeout` | `10s` | Per-attempt timeout for export requests |
 | `--window-minutes` | `30` | Analysis window (minutes before/after deploy) |
-| `--min-executions` | `10` | Min query executions per window |
+| `--min-samples` | `10` | Min latency observations (scrape intervals in which the query ran) per window — see [Detection Algorithm](detection-algorithm.md#minimum-samples-and-minimum-executions) |
+| `--min-executions` | `100` | Min query executions, summed over those observations, per window. Not applied to sample sources that report no call counts, such as the Prometheus source — see [Detection Algorithm](detection-algorithm.md#minimum-samples-and-minimum-executions) |
 | `--latency-threshold` | `0.20` | Min relative latency increase to flag (e.g. 0.20 = 20%) |
 | `--max-query-text-len` | `200` | Max query text length (characters) stored per sample before truncation for alerting and fingerprint fallback — see [Collector Internals](collector-internals.md) |
 | `--retention-minutes` | `180` | How long the collector keeps in-memory query samples before pruning them — see [Collector Internals](collector-internals.md) |
@@ -161,10 +162,11 @@ All four binaries share two flags:
 | `cnpgClusterRef` | *(none)* | Name of a CloudNativePG `Cluster` object (`postgresql.cnpg.io/v1`) that must exist and be healthy before the watch starts — read through the same client (hub or remote) and namespace as `dsnSecretRef`. See [Multi-Cluster: Remote CloudNativePG Cluster validation](multi-cluster.md#remote-cloudnativepg-cluster-validation). When used alongside `remoteClusterRef`/`remoteClusterSecretRef`, the kubeconfig's own embedded RBAC must also grant `get` on this object. |
 | `scrapeIntervalSeconds` | `60` | How often to read `pg_stat_statements` |
 | `windowMinutes` | `30` | Analysis window (minutes before/after deploy) |
-| `minExecutions` | `10` | Min query executions per window |
+| `minSamples` | `10` | Min latency observations per window |
+| `minExecutions` | `100` | Min query executions per window, summed over the observations |
 | `latencyChangeThreshold` | `"0.20"` | Min relative latency increase to flag (e.g. `"0.20"` = 20%) |
 | `pValueThreshold` | `"0.05"` | Welch's t-test significance cutoff |
-| `criticalQueryIDs` | `[]` | Queries that bypass `minExecutions` |
+| `criticalQueryIDs` | `[]` | Queries that bypass `minSamples` and `minExecutions` |
 | `slackWebhookUrl` | `""` | Slack incoming-webhook URL for this watch. **Deprecated**: use `alerting` instead (equivalent to `alerting.format: slack`); ignored entirely whenever `alerting` is set |
 | `alerting.format` | `""` (→ `slack`) | Notification payload layout: `slack`, `teams`, `pagerduty`, or `custom` — see [Alerting](alerting.md) |
 | `alerting.url` | `""` | Webhook URL for `slack`/`teams`/`custom`; ignored for `pagerduty` |
@@ -215,7 +217,7 @@ In short: if you're running the standalone `operator`/`ingester` binaries, `kube
 ## See also
 
 - [Getting Started](getting-started.md) — these flags/fields used in full runnable commands.
-- [Detection Algorithm](detection-algorithm.md) — what `--window-minutes`, `--min-executions`, `--latency-threshold`, and `--changepoint-tolerance` actually control.
+- [Detection Algorithm](detection-algorithm.md) — what `--window-minutes`, `--min-samples`, `--min-executions`, `--latency-threshold`, and `--changepoint-tolerance` actually control.
 - [Persistence](persistence.md) — the `--state-*` flags in depth.
 - [Deploy Sources & Webhooks](webhooks.md) — `--source-type` and `sourceType` per webhook source.
 - [Auto-Abort (Argo Rollouts)](auto-abort.md) — `autoAbort.enabled`/`autoAbort.confidenceThreshold` in depth, including the RBAC gate.
