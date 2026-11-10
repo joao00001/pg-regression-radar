@@ -37,8 +37,6 @@ extra_css:
   - stylesheets/roadmap.css
 
 extra_javascript:
-  - javascripts/nav-data.js
-  - javascripts/nav-flyout.js
   - javascripts/roadmap.js
 
 # Same extensions as mkdocs.yml plus md_in_html (markdown inside the roadmap's
