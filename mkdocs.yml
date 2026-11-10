@@ -74,6 +74,7 @@ extra_css:
 
 extra_javascript:
   - javascripts/version-flyout.js
+  - javascripts/code-header.js
 
 markdown_extensions:
   - admonition
@@ -83,7 +84,8 @@ markdown_extensions:
       permalink: true
   - pymdownx.details
   - pymdownx.superfences
-  - pymdownx.highlight
+  - pymdownx.highlight:
+      pygments_lang_class: true
   - pymdownx.tabbed:
       alternate_style: true
 
