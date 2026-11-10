@@ -897,3 +897,69 @@
 .md-typeset .pgrr-step > :last-child {
   margin-bottom: 0;
 }
+
+/* ---- Table of contents (right sidebar): a moving active dot ----
+   More air between the entries and a dot in the left margin that follows
+   the active entry. docs/javascripts/toc-indicator.js moves the
+   dot: it stretches toward the new entry, then the trailing end catches up.
+   Without the script (or with reduced motion) the active entry is simply
+   bold, and the dot jumps or is absent. */
+.md-sidebar--secondary .md-nav--secondary {
+  --pgrr-toc-dot: #b69cff;
+}
+
+[data-md-color-scheme="default"] .md-sidebar--secondary .md-nav--secondary {
+  --pgrr-toc-dot: #6d28d9;
+}
+
+.md-sidebar--secondary .md-nav--secondary > .md-nav__list {
+  position: relative;
+  padding-left: 18px;
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav__link {
+  margin-top: 0;
+  padding: 0.5em 0;
+  line-height: 1.4;
+  color: var(--md-default-fg-color--light);
+  transition: color 0.2s;
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav__link:hover {
+  color: var(--md-default-fg-color);
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav__link--active {
+  color: var(--md-default-fg-color);
+  font-weight: 650;
+}
+
+/* Sub-headings: indented, a little quieter. */
+.md-sidebar--secondary .md-nav--secondary .md-nav .md-nav__list {
+  padding-left: 0.8em;
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav .md-nav__link {
+  padding: 0.4em 0;
+  font-size: 0.62rem;
+}
+
+.pgrr-toc-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--pgrr-toc-dot);
+  opacity: 0;
+  pointer-events: none;
+  transition-property: top, height, opacity;
+  transition-duration: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-toc-dot {
+    transition: none !important;
+  }
+}
