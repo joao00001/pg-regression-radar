@@ -8,8 +8,6 @@ hide:
 <section class="pgrr-hero" markdown="1">
 <div markdown="1">
 
-<span class="pgrr-kicker">PostgreSQL on Kubernetes</span>
-
 # pg-regression-radar
 
 <p class="pgrr-lead">Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.</p>
@@ -18,15 +16,28 @@ hide:
 [How it works](#how-it-works){ .md-button }
 
 </div>
-<div class="pgrr-alert" aria-label="Example alert">
-<div class="pgrr-alert-head"><span>Example alert</span><span class="pgrr-pill">Regression</span></div>
-<div class="pgrr-alert-body">
-<div class="pgrr-row"><span>Query</span><code>SELECT * FROM orders WHERE customer_id = $1</code></div>
-<div class="pgrr-row"><span>Latency</span><span><s>4.1 ms</s> &rarr; <b>38.6 ms</b><span class="pgrr-factor">&times;9.4</span></span></div>
-<div class="pgrr-row"><span>Deploy</span><code>checkout-api &middot; revision=v2</code></div>
-<div class="pgrr-row"><span>Confidence</span><span><b>0.97</b><span class="pgrr-meter"><i style="width: 97%"></i></span></span></div>
-</div>
-<p class="pgrr-alert-note">Illustrative values.</p>
+<div class="pgrr-hero-code" markdown="1">
+
+```json title="PerformanceRegression"
+{
+  "name": "argocd-my-app-1234567890-q8675309",
+  "namespace": "production",
+  "deployEventId": "argocd-my-app-1234567890",
+  "queryId": 8675309,
+  "queryText": "SELECT * FROM orders WHERE user_id = $1",
+  "status": "Detected",
+  "confidenceScore": 0.98,
+  "meanLatencyBefore": 4.2,
+  "meanLatencyAfter": 13.7,
+  "latencyChangeFactor": 3.26,
+  "externalCauseSuspected": false,
+  "planDiffSummary": "root node changed from Index Scan to Seq Scan",
+  "createdAt": "2026-08-11T12:35:00Z"
+}
+```
+
+<p class="pgrr-hero-cap" markdown="1">What a detection looks like. See the [API reference](api-reference.md#performanceregression).</p>
+
 </div>
 </section>
 
@@ -39,6 +50,21 @@ Teams running Postgres on Kubernetes (CloudNativePG, Zalando, Crunchy, Percona..
 Today that question is answered manually: open Grafana, look at `pg_stat_statements`, try to recall when the last deploy happened, cross-reference timestamps by eye. No open-source tool closes that loop automatically.
 
 **pg-regression-radar does.**
+
+## Regression capture
+
+<div class="pgrr-radar">
+<div class="pgrr-radar-bar">
+<span class="pgrr-radar-status" aria-hidden="true">Watching 4 queries</span>
+<button type="button" class="pgrr-radar-inject">Inject deploy</button>
+</div>
+<div class="pgrr-radar-stage">
+<canvas class="pgrr-radar-canvas" role="img" aria-label="Animated chart of query latency on a log scale. Deploys appear as dashed markers; after one, a query steps up and is flagged as a regression."></canvas>
+<div class="pgrr-radar-tip" hidden></div>
+</div>
+<p class="pgrr-radar-note">Simulated data. Hover the chart to pause and inspect it, or inject a deploy.</p>
+<p class="pgrr-radar-live" role="status"></p>
+</div>
 
 ## How it works
 
@@ -76,11 +102,13 @@ Today that question is answered manually: open Grafana, look at `pg_stat_stateme
 <text class="pgrr-t" x="135" y="332">Deploy sources</text>
 <text class="pgrr-s" x="135" y="352">ArgoCD, Rollouts, Flux, K8s</text>
 <!-- ingestion -->
-<rect class="pgrr-node" x="360" y="90" width="230" height="96" rx="16"></rect>
+<rect class="pgrr-node" data-step="1" x="360" y="90" width="230" height="96" rx="16"></rect>
+<text class="pgrr-n" data-node="2" data-step="1" x="380" y="117">01</text>
 <g class="pgrr-ic" transform="translate(463,104)"><path d="M3 12h4l3-8 4 16 3-8h4"></path></g>
 <text class="pgrr-t" x="475" y="152">Collector</text>
 <text class="pgrr-s" x="475" y="172">bounded in-memory series</text>
-<rect class="pgrr-node" x="360" y="270" width="230" height="96" rx="16"></rect>
+<rect class="pgrr-node" data-step="2" x="360" y="270" width="230" height="96" rx="16"></rect>
+<text class="pgrr-n" data-node="3" data-step="2" x="380" y="297">02</text>
 <g class="pgrr-ic" transform="translate(463,284)"><path d="M12 4v11M7 11l5 5 5-5M4 20h16"></path></g>
 <text class="pgrr-t" x="475" y="332">Deploy event ingester</text>
 <text class="pgrr-s" x="475" y="352">normalised DeployEvent records</text>
@@ -88,13 +116,15 @@ Today that question is answered manually: open Grafana, look at `pg_stat_stateme
 <rect class="pgrr-node pgrr-node--idle" x="680" y="10" width="260" height="62" rx="16"></rect>
 <text class="pgrr-t pgrr-t--idle" x="810" y="37">Rolling schedule</text>
 <text class="pgrr-s pgrr-s--idle" x="810" y="57">periodic, no deploy needed</text>
-<rect class="pgrr-node pgrr-node--engine" x="680" y="130" width="260" height="170" rx="20"></rect>
+<rect class="pgrr-node pgrr-node--engine" data-step="3" x="680" y="130" width="260" height="170" rx="20"></rect>
+<text class="pgrr-n" data-node="5" data-step="3" x="702" y="159">03</text>
 <g class="pgrr-ic pgrr-ic--engine" transform="translate(798,148)"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="4.6"></circle><path d="M12 12l6.4-6.4"></path></g>
 <text class="pgrr-t pgrr-t--engine" x="810" y="198">Correlation engine</text>
 <text class="pgrr-s" x="810" y="224">E-divisive change point</text>
 <text class="pgrr-s" x="810" y="244">+ Welch's t-test</text>
 <!-- outputs -->
-<rect class="pgrr-node" x="1030" y="90" width="230" height="96" rx="16"></rect>
+<rect class="pgrr-node" data-step="4" x="1030" y="90" width="230" height="96" rx="16"></rect>
+<text class="pgrr-n" data-node="6" data-step="4" x="1050" y="117">04</text>
 <g class="pgrr-ic" transform="translate(1133,104)"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"></path><path d="M10 20a2 2 0 0 0 4 0"></path></g>
 <text class="pgrr-t" x="1145" y="152">Alerting</text>
 <text class="pgrr-s" x="1145" y="172">Slack, Teams, PagerDuty, custom</text>
@@ -108,28 +138,28 @@ Today that question is answered manually: open Grafana, look at `pg_stat_stateme
 <div class="pgrr-cards pgrr-cards--steps" markdown="1">
 
 <div class="pgrr-card" markdown="1">
-<span class="pgrr-num">1</span>
+<span class="pgrr-num" data-stage="collect">01</span>
 <span class="pgrr-card-title">Collector</span>
 <p class="pgrr-card-desc" markdown="1">Scrapes `pg_stat_statements` on an interval and keeps a bounded in-memory time series per `queryid`.</p>
 <p class="pgrr-card-links" markdown="1">[Architecture Overview](architecture.md) [Collector Internals](collector-internals.md)</p>
 </div>
 
 <div class="pgrr-card" markdown="1">
-<span class="pgrr-num">2</span>
+<span class="pgrr-num" data-stage="ingest">02</span>
 <span class="pgrr-card-title">Deploy Event Ingester</span>
 <p class="pgrr-card-desc" markdown="1">Receives webhooks from ArgoCD, Argo Rollouts, and Flux and stores normalised `DeployEvent` records.</p>
 <p class="pgrr-card-links" markdown="1">[Deploy Sources & Webhooks](webhooks.md)</p>
 </div>
 
 <div class="pgrr-card" markdown="1">
-<span class="pgrr-num">3</span>
+<span class="pgrr-num" data-stage="correlate">03</span>
 <span class="pgrr-card-title">Correlation Engine</span>
 <p class="pgrr-card-desc" markdown="1">Runs a real two-stage detection for every deploy event: E-divisive change-point location, then Welch's t-test confirmation.</p>
 <p class="pgrr-card-links" markdown="1">[Detection Algorithm](detection-algorithm.md)</p>
 </div>
 
 <div class="pgrr-card" markdown="1">
-<span class="pgrr-num">4</span>
+<span class="pgrr-num" data-stage="alert">04</span>
 <span class="pgrr-card-title">Alerting</span>
 <p class="pgrr-card-desc" markdown="1">Fires a Slack-compatible webhook with the query text, latency before/after, change factor, and confidence score.</p>
 <p class="pgrr-card-links" markdown="1">[Alerting](alerting.md)</p>

@@ -97,6 +97,8 @@
   function hit(n, strong) {
     var el = nodes[n];
     var ic = icons[NODE_ICON[n]];
+    var num = svg.querySelector('.pgrr-n[data-node="' + n + '"]');
+    if (num) { num.classList.remove("pgrr-hit"); void num.getBoundingClientRect(); num.classList.add("pgrr-hit"); setTimeout(function () { num.classList.remove("pgrr-hit"); }, 140); }
     el.classList.remove("pgrr-hit");
     if (ic) ic.classList.remove("pgrr-hit");
     void el.getBoundingClientRect(); // restart the transition
