@@ -1,0 +1,41 @@
+name: Documentation issue
+description: A code block, command or passage in the docs is wrong, outdated or unclear.
+title: "docs: <short description>"
+labels: ["type:docs"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping keep the docs correct. The "Report incorrect
+        code" button on a docs code block opens this form with the page and
+        the code already filled in.
+
+  - type: input
+    id: page
+    attributes:
+      label: Docs page
+      description: The address of the page, including the version in the URL (for example `/v1.7.0/` or `/latest/`).
+      placeholder: https://joao00001.github.io/pg-regression-radar/latest/installation/
+    validations:
+      required: true
+
+  - type: textarea
+    id: snippet
+    attributes:
+      label: The code or text in question
+      description: Paste the part that is wrong. This will be rendered as a code block automatically.
+      render: text
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+      description: What happens when you run it or follow it, or why it is misleading.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should it say instead?
+      description: Optional, but a suggested fix makes this quick to resolve.
