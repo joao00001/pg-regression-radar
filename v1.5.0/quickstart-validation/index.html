@@ -110,7 +110,7 @@
 
   
 
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -227,150 +227,13 @@
     
   </nav>
   
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../changelog/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Changelog
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-  
-  
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../installation/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Get Started
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../architecture/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../configuration/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../testing/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Contributing
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
+        
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -384,10 +247,8 @@
                     
 
 
-  
 
-
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -492,23 +353,15 @@
     
     
     
-      
-        
-        
-      
-      
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -910,11 +763,6 @@
     
     
     
-      
-      
-        
-      
-    
     
     <li class="md-nav__item md-nav__item--nested">
       
@@ -1156,11 +1004,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1481,11 +1324,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1895,7 +1733,7 @@
 <h2 id="2-start-pg-regression-radar-choose-one-run-mode">2) Start pg-regression-radar (choose one run mode)<a class="headerlink" href="#2-start-pg-regression-radar-choose-one-run-mode" title="Permanent link">&para;</a></h2>
 <h3 id="option-a-operator-mode">Option A: operator mode<a class="headerlink" href="#option-a-operator-mode" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>go<span class="w"> </span>run<span class="w"> </span>./cmd/operator<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--dsn<span class="w"> </span><span class="s2">&quot;******localhost:5432/mydb?sslmode=disable&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dsn<span class="w"> </span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--cluster-name<span class="w"> </span>demo-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--namespace<span class="w"> </span>demo<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--webhook-listen<span class="w"> </span>:8080<span class="w"> </span><span class="se">\</span>
@@ -1910,9 +1748,9 @@
 
 kubectl<span class="w"> </span>create<span class="w"> </span>namespace<span class="w"> </span>demo
 kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>demo-db-dsn<span class="w"> </span>-n<span class="w"> </span>demo<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--from-literal<span class="o">=</span><span class="nv">dsn</span><span class="o">=</span><span class="s2">&quot;******localhost:5432/mydb?sslmode=disable&quot;</span>
+<span class="w">  </span>--from-literal<span class="o">=</span><span class="nv">dsn</span><span class="o">=</span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span>
 
-cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -f -</span>
+cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -f -</span>
 <span class="s">apiVersion: radar.pgregressionradar.io/v1alpha1</span>
 <span class="s">kind: PostgresWatch</span>
 <span class="s">metadata:</span>
@@ -1925,7 +1763,7 @@ cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply
 <span class="s">    key: dsn</span>
 <span class="s">  windowMinutes: 15</span>
 <span class="s">  minExecutions: 5</span>
-<span class="s">  latencyChangeThreshold: &quot;0.20&quot;</span>
+<span class="s">  latencyChangeThreshold: "0.20"</span>
 <span class="s">---</span>
 <span class="s">apiVersion: radar.pgregressionradar.io/v1alpha1</span>
 <span class="s">kind: DeploySource</span>
@@ -1944,7 +1782,7 @@ go<span class="w"> </span>run<span class="w"> </span>./cmd/manager<span class="w
 <h3 id="option-c-helm">Option C: Helm<a class="headerlink" href="#option-c-helm" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span><span class="nv">mode</span><span class="o">=</span>operator<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">&quot;******localhost:5432/mydb?sslmode=disable&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>demo-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>ingester.sourceType<span class="o">=</span>generic
 </code></pre></div>
@@ -2054,14 +1892,10 @@ go<span class="w"> </span>run<span class="w"> </span>./cmd/manager<span class="w
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
-      
-        <script src="../javascripts/nav-data.js"></script>
-      
-        <script src="../javascripts/nav-flyout.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
       

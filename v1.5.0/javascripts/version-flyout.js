@@ -1,9 +1,8 @@
 /*
  * Replaces Material's floating `.md-version` menu with a push-down panel,
- * the same pattern nav-flyout.js already uses for the tabs menu -- see
- * extra.css's `.pgrr-version-flyout` rule for the CSS side of this.
+ * see extra.css's `.pgrr-version-flyout` rule for the CSS side of this.
  *
- * Unlike the tabs flyout, `.md-version` doesn't exist in the page's
+ * `.md-version` doesn't exist in the page's
  * server-rendered HTML at all: Material injects it into the header
  * client-side, asynchronously, only after it fetches versions.json (see
  * https://github.com/jimporter/mike -- that file is what mike's `deploy`
@@ -19,9 +18,8 @@
  * correct as Material built them) out from its `position: absolute`
  * spot and into `.pgrr-version-flyout`, a plain block appended at the
  * end of `.md-header`. Because `.md-header` is `position: sticky`,
- * growing it via max-height (exactly like `.pgrr-tabs-flyout` already
- * does for `.md-tabs`) pushes the tabs bar and page content below it
- * down instead of floating a card over either.
+ * growing it via max-height pushes the page content below it down
+ * instead of floating a card over it.
  *
  * Interaction follows the WAI-ARIA "menu button" pattern
  * (https://www.w3.org/WAI/ARIA/apg/patterns/menu-button/) -- the same
@@ -29,14 +27,14 @@
  * only reliable trigger on touch, where :hover never fires consistently
  * -- Material's own CSS even ships a `@media (hover:none)` "hoverfix"
  * animation hack for this exact gap), hover opens immediately and closes
- * after a short delay (nav-flyout.js's own CLOSE_DELAY_MS technique, so
+ * after a short delay (CLOSE_DELAY_MS, so
  * crossing the gap between the button and the panel doesn't flicker it
  * shut), Escape closes and returns focus, and clicking outside closes it.
  */
 (function () {
   var POLL_INTERVAL_MS = 100;
   var POLL_TIMEOUT_MS = 5000; // give up quietly if versions.json never resolves
-  var CLOSE_DELAY_MS = 150; // matches nav-flyout.js's own hover-intent delay
+  var CLOSE_DELAY_MS = 150; // hover-intent delay before closing
   var CLOSE_TRANSITION_MS = 220; // matches extra.css's 200ms transition, plus slack
 
   function setup(root) {
@@ -74,8 +72,7 @@
       trigger.setAttribute("aria-expanded", "true");
       panel.hidden = false;
       // Force layout so the transition from 0 is visible rather than
-      // jumping straight to the content's real height -- same trick
-      // nav-flyout.js uses for the tabs panel.
+      // jumping straight to the content's real height.
       panel.style.maxHeight = "0px";
       // eslint-disable-next-line no-unused-expressions
       panel.offsetHeight; // Reflow before changing max-height again.
@@ -124,8 +121,7 @@
     panel.addEventListener("mouseleave", scheduleClose);
 
     // Keyboard: focus anywhere inside opens it; only close once focus
-    // has genuinely left both the trigger and the panel, mirroring
-    // nav-flyout.js's own document-level focusout listener.
+    // has genuinely left both the trigger and the panel.
     trigger.addEventListener("focus", function () {
       if (suppressFocusOpen) {
         return;

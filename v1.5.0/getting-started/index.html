@@ -110,7 +110,7 @@
 
   
 
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -227,150 +227,13 @@
     
   </nav>
   
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../changelog/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Changelog
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-  
-  
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../installation/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Get Started
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../architecture/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../configuration/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../testing/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Contributing
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
+        
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -384,10 +247,8 @@
                     
 
 
-  
 
-
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -492,23 +353,15 @@
     
     
     
-      
-        
-        
-      
-      
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -882,11 +735,6 @@
     
     
     
-      
-      
-        
-      
-    
     
     <li class="md-nav__item md-nav__item--nested">
       
@@ -1128,11 +976,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1453,11 +1296,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1836,7 +1674,7 @@
 </ul>
 <h2 id="run-the-all-in-one-operator">Run the all-in-one operator<a class="headerlink" href="#run-the-all-in-one-operator" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>go<span class="w"> </span>run<span class="w"> </span>./cmd/operator<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--dsn<span class="w"> </span><span class="s2">&quot;postgres://user:pass@localhost:5432/mydb?sslmode=disable&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dsn<span class="w"> </span><span class="s2">"postgres://user:pass@localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--cluster-name<span class="w"> </span>my-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--namespace<span class="w"> </span>production<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--webhook-listen<span class="w"> </span>:8080<span class="w"> </span><span class="se">\</span>
@@ -1858,9 +1696,9 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 
 <span class="c1"># 2. Create a Secret holding the DSN, a PostgresWatch, and a DeploySource.</span>
 kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>my-cluster-dsn<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--from-literal<span class="o">=</span><span class="nv">dsn</span><span class="o">=</span><span class="s2">&quot;postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable&quot;</span>
+<span class="w">  </span>--from-literal<span class="o">=</span><span class="nv">dsn</span><span class="o">=</span><span class="s2">"postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"</span>
 
-cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -f -</span>
+cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -f -</span>
 <span class="s">apiVersion: radar.pgregressionradar.io/v1alpha1</span>
 <span class="s">kind: PostgresWatch</span>
 <span class="s">metadata:</span>
@@ -1873,8 +1711,8 @@ cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply
 <span class="s">    key: dsn</span>
 <span class="s">  windowMinutes: 30</span>
 <span class="s">  minExecutions: 10</span>
-<span class="s">  latencyChangeThreshold: &quot;0.20&quot;</span>
-<span class="s">  slackWebhookUrl: &quot;https://hooks.slack.com/services/XXX/YYY/ZZZ&quot;</span>
+<span class="s">  latencyChangeThreshold: "0.20"</span>
+<span class="s">  slackWebhookUrl: "https://hooks.slack.com/services/XXX/YYY/ZZZ"</span>
 <span class="s">---</span>
 <span class="s">apiVersion: radar.pgregressionradar.io/v1alpha1</span>
 <span class="s">kind: DeploySource</span>
@@ -1905,7 +1743,7 @@ Redacted DSN examples are shown for documentation safety only and cannot be used
 </blockquote>
 <h2 id="deploy-on-kubernetes-via-helm">Deploy on Kubernetes via Helm<a class="headerlink" href="#deploy-on-kubernetes-via-helm" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">&quot;postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">"postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>cnpg-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.namespace<span class="o">=</span>production<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>alerting.slackWebhookUrl<span class="o">=</span>https://hooks.slack.com/services/XXX/YYY/ZZZ
@@ -1914,7 +1752,7 @@ Redacted DSN examples are shown for documentation safety only and cannot be used
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span><span class="nv">mode</span><span class="o">=</span>manager<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>manager.replicaCount<span class="o">=</span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">&quot;postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">"postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>cnpg-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>alerting.slackWebhookUrl<span class="o">=</span>https://hooks.slack.com/services/XXX/YYY/ZZZ
 </code></pre></div>
@@ -1930,14 +1768,14 @@ Redacted DSN examples are shown for documentation safety only and cannot be used
 </div>
 <h2 id="simulate-a-deploy-event-for-testing">Simulate a deploy event (for testing)<a class="headerlink" href="#simulate-a-deploy-event-for-testing" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/webhook<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
-<span class="s1">    &quot;app&quot;: &quot;my-app&quot;,</span>
-<span class="s1">    &quot;namespace&quot;: &quot;production&quot;,</span>
-<span class="s1">    &quot;revision&quot;: &quot;abc123def456&quot;,</span>
-<span class="s1">    &quot;imageTag&quot;: &quot;my-app:v42&quot;,</span>
-<span class="s1">    &quot;timestamp&quot;: &quot;2026-08-11T12:00:00Z&quot;</span>
-<span class="s1">  }&#39;</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
+<span class="s1">    "app": "my-app",</span>
+<span class="s1">    "namespace": "production",</span>
+<span class="s1">    "revision": "abc123def456",</span>
+<span class="s1">    "imageTag": "my-app:v42",</span>
+<span class="s1">    "timestamp": "2026-08-11T12:00:00Z"</span>
+<span class="s1">  }'</span>
 </code></pre></div>
 <p>That payload matches the <code>generic</code> source type (the default), which accepts a <code>DeployEvent</code> shape directly — see <a href="../api-reference/">API Reference</a>.</p>
 <h2 id="what-detecting-a-regression-looks-like">What "detecting a regression" looks like<a class="headerlink" href="#what-detecting-a-regression-looks-like" title="Permanent link">&para;</a></h2>
@@ -2022,14 +1860,10 @@ Redacted DSN examples are shown for documentation safety only and cannot be used
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
-      
-        <script src="../javascripts/nav-data.js"></script>
-      
-        <script src="../javascripts/nav-flyout.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
       

@@ -110,7 +110,7 @@
 
   
 
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -227,150 +227,13 @@
     
   </nav>
   
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../changelog/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Changelog
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-  
-  
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../installation/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Get Started
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../architecture/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../configuration/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../testing/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Contributing
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
+        
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -384,10 +247,8 @@
                     
 
 
-  
 
-
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -492,23 +353,15 @@
     
     
     
-      
-        
-        
-      
-      
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -915,11 +768,6 @@
     
     
     
-      
-      
-        
-      
-    
     
     <li class="md-nav__item md-nav__item--nested">
       
@@ -1161,11 +1009,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1486,11 +1329,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1966,73 +1804,73 @@
 <div class="highlight"><pre><span></span><code><span class="c1"># Print the digest for the multi-arch manifest list</span>
 docker<span class="w"> </span>buildx<span class="w"> </span>imagetools<span class="w"> </span>inspect<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--format<span class="w"> </span><span class="s1">&#39;{{json .Manifest}}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.digest&#39;</span>
+<span class="w">  </span>--format<span class="w"> </span><span class="s1">'{{json .Manifest}}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.digest'</span>
 
 <span class="c1"># Or with crane (faster, no daemon needed)</span>
 crane<span class="w"> </span>digest<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
 </code></pre></div>
 <p>For the Helm chart:</p>
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>show<span class="w"> </span>chart<span class="w"> </span>oci://ghcr.io/joao00001/charts/pg-regression-radar<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.2.3<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">&#39;^(version|appVersion):&#39;</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^(version|appVersion):'</span>
 </code></pre></div>
 <h2 id="verifying-image-signatures">Verifying image signatures<a class="headerlink" href="#verifying-image-signatures" title="Permanent link">&para;</a></h2>
 <p>Replace <code>v1.2.3</code> with the release tag you are verifying. The <code>--certificate-identity-regexp</code> must match the release workflow path exactly; the <code>--certificate-oidc-issuer</code> must be GitHub's Actions token endpoint.</p>
 <div class="highlight"><pre><span></span><code><span class="nv">IMAGE</span><span class="o">=</span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
 
-cosign<span class="w"> </span>verify<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+cosign<span class="w"> </span>verify<span class="w"> </span><span class="s2">"</span><span class="nv">$IMAGE</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
 </code></pre></div>
 <p>A successful verification prints the JSON payload of each matching signature, which includes the workflow ref, run URL, and SHA. A failure (wrong issuer, wrong identity, or no recorded signature) exits non-zero and prints an error — there is no silent pass on mismatch.</p>
 <p>Verify a per-arch image by digest instead of tag:</p>
 <div class="highlight"><pre><span></span><code><span class="nv">DIGEST</span><span class="o">=</span><span class="k">$(</span>docker<span class="w"> </span>buildx<span class="w"> </span>imagetools<span class="w"> </span>inspect<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3-amd64<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--format<span class="w"> </span><span class="s1">&#39;{{json .Manifest}}&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.digest&#39;</span><span class="k">)</span>
+<span class="w">  </span>--format<span class="w"> </span><span class="s1">'{{json .Manifest}}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.digest'</span><span class="k">)</span>
 
-cosign<span class="w"> </span>verify<span class="w"> </span><span class="s2">&quot;ghcr.io/joao00001/pg-regression-radar/operator@</span><span class="si">${</span><span class="nv">DIGEST</span><span class="si">}</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+cosign<span class="w"> </span>verify<span class="w"> </span><span class="s2">"ghcr.io/joao00001/pg-regression-radar/operator@</span><span class="si">${</span><span class="nv">DIGEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
 </code></pre></div>
 <h2 id="verifying-the-helm-chart-signature">Verifying the Helm chart signature<a class="headerlink" href="#verifying-the-helm-chart-signature" title="Permanent link">&para;</a></h2>
 <p>The Helm chart is published as an OCI artifact to <code>ghcr.io/joao00001/charts/pg-regression-radar</code>. Cosign signs any OCI artifact by digest, so <code>cosign verify</code> works identically to images:</p>
 <div class="highlight"><pre><span></span><code>cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/charts/pg-regression-radar:1.2.3<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
 </code></pre></div>
 <h2 id="inspecting-the-sbom">Inspecting the SBOM<a class="headerlink" href="#inspecting-the-sbom" title="Permanent link">&para;</a></h2>
 <p>Each image digest has an SPDX-JSON SBOM attached as a signed in-toto attestation. Fetch and inspect it:</p>
 <div class="highlight"><pre><span></span><code><span class="nv">IMAGE</span><span class="o">=</span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
 
-cosign<span class="w"> </span>verify-attestation<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+cosign<span class="w"> </span>verify-attestation<span class="w"> </span><span class="s2">"</span><span class="nv">$IMAGE</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--type<span class="w"> </span>spdxjson<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.payload | @base64d | fromjson | .predicate&#39;</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.payload | @base64d | fromjson | .predicate'</span>
 </code></pre></div>
 <p>The predicate output is an SPDX document listing every OS package and Go module baked into the image at build time. To extract just the package list:</p>
-<div class="highlight"><pre><span></span><code>cosign<span class="w"> </span>verify-attestation<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code>cosign<span class="w"> </span>verify-attestation<span class="w"> </span><span class="s2">"</span><span class="nv">$IMAGE</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--type<span class="w"> </span>spdxjson<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.payload | @base64d | fromjson | .predicate.packages[].name&#39;</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.payload | @base64d | fromjson | .predicate.packages[].name'</span>
 </code></pre></div>
 <p>SBOM files are also uploaded as GitHub Actions artifacts during the release run and attached to the GitHub Release for offline inspection (named <code>sbom-&lt;target&gt;-&lt;arch&gt;-&lt;version&gt;.spdx.json</code>).</p>
 <h2 id="verifying-provenance-attestations-slsa">Verifying provenance attestations (SLSA)<a class="headerlink" href="#verifying-provenance-attestations-slsa" title="Permanent link">&para;</a></h2>
 <p>Releases also publish provenance attestations via <code>actions/attest-build-provenance</code>. Verify them with:</p>
 <div class="highlight"><pre><span></span><code><span class="nv">IMAGE</span><span class="o">=</span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
 
-gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$IMAGE</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span><span class="s2">"</span><span class="nv">$IMAGE</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--owner<span class="w"> </span>joao00001
 </code></pre></div>
 <p>For the Helm chart OCI artifact:</p>
 <div class="highlight"><pre><span></span><code><span class="nv">CHART</span><span class="o">=</span>ghcr.io/joao00001/charts/pg-regression-radar:1.2.3
 
-gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$CHART</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span><span class="s2">"</span><span class="nv">$CHART</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--owner<span class="w"> </span>joao00001
 </code></pre></div>
 <h2 id="scanning-locally-for-vulnerabilities">Scanning locally for vulnerabilities<a class="headerlink" href="#scanning-locally-for-vulnerabilities" title="Permanent link">&para;</a></h2>
@@ -2125,14 +1963,10 @@ gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
-      
-        <script src="../javascripts/nav-data.js"></script>
-      
-        <script src="../javascripts/nav-flyout.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
       

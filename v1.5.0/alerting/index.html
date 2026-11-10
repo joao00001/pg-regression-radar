@@ -110,7 +110,7 @@
 
   
 
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -227,150 +227,13 @@
     
   </nav>
   
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../changelog/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Changelog
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../installation/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Get Started
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../architecture/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    
-  
-  
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../configuration/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../testing/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Contributing
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
+        
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -384,10 +247,8 @@
                     
 
 
-  
 
-
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -489,11 +350,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -730,11 +586,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -980,23 +831,15 @@
     
     
     
-      
-        
-        
-      
-      
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -1449,11 +1292,6 @@
     
     
     
-      
-      
-        
-      
-    
     
     <li class="md-nav__item md-nav__item--nested">
       
@@ -1850,9 +1688,9 @@
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <p><strong>CLI (<code>cmd/operator</code>, or the unified <code>pg-regression-radar operator</code> subcommand):</strong></p>
 <div class="highlight"><pre><span></span><code>pg-regression-radar<span class="w"> </span>operator<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--dsn<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DSN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--dsn<span class="w"> </span><span class="s2">"</span><span class="nv">$DSN</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--alert-format<span class="w"> </span>teams<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--alert-url<span class="w"> </span><span class="s2">&quot;https://example.webhook.office.com/webhookb2/...&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--alert-url<span class="w"> </span><span class="s2">"https://example.webhook.office.com/webhookb2/..."</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>...
 </code></pre></div>
 <table>
@@ -2047,10 +1885,10 @@
 <p>The pre-formatted fields (<code>ConfidencePercent</code>, <code>MeanLatencyBeforeMs</code>, etc.) match exactly what the built-in Slack/Teams/PagerDuty formatters render, so a template author gets the same numbers without reimplementing that formatting.</p>
 <p>Example — a minimal generic JSON body:</p>
 <div class="highlight"><pre><span></span><code>{
-  &quot;cluster&quot;: &quot;{{.ClusterName}}&quot;,
-  &quot;query_id&quot;: {{.QueryID}},
-  &quot;confidence&quot;: &quot;{{.ConfidencePercent}}&quot;,
-  &quot;summary&quot;: &quot;query {{.QueryID}} latency changed {{.LatencyChangeFactor}} on {{.ClusterName}}&quot;
+  "cluster": "{{.ClusterName}}",
+  "query_id": {{.QueryID}},
+  "confidence": "{{.ConfidencePercent}}",
+  "summary": "query {{.QueryID}} latency changed {{.LatencyChangeFactor}} on {{.ClusterName}}"
 }
 </code></pre></div>
 <p>The rendered body is sent with <code>Content-Type: application/json</code> by default; a non-JSON template (plain text, form-encoded, etc.) can pass a different content type — the CRD/CLI surface doesn't expose this today (it defaults to <code>application/json</code>), since every destination worth templating for accepts JSON.</p>
@@ -2147,14 +1985,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
-      
-        <script src="../javascripts/nav-data.js"></script>
-      
-        <script src="../javascripts/nav-flyout.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
       

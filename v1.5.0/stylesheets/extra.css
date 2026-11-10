@@ -6,8 +6,7 @@
  * pure black / white-gray text in dark mode, pure white / black-gray text
  * in light mode -- and adds a frosted-glass backdrop blur to the sticky
  * header so content is still legible as it scrolls underneath it, instead
- * of a flat opaque bar. The tabs bar right below it stays fully
- * transparent, with just a hairline border to separate it from content.
+ * of a flat opaque bar.
  *
  * Written against Material for MkDocs' documented CSS custom properties
  * (https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#custom-colors),
@@ -72,77 +71,25 @@
   --md-header-bg-color: rgba(255, 255, 255, 0.72);
 }
 
-/* ---- Frosted-glass sticky header and tabs bar (both schemes) ---- */
+/* ---- Frosted-glass sticky header (both schemes) ---- */
 .md-header {
   background-color: var(--md-header-bg-color);
   backdrop-filter: blur(14px) saturate(180%);
   box-shadow: none;
 }
 
-.md-tabs {
-  background-color: transparent;
-  border-bottom: 1px solid var(--md-default-fg-color--lightest);
-}
-
-/* Material's `.md-tabs__list` is `overflow: auto`. `scrollbar-width: none`
-   (already set by Material) hides Firefox's scrollbar, but Chrome/Safari
-   have no equivalent, so hovering it revealed a native overlay scrollbar
-   -- a thin bar at the bottom edge that reads as an unwanted
-   `border-bottom` appearing only on hover. There's nothing to actually
-   scroll (the tabs bar only ever holds a handful of short labels), so
-   disable the scroll axis outright instead of just hiding its scrollbar. */
-.md-tabs__list {
-  overflow-x: hidden;
-}
-
-/* Material colors tab links via `color: inherit` cascading down from
-   `.md-tabs { color: var(--md-primary-bg-color) }` -- white text, meant for
-   an opaque, saturated (indigo) tab-bar background. Against our translucent
-   blur that's white-on-white in light mode (the bug this fixes: the active
-   tab's text became invisible). Set the color where it's actually inherited
-   from, not just on .md-tabs__link, so every descendant picks it up. */
+/* Material's header text is white (`--md-primary-bg-color`), meant for an
+   opaque, saturated (indigo) header. Against our translucent blur that's
+   white-on-white in light mode, so set the color where it's inherited
+   from, so every descendant picks it up. */
 .md-header,
 .md-header__title,
-.md-header__button,
-.md-tabs {
+.md-header__button {
   color: var(--md-default-fg-color);
 }
 
-.md-tabs__link {
-  color: var(--md-default-fg-color--light);
-  opacity: 1;
-  position: relative;
-}
-
-.md-tabs__link:focus,
-.md-tabs__link:hover {
-  color: var(--md-typeset-a-color);
-}
-
-/* The active tab's real selector is `.md-tabs__item--active .md-tabs__link`
-   (there is no `.md-tabs__link--active` in Material's markup) -- a two-class
-   descendant selector, which beats a plain `.md-tabs__link` override on
-   specificity alone regardless of source order. Match it explicitly, in a
-   clearly contrasting accent color plus an underline bar, so the active tab
-   is unmistakable in both themes instead of simply not disappearing. */
-.md-tabs__item--active .md-tabs__link {
-  color: var(--md-typeset-a-color);
-  font-weight: 700;
-}
-
-.md-tabs__item--active .md-tabs__link::after {
-  content: "";
-  position: absolute;
-  left: 0.1rem;
-  right: 0.1rem;
-  bottom: -2px;
-  height: 1px;
-  border-radius: 2px 2px;
-  background-color: var(--md-typeset-a-color);
-}
-
 /* The collapsed header search box's placeholder/icon have the same
-   opaque-header assumption as the tabs above (var(--md-primary-bg-color)) --
+   opaque-header assumption as the header text above (var(--md-primary-bg-color)) --
    force them to a color that's actually readable against the blur. */
 .md-search__input::placeholder,
 .md-search__input ~ .md-search__icon {
@@ -153,62 +100,6 @@
 .md-search__overlay {
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-}
-
-/* ---- Umbrella tabs: hover expands the header downward (no scroll, no
-   floating menu) ----
-   The nav is grouped into a handful of top-level tabs (see mkdocs.yml's
-   nav comment), several of which stand for a group of pages rather than
-   one. docs/javascripts/nav-flyout.js reveals that group's pages by
-   growing `.pgrr-tabs-flyout` (appended once, as a sibling of
-   `.md-tabs__list` inside the same `.md-grid`) from `max-height: 0` to
-   its content's real height on hover/focus of the relevant tab.
-
-   This is a real block in normal document flow, not a `position:
-   absolute`/`fixed` overlay: because `.md-tabs` is `position: sticky`,
-   growing this element genuinely makes the sticky header taller and
-   pushes the page content below it down, rather than floating a card on
-   top of that content. `overflow: hidden` here is solely what makes the
-   `max-height` transition clip cleanly while collapsed/animating, not a
-   scroll-prevention hack like the tabs bar itself doesn't need any more
-   now that it only holds a handful of short labels. */
-.pgrr-tabs-flyout {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height 200ms ease;
-  background-color: var(--md-default-bg-color);
-  border-top: 1px solid var(--md-default-fg-color--lightest);
-}
-
-.pgrr-tabs-flyout[hidden] {
-  display: none;
-}
-
-.pgrr-tabs-flyout ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0.8rem 0;
-  list-style: none;
-}
-
-.pgrr-tabs-flyout li {
-  list-style: none;
-}
-
-.pgrr-tabs-flyout a {
-  display: block;
-  padding: 0.4rem 0.8rem;
-  color: var(--md-default-fg-color--light);
-  font-size: 0.7rem;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.pgrr-tabs-flyout a:hover,
-.pgrr-tabs-flyout a:focus {
-  color: var(--md-typeset-a-color);
 }
 
 /* ---- Version selector: push content down instead of overlapping it ----
@@ -224,13 +115,11 @@
    server-rendered HTML at all), the script moves the real
    `.md-version__list` node out of it and into `.pgrr-version-flyout`, a
    plain block appended at the end of `.md-header` -- the exact same
-   "real block in normal flow, animated via max-height" technique
-   `.pgrr-tabs-flyout` above already uses for the tabs menu, for the same
-   reason: since `.md-header` is `position: sticky`, growing it taller
-   pushes the tabs bar and page content below it down, instead of
-   floating a card over either. Interaction (click/tap toggle, a short
-   hover-intent close delay borrowed from `.pgrr-tabs-flyout`'s own
-   CLOSE_DELAY_MS, keyboard, Escape) is entirely the script's job; these
+   "real block in normal flow, animated via max-height" technique:
+   since `.md-header` is `position: sticky`, growing it taller pushes the
+   page content below it down, instead of floating a card over it.
+   Interaction (click/tap toggle, a short hover-intent close delay,
+   keyboard, Escape) is entirely the script's job; these
    rules are just what it animates between. If the script never runs
    (JS disabled, or the version fetch fails so `.md-version` never
    appears), nothing gets moved and Material's own default hover/overlay
@@ -270,7 +159,7 @@
 .pgrr-version-flyout .md-version__link:focus,
 .pgrr-version-flyout .md-version__link:hover {
   /* This site's own established accent for hover/focus feedback
-     (`.md-tabs__link:hover`, `.pgrr-tabs-flyout a:hover`) -- not
+     (link hover in the sidebar and content) -- not
      Material's default `--md-accent-fg-color`, which is a more
      saturated blue tuned for an opaque indigo header, not this site's
      monochrome one. No background fill on hover, matching the same

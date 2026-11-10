@@ -110,7 +110,7 @@
 
   
 
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -227,150 +227,13 @@
     
   </nav>
   
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../changelog/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Changelog
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-    
-  
-  
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Get Started
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../architecture/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../configuration/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../testing/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Contributing
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
+        
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -384,10 +247,8 @@
                     
 
 
-  
 
-
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -492,23 +353,15 @@
     
     
     
-      
-        
-        
-      
-      
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -888,11 +741,6 @@
     
     
     
-      
-      
-        
-      
-    
     
     <li class="md-nav__item md-nav__item--nested">
       
@@ -1134,11 +982,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1459,11 +1302,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1848,7 +1686,7 @@
 <p>pg-regression-radar only needs to read <code>pg_stat_statements</code> and a handful of catalog views — it never writes to user data. <strong>Do not use a superuser or a role with broad privileges for <code>--dsn</code>.</strong> If the connection string is ever leaked (e.g. via a misrouted Secret), the blast radius should be limited to read-only statistics access.</p>
 <p>Create a dedicated role before installing pg-regression-radar:</p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Create the role with login but no superuser privileges.</span>
-<span class="k">CREATE</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">pgrr_monitor</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="n">LOGIN</span><span class="w"> </span><span class="n">PASSWORD</span><span class="w"> </span><span class="s1">&#39;change-me&#39;</span><span class="p">;</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">ROLE</span><span class="w"> </span><span class="n">pgrr_monitor</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="n">LOGIN</span><span class="w"> </span><span class="n">PASSWORD</span><span class="w"> </span><span class="s1">'change-me'</span><span class="p">;</span>
 
 <span class="c1">-- Built-in role that grants read access to pg_stat_statements, pg_stat_*</span>
 <span class="c1">-- views, and other monitoring functions — exactly what pg-regression-radar needs.</span>
@@ -1870,9 +1708,9 @@
 <span class="c1"># or pin a release: @v0.1.0</span>
 </code></pre></div>
 <p>This places a single <code>pg-regression-radar</code> binary in <code>$(go env GOPATH)/bin</code>. From there:</p>
-<div class="highlight"><pre><span></span><code>pg-regression-radar<span class="w"> </span>operator<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">&quot;postgres://user:pass@host:5432/dbname?sslmode=disable&quot;</span>
+<div class="highlight"><pre><span></span><code>pg-regression-radar<span class="w"> </span>operator<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">"postgres://user:pass@host:5432/dbname?sslmode=disable"</span>
 pg-regression-radar<span class="w"> </span>manager<span class="w"> </span>--leader-elect<span class="o">=</span><span class="nb">true</span>
-pg-regression-radar<span class="w"> </span>collector<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">&quot;...&quot;</span>
+pg-regression-radar<span class="w"> </span>collector<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">"..."</span>
 pg-regression-radar<span class="w"> </span>ingester<span class="w"> </span>--source-type<span class="w"> </span>argocd
 pg-regression-radar<span class="w"> </span>version
 pg-regression-radar<span class="w"> </span><span class="nb">help</span>
@@ -1912,18 +1750,18 @@ docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-r
 </code></pre></div>
 <p>Substitute the actual latest tag from the <a href="https://github.com/joao00001/pg-regression-radar/releases">Releases page</a>, or use <code>:latest</code> for the most recent release (there is no rolling/"edge" image — every published tag corresponds to a real <code>vX.Y.Z</code> release). <code>docker run ghcr.io/joao00001/pg-regression-radar/cli:v0.3.0 operator --dsn ...</code> runs the unified CLI image; the other four are single-mode images matching the Dockerfile's other <code>--target</code> values.</p>
 <p><strong>Verify the signature and SBOM before trusting a pulled image.</strong> Every published image is keyless-signed with <a href="https://github.com/sigstore/cosign">cosign</a> using the publishing GitHub Actions run's own OIDC identity (no shared private key to leak or rotate), and carries an attached SBOM attestation:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Verify the image was signed by this repo&#39;s release.yml workflow, specifically</span>
-<span class="c1"># (not just &quot;signed by someone with a GitHub account&quot;).</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Verify the image was signed by this repo's release.yml workflow, specifically</span>
+<span class="c1"># (not just "signed by someone with a GitHub account").</span>
 cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
 
 <span class="c1"># Fetch and inspect the attached SPDX SBOM attestation.</span>
 cosign<span class="w"> </span>verify-attestation<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--type<span class="w"> </span>spdxjson<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">&#39;.payload | @base64d | fromjson | .predicate&#39;</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.payload | @base64d | fromjson | .predicate'</span>
 </code></pre></div>
 <p>Every image is also scanned with <a href="https://github.com/aquasecurity/trivy">Trivy</a> at release time and the release job fails outright on any CRITICAL-severity finding (see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a>) — a published image never carries a known CRITICAL CVE as of its release date, though new CVEs can of course be disclosed later against the same fixed image bytes.</p>
 <p><strong>Build locally</strong>, e.g. to test an unreleased commit:</p>
@@ -1937,7 +1775,7 @@ docker<span class="w"> </span>build<span class="w"> </span>--target<span class="
 <p><strong>From the published OCI chart</strong> (published alongside the images by every release — see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a>):</p>
 <div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>oci://ghcr.io/joao00001/charts/pg-regression-radar<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.3.0<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">&quot;postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">"postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>cnpg-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>alerting.slackWebhookUrl<span class="o">=</span>https://hooks.slack.com/services/XXX/YYY/ZZZ
 </code></pre></div>
@@ -1962,13 +1800,13 @@ Redacted DSN examples are shown for documentation safety only and cannot be used
 </code></pre></div>
 <p><strong>Verify the chart's signature before trusting it</strong>, the same way as the container images above — the published Helm OCI artifact is keyless-signed with cosign too, using the chart's SemVer version as the tag (same one <code>--version</code> above installs):</p>
 <div class="highlight"><pre><span></span><code>cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/charts/pg-regression-radar:0.3.0<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">&quot;^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
 </code></pre></div>
 <p><strong>From a local clone</strong>, e.g. to test unreleased chart changes:</p>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/joao00001/pg-regression-radar.git
 helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./pg-regression-radar/deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">&quot;postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">"postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>cnpg-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>alerting.slackWebhookUrl<span class="o">=</span>https://hooks.slack.com/services/XXX/YYY/ZZZ
 </code></pre></div>
@@ -2040,14 +1878,10 @@ helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<s
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
-      
-        <script src="../javascripts/nav-data.js"></script>
-      
-        <script src="../javascripts/nav-flyout.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
       

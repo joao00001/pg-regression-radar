@@ -110,7 +110,7 @@
 
   
 
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -227,150 +227,13 @@
     
   </nav>
   
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../changelog/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Changelog
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../installation/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Get Started
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../architecture/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    
-  
-  
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../configuration/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../testing/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Contributing
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
+        
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -384,10 +247,8 @@
                     
 
 
-  
 
-
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -489,11 +350,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -730,11 +586,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -980,23 +831,15 @@
     
     
     
-      
-        
-        
-      
-      
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
             
   
   
@@ -1532,11 +1375,6 @@
     
     
     
-      
-      
-        
-      
-    
     
     <li class="md-nav__item md-nav__item--nested">
       
@@ -2034,25 +1872,25 @@
 <span class="w">        </span><span class="no">method: POST</span>
 <span class="w">        </span><span class="no">body: |</span>
 <span class="w">          </span><span class="no">{</span>
-<span class="w">            </span><span class="no">&quot;app&quot;: {</span>
-<span class="w">              </span><span class="no">&quot;metadata&quot;: {</span>
-<span class="w">                </span><span class="no">&quot;name&quot;: &quot;{{.app.metadata.name}}&quot;,</span>
-<span class="w">                </span><span class="no">&quot;namespace&quot;: &quot;{{.app.metadata.namespace}}&quot;</span>
+<span class="w">            </span><span class="no">"app": {</span>
+<span class="w">              </span><span class="no">"metadata": {</span>
+<span class="w">                </span><span class="no">"name": "{{.app.metadata.name}}",</span>
+<span class="w">                </span><span class="no">"namespace": "{{.app.metadata.namespace}}"</span>
 <span class="w">              </span><span class="no">},</span>
-<span class="w">              </span><span class="no">&quot;spec&quot;: {</span>
-<span class="w">                </span><span class="no">&quot;destination&quot;: {</span>
-<span class="w">                  </span><span class="no">&quot;name&quot;: &quot;{{.app.spec.destination.name}}&quot;,</span>
-<span class="w">                  </span><span class="no">&quot;server&quot;: &quot;{{.app.spec.destination.server}}&quot;</span>
+<span class="w">              </span><span class="no">"spec": {</span>
+<span class="w">                </span><span class="no">"destination": {</span>
+<span class="w">                  </span><span class="no">"name": "{{.app.spec.destination.name}}",</span>
+<span class="w">                  </span><span class="no">"server": "{{.app.spec.destination.server}}"</span>
 <span class="w">                </span><span class="no">}</span>
 <span class="w">              </span><span class="no">},</span>
-<span class="w">              </span><span class="no">&quot;status&quot;: {</span>
-<span class="w">                </span><span class="no">&quot;sync&quot;: {&quot;revision&quot;: &quot;{{.app.status.sync.revision}}&quot;},</span>
-<span class="w">                </span><span class="no">&quot;summary&quot;: {&quot;images&quot;: {{toJson .app.status.summary.images}}}</span>
+<span class="w">              </span><span class="no">"status": {</span>
+<span class="w">                </span><span class="no">"sync": {"revision": "{{.app.status.sync.revision}}"},</span>
+<span class="w">                </span><span class="no">"summary": {"images": {{toJson .app.status.summary.images}}}</span>
 <span class="w">              </span><span class="no">}</span>
 <span class="w">            </span><span class="no">}</span>
 <span class="w">          </span><span class="no">}</span>
 <span class="w">  </span><span class="nt">trigger.on-sync-succeeded</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
-<span class="w">    </span><span class="no">- when: app.status.operationState.phase in [&#39;Succeeded&#39;]</span>
+<span class="w">    </span><span class="no">- when: app.status.operationState.phase in ['Succeeded']</span>
 <span class="w">      </span><span class="no">send: [on-sync-succeeded-webhook]</span>
 </code></pre></div>
 <p>The ingester reads <code>app.spec.destination.name</code> first and falls back to <code>app.spec.destination.server</code> (the API server URL) if the destination is addressed by server instead of by registered cluster name. If your ConfigMap doesn't populate <code>spec.destination</code> at all, the <code>--cluster-name</code> fallback is used instead.</p>
@@ -2070,14 +1908,14 @@
 <span class="w">        </span><span class="no">method: POST</span>
 <span class="w">        </span><span class="no">body: |</span>
 <span class="w">          </span><span class="no">{</span>
-<span class="w">            </span><span class="no">&quot;rollout&quot;: {</span>
-<span class="w">              </span><span class="no">&quot;metadata&quot;: {</span>
-<span class="w">                </span><span class="no">&quot;name&quot;: &quot;{{.rollout.metadata.name}}&quot;,</span>
-<span class="w">                </span><span class="no">&quot;namespace&quot;: &quot;{{.rollout.metadata.namespace}}&quot;</span>
+<span class="w">            </span><span class="no">"rollout": {</span>
+<span class="w">              </span><span class="no">"metadata": {</span>
+<span class="w">                </span><span class="no">"name": "{{.rollout.metadata.name}}",</span>
+<span class="w">                </span><span class="no">"namespace": "{{.rollout.metadata.namespace}}"</span>
 <span class="w">              </span><span class="no">},</span>
-<span class="w">              </span><span class="no">&quot;status&quot;: {&quot;currentPodHash&quot;: &quot;{{.rollout.status.currentPodHash}}&quot;}</span>
+<span class="w">              </span><span class="no">"status": {"currentPodHash": "{{.rollout.status.currentPodHash}}"}</span>
 <span class="w">            </span><span class="no">},</span>
-<span class="w">            </span><span class="no">&quot;cluster&quot;: &quot;{{index .rollout.metadata.labels &quot;cluster&quot;}}&quot;</span>
+<span class="w">            </span><span class="no">"cluster": "{{index .rollout.metadata.labels "cluster"}}"</span>
 <span class="w">          </span><span class="no">}</span>
 </code></pre></div>
 <p>Otherwise, just rely on <code>--cluster-name</code>.</p>
@@ -2095,9 +1933,9 @@
 <span class="w">    </span><span class="nt">cluster</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-cluster-1</span>
 <span class="w">  </span><span class="nt">eventSources</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Kustomization</span>
-<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;*&#39;</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">'*'</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HelmRelease</span>
-<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;*&#39;</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">'*'</span>
 </code></pre></div>
 <p>Without <code>eventMetadata.cluster</code>, the <code>--cluster-name</code> fallback is used.</p>
 <h3 id="generic">Generic<a class="headerlink" href="#generic" title="Permanent link">&para;</a></h3>
@@ -2114,7 +1952,7 @@
 <span class="w">  </span><span class="nt">postgresWatchRef</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-db</span>
 <span class="w">  </span><span class="nt">sourceType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">kubernetes</span>
 <span class="w">  </span><span class="nt">workloadKind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Deployment</span><span class="w">   </span><span class="c1"># or StatefulSet</span>
-<span class="w">  </span><span class="nt">appName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkout</span><span class="w">          </span><span class="c1"># the Deployment/StatefulSet&#39;s own name</span>
+<span class="w">  </span><span class="nt">appName</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">checkout</span><span class="w">          </span><span class="c1"># the Deployment/StatefulSet's own name</span>
 </code></pre></div>
 <p><code>WorkloadWatchReconciler</code> watches <code>apps/v1</code> <code>Deployment</code> and <code>StatefulSet</code> objects cluster-wide and, whenever the one named <code>appName</code> (in the same namespace as this <code>DeploySource</code>) finishes rolling out to a new revision, synthesises a <code>DeployEvent</code> exactly as if a webhook had arrived — <code>revision</code> is the Deployment's <code>deployment.kubernetes.io/revision</code> annotation, or the StatefulSet's <code>status.updateRevision</code>. "Finishes rolling out" means the full <code>kubectl rollout status</code> completion signal, not just "the spec changed" — a half-finished rollout never gets reported, since that would mix two revisions' data in the correlation engine's before/after windows.</p>
 <p>Because there's no webhook payload to read a <code>cluster</code> field from, the event's <code>cluster</code> always comes from the owning <code>PostgresWatch</code>'s <code>spec.clusterName</code>.</p>
@@ -2127,17 +1965,17 @@
 <p>The standalone <code>ingester</code> binary's <code>GET /events</code> route (lists the full deploy-event history — see <a href="../configuration/#ingester-flags-cmdingester">Configuration Reference</a>) is gated behind this same secret and header once <code>--webhook-secret</code> is set; it has no authentication of its own otherwise. <code>/events</code> doesn't exist in <code>operator</code>/<code>manager</code> mode, so this only applies to the standalone <code>ingester</code> binary.</p>
 <h3 id="operator-standalone-ingester">Operator / standalone ingester<a class="headerlink" href="#operator-standalone-ingester" title="Permanent link">&para;</a></h3>
 <p>Pass the secret via an environment variable to avoid exposure in process listings:</p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">WEBHOOK_SECRET</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="s2">&quot;</span>
-operator<span class="w"> </span>--dsn<span class="o">=</span>...<span class="w"> </span>--webhook-secret<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$WEBHOOK_SECRET</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">WEBHOOK_SECRET</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>openssl<span class="w"> </span>rand<span class="w"> </span>-hex<span class="w"> </span><span class="m">32</span><span class="k">)</span><span class="s2">"</span>
+operator<span class="w"> </span>--dsn<span class="o">=</span>...<span class="w"> </span>--webhook-secret<span class="o">=</span><span class="s2">"</span><span class="nv">$WEBHOOK_SECRET</span><span class="s2">"</span>
 </code></pre></div>
 <p>Or with the standalone ingester binary:</p>
-<div class="highlight"><pre><span></span><code>ingester<span class="w"> </span>--source-type<span class="o">=</span>argocd<span class="w"> </span>--webhook-secret<span class="o">=</span><span class="s2">&quot;</span><span class="nv">$WEBHOOK_SECRET</span><span class="s2">&quot;</span>
+<div class="highlight"><pre><span></span><code>ingester<span class="w"> </span>--source-type<span class="o">=</span>argocd<span class="w"> </span>--webhook-secret<span class="o">=</span><span class="s2">"</span><span class="nv">$WEBHOOK_SECRET</span><span class="s2">"</span>
 </code></pre></div>
 <h3 id="helm-chart-mode-operator">Helm chart (mode: operator)<a class="headerlink" href="#helm-chart-mode-operator" title="Permanent link">&para;</a></h3>
 <p>Set <code>ingester.webhookSecret</code> in your <code>values.yaml</code> override (or via <code>--set</code>). The chart stores the value in the existing <code>&lt;release&gt;-secret</code> Kubernetes Secret and injects it into the pod as the <code>WEBHOOK_SECRET</code> environment variable:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">ingester</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">sourceType</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">argocd</span>
-<span class="w">  </span><span class="nt">webhookSecret</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;your-secret-here&quot;</span><span class="w">   </span><span class="c1"># generate with: openssl rand -hex 32</span>
+<span class="w">  </span><span class="nt">webhookSecret</span><span class="p">:</span><span class="w"> </span><span class="s">"your-secret-here"</span><span class="w">   </span><span class="c1"># generate with: openssl rand -hex 32</span>
 </code></pre></div>
 <p>In production, avoid committing the secret to version control. Instead, pre-create the Kubernetes Secret and reference it directly, or use an external secrets operator to sync it.</p>
 <h3 id="configuring-argocd-argo-rollouts-flux-to-send-the-header">Configuring ArgoCD / Argo Rollouts / Flux to send the header<a class="headerlink" href="#configuring-argocd-argo-rollouts-flux-to-send-the-header" title="Permanent link">&para;</a></h3>
@@ -2172,9 +2010,9 @@ operator<span class="w"> </span>--dsn<span class="o">=</span>...<span class="w">
 <p>Flux ≥ 2.4 supports the <code>headers</code> field on the generic <code>Provider</code>, which lets you send a custom header verbatim. For earlier versions that only support <code>secretRef</code> (which sends <code>Authorization: token &lt;value&gt;</code> instead), use the <code>generic-hmac</code> provider type or upgrade Flux.</p>
 <h3 id="verifying-the-token-with-curl">Verifying the token with curl<a class="headerlink" href="#verifying-the-token-with-curl" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/webhook<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;Content-Type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;X-Webhook-Token: your-secret-here&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;app&quot;:&quot;my-app&quot;,&quot;revision&quot;:&quot;abc123&quot;,&quot;timestamp&quot;:&quot;2024-01-15T10:00:00Z&quot;}&#39;</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"X-Webhook-Token: your-secret-here"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">'{"app":"my-app","revision":"abc123","timestamp":"2024-01-15T10:00:00Z"}'</span>
 </code></pre></div>
 <p>A request without the header returns <code>401 Unauthorized</code>; with the correct token it returns <code>204 No Content</code>.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
@@ -2238,14 +2076,10 @@ operator<span class="w"> </span>--dsn<span class="o">=</span>...<span class="w">
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
-      
-        <script src="../javascripts/nav-data.js"></script>
-      
-        <script src="../javascripts/nav-flyout.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
       

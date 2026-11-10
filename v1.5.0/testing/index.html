@@ -110,7 +110,7 @@
 
   
 
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -227,150 +227,13 @@
     
   </nav>
   
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../changelog/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Changelog
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../installation/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Get Started
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../architecture/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../configuration/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    
-  
-  
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Contributing
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
+        
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -384,10 +247,8 @@
                     
 
 
-  
 
-
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -489,11 +350,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -730,11 +586,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -977,11 +828,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1305,23 +1151,15 @@
     
     
     
-      
-        
-        
-      
-      
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1904,13 +1742,13 @@ go<span class="w"> </span>build<span class="w"> </span>./...<span class="w">    
 <span class="c1"># thing to a proof that regressions are actually detected end to end).</span>
 <span class="c1"># CI runs this same command against postgres:16, postgres:17, and</span>
 <span class="c1"># postgres:18 (see the integration-postgres matrix in ci.yml) — pick</span>
-<span class="c1"># whichever tag locally, they&#39;re all officially supported; see the</span>
+<span class="c1"># whichever tag locally, they're all officially supported; see the</span>
 <span class="c1"># support matrix doc for the full version/distribution matrix, including</span>
 <span class="c1"># the separate, secret-gated job that also runs this suite against EDB</span>
 <span class="c1"># Postgres Advanced Server and EDB Postgres Extended Server.</span>
 docker<span class="w"> </span>run<span class="w"> </span>-d<span class="w"> </span>--name<span class="w"> </span>pgrr-test<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span><span class="nb">test</span><span class="w"> </span>-p<span class="w"> </span><span class="m">5432</span>:5432<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>postgres:16<span class="w"> </span>postgres<span class="w"> </span>-c<span class="w"> </span><span class="nv">shared_preload_libraries</span><span class="o">=</span>pg_stat_statements
-<span class="nb">export</span><span class="w"> </span><span class="nv">PGRR_TEST_DSN</span><span class="o">=</span><span class="s2">&quot;postgres://postgres:test@localhost:5432/postgres?sslmode=disable&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">PGRR_TEST_DSN</span><span class="o">=</span><span class="s2">"postgres://postgres:test@localhost:5432/postgres?sslmode=disable"</span>
 go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-tags<span class="o">=</span>integration<span class="w"> </span>./internal/storage/...<span class="w"> </span>./internal/collector/...<span class="w"> </span>./internal/e2e/...<span class="w"> </span>./internal/cli/...
 </code></pre></div>
 <blockquote>
@@ -1921,7 +1759,7 @@ replace it with your real connection string.</p>
 </blockquote>
 <div class="highlight"><pre><span></span><code><span class="c1"># Real kube-apiserver + etcd (internal/controller):</span>
 go<span class="w"> </span>install<span class="w"> </span>sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-<span class="nb">export</span><span class="w"> </span><span class="nv">KUBEBUILDER_ASSETS</span><span class="o">=</span><span class="s2">&quot;</span><span class="k">$(</span>setup-envtest<span class="w"> </span>use<span class="w"> </span><span class="m">1</span>.31.0<span class="w"> </span>-p<span class="w"> </span>path<span class="k">)</span><span class="s2">&quot;</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">KUBEBUILDER_ASSETS</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>setup-envtest<span class="w"> </span>use<span class="w"> </span><span class="m">1</span>.31.0<span class="w"> </span>-p<span class="w"> </span>path<span class="k">)</span><span class="s2">"</span>
 go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./internal/controller/...<span class="w"> </span>-run<span class="w"> </span>TestEnvtest<span class="w"> </span>-v
 </code></pre></div>
 <h3 id="diagnosing-a-failure-internaltestlogger">Diagnosing a failure: <code>internal/testlogger</code><a class="headerlink" href="#diagnosing-a-failure-internaltestlogger" title="Permanent link">&para;</a></h3>
@@ -1929,8 +1767,8 @@ go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./
 <div class="highlight"><pre><span></span><code>--- FAIL: TestEnvtest_PostgresWatch_RemoteClusterSecretRef_FetchesDSNFromRemoteAPIServer (4.07s)
     remote_cluster_envtest_test.go:142: reconcile: dsn secret default/remote-dsn is missing the required consent label ...
     testlogger.go:78: --- captured application logs (only shown because this test failed) ---
-    testlogger.go:79: time=... level=INFO msg=&quot;resolving dsn secret&quot; secret=default/remote-dsn
-                      time=... level=ERROR msg=&quot;secret consent check failed&quot; secret=default/remote-dsn
+    testlogger.go:79: time=... level=INFO msg="resolving dsn secret" secret=default/remote-dsn
+                      time=... level=ERROR msg="secret consent check failed" secret=default/remote-dsn
 </code></pre></div>
 <p>Before this, a failing integration/envtest test's only diagnostic output was whatever single line its own <code>t.Fatalf</code>/<code>t.Errorf</code> happened to include — the reconciler's, collector's, or ingester's own logging was silently thrown away unconditionally, on both success and failure. If you're writing a new integration or <code>internal/controller</code> test, use <code>testlogger.New(t)</code> rather than reaching for <code>slog.New(slog.NewTextHandler(io.Discard, nil))</code> directly.</p>
 <h3 id="why-internale2e-exists">Why <code>internal/e2e</code> exists<a class="headerlink" href="#why-internale2e-exists" title="Permanent link">&para;</a></h3>
@@ -1981,7 +1819,7 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>status<span class=
 
 <span class="c1"># 3. Create the namespace and a real Postgres Cluster with pg_stat_statements enabled.</span>
 kubectl<span class="w"> </span>create<span class="w"> </span>namespace<span class="w"> </span>pgrr-e2e
-cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -f -</span>
+cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -f -</span>
 <span class="s">apiVersion: postgresql.cnpg.io/v1</span>
 <span class="s">kind: Cluster</span>
 <span class="s">metadata:</span>
@@ -1993,8 +1831,8 @@ cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply
 <span class="s">    size: 1Gi</span>
 <span class="s">  postgresql:</span>
 <span class="s">    parameters:</span>
-<span class="s">      pg_stat_statements.max: &quot;10000&quot;</span>
-<span class="s">      pg_stat_statements.track: &quot;all&quot;</span>
+<span class="s">      pg_stat_statements.max: "10000"</span>
+<span class="s">      pg_stat_statements.track: "all"</span>
 <span class="s">EOF</span>
 kubectl<span class="w"> </span>-n<span class="w"> </span>pgrr-e2e<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>Ready<span class="w"> </span>cluster/pgrr-e2e-pg<span class="w"> </span>--timeout<span class="o">=</span>300s
 
@@ -2012,7 +1850,7 @@ helm<span class="w"> </span>install<span class="w"> </span>pgrr-e2e-mgr<span cla
 <span class="w">  </span>--wait<span class="w"> </span>--timeout<span class="o">=</span>180s
 
 <span class="c1"># 5. Point a PostgresWatch at the CloudNativePG-generated Secret directly.</span>
-cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -f -</span>
+cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -f -</span>
 <span class="s">apiVersion: radar.pgregressionradar.io/v1alpha1</span>
 <span class="s">kind: PostgresWatch</span>
 <span class="s">metadata:</span>
@@ -2037,10 +1875,10 @@ cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply
 <span class="s">  sourceType: generic</span>
 <span class="s">EOF</span>
 
-<span class="c1"># 6. From here, generate before/after traffic against the app Secret&#39;s DSN</span>
+<span class="c1"># 6. From here, generate before/after traffic against the app Secret's DSN</span>
 <span class="c1">#    and POST a deploy event to the webhook route — see</span>
-<span class="c1">#    .github/workflows/e2e-kind.yml&#39;s &quot;Generate ... traffic&quot; and &quot;Send the</span>
-<span class="c1">#    deploy webhook&quot; steps for the exact commands, then:</span>
+<span class="c1">#    .github/workflows/e2e-kind.yml's "Generate ... traffic" and "Send the</span>
+<span class="c1">#    deploy webhook" steps for the exact commands, then:</span>
 kubectl<span class="w"> </span>-n<span class="w"> </span>pgrr-e2e<span class="w"> </span>get<span class="w"> </span>performanceregressions
 
 <span class="c1"># 7. Tear down.</span>
@@ -2109,14 +1947,10 @@ kind<span class="w"> </span>delete<span class="w"> </span>cluster<span class="w"
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
-      
-        <script src="../javascripts/nav-data.js"></script>
-      
-        <script src="../javascripts/nav-flyout.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
       

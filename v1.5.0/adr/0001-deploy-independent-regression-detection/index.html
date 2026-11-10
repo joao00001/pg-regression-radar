@@ -106,7 +106,7 @@
 
   
 
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../.." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -223,148 +223,13 @@
     
   </nav>
   
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../.." class="md-tabs__link">
-        
-  
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../../changelog/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Changelog
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../installation/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Get Started
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../architecture/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../configuration/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../../testing/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Contributing
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
+        
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -378,10 +243,8 @@
                     
 
 
-  
 
-
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href="../.." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -483,11 +346,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -724,11 +582,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -971,11 +824,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1296,11 +1144,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -1788,12 +1631,12 @@
 <div class="highlight"><pre><span></span><code><span class="c1">// engine.go — shape, not final code</span>
 <span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">Engine</span><span class="p">)</span><span class="w"> </span><span class="nx">Analyse</span><span class="p">(</span><span class="nx">ev</span><span class="w"> </span><span class="nx">v1alpha1</span><span class="p">.</span><span class="nx">DeployEvent</span><span class="p">)</span><span class="w"> </span><span class="p">[]</span><span class="nx">v1alpha1</span><span class="p">.</span><span class="nx">PerformanceRegression</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// ... unchanged: builds window around ev.Timestamp, calls evaluateSeries,</span>
-<span class="w">    </span><span class="c1">// then rejects if the change point isn&#39;t within ChangePointTolerance of ev.Timestamp.</span>
+<span class="w">    </span><span class="c1">// then rejects if the change point isn't within ChangePointTolerance of ev.Timestamp.</span>
 <span class="p">}</span>
 
 <span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">Engine</span><span class="p">)</span><span class="w"> </span><span class="nx">AnalysePeriodic</span><span class="p">(</span><span class="nx">now</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Time</span><span class="p">)</span><span class="w"> </span><span class="p">[]</span><span class="nx">v1alpha1</span><span class="p">.</span><span class="nx">PerformanceRegression</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// window = [now - 2*PeriodicWindowMinutes, now], split at the midpoint</span>
-<span class="w">    </span><span class="c1">// into &quot;before&quot;/&quot;after&quot; halves; same evaluateSeries core; no</span>
+<span class="w">    </span><span class="c1">// into "before"/"after" halves; same evaluateSeries core; no</span>
 <span class="w">    </span><span class="c1">// deploy-timestamp proximity check at all.</span>
 <span class="p">}</span>
 </code></pre></div>
@@ -1807,7 +1650,7 @@
 </ol>
 <div class="highlight"><pre><span></span><code><span class="c1">// correlation package — shape, not final code</span>
 <span class="kd">type</span><span class="w"> </span><span class="nx">periodicState</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nx">inRegression</span><span class="w"> </span><span class="kd">map</span><span class="p">[</span><span class="kt">int64</span><span class="p">]</span><span class="kt">bool</span><span class="w"> </span><span class="c1">// queryID -&gt; currently alerting (won&#39;t re-fire until recovered)</span>
+<span class="w">    </span><span class="nx">inRegression</span><span class="w"> </span><span class="kt">map</span><span class="p">[</span><span class="kt">int64</span><span class="p">]</span><span class="kt">bool</span><span class="w"> </span><span class="c1">// queryID -&gt; currently alerting (won't re-fire until recovered)</span>
 <span class="p">}</span>
 </code></pre></div>
 <p>A query transitions <code>false -&gt; true</code> (fires once) when <code>AnalysePeriodic</code> reports <code>Detected</code>; it stays <code>true</code> (suppressed) on every subsequent tick where the <em>recent</em> half is still significantly worse than a fresh baseline; it transitions back to <code>false</code> once a tick shows recent-half latency has recovered to within <code>LatencyChangeThreshold</code> of baseline, so a future regression can fire again. This needs a lightweight recovery check on every tick regardless of whether a new regression fires — effectively "is the query still bad" as well as "did it just become bad."</p>
@@ -1815,7 +1658,7 @@
 <li><strong>CRD additions</strong> (<code>PostgresWatchSpec</code>):</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="nt">periodicDetection</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">          </span><span class="c1"># default off; opt-in per watch, mirrors autoAbort&#39;s own opt-in pattern</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">          </span><span class="c1"># default off; opt-in per watch, mirrors autoAbort's own opt-in pattern</span>
 <span class="w">  </span><span class="nt">windowMinutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span><span class="w">        </span><span class="c1"># optional; falls back to a 60m default</span>
 <span class="w">  </span><span class="nt">intervalMinutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span><span class="w">      </span><span class="c1"># how often a full pass over tracked queries runs</span>
 </code></pre></div>
@@ -2010,14 +1853,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
-      
-        <script src="../../javascripts/nav-data.js"></script>
-      
-        <script src="../../javascripts/nav-flyout.js"></script>
       
         <script src="../../javascripts/version-flyout.js"></script>
       

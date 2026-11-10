@@ -110,7 +110,7 @@
 
   
 
-<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+<header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -227,150 +227,13 @@
     
   </nav>
   
-    
-      
-<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
-  <div class="md-grid">
-    <ul class="md-tabs__list">
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href=".." class="md-tabs__link">
-        
-  
-  
-    
-  
-  Home
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    <li class="md-tabs__item">
-      <a href="../changelog/" class="md-tabs__link">
-        
-  
-  
-    
-  
-  Changelog
-
-      </a>
-    </li>
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../installation/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Get Started
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-    
-  
-  
-    
-    
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../architecture/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Architecture
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../configuration/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Reference
-
-        </a>
-      </li>
-    
-  
-
-      
-        
-  
-  
-  
-  
-    
-    
-      <li class="md-tabs__item">
-        <a href="../testing/" class="md-tabs__link">
-          
-  
-  
-    
-  
-  Contributing
-
-        </a>
-      </li>
-    
-  
-
-      
-    </ul>
-  </div>
-</nav>
-    
-  
 </header>
     
     <div class="md-container" data-md-component="container">
       
       
+        
+          
         
       
       <main class="md-main" data-md-component="main">
@@ -384,10 +247,8 @@
                     
 
 
-  
 
-
-<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
       
@@ -489,11 +350,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -733,23 +589,15 @@
     
     
     
-      
-        
-        
-      
-      
-        
-      
     
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
             
   
   
@@ -1335,11 +1183,6 @@
     
     
     
-      
-      
-        
-      
-    
     
     <li class="md-nav__item md-nav__item--nested">
       
@@ -1659,11 +1502,6 @@
       
     
     
-    
-      
-      
-        
-      
     
     
     <li class="md-nav__item md-nav__item--nested">
@@ -2442,6 +2280,7 @@
 </tbody>
 </table>
 <h2 id="permission-matrix-security-contract">Permission matrix (security contract)<a class="headerlink" href="#permission-matrix-security-contract" title="Permanent link">&para;</a></h2>
+<p>Legend: ✅ allowed by profile contract; ⚠️ allowed only for approved identities/policies; ❌ disallowed by profile contract.</p>
 <table>
 <thead>
 <tr>
@@ -2454,27 +2293,27 @@
 <tbody>
 <tr>
 <td>Create <code>PostgresWatch</code> resource</td>
-<td>✓ Cluster admin, Team lead</td>
-<td>✓ Team lead in own namespace; Cluster admin</td>
-<td>✓ Team lead in own namespace; Cluster admin</td>
+<td>✅ Cluster admin, team lead</td>
+<td>✅ Team lead in own namespace; cluster admin</td>
+<td>✅ Team lead in own namespace; cluster admin</td>
 </tr>
 <tr>
 <td>Create/modify <code>DeploySource</code> resource</td>
-<td>✓ Cluster admin, Team lead, App developer (team policy)</td>
-<td>⚠ Team lead/App developer in own namespace only, with stricter admission</td>
-<td>⚠ Team lead/App developer in own namespace only, often templated via platform workflow</td>
+<td>✅ Cluster admin, team lead, app developer (team policy)</td>
+<td>⚠️ Team lead/app developer in own namespace only, with stricter admission</td>
+<td>⚠️ Team lead/app developer in own namespace only, often templated via platform workflow</td>
 </tr>
 <tr>
 <td>Manager reads DSN Secret (<code>spec.dsnSecretRef</code>)</td>
-<td>✓ If Secret is consent-labeled</td>
-<td>✓ If Secret is consent-labeled and label assignment is restricted</td>
-<td>⚠ Prefer platform-managed relay/credentials; direct reads only for explicitly approved Secrets</td>
+<td>✅ If Secret is consent-labeled</td>
+<td>✅ If Secret is consent-labeled and label assignment is restricted</td>
+<td>⚠️ Prefer platform-managed relay/credentials; direct reads only for explicitly approved Secrets</td>
 </tr>
 <tr>
 <td>Configure remote cluster reference (<code>spec.remoteClusterRef</code> or deprecated <code>spec.remoteClusterSecretRef</code>)</td>
-<td>✓ Trusted team operators or Cluster admin</td>
-<td>⚠ Platform-approved identities only; tenant use gated by policy</td>
-<td>✗ Tenant-managed remote references; break-glass platform admin only</td>
+<td>✅ Trusted team operators or cluster admin</td>
+<td>⚠️ Platform-approved identities only; tenant use gated by policy</td>
+<td>❌ Tenant-managed remote references; break-glass platform admin only</td>
 </tr>
 </tbody>
 </table>
@@ -2634,7 +2473,7 @@ kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpol
 <p>Replace <code>&lt;ns&gt;</code> with a namespace where your policy applies.</p>
 </blockquote>
 <p>Attempt without consent label (should be admitted; controller will still refuse to use it):</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -n &lt;ns&gt; --dry-run=server -f -</span>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -n &lt;ns&gt; --dry-run=server -f -</span>
 <span class="s">apiVersion: v1</span>
 <span class="s">kind: Secret</span>
 <span class="s">metadata:</span>
@@ -2645,26 +2484,26 @@ kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpol
 <span class="s">EOF</span>
 </code></pre></div>
 <p>Attempt with consent label as unauthorized identity (should be denied):</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:team-a:app-operator --dry-run=server -f -</span>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:team-a:app-operator --dry-run=server -f -</span>
 <span class="s">apiVersion: v1</span>
 <span class="s">kind: Secret</span>
 <span class="s">metadata:</span>
 <span class="s">  name: dry-run-unauthorized-labeler</span>
 <span class="s">  labels:</span>
-<span class="s">    pg-regression-radar.io/allow-postgreswatch-access: &quot;true&quot;</span>
+<span class="s">    pg-regression-radar.io/allow-postgreswatch-access: "true"</span>
 <span class="s">type: Opaque</span>
 <span class="s">stringData:</span>
 <span class="s">  dsn: postgres://example</span>
 <span class="s">EOF</span>
 </code></pre></div>
 <p>Attempt with consent label as approved labeler identity (should succeed):</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;&#39;EOF&#39; | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:platform-security:secret-consent-labeler --dry-run=server -f -</span>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:platform-security:secret-consent-labeler --dry-run=server -f -</span>
 <span class="s">apiVersion: v1</span>
 <span class="s">kind: Secret</span>
 <span class="s">metadata:</span>
 <span class="s">  name: dry-run-authorized-labeler</span>
 <span class="s">  labels:</span>
-<span class="s">    pg-regression-radar.io/allow-postgreswatch-access: &quot;true&quot;</span>
+<span class="s">    pg-regression-radar.io/allow-postgreswatch-access: "true"</span>
 <span class="s">type: Opaque</span>
 <span class="s">stringData:</span>
 <span class="s">  dsn: postgres://example</span>
@@ -2741,14 +2580,10 @@ kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpol
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.sections", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
     
     
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
-      
-        <script src="../javascripts/nav-data.js"></script>
-      
-        <script src="../javascripts/nav-flyout.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
       
