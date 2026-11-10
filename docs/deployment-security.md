@@ -6,7 +6,6 @@ This guide covers optional Kubernetes hardening layers exposed by the Helm chart
 - ResourceQuota
 - LimitRange
 - Pod Security Standards (PSS) `restricted`
-- Optional legacy PodSecurityPolicy rendering for older clusters
 
 ## NetworkPolicy
 
@@ -76,17 +75,6 @@ metadata:
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
 ```
-
-## Optional legacy PodSecurityPolicy
-
-`PodSecurityPolicy` is deprecated/removed in modern Kubernetes. For legacy clusters only:
-
-```bash
-helm upgrade --install radar deploy/helm/deploylens \
-  --set podSecurityPolicy.enabled=true
-```
-
-The template renders only when API `policy/v1beta1/PodSecurityPolicy` is available.
 
 ## ServiceAccount token automount
 

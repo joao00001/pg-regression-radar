@@ -264,10 +264,6 @@ limitRange:
         cpu: 100m
         memory: 128Mi
 
-# Optional PodSecurityPolicy support for legacy clusters only (policy/v1beta1).
-podSecurityPolicy:
-  enabled: false
-
 # manager-specific settings; only relevant when mode: manager.
 manager:
   replicaCount: 2
