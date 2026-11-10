@@ -24,14 +24,17 @@ It also turns the `roadmap/index.html` of every already published version that
 still ships its own copy (releases cut before the roadmap was unversioned) into
 a redirect to the root roadmap, so the roadmap changes retroactively too.
 
-It deliberately leaves each version's `index.html` alone. Versions cut before
-the split still ship their own home page there, and that page is the version's
-entry point: `latest/` is a symlink to a version directory, and the root's
-"Documentation" link points at `latest/`. Redirecting that `index.html` to the
-root home page sends "Documentation" straight back to the home page and makes
-every old version's docs unreachable from the site. Versions built from the
-current mkdocs.yml already have an `index.html` that redirects to their first
-docs page (marked with hooks.py's REDIRECT_MARKER); both kinds are left alone.
+It also turns the `index.html` of those versions (the old home page each one
+shipped before the split) into a redirect to the version's own first docs page,
+`installation/`, which is exactly what a version built from the current
+mkdocs.yml does. That keeps the old home page from living on at `latest/`, and
+it cannot loop: the version's entry point is still `index.html`, which lands on
+a real docs page. It must NOT redirect to the root home page: `latest/` is a
+symlink to a version directory and the root's "Documentation" link points at
+`latest/`, so that would send "Documentation" straight back to the home page
+and make every old version's docs unreachable from the site. Versions that
+already redirect (marked with hooks.py's REDIRECT_MARKER) are left alone, and
+so is any version without an `installation/` page to land on.
 
 It only touches the filesystem; committing and pushing is up to the caller.
 """
@@ -84,20 +87,32 @@ def copy_site(site, target):
             shutil.copy2(os.path.join(root, name), os.path.join(dest, name))
 
 
+def _redirect_page(path, url):
+    """Replace the real page at `path` with a redirect to `url`; False if it is
+    missing, a symlink, or already a redirect."""
+    if not os.path.isfile(path) or os.path.islink(path):
+        return False
+    with open(path, encoding="utf-8", errors="replace") as f:
+        if REDIRECT_MARKER in f.read():
+            return False
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(redirect_html(url))
+    return True
+
+
 def redirect_old_pages(target, names, site_url):
     redirected = []
     for name in sorted(names):
-        # Only the roadmap: never a version's index.html (see the module docstring).
-        for rel, dest in ((os.path.join("roadmap", "index.html"), "roadmap/"),):
-            path = os.path.join(target, name, rel)
-            if not os.path.isfile(path) or os.path.islink(path):
-                continue
-            with open(path, encoding="utf-8", errors="replace") as f:
-                if REDIRECT_MARKER in f.read():
-                    continue
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(redirect_html(site_url + dest))
+        # The roadmap lives once, at the site root.
+        rel = os.path.join("roadmap", "index.html")
+        if _redirect_page(os.path.join(target, name, rel), site_url + "roadmap/"):
             redirected.append(os.path.join(name, rel))
+        # The old home page: to the version's first docs page (never to the
+        # root home page, see the module docstring).
+        if os.path.isfile(os.path.join(target, name, "installation", "index.html")):
+            rel = "index.html"
+            if _redirect_page(os.path.join(target, name, rel), "installation/"):
+                redirected.append(os.path.join(name, rel))
     return redirected
 
 
