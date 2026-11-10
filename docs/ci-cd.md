@@ -188,6 +188,8 @@ This used to be one job that redeployed the live site on every push to `main` to
 | `deploy` | Push of a `v*` tag, or `workflow_dispatch` with an explicit `tag` input (for re-running a failed deploy — it checks out that exact tag, never whatever ref the workflow happens to run from) | Yes — via `mike deploy`, straight to the `gh-pages` branch. |
 | `deploy-unversioned` | Every push to `main`, and after every `deploy` (so after a tag push or manual run) | Yes — the [unversioned pages](#unversioned-pages-home-and-roadmap) only, built from `main`; a no-op when nothing changed. |
 
+**The playground's WebAssembly module:** the [Playground](playground.md) page runs the real correlation engine in the browser, compiled by `scripts/build_playground.sh` into git-ignored files under `docs/assets/playground/`. `check` and `deploy` both run it right before `mkdocs build`/`mike deploy` (after `setup-go`), so a change that breaks the `js/wasm` build fails the docs check, and every tagged docs version ships the engine from its own commit. The step is skipped when the script does not exist, so re-deploying an old tag that predates the playground keeps working.
+
 `deploy` runs unconditionally on every tag push, with no path filter (mirroring `release.yml`'s own tag-triggered, always-runs behavior) — a release always gets a matching docs deploy, even when that specific tag's commit didn't touch anything under `docs/`.
 
 **Stable vs. pre-release tags:** a tag containing a `-` (this repo's existing release-candidate convention, e.g. `v1.0.0-rc1`) is deployed as its own permanent, linkable version but never becomes the `latest` alias — only a tag with no `-` (a real `vX.Y.Z` release) moves `latest`, and with it, what a visitor sees at `/latest/`.

@@ -21,6 +21,7 @@ exclude_docs: |
   /adr/
   /examples/
   /policies/
+  /assets/playground/
 
 # No `mike` plugin / `extra.version`: there's no version selector here.
 plugins:
