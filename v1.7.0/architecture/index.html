@@ -1759,7 +1759,7 @@
 </ul>
 <p><code>DeploySource</code>/the webhook Ingester need neither of the above: a <code>DeploySource</code>'s whole job is registering an HTTP route that a remote system (ArgoCD, Argo Rollouts, Flux, or a custom CI job) pushes a webhook <em>to</em> — the connection is always initiated by the remote side, never by the manager reaching out, so there is nothing for a Kubernetes client (local or remote) to do here regardless of which cluster the deploy tooling runs in. See <a href="../webhooks/">Deploy Sources &amp; Webhooks</a>.</p>
 <h2 id="project-layout">Project layout<a class="headerlink" href="#project-layout" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>.
+<div class="language-text highlight"><pre><span></span><code>.
 ├── Dockerfile          # multi-stage build for all four cmd/ binaries
 │                       # (docker build --target operator|manager|collector|ingester)
 ├── mkdocs.yml          # this docs site's config
@@ -1855,6 +1855,8 @@
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

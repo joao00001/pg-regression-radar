@@ -1733,7 +1733,7 @@
 <li>(Optional) ArgoCD, Argo Rollouts, or Flux for real deploy-event webhooks — see <a href="../webhooks/">Deploy Sources &amp; Webhooks</a></li>
 </ul>
 <h2 id="run-the-all-in-one-operator">Run the all-in-one operator<a class="headerlink" href="#run-the-all-in-one-operator" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>go<span class="w"> </span>run<span class="w"> </span>./cmd/operator<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>go<span class="w"> </span>run<span class="w"> </span>./cmd/operator<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dsn<span class="w"> </span><span class="s2">"postgres://user:pass@localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--cluster-name<span class="w"> </span>my-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--namespace<span class="w"> </span>production<span class="w"> </span><span class="se">\</span>
@@ -1751,7 +1751,7 @@ connection URI in the form <code>postgres://username:password@host:port/dbname?s
 Redacted DSN examples are shown for documentation safety only and cannot be used as-is.</p>
 </blockquote>
 <h2 id="run-the-manager-crd-driven-ha">Run the manager (CRD-driven, HA)<a class="headerlink" href="#run-the-manager-crd-driven-ha" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># 1. Install the CRDs (also done automatically by the Helm chart below).</span>
+<div class="language-bash highlight"><pre><span></span><code><span class="c1"># 1. Install the CRDs (also done automatically by the Helm chart below).</span>
 kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>config/crd/bases/
 
 <span class="c1"># 2. Create a Secret holding the DSN, a PostgresWatch, and a DeploySource.</span>
@@ -1802,14 +1802,14 @@ PostgreSQL connection URI in the form <code>postgres://username:password@host:po
 Redacted DSN examples are shown for documentation safety only and cannot be used as-is.</p>
 </blockquote>
 <h2 id="deploy-on-kubernetes-via-helm">Deploy on Kubernetes via Helm<a class="headerlink" href="#deploy-on-kubernetes-via-helm" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">"postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>cnpg-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.namespace<span class="o">=</span>production<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>alerting.slackWebhookUrl<span class="o">=</span>https://hooks.slack.com/services/XXX/YYY/ZZZ
 </code></pre></div>
 <p>The chart's <code>mode</code> value picks the entrypoint (<code>operator</code>, the default above, or <code>manager</code>). In <code>manager</code> mode it also installs the CRDs (<code>deploy/helm/deploylens/crds/</code>), the RBAC the manager needs, and — unless <code>manager.createDefaultWatch=false</code> — a <code>PostgresWatch</code> + <code>DeploySource</code> pair from the same <code>postgres.*</code>/<code>analysis.*</code>/<code>alerting.*</code> values:</p>
-<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span><span class="nv">mode</span><span class="o">=</span>manager<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>manager.replicaCount<span class="o">=</span><span class="m">2</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">"postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
@@ -1827,7 +1827,7 @@ Redacted DSN examples are shown for documentation safety only and cannot be used
 <p>Helm only installs a chart's <code>crds/</code> directory on <code>helm install</code>, never on <code>helm upgrade</code> — this is a deliberate Helm safety behaviour, not a bug in this chart (see the <a href="https://helm.sh/docs/chart_best_practices/custom_resource_definitions/">Helm docs on CRDs</a>). To pick up CRD schema changes after upgrading the chart, apply <code>deploy/helm/deploylens/crds/*.yaml</code> (or <code>config/crd/bases/*.yaml</code>, the same files) with <code>kubectl apply -f</code> directly.</p>
 </div>
 <h2 id="simulate-a-deploy-event-for-testing">Simulate a deploy event (for testing)<a class="headerlink" href="#simulate-a-deploy-event-for-testing" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/webhook<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/webhook<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
 <span class="s1">    "app": "my-app",</span>
@@ -1927,6 +1927,8 @@ Redacted DSN examples are shown for documentation safety only and cannot be used
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

@@ -1760,7 +1760,7 @@
 <li>It comments on the original pull request with a link to that draft and instructions to continue.</li>
 <li>To resolve it:</li>
 </ol>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>fetch<span class="w"> </span>origin<span class="w"> </span>&lt;the<span class="w"> </span>backport<span class="w"> </span>branch<span class="w"> </span>the<span class="w"> </span>action<span class="w"> </span>pushed&gt;
+<div class="language-bash highlight"><pre><span></span><code>git<span class="w"> </span>fetch<span class="w"> </span>origin<span class="w"> </span>&lt;the<span class="w"> </span>backport<span class="w"> </span>branch<span class="w"> </span>the<span class="w"> </span>action<span class="w"> </span>pushed&gt;
 git<span class="w"> </span>checkout<span class="w"> </span>&lt;that<span class="w"> </span>branch&gt;
 <span class="c1"># resolve the conflict markers in the affected file(s)</span>
 git<span class="w"> </span>add<span class="w"> </span>&lt;resolved<span class="w"> </span>files&gt;
@@ -1774,7 +1774,7 @@ git<span class="w"> </span>push
 <h2 id="cutting-a-patch-release-from-a-maintenance-branch">Cutting a patch release from a maintenance branch<a class="headerlink" href="#cutting-a-patch-release-from-a-maintenance-branch" title="Permanent link">&para;</a></h2>
 <p>Once one or more backport pull requests merge into <code>release-X.Y</code>, that branch accumulates pending <code>changelog.d/</code> fragments exactly like <code>main</code> does — each backported commit carries its original fragment file along with it (the cherry-pick reapplies that file's addition, unchanged). <code>release-prep.yml</code> now also runs on <code>release-X.Y</code> branches (not just <code>main</code>), and opens a <code>ci: prepare release vX.Y.(Z+1)</code> pull request the same way it does for <code>main</code>, with one important difference: the next version it computes is <strong>relative to that branch's own tag history</strong> (<code>git describe</code>, not a repo-wide "highest tag" search), so <code>release-1.6</code> always proposes <code>v1.6.(Z+1)</code> regardless of how far <code>main</code> has moved on. It also refuses to compute a version at all if that branch's name and its own latest reachable tag ever disagree (e.g. <code>release-1.6</code> whose history doesn't actually contain a <code>v1.6.x</code> tag) — a configuration problem on a maintenance branch should fail loudly, not quietly produce a wrong version.</p>
 <p>From there, releasing a patch version works exactly like releasing from <code>main</code>: review and merge the release-prep PR, then</p>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>checkout<span class="w"> </span>release-1.6
+<div class="language-bash highlight"><pre><span></span><code>git<span class="w"> </span>checkout<span class="w"> </span>release-1.6
 git<span class="w"> </span>pull
 git<span class="w"> </span>tag<span class="w"> </span>v1.6.1
 git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>v1.6.1
@@ -1891,6 +1891,8 @@ git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

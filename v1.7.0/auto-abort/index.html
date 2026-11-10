@@ -1667,7 +1667,7 @@
 <li>A higher confidence bar than ordinary alerting. See <a href="#confidence-threshold">Confidence threshold</a>.</li>
 </ul>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PostgresWatch</span>
 <span class="nt">metadata</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-db</span>
@@ -1711,12 +1711,12 @@
 <p>The outcome is recorded on the <code>PerformanceRegression</code>'s status — <code>autoAbortTriggered</code> (an attempt was made) and, if it failed, <code>autoAbortError</code> — so <code>kubectl get performanceregressions</code> and the Slack alert both show what happened, not just that a regression was detected.</p>
 <h2 id="rbac">RBAC<a class="headerlink" href="#rbac" title="Permanent link">&para;</a></h2>
 <p>Auto-abort needs the manager's ServiceAccount to reach <code>Rollout</code> objects, which is not part of this project's default RBAC (see <a href="../configuration/">Configuration Reference</a>). Via the Helm chart, set:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">manager</span><span class="p">:</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">manager</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">autoAbort</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">rbacEnabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 </code></pre></div>
 <p>which grants exactly:</p>
-<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">apiGroups</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"argoproj.io"</span><span class="p p-Indicator">]</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">apiGroups</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"argoproj.io"</span><span class="p p-Indicator">]</span>
 <span class="w">  </span><span class="nt">resources</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"rollouts"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"rollouts/status"</span><span class="p p-Indicator">]</span>
 <span class="w">  </span><span class="nt">verbs</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">"get"</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">"patch"</span><span class="p p-Indicator">]</span>
 </code></pre></div>
@@ -1789,6 +1789,8 @@
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

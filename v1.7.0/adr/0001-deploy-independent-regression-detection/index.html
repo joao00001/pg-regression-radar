@@ -1688,7 +1688,7 @@
 <ol>
 <li><strong>Engine refactor.</strong> Extract the part of <code>evaluateQuery</code> that is genuinely deploy-agnostic (stage-0 mean pre-filter, stage-1 E-divisive, stage-2 Welch's t-test) from the part that is not (the <code>ChangePointTolerance</code>-to-<code>ev.Timestamp</code> check, and populating <code>DeployEventID</code>/<code>Namespace</code> from <code>ev</code>). Deploy-triggered <code>Analyse</code> keeps the tolerance check; a new <code>AnalysePeriodic</code> skips it entirely — for a self-contained window with no external anchor, the change point <em>is</em> the finding, wherever it falls.</li>
 </ol>
-<div class="highlight"><pre><span></span><code><span class="c1">// engine.go — shape, not final code</span>
+<div class="language-go highlight"><pre><span></span><code><span class="c1">// engine.go — shape, not final code</span>
 <span class="kd">func</span><span class="w"> </span><span class="p">(</span><span class="nx">e</span><span class="w"> </span><span class="o">*</span><span class="nx">Engine</span><span class="p">)</span><span class="w"> </span><span class="nx">Analyse</span><span class="p">(</span><span class="nx">ev</span><span class="w"> </span><span class="nx">v1alpha1</span><span class="p">.</span><span class="nx">DeployEvent</span><span class="p">)</span><span class="w"> </span><span class="p">[]</span><span class="nx">v1alpha1</span><span class="p">.</span><span class="nx">PerformanceRegression</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// ... unchanged: builds window around ev.Timestamp, calls evaluateSeries,</span>
 <span class="w">    </span><span class="c1">// then rejects if the change point isn't within ChangePointTolerance of ev.Timestamp.</span>
@@ -1708,7 +1708,7 @@
 <p><strong>Re-arm state machine.</strong> Deploy-correlated detection's dedup (<code>PendingSet.notified map[int64]struct{}</code>) is scoped to one deploy event's lifetime — it doesn't need to survive across events. Periodic detection has no such natural boundary, so it needs its own per-query state, kept for the life of the watch:</p>
 </li>
 </ol>
-<div class="highlight"><pre><span></span><code><span class="c1">// correlation package — shape, not final code</span>
+<div class="language-go highlight"><pre><span></span><code><span class="c1">// correlation package — shape, not final code</span>
 <span class="kd">type</span><span class="w"> </span><span class="nx">periodicState</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">inRegression</span><span class="w"> </span><span class="kt">map</span><span class="p">[</span><span class="kt">int64</span><span class="p">]</span><span class="kt">bool</span><span class="w"> </span><span class="c1">// queryID -&gt; currently alerting (won't re-fire until recovered)</span>
 <span class="p">}</span>
@@ -1717,7 +1717,7 @@
 <ol>
 <li><strong>CRD additions</strong> (<code>PostgresWatchSpec</code>):</li>
 </ol>
-<div class="highlight"><pre><span></span><code><span class="nt">periodicDetection</span><span class="p">:</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">periodicDetection</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w">          </span><span class="c1"># default off; opt-in per watch, mirrors autoAbort's own opt-in pattern</span>
 <span class="w">  </span><span class="nt">windowMinutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span><span class="w">        </span><span class="c1"># optional; falls back to a 60m default</span>
 <span class="w">  </span><span class="nt">intervalMinutes</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15</span><span class="w">      </span><span class="c1"># how often a full pass over tracked queries runs</span>
@@ -1919,6 +1919,8 @@
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../../javascripts/version-flyout.js"></script>
+      
+        <script src="../../javascripts/code-header.js"></script>
       
     
   </body>

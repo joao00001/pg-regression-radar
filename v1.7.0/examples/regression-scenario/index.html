@@ -1741,13 +1741,13 @@
 </blockquote>
 <h2 id="1-set-up-postgresql-and-test-data">1) Set up PostgreSQL and test data<a class="headerlink" href="#1-set-up-postgresql-and-test-data" title="Permanent link">&para;</a></h2>
 <p>Start a local PostgreSQL for testing:</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--name<span class="w"> </span>radar-pg<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>pass<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_DB</span><span class="o">=</span>mydb<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--name<span class="w"> </span>radar-pg<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_PASSWORD</span><span class="o">=</span>pass<span class="w"> </span>-e<span class="w"> </span><span class="nv">POSTGRES_DB</span><span class="o">=</span>mydb<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-p<span class="w"> </span><span class="m">5432</span>:5432<span class="w"> </span>-d<span class="w"> </span>postgres:16<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-c<span class="w"> </span><span class="nv">shared_preload_libraries</span><span class="o">=</span>pg_stat_statements<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-c<span class="w"> </span>pg_stat_statements.track<span class="o">=</span>all
 </code></pre></div>
 <p>Create schema, data, and an indexed query:</p>
-<div class="highlight"><pre><span></span><code>psql<span class="w"> </span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="s">&lt;&lt;'SQL'</span>
+<div class="language-bash highlight"><pre><span></span><code>psql<span class="w"> </span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="s">&lt;&lt;'SQL'</span>
 <span class="s">CREATE EXTENSION IF NOT EXISTS pg_stat_statements;</span>
 <span class="s">CREATE TABLE IF NOT EXISTS orders (</span>
 <span class="s">  id BIGSERIAL PRIMARY KEY,</span>
@@ -1763,13 +1763,13 @@
 <span class="s">SQL</span>
 </code></pre></div>
 <p>Generate baseline (fast) query executions:</p>
-<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>seq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">600</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<div class="language-bash highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>seq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">600</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">  </span>psql<span class="w"> </span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-c<span class="w"> </span><span class="s2">"SELECT pg_sleep(0.04); SELECT count(*) FROM orders WHERE customer_id = 42;"</span><span class="w"> </span>&gt;/dev/null
 <span class="k">done</span>
 </code></pre></div>
 <h2 id="2-emit-baseline-deploy-event-v1">2) Emit baseline deploy event (v1)<a class="headerlink" href="#2-emit-baseline-deploy-event-v1" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-sS<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/webhook<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>curl<span class="w"> </span>-sS<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/webhook<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
 <span class="s1">    "app": "checkout-api",</span>
@@ -1781,17 +1781,17 @@
 </code></pre></div>
 <h2 id="3-trigger-a-simulated-regression">3) Trigger a simulated regression<a class="headerlink" href="#3-trigger-a-simulated-regression" title="Permanent link">&para;</a></h2>
 <p>Remove the index so the same query becomes much slower:</p>
-<div class="highlight"><pre><span></span><code>psql<span class="w"> </span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>psql<span class="w"> </span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-c<span class="w"> </span><span class="s2">"DROP INDEX IF EXISTS idx_orders_customer_id;"</span>
 </code></pre></div>
 <p>Drive post-change workload with the same query:</p>
-<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>seq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">600</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<div class="language-bash highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span>i<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="k">$(</span>seq<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">600</span><span class="k">)</span><span class="p">;</span><span class="w"> </span><span class="k">do</span>
 <span class="w">  </span>psql<span class="w"> </span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-c<span class="w"> </span><span class="s2">"SELECT pg_sleep(0.04); SELECT count(*) FROM orders WHERE customer_id = 42;"</span><span class="w"> </span>&gt;/dev/null
 <span class="k">done</span>
 </code></pre></div>
 <h2 id="4-emit-deploy-event-for-the-regression-window-v2">4) Emit deploy event for the regression window (v2)<a class="headerlink" href="#4-emit-deploy-event-for-the-regression-window-v2" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-sS<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/webhook<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>curl<span class="w"> </span>-sS<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://localhost:8080/webhook<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
 <span class="s1">    "app": "checkout-api",</span>
@@ -1830,7 +1830,7 @@
 </tbody>
 </table>
 <p>Manager CR check:</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>performanceregressions<span class="w"> </span>-A
+<div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>performanceregressions<span class="w"> </span>-A
 </code></pre></div>
 <p>A successful result should include:</p>
 <ul>
@@ -1839,11 +1839,11 @@
 <li>deployment metadata matching <code>checkout-api</code> revision <code>v2</code>.</li>
 </ul>
 <p>Example (illustrative only):</p>
-<div class="highlight"><pre><span></span><code>regression detected: app=checkout-api namespace=demo revision=v2 query_id=123456
+<div class="language-text highlight"><pre><span></span><code>regression detected: app=checkout-api namespace=demo revision=v2 query_id=123456
 latency_before_ms=3.1 latency_after_ms=48.7 change=15.7x confidence=0.98
 </code></pre></div>
 <h2 id="6-optional-cleanup">6) Optional cleanup<a class="headerlink" href="#6-optional-cleanup" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span>radar-pg
+<div class="language-bash highlight"><pre><span></span><code>docker<span class="w"> </span>rm<span class="w"> </span>-f<span class="w"> </span>radar-pg
 </code></pre></div>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
@@ -1912,6 +1912,8 @@ latency_before_ms=3.1 latency_after_ms=48.7 change=15.7x confidence=0.98
       <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../../javascripts/version-flyout.js"></script>
+      
+        <script src="../../javascripts/code-header.js"></script>
       
     
   </body>

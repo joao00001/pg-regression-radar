@@ -1742,7 +1742,7 @@
 </ul>
 <h2 id="networkpolicy">NetworkPolicy<a class="headerlink" href="#networkpolicy" title="Permanent link">&para;</a></h2>
 <p>NetworkPolicy is disabled by default and can be enabled per release:</p>
-<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>radar<span class="w"> </span>deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>radar<span class="w"> </span>deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span><span class="nv">mode</span><span class="o">=</span>manager<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>networkPolicy.enabled<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>networkPolicy.ingressCIDR<span class="o">=</span><span class="m">10</span>.0.0.0/24<span class="w"> </span><span class="se">\</span>
@@ -1765,7 +1765,7 @@
 </ul>
 <h2 id="resourcequota-and-limitrange">ResourceQuota and LimitRange<a class="headerlink" href="#resourcequota-and-limitrange" title="Permanent link">&para;</a></h2>
 <p>Enable namespace guardrails directly from chart values:</p>
-<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>radar<span class="w"> </span>deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>radar<span class="w"> </span>deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>resourceQuota.enabled<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>limitRange.enabled<span class="o">=</span><span class="nb">true</span>
 </code></pre></div>
@@ -1787,7 +1787,7 @@
 <li><code>serviceAccount.automountServiceAccountToken: true</code> (configurable)</li>
 </ul>
 <p>Apply namespace Pod Security Admission labels as needed:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Namespace</span>
 <span class="nt">metadata</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pg-regression-radar</span>
@@ -1798,7 +1798,7 @@
 </code></pre></div>
 <h2 id="optional-legacy-podsecuritypolicy">Optional legacy PodSecurityPolicy<a class="headerlink" href="#optional-legacy-podsecuritypolicy" title="Permanent link">&para;</a></h2>
 <p><code>PodSecurityPolicy</code> is deprecated/removed in modern Kubernetes. For legacy clusters only:</p>
-<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>radar<span class="w"> </span>deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>radar<span class="w"> </span>deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>podSecurityPolicy.enabled<span class="o">=</span><span class="nb">true</span>
 </code></pre></div>
 <p>The template renders only when API <code>policy/v1beta1/PodSecurityPolicy</code> is available.</p>
@@ -1810,11 +1810,11 @@
 </ul>
 <h2 id="hardened-values-example">Hardened values example<a class="headerlink" href="#hardened-values-example" title="Permanent link">&para;</a></h2>
 <p>Use:</p>
-<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>radar<span class="w"> </span>deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>radar<span class="w"> </span>deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-f<span class="w"> </span>docs/examples/values-hardened.yaml
 </code></pre></div>
 <h2 id="validation">Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>lint<span class="w"> </span>deploy/helm/deploylens
+<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>lint<span class="w"> </span>deploy/helm/deploylens
 helm<span class="w"> </span>template<span class="w"> </span>radar<span class="w"> </span>deploy/helm/deploylens<span class="w"> </span>-f<span class="w"> </span>docs/examples/values-hardened.yaml<span class="w"> </span>&gt;/dev/null
 </code></pre></div>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
@@ -1886,6 +1886,8 @@ helm<span class="w"> </span>template<span class="w"> </span>radar<span class="w"
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

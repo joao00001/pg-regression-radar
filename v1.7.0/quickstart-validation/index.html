@@ -1788,11 +1788,11 @@
 <li>Run a short baseline workload (fast query execution).</li>
 </ol>
 <p>Use placeholder credentials in docs/examples only, for example:</p>
-<div class="highlight"><pre><span></span><code>postgres://user:pass@localhost:5432/mydb?sslmode=disable
+<div class="language-text highlight"><pre><span></span><code>postgres://user:pass@localhost:5432/mydb?sslmode=disable
 </code></pre></div>
 <h2 id="2-start-pg-regression-radar-choose-one-run-mode">2) Start pg-regression-radar (choose one run mode)<a class="headerlink" href="#2-start-pg-regression-radar-choose-one-run-mode" title="Permanent link">&para;</a></h2>
 <h3 id="option-a-operator-mode">Option A: operator mode<a class="headerlink" href="#option-a-operator-mode" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>go<span class="w"> </span>run<span class="w"> </span>./cmd/operator<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>go<span class="w"> </span>run<span class="w"> </span>./cmd/operator<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--dsn<span class="w"> </span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--cluster-name<span class="w"> </span>demo-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--namespace<span class="w"> </span>demo<span class="w"> </span><span class="se">\</span>
@@ -1804,7 +1804,7 @@
 <span class="w">  </span>--latency-threshold<span class="w"> </span><span class="m">0</span>.20
 </code></pre></div>
 <h3 id="option-b-manager-mode-crd-driven">Option B: manager mode (CRD-driven)<a class="headerlink" href="#option-b-manager-mode-crd-driven" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>config/crd/bases/
+<div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>config/crd/bases/
 
 kubectl<span class="w"> </span>create<span class="w"> </span>namespace<span class="w"> </span>demo
 kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>demo-db-dsn<span class="w"> </span>-n<span class="w"> </span>demo<span class="w"> </span><span class="se">\</span>
@@ -1840,7 +1840,7 @@ go<span class="w"> </span>run<span class="w"> </span>./cmd/manager<span class="w
 <span class="w">  </span>--pg-metrics-bind-address<span class="o">=</span>:9090
 </code></pre></div>
 <h3 id="option-c-helm">Option C: Helm<a class="headerlink" href="#option-c-helm" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>./deploy/helm/deploylens<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span><span class="nv">mode</span><span class="o">=</span>operator<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">"******localhost:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>demo-cluster<span class="w"> </span><span class="se">\</span>
@@ -1862,7 +1862,7 @@ go<span class="w"> </span>run<span class="w"> </span>./cmd/manager<span class="w
 <ul>
 <li><strong>operator:</strong> check process logs and alert outputs.</li>
 <li><strong>manager:</strong> check logs and created <code>PerformanceRegression</code> resources:
-  <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>performanceregressions<span class="w"> </span>-A
+  <div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>performanceregressions<span class="w"> </span>-A
 </code></pre></div></li>
 <li><strong>Helm:</strong> use the same checks as whichever chart mode you selected (<code>operator</code> or <code>manager</code>).</li>
 </ul>
@@ -1961,6 +1961,8 @@ go<span class="w"> </span>run<span class="w"> </span>./cmd/manager<span class="w
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

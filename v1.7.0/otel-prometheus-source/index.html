@@ -1713,7 +1713,7 @@
 <p>This is deliberately staying "bring your own per-query metric" rather than "here's a broken one-liner that looks like it works." See <a href="../roadmap/#opentelemetry-as-a-pluggable-analysis-input-in-detail">Roadmap</a> for why this is still worth shipping as Phase 1a regardless: the seam is real, and the moment any of the three options above exists in a given fleet, this package is what plugs it in — no changes to <code>internal/correlation</code> or to this package itself.</p>
 <h2 id="value-semantics-mean-exec-time-in-milliseconds-per-point">Value semantics: mean exec time in milliseconds, per point<a class="headerlink" href="#value-semantics-mean-exec-time-in-milliseconds-per-point" title="Permanent link">&para;</a></h2>
 <p>Whatever metric is configured must report a per-scrape, per-queryid <strong>mean</strong> execution time in milliseconds — the same shape as <code>pg_stat_statements.mean_exec_time</code>, which is the only field <code>internal/correlation.Engine</code>'s detection math actually reads (<code>extractLatencies</code> in <code>internal/correlation/engine.go</code>). A raw cumulative counter is the wrong shape and must be turned into a mean <em>before</em> Prometheus scrapes it — for example, at the recording-rule layer:</p>
-<div class="highlight"><pre><span></span><code><span class="k">avg</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="o">(</span><span class="nv">queryid</span><span class="o">)</span><span class="w"> </span><span class="o">(</span>
+<div class="language-promql highlight"><pre><span></span><code><span class="k">avg</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="o">(</span><span class="nv">queryid</span><span class="o">)</span><span class="w"> </span><span class="o">(</span>
 <span class="w">  </span><span class="kr">rate</span><span class="o">(</span><span class="nv">some_per_query_exec_time_seconds_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
 <span class="w">  </span><span class="o">/</span>
 <span class="w">  </span><span class="kr">rate</span><span class="o">(</span><span class="nv">some_per_query_calls_total</span><span class="p">[</span><span class="s">5m</span><span class="p">]</span><span class="o">)</span>
@@ -1764,7 +1764,7 @@
 </table>
 <h2 id="using-it-from-a-postgreswatch-crd-cmdmanager">Using it from a PostgresWatch CRD (cmd/manager)<a class="headerlink" href="#using-it-from-a-postgreswatch-crd-cmdmanager" title="Permanent link">&para;</a></h2>
 <p>The CRD-driven <code>cmd/manager</code> path (<code>PostgresWatch</code>) selects this source declaratively via <code>spec.sampleSource</code>, instead of any Go code:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PostgresWatch</span>
 <span class="nt">metadata</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">widgets-prod</span>
@@ -1788,7 +1788,7 @@
 <p>See <a href="https://github.com/joao00001/pg-regression-radar/blob/main/api/v1alpha1/postgreswatch_types.go"><code>SampleSourceConfig</code></a> in <code>api/v1alpha1/postgreswatch_types.go</code> for the full field reference (<code>type</code>, and <code>prometheus.{url,metricName,queryIDLabel,queryTextLabel,stepSeconds}</code>), each mirroring <code>promsource.Config</code> one-to-one.</p>
 <h2 id="usage-example-direct-go-construction">Usage example (direct Go construction)<a class="headerlink" href="#usage-example-direct-go-construction" title="Permanent link">&para;</a></h2>
 <p>Outside the CRD path — the standalone <code>operator</code> CLI, a custom binary, or a smoke test against a real Prometheus — <code>internal/telemetry/promsource</code> is used the same way any other <code>correlation.SampleSource</code> implementation is: constructed directly and passed to <code>correlation.New</code>, in place of an <code>*internal/collector.Collector</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">package</span><span class="w"> </span><span class="nx">main</span>
+<div class="language-go highlight"><pre><span></span><code><span class="kn">package</span><span class="w"> </span><span class="nx">main</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="s">"log/slog"</span>
@@ -1828,7 +1828,7 @@
 <span class="p">}</span>
 </code></pre></div>
 <p>Calling <code>SamplesInRange</code>/<code>AllQueryIDs</code> directly (e.g. for a smoke test against a real Prometheus) looks like:</p>
-<div class="highlight"><pre><span></span><code><span class="nx">now</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">()</span>
+<div class="language-go highlight"><pre><span></span><code><span class="nx">now</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">time</span><span class="p">.</span><span class="nx">Now</span><span class="p">()</span>
 <span class="nx">ids</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">src</span><span class="p">.</span><span class="nx">AllQueryIDs</span><span class="p">()</span>
 <span class="k">for</span><span class="w"> </span><span class="nx">_</span><span class="p">,</span><span class="w"> </span><span class="nx">qid</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">range</span><span class="w"> </span><span class="nx">ids</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="nx">samples</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">src</span><span class="p">.</span><span class="nx">SamplesInRange</span><span class="p">(</span><span class="nx">qid</span><span class="p">,</span><span class="w"> </span><span class="nx">now</span><span class="p">.</span><span class="nx">Add</span><span class="p">(</span><span class="o">-</span><span class="mi">30</span><span class="o">*</span><span class="nx">time</span><span class="p">.</span><span class="nx">Minute</span><span class="p">),</span><span class="w"> </span><span class="nx">now</span><span class="p">)</span>
@@ -1904,6 +1904,8 @@
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>
