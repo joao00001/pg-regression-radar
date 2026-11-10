@@ -1393,3 +1393,51 @@
     padding: 38px var(--h-pad) 34px;
   }
 }
+
+/* ---- Logo mark in the hero ----
+   A 5x5 matrix: the white row is the baseline latency, the red blocks stacked on
+   the last two columns are what a regression adds. They rise once on load. */
+.pgrr-home .pgrr-mark {
+  display: block;
+  width: 52px;
+  height: 52px;
+  margin: 0 0 22px;
+  overflow: visible;
+}
+
+.pgrr-home .pgrr-mark rect {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.pgrr-home .pgrr-mark .m-o {
+  fill: var(--h-fg);
+  opacity: 0.13;
+}
+
+.pgrr-home .pgrr-mark .m-b {
+  fill: var(--h-fg);
+}
+
+.pgrr-home .pgrr-mark .m-h {
+  fill: #f2431f;
+  animation: pgrr-mark-rise 0.7s cubic-bezier(0.16, 0.9, 0.24, 1) both;
+  animation-delay: var(--d, 0s);
+}
+
+@keyframes pgrr-mark-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scaleY(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-home .pgrr-mark .m-h {
+    animation: none;
+  }
+}
