@@ -76,13 +76,13 @@ Install the CLI and run it against a single cluster:
 go install github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@latest
 
 pg-regression-radar operator \
-  --dsn "postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
+  --dsn "postgres://user:password@localhost:5432/mydb?sslmode=disable" \
   --cluster-name my-cluster \
   --slack-url https://hooks.slack.com/services/XXX/YYY/ZZZ \
   --source-type argocd
 ```
 
-`--dsn` takes a full PostgreSQL connection URI (`postgres://user:password@host:port/dbname?sslmode=disable`). Placeholders such as `******` in the documentation must be replaced with real credentials.
+`--dsn` takes a full PostgreSQL connection URI (`postgres://user:password@host:port/dbname?sslmode=disable`).
 
 From a clone, use `go run ./cmd/operator` with the same flags.
 

@@ -49,7 +49,7 @@ GRANT pg_monitor TO pgrr_monitor;
 Then use that role in your DSN:
 
 ```
-******host:5432/mydb?sslmode=require
+postgres://pgrr_reader:password@host:5432/mydb?sslmode=require
 ```
 
 !!! warning
@@ -67,17 +67,13 @@ go install github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@late
 This places a single `pg-regression-radar` binary in `$(go env GOPATH)/bin`. From there:
 
 ```bash
-pg-regression-radar operator --dsn "postgres://user:pass@host:5432/dbname?sslmode=disable"
+pg-regression-radar operator --dsn "postgres://user:password@host:5432/dbname?sslmode=disable"
 pg-regression-radar manager --leader-elect=true
 pg-regression-radar collector --dsn "..."
 pg-regression-radar ingester --source-type argocd
 pg-regression-radar version
 pg-regression-radar help
 ```
-> **Note:** The DSN values above are placeholders. Replace them with a full PostgreSQL connection URI
-> of the form `postgres://username:password@host:5432/dbname?sslmode=disable`.
-> Every example in this documentation that shows `******` in place of credentials is for
-> documentation safety only and cannot be used as-is — supply your real connection string.
 
 
 Every subcommand accepts its own `--help`, `--version`, and (except `manager`) `--dry-run` — see [Configuration Reference](configuration.md#versioning-dry-run).
@@ -159,14 +155,10 @@ See the [Dockerfile](https://github.com/joao00001/pg-regression-radar/blob/main/
 ```bash
 helm install pg-regression-radar oci://ghcr.io/joao00001/charts/pg-regression-radar \
   --version 0.3.0 \
-  --set postgres.dsn="postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
   --set postgres.clusterName=cnpg-cluster \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```
-
-> **Note:** The `postgres.dsn` value above is a placeholder. Replace it with a full PostgreSQL
-> connection URI, for example `postgres://username:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable`.
-> Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
 `--version` here is the chart's SemVer version (the release tag *without* its leading `v` — release `v0.3.0` publishes chart version `0.3.0`; see [CI/CD](ci-cd.md#releaseyml-on-pushing-a-v-tag) for why the two differ by that one character). No `helm repo add` is needed for an OCI registry — `helm install`/`helm pull` reference `oci://` URLs directly. The chart's `image.tag` values default to the chart's own `appVersion` (the release tag *with* the `v`, e.g. `v0.3.0`), which already matches the images published in the same release, so you don't need to set `image.tag`/`manager.image.tag` explicitly unless you want to run a different image tag than the chart's own release.
 
@@ -199,7 +191,7 @@ cosign verify ghcr.io/joao00001/charts/pg-regression-radar:0.3.0 \
 ```bash
 git clone https://github.com/joao00001/pg-regression-radar.git
 helm install pg-regression-radar ./pg-regression-radar/deploy/helm/deploylens \
-  --set postgres.dsn="postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
   --set postgres.clusterName=cnpg-cluster \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```

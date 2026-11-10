@@ -19,7 +19,7 @@
 // evaluation:
 //
 //	go install github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@latest
-//	pg-regression-radar operator --dsn "host:5432/dbname?sslmode=disable"
+//	pg-regression-radar operator --dsn "postgres://user:password@host:5432/dbname?sslmode=disable"
 //
 // See docs/installation.md for every install option and
 // docs/getting-started.md for what to do once it's running.

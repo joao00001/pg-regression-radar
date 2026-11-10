@@ -20,7 +20,7 @@ https://hooks.slack.com/services/XXX/YYY/ZZZ
 
 ```bash
 go run ./cmd/operator \
-  --dsn "******localhost:5432/mydb?sslmode=disable" \
+  --dsn "postgres://user:password@localhost:5432/mydb?sslmode=disable" \
   --cluster-name demo-cluster \
   --source-type generic \
   --alert-format slack \
@@ -49,7 +49,7 @@ spec:
 
 ```bash
 helm upgrade --install pg-regression-radar ./deploy/helm/deploylens \
-  --set postgres.dsn="******localhost:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@localhost:5432/mydb?sslmode=disable" \
   --set alerting.format=slack \
   --set alerting.url=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```

@@ -21,7 +21,7 @@ If your goal is to prove end-to-end behavior (regression detection + deployment 
 
 ```bash
 go run ./cmd/operator \
-  --dsn "postgres://user:pass@localhost:5432/mydb?sslmode=disable" \
+  --dsn "postgres://user:password@localhost:5432/mydb?sslmode=disable" \
   --cluster-name my-cluster \
   --namespace production \
   --webhook-listen :8080 \
@@ -33,9 +33,6 @@ go run ./cmd/operator \
   --min-executions 100 \
   --latency-threshold 0.20
 ```
-> **Note:** The `--dsn` value above is a placeholder. Replace it with a full PostgreSQL
-> connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
-> Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
 
 ## Run the manager (CRD-driven, HA)
@@ -46,7 +43,7 @@ kubectl apply -f config/crd/bases/
 
 # 2. Create a Secret holding the DSN, a PostgresWatch, and a DeploySource.
 kubectl create secret generic my-cluster-dsn \
-  --from-literal=dsn="postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"
+  --from-literal=dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"
 
 cat <<'EOF' | kubectl apply -f -
 apiVersion: radar.pgregressionradar.io/v1alpha1
@@ -87,15 +84,12 @@ go run ./cmd/manager \
 kubectl get postgreswatch,deploysource -n production
 kubectl get performanceregressions -A
 ```
-> **Note:** The `--from-literal=dsn` value above is a placeholder. Replace it with a full
-> PostgreSQL connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
-> Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
 ## Deploy on Kubernetes via Helm
 
 ```bash
 helm install pg-regression-radar ./deploy/helm/deploylens \
-  --set postgres.dsn="postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
   --set postgres.clusterName=cnpg-cluster \
   --set postgres.namespace=production \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
@@ -107,13 +101,10 @@ The chart's `mode` value picks the entrypoint (`operator`, the default above, or
 helm install pg-regression-radar ./deploy/helm/deploylens \
   --set mode=manager \
   --set manager.replicaCount=2 \
-  --set postgres.dsn="postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
   --set postgres.clusterName=cnpg-cluster \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```
-> **Note:** The `postgres.dsn` values above are placeholders. Replace them with a full
-> PostgreSQL connection URI in the form `postgres://username:password@host:port/dbname?sslmode=disable`.
-> Redacted DSN examples are shown for documentation safety only and cannot be used as-is.
 
 For hardened alert egress in Helm, set `alerting.destinationPolicy` (`allowlist` or `relay-only`) and the matching companion values (`alerting.allowedDestinations` and/or `alerting.destinationPolicyRelayUrl`) — see [Alerting: destination policies](alerting.md#destination-policies).
 
