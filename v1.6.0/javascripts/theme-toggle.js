@@ -11,3 +11,35 @@ document.addEventListener("click", function (event) {
     root.classList.remove("pgrr-theme-swap");
   }, 700);
 });
+
+/* One theme for the whole site (see overrides/main.html). The palette choice
+   is mirrored to a shared localStorage key whenever it changes, and a page
+   that did not get the shared choice before it painted (an old version with
+   no head snippet) picks it up here. */
+(function () {
+  var KEY = "pgrr.palette";
+  function own() {
+    try {
+      return localStorage.getItem(new URL(window.__md_scope ? window.__md_scope.href : ".", location).pathname + ".__palette");
+    } catch (e) { return null; }
+  }
+  function share() {
+    try {
+      var v = own();
+      if (v) localStorage.setItem(KEY, v);
+    } catch (e) {}
+  }
+  try {
+    var shared = localStorage.getItem(KEY);
+    if (shared && shared !== own()) {
+      var want = JSON.parse(shared);
+      var radios = document.querySelectorAll('[data-md-component="palette"] input[type="radio"]');
+      if (want && radios[want.index] && !radios[want.index].checked) {
+        radios[want.index].checked = true;
+        radios[want.index].dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+  } catch (e) {}
+  new MutationObserver(function () { window.setTimeout(share, 60); })
+    .observe(document.body, { attributes: true, attributeFilter: ["data-md-color-scheme"] });
+})();
