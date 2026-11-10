@@ -20,15 +20,28 @@ hide:
 <div class="pgrr-blips" aria-hidden="true"><i style="--d: 2.13s; left: 390px; top: 40px"></i><i style="--d: 3.39s; left: 150px; top: 290px"></i><i style="--d: 2.68s; left: 440px; top: 262px"></i></div>
 
 </div>
-<div class="pgrr-alert" aria-label="Example alert">
-<div class="pgrr-alert-head"><span>Example alert</span><span class="pgrr-pill">Regression</span></div>
-<div class="pgrr-alert-body">
-<div class="pgrr-row"><span>Query</span><code>SELECT * FROM orders WHERE customer_id = $1</code></div>
-<div class="pgrr-row"><span>Latency</span><span><s>4.1 ms</s> &rarr; <b>38.6 ms</b><span class="pgrr-factor">&times;9.4</span></span></div>
-<div class="pgrr-row"><span>Deploy</span><code>checkout-api &middot; revision=v2</code></div>
-<div class="pgrr-row"><span>Confidence</span><span><b>0.97</b><span class="pgrr-meter"><i style="width: 97%"></i></span></span></div>
-</div>
-<p class="pgrr-alert-note">Illustrative values.</p>
+<div class="pgrr-hero-code" markdown="1">
+
+```json title="PerformanceRegression"
+{
+  "name": "argocd-my-app-1234567890-q8675309",
+  "namespace": "production",
+  "deployEventId": "argocd-my-app-1234567890",
+  "queryId": 8675309,
+  "queryText": "SELECT * FROM orders WHERE user_id = $1",
+  "status": "Detected",
+  "confidenceScore": 0.98,
+  "meanLatencyBefore": 4.2,
+  "meanLatencyAfter": 13.7,
+  "latencyChangeFactor": 3.26,
+  "externalCauseSuspected": false,
+  "planDiffSummary": "root node changed from Index Scan to Seq Scan",
+  "createdAt": "2026-08-11T12:35:00Z"
+}
+```
+
+<p class="pgrr-hero-cap" markdown="1">What a detection looks like. See the [API reference](api-reference.md#performanceregression).</p>
+
 </div>
 </section>
 
