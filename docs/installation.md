@@ -155,7 +155,7 @@ See the [Dockerfile](https://github.com/joao00001/pg-regression-radar/blob/main/
 ```bash
 helm install pg-regression-radar oci://ghcr.io/joao00001/charts/pg-regression-radar \
   --version 0.3.0 \
-  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=require" \
   --set postgres.clusterName=cnpg-cluster \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```
@@ -191,7 +191,7 @@ cosign verify ghcr.io/joao00001/charts/pg-regression-radar:0.3.0 \
 ```bash
 git clone https://github.com/joao00001/pg-regression-radar.git
 helm install pg-regression-radar ./pg-regression-radar/deploy/helm/deploylens \
-  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=require" \
   --set postgres.clusterName=cnpg-cluster \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```
