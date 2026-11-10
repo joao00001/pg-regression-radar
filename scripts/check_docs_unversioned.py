@@ -35,7 +35,9 @@ import sys
 
 LABEL = "docs-unversioned"
 # Keep in sync with hooks.py's UNVERSIONED_PAGES.
-UNVERSIONED_PAGES = frozenset({"docs/index.md", "docs/roadmap.md", "docs/playground.md"})
+UNVERSIONED_PAGES = frozenset(
+    {"docs/index.md", "docs/roadmap.md", "docs/playground.md", "docs/our-math.md"}
+)
 # Files only the unversioned build uses (see mkdocs-unversioned.yml): the
 # roadmap's card styling and script, and that build's own config. They reach
 # the site together with the pages, on merge, so a PR that changes them is
@@ -48,6 +50,12 @@ UNVERSIONED_ASSETS = frozenset(
         "docs/assets/playground/playground.css",
         "docs/assets/playground/playground.js",
         "docs/assets/playground/playground-core.js",
+        "docs/assets/math/math.css",
+        "docs/assets/math/math.js",
+        "docs/assets/math/math-core.js",
+        "docs/assets/math/math-bg.js",
+        "docs/assets/math/fonts/noto-sans-math.woff2",
+        "docs/assets/math/fonts/OFL.txt",
         "mkdocs-unversioned.yml",
     }
 )
@@ -91,8 +99,8 @@ def build_comment(offenders):
             "",
             f"The `{LABEL}` label is only for changes to the docs pages that are **not versioned**: "
             "the home page (`docs/index.md`), the roadmap (`docs/roadmap.md`) and the playground "
-            "(`docs/playground.md`), plus the files only their build uses (the roadmap's `roadmap.css` / "
-            "`roadmap.js`, the playground's `docs/assets/playground/` scripts and styles, and `mkdocs-unversioned.yml`). "
+            "(`docs/playground.md`), \"Our math\" (`docs/our-math.md`), plus the files only their build uses (the roadmap's `roadmap.css` / "
+            "`roadmap.js`, the playground's `docs/assets/playground/` and the math page's `docs/assets/math/` scripts, styles and font, and `mkdocs-unversioned.yml`). "
             "They are published once, independently of any release, so merging this PR changes them "
             "for every docs version immediately.",
             "",

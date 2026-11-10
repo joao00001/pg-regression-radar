@@ -183,79 +183,181 @@
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* ---- Version selector: push content down instead of overlapping it ----
-   Material's stock `.md-version` menu is a `position: absolute` card
-   that floats on top of whatever's underneath it -- and is triggered by
-   raw `:hover`/`:focus-within` with no click/tap support at all
-   (Material's own CSS even ships a `@media (hover:none)` "hoverfix"
-   animation hack to paper over iOS Safari's sticky-hover bug, which is a
-   workaround for :hover-only triggering, not a real fix).
-   docs/javascripts/version-flyout.js replaces that entirely: once
-   Material injects `.md-version` (this happens asynchronously, after it
-   fetches versions.json client-side -- there is no `.md-version` in the
-   server-rendered HTML at all), the script moves the real
-   `.md-version__list` node out of it and into `.pgrr-version-flyout`, a
-   plain block appended at the end of `.md-header` -- the exact same
-   "real block in normal flow, animated via max-height" technique:
-   since `.md-header` is `position: sticky`, growing it taller pushes the
-   page content below it down, instead of floating a card over it.
-   Interaction (click/tap toggle, a short hover-intent close delay,
-   keyboard, Escape) is entirely the script's job; these
-   rules are just what it animates between. If the script never runs
-   (JS disabled, or the version fetch fails so `.md-version` never
-   appears), nothing gets moved and Material's own default hover/overlay
-   behavior is untouched -- this file adds no separate no-JS fallback of
-   its own to keep in sync. */
-.pgrr-version-flyout {
-  overflow: hidden;
-  max-height: 0;
-  transition: max-height 200ms ease;
-  background-color: var(--md-default-bg-color);
-  border-top: 1px solid var(--md-default-fg-color--lightest);
+/* ---- Version selector: a dropdown menu ----
+   Material injects `.md-version` into the header after it fetches
+   versions.json. docs/javascripts/version-flyout.js moves the real
+   `.md-version__list` out of Material's hover-only card into `.pgrr-vmenu`,
+   a floating panel under the button, and runs the menu-button behavior
+   (click, arrows, Escape). If the script never runs, Material's own card
+   is untouched. The button is a quiet pill with a chevron; the panel is a
+   small frosted card, like the search results and the code blocks, with one
+   row per version and a check on the one being read. */
+.md-version__current {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.45rem;
+  padding: 0 0.45rem 0 0.6rem;
+  border: 1px solid var(--pgrr-ui-line);
+  border-radius: 999px;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.62rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
 }
 
-.pgrr-version-flyout[hidden] {
+.md-version__current:hover,
+.md-version__current:focus-visible,
+.md-version.is-open .md-version__current {
+  color: var(--md-default-fg-color);
+  border-color: var(--md-default-fg-color--lighter);
+  background: color-mix(in srgb, var(--md-default-fg-color) 5%, transparent);
+}
+
+.md-version__current:focus-visible {
+  outline: 2px solid var(--pgrr-accent);
+  outline-offset: 2px;
+}
+
+/* the menu names the alias; the button keeps to the number */
+.md-version__current .md-version__alias {
   display: none;
 }
 
-/* Once version-flyout.js reparents it here, the list is a plain block
-   in normal flow -- undo Material's absolute-positioning/card styling
-   (position, margin, background, shadow), which only made sense for the
-   floating card this replaces. */
-.pgrr-version-flyout .md-version__list {
+/* Material's own caret becomes the chevron: it turns over while open */
+.md-version__current::after {
+  content: "";
+  display: block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin: -0.14rem 0 0 0.1rem;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  background: none;
+  -webkit-mask: none;
+  mask: none;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease, margin 0.2s ease;
+}
+
+.md-version.is-open .md-version__current::after {
+  margin-top: 0.14rem;
+  transform: rotate(225deg);
+}
+
+.pgrr-vmenu {
+  position: absolute;
+  z-index: 5;
+  min-width: 11rem;
+  max-width: calc(100vw - 24px);
+  max-height: min(60vh, 22rem);
+  overflow-y: auto;
+  padding: 0.3rem;
+  border: 1px solid var(--pgrr-ui-line);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--md-default-bg-color) 97%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 14px 36px -14px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top left;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.pgrr-vmenu[hidden] {
+  display: none;
+}
+
+.pgrr-vmenu.is-open {
+  opacity: 1;
+  transform: none;
+}
+
+/* undo Material's card: the list is a plain column of rows here */
+.pgrr-vmenu .md-version__list {
   position: static;
   margin: 0;
-  padding: 0.4rem 0;
-  background-color: transparent;
-  box-shadow: none;
+  padding: 0;
   max-height: none;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
   opacity: 1;
+  list-style: none;
+  scroll-snap-type: none;
 }
 
-.pgrr-version-flyout .md-version__link {
-  padding: 0.3rem 1.2rem;
-  transition: color 150ms ease;
+.pgrr-vmenu .md-version__item {
+  height: auto;
+  padding: 0;
+  line-height: 1.3;
 }
 
-.pgrr-version-flyout .md-version__link:focus,
-.pgrr-version-flyout .md-version__link:hover {
-  /* This site's own established accent for hover/focus feedback
-     (link hover in the sidebar and content) -- not
-     Material's default `--md-accent-fg-color`, which is a more
-     saturated blue tuned for an opaque indigo header, not this site's
-     monochrome one. No background fill on hover, matching the same
-     color-only feedback pattern used by every other hoverable nav
-     element on this site. */
-  color: var(--md-typeset-a-color);
+.pgrr-vmenu .md-version__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  padding: 0.4rem 0.6rem 0.4rem 0.7rem;
+  border-radius: 0.5rem;
+  line-height: 1.3;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.68rem;
+  font-weight: 500;
+  transition: color 0.12s, background-color 0.12s;
 }
 
-/* The currently-viewed version's own entry in the list -- Material marks
-   it `pointer-events: none` (already correct, nothing to click through
-   to) but leaves it at full default-text color, indistinguishable from
-   an unvisited version at a glance. Dimming it communicates "you're
-   already here" the same way a disabled control usually does. */
-.pgrr-version-flyout .md-version__link[data-md-state="active"] {
-  color: var(--md-default-fg-color--lighter);
+.pgrr-vmenu .md-version__link:hover,
+.pgrr-vmenu .md-version__link:focus-visible {
+  outline: none;
+  color: var(--md-default-fg-color);
+  background: color-mix(in srgb, var(--md-default-fg-color) 7%, transparent);
+}
+
+.pgrr-vmenu .md-version__link:focus-visible {
+  box-shadow: inset 0 0 0 1.5px var(--pgrr-accent);
+}
+
+.pgrr-vmenu .md-version__alias {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-default-fg-color) 8%, transparent);
+  color: var(--md-default-fg-color--light);
+  font-size: 0.56rem;
+}
+
+/* the version being read: full-strength, with a check */
+.pgrr-vmenu .md-version__link.is-current {
+  color: var(--md-default-fg-color);
+  pointer-events: none;
+}
+
+.pgrr-vmenu .md-version__link.is-current::after {
+  content: "";
+  flex: none;
+  width: 0.28rem;
+  height: 0.5rem;
+  margin-left: auto;
+  border: solid var(--pgrr-accent);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) translate(-0.05rem, -0.05rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-vmenu,
+  .md-version__current::after {
+    transition: none;
+  }
 }
 
 /* ---- Code blocks: a dark card with the code in an inset panel ----

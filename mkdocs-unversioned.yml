@@ -19,6 +19,7 @@ exclude_docs: |
   !/index.md
   !/roadmap.md
   !/playground.md
+  !/our-math.md
   /adr/
   /examples/
   /policies/
@@ -37,6 +38,7 @@ extra_css:
   - stylesheets/extra.css
   - stylesheets/roadmap.css
   - stylesheets/home.css
+  - assets/math/math.css
 
 extra_javascript:
   - javascripts/roadmap.js
@@ -48,6 +50,9 @@ extra_javascript:
   - javascripts/home-radar.js
   - javascripts/home-ascii.js
   - javascripts/home-flow.js
+  - assets/math/math-core.js
+  - assets/math/math.js
+  - assets/math/math-bg.js
 
 # Same extensions as mkdocs.yml plus md_in_html (markdown inside the roadmap's
 # HTML cards). Repeated in full rather than inherited, since a list in a child
