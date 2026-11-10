@@ -68,19 +68,6 @@
   overflow: hidden;
 }
 
-.pgrr-home .pgrr-kicker {
-  display: inline-block;
-  padding: 3px 11px;
-  border: 1px solid var(--h-accent-border);
-  border-radius: 999px;
-  background: var(--h-accent-bg);
-  color: var(--h-accent);
-  font-size: 0.6rem;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .pgrr-home .pgrr-hero h1 {
   margin: 14px 0 12px;
   color: var(--h-fg);
@@ -96,37 +83,6 @@
   color: var(--h-muted);
   font-size: 0.82rem;
   line-height: 1.55;
-}
-
-.pgrr-home .pgrr-hero .md-button {
-  margin: 0 8px 8px 0;
-  padding: 0.42em 1.25em;
-  border-color: var(--h-border);
-  border-radius: 12px;
-  color: var(--h-fg);
-  font-size: 0.68rem;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.pgrr-home .pgrr-hero .md-button:hover {
-  border-color: var(--h-accent);
-  background: var(--h-accent-bg);
-  color: var(--h-accent);
-}
-
-.pgrr-home .pgrr-hero .md-button--primary {
-  border-color: var(--h-accent-solid);
-  background: var(--h-accent-solid);
-  color: #fff;
-}
-
-.pgrr-home .pgrr-hero .md-button--primary:hover {
-  border-color: var(--h-accent-solid);
-  background: var(--h-accent-solid);
-  color: #fff;
-  filter: brightness(1.12);
 }
 
 /* The example alert: the code-block card, with a message inside. */
@@ -440,10 +396,6 @@
 
 .pgrr-home .pgrr-hero > div:first-child {
   padding: 40px var(--h-pad) 34px;
-}
-
-.pgrr-home .pgrr-hero .md-button {
-  border-radius: 8px;
 }
 
 @media (max-width: 44.9375em) {
@@ -1020,4 +972,67 @@
     border-left: 0;
     border-top: 1px solid var(--h-border);
   }
+}
+
+/* ----------------------------------------------------------------------
+ * Hero buttons
+ *
+ * Pill-shaped, in the same quiet style as the shadcn.io hero: one solid light
+ * pill and one outlined pill (inverted in the light scheme). The accent only
+ * shows up on focus.
+ * -------------------------------------------------------------------- */
+.pgrr-home {
+  --h-btn-bg: #ededed;
+  --h-btn-fg: #0a0a0a;
+  --h-btn-line: rgba(255, 255, 255, 0.16);
+  --h-btn-hover: rgba(255, 255, 255, 0.07);
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-btn-bg: #0a0a0a;
+  --h-btn-fg: #fafafa;
+  --h-btn-line: rgba(0, 0, 0, 0.18);
+  --h-btn-hover: rgba(0, 0, 0, 0.05);
+}
+
+.pgrr-home .pgrr-hero .md-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 10px 8px 0;
+  padding: 0 1.45em;
+  height: 2.5em;
+  border: 1px solid var(--h-btn-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--h-fg);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: background-color 0.15s, border-color 0.15s, filter 0.15s;
+}
+
+.pgrr-home .pgrr-hero .md-button:hover {
+  border-color: var(--h-btn-line);
+  background: var(--h-btn-hover);
+  color: var(--h-fg);
+}
+
+.pgrr-home .pgrr-hero .md-button--primary {
+  border-color: var(--h-btn-bg);
+  background: var(--h-btn-bg);
+  color: var(--h-btn-fg);
+}
+
+.pgrr-home .pgrr-hero .md-button--primary:hover {
+  border-color: var(--h-btn-bg);
+  background: var(--h-btn-bg);
+  color: var(--h-btn-fg);
+  filter: brightness(0.9);
+}
+
+.pgrr-home .pgrr-hero .md-button:focus-visible {
+  outline: 2px solid var(--h-accent);
+  outline-offset: 3px;
 }
