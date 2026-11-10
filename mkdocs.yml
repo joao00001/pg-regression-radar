@@ -109,6 +109,7 @@ nav:
       - Installation: installation.md
       - Getting Started: getting-started.md
       - Quickstart Validation: quickstart-validation.md
+      - Playground: playground.md
       - Regression Scenario Example: examples/regression-scenario.md
       - Alerting Example: examples/alerting-example.md
       - Supply Chain Verification: supply-chain.md

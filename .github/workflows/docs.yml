@@ -77,6 +77,11 @@ on:
       - "mkdocs-unversioned.yml"
       - "hooks.py"
       - "scripts/publish_unversioned_docs.py"
+      - "scripts/build_playground.sh"
+      - "cmd/playground/**"
+      - "internal/playground/**"
+      - "internal/correlation/**"
+      - "internal/pgstat/**"
       - "requirements-docs.txt"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
@@ -132,6 +137,17 @@ jobs:
       - name: Install MkDocs Material
         run: pip install -r requirements-docs.txt
 
+      - name: Set up Go (the playground page embeds a WebAssembly build of the engine)
+        if: hashFiles('scripts/build_playground.sh') != ''
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build the playground's WebAssembly module
+        if: hashFiles('scripts/build_playground.sh') != ''
+        run: scripts/build_playground.sh
+
       - name: Build versioned docs (strict — broken nav/links fail the build)
         run: mkdocs build --strict
 
@@ -185,6 +201,17 @@ jobs:
 
       - name: Install MkDocs Material + mike
         run: pip install -r requirements-docs.txt
+
+      - name: Set up Go (the playground page embeds a WebAssembly build of the engine)
+        if: hashFiles('scripts/build_playground.sh') != ''
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build the playground's WebAssembly module
+        if: hashFiles('scripts/build_playground.sh') != ''
+        run: scripts/build_playground.sh
 
       - name: Configure git identity for mike's commits
         run: |
