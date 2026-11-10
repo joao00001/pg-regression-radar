@@ -402,11 +402,6 @@
   .pgrr-home .pgrr-hero > div:first-child {
     padding: 28px var(--h-pad) 24px;
   }
-
-  .pgrr-home .pgrr-hero .pgrr-hero-code {
-    border-left: 0;
-    border-top: 1px solid var(--h-border);
-  }
 }
 
 /* The question: its own full-width cell */
@@ -824,11 +819,12 @@
 }
 
 /* ======================================================================
- * Hero title cell
+ * Hero
  *
- * Absolute black (white in the light scheme) with the soft red fade in the
- * top-left corner, and a drifting field of ASCII characters drawn by
- * docs/javascripts/home-ascii.js on a canvas behind the text.
+ * One surface for the title and the code block: absolute black (white in the
+ * light scheme) with the soft red fade in the top-left corner, and a drifting
+ * field of ASCII characters drawn by docs/javascripts/home-ascii.js on a canvas
+ * behind both, which keeps clear of the text; the code card floats over it.
  * ==================================================================== */
 .pgrr-home {
   --h-hero-bg: #000;
@@ -839,15 +835,10 @@
 }
 
 .pgrr-home .pgrr-hero {
-  background: transparent;
-}
-
-.pgrr-home .pgrr-hero > div:first-child {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
   background:
-    radial-gradient(70% 90% at 0% 0%, var(--h-glow), transparent 70%),
+    radial-gradient(45% 90% at 0% 0%, var(--h-glow), transparent 70%),
     var(--h-hero-bg);
 }
 
@@ -926,8 +917,6 @@
   justify-content: center;
   min-width: 0;
   padding: 26px 22px 22px;
-  border-left: 1px solid var(--h-border);
-  background: var(--h-card);
 }
 
 .pgrr-home .pgrr-hero-code .highlight,
@@ -968,10 +957,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .pgrr-home .pgrr-hero .pgrr-hero-code {
-    border-left: 0;
-    border-top: 1px solid var(--h-border);
-  }
 }
 
 /* ----------------------------------------------------------------------
