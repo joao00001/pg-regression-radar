@@ -1707,7 +1707,7 @@
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>This page tracks only what's <em>not</em> done yet: planned features, known robustness gaps, and operational follow-ups that aren't code changes. It is not a running history of delivered work — once an item here ships, it's removed from this page, not reworded as "done"; its details live in <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a> (what shipped and when) and the relevant feature's own docs page (how it works today).</p>
 <div class="rm-glance">
-<div class="rm-stat"><span class="rm-stat-num" data-rm-count>21</span><span class="rm-stat-label">open items below</span></div>
+<div class="rm-stat"><span class="rm-stat-num" data-rm-count>20</span><span class="rm-stat-label">open items below</span></div>
 <div class="rm-stat rm-stat--progress"><span class="rm-stat-num">6<small> / 7</small></span><span class="rm-stat-label">security and robustness checklist steps complete</span><span class="rm-steps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="rm-step-open"></i></span></div>
 </div>
 <details class="rm-notes">
@@ -1743,15 +1743,6 @@
 <p>The reported <code>MeanLatencyBefore</code>/<code>MeanLatencyAfter</code> are total time over total calls, but the t-test compares unweighted per-interval means. A ratio-estimator test (mean = total time / total calls, with a cluster-robust variance that treats each scrape interval as a cluster) is consistent with the reported numbers and, in simulation with bursty traffic and log-normal latency, kept the 5% size while raising power for a +30% regression from 41% to 73% at 3 calls per interval. It would also make <code>--min-executions</code> act directly on the precision of the test. Per-call variance from <code>stddev_exec_time</code> is a further input that is not used yet.</p>
 </details>
 </div>
-<div class="rm-item" data-area="Statistics" data-quarter="Q4 2026" data-status="proposed">
-<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q4 2026</span></div>
-<div class="rm-title"><code>ConfidenceScore</code> is <code>1 - pValue</code>, which is not a probability</div>
-<p class="rm-summary">The score is 1 minus the p-value, which reads like a probability but isn't one. Expose the raw p-value and document the score.</p>
-<details>
-<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
-<p>A p-value of 0.001 does not mean a 99.9% chance the regression is real, and says nothing about the probability that a deploy caused it; the README's "0.98 confidence" example invites exactly that reading. Planned direction: expose the raw <code>pValue</code> (and an adjusted one, once the item below lands) on <code>PerformanceRegression</code>, document <code>ConfidenceScore</code> as a significance-derived score rather than a probability, and only later introduce a score with explicit attribution semantics. Renaming or removing the existing CRD field is a compatibility decision covered by <a href="https://joao00001.github.io/pg-regression-radar/latest/api-versioning/">API Versioning</a>, not something to do in passing.</p>
-</details>
-</div>
 <div class="rm-item" data-area="Validation" data-quarter="Q4 2026" data-status="gap">
 <div class="rm-meta"><span class="rm-status rm-status--gap" role="img" aria-label="Known gap" title="Known gap"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-gap"/></svg></span><span class="rm-area">Validation</span><span class="rm-quarter">Q4 2026</span></div>
 <div class="rm-title">Neither kind-based e2e workflow has a real GitHub Actions run yet</div>
@@ -1785,7 +1776,7 @@
 <p class="rm-summary">The significance test runs on a split the same data picked, so its p-value is optimistic. Calibrate it before reading it as a 5% rate.</p>
 <details>
 <summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
-<p>Stage 1 searches every candidate split for the best E-divisive change point and stage 2 then tests that split as if it had been chosen independently, which makes the p-value optimistic (post-selection inference). The stage 0 pre-filter and the <code>LatencyChangeThreshold</code> mask most of the effect on typical series, but the p-value should not be read as a calibrated 5% false-positive rate. Options, roughly in order of cost: a minimum effect-size floor alongside the p-value; empirical calibration against recorded no-regression series; a permutation test that repeats the full change-point search on each permuted series. Series with autocorrelated noise are the case most worth measuring first.</p>
+<p>Stage 1 searches every candidate split for the best E-divisive change point and stage 2 then tests that split as if it had been chosen independently, which makes the p-value optimistic (post-selection inference). The stage 0 pre-filter and the <code>LatencyChangeThreshold</code> mask most of the effect on typical series, but the p-value should not be read as a calibrated 5% false-positive rate: measured with the project's own E-divisive and Welch code on no-change series, 35-39% had p &lt; 0.05 with independent noise and 60-99% with autocorrelated noise, and through the full engine up to 8% of no-change analyses were reported <code>Detected</code> with autocorrelated, heavy-tailed noise. Options, roughly in order of cost: a minimum effect-size floor alongside the p-value; empirical calibration against recorded no-regression series; a permutation test that repeats the full change-point search on each permuted series. Series with autocorrelated noise are the case most worth measuring first.</p>
 </details>
 </div>
 <div class="rm-item" data-area="Attribution" data-quarter="Q1 2027" data-status="proposed">
