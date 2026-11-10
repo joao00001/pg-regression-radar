@@ -24,7 +24,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/joao00001/pg-regression-radar/internal/collector"
+	"github.com/joao00001/pg-regression-radar/internal/pgstat"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -138,7 +138,7 @@ func (e *Engine) PeriodicWindow() time.Duration {
 
 // SampleSource can provide QuerySamples for a time range.
 type SampleSource interface {
-	SamplesInRange(queryID int64, from, to time.Time) []collector.QuerySample
+	SamplesInRange(queryID int64, from, to time.Time) []pgstat.QuerySample
 	AllQueryIDs() []int64
 }
 
@@ -172,7 +172,7 @@ func (e *Engine) Analyse(ev v1alpha1.DeployEvent) []v1alpha1.PerformanceRegressi
 		"query_count", len(e.src.AllQueryIDs()),
 		"window_minutes", e.cfg.WindowMinutes)
 
-	return e.analyseWindow(before, ev.Timestamp, after, func(queryID int64, pre, post []collector.QuerySample) v1alpha1.PerformanceRegression {
+	return e.analyseWindow(before, ev.Timestamp, after, func(queryID int64, pre, post []pgstat.QuerySample) v1alpha1.PerformanceRegression {
 		return e.evaluateQuery(ev, queryID, pre, post)
 	})
 }
@@ -200,7 +200,7 @@ func (e *Engine) AnalysePeriodic(now time.Time) []v1alpha1.PerformanceRegression
 		"window_minutes", e.cfg.PeriodicWindowMinutes,
 		"now", now)
 
-	return e.analyseWindow(before, split, now, func(queryID int64, pre, post []collector.QuerySample) v1alpha1.PerformanceRegression {
+	return e.analyseWindow(before, split, now, func(queryID int64, pre, post []pgstat.QuerySample) v1alpha1.PerformanceRegression {
 		return e.evaluatePeriodic(queryID, pre, post, now)
 	})
 }
@@ -220,7 +220,7 @@ func (e *Engine) AnalysePeriodic(now time.Time) []v1alpha1.PerformanceRegression
 // order.
 func (e *Engine) analyseWindow(
 	before, split, after time.Time,
-	evalFn func(queryID int64, pre, post []collector.QuerySample) v1alpha1.PerformanceRegression,
+	evalFn func(queryID int64, pre, post []pgstat.QuerySample) v1alpha1.PerformanceRegression,
 ) []v1alpha1.PerformanceRegression {
 	queryIDs := append([]int64(nil), e.src.AllQueryIDs()...)
 	sort.Slice(queryIDs, func(i, j int) bool { return queryIDs[i] < queryIDs[j] })
@@ -282,7 +282,7 @@ func (e *Engine) analyseWindow(
 // — but picking the most recent one keeps this helper's notion of "current
 // identity" consistent with canonicalQueryID below, which also picks by most
 // recent RecordedAt.
-func latestFingerprint(samples []collector.QuerySample) string {
+func latestFingerprint(samples []pgstat.QuerySample) string {
 	latest, ok := latestSample(samples)
 	if !ok {
 		return ""
@@ -302,7 +302,7 @@ func latestFingerprint(samples []collector.QuerySample) string {
 // CURRENTLY still receiving traffic in pg_stat_statements — the "live"
 // identity — not one that may already have aged out or fallen out of the
 // top-500 and would mean nothing to an operator looking it up after the fact.
-func canonicalQueryID(samples []collector.QuerySample, fallbackQID int64) int64 {
+func canonicalQueryID(samples []pgstat.QuerySample, fallbackQID int64) int64 {
 	latest, ok := latestSample(samples)
 	if !ok {
 		return fallbackQID
@@ -314,8 +314,8 @@ func canonicalQueryID(samples []collector.QuerySample, fallbackQID int64) int64 
 // false if samples is empty. Factored out since latestFingerprint and
 // canonicalQueryID both need "the most recent sample" and must agree on which
 // one that is.
-func latestSample(samples []collector.QuerySample) (collector.QuerySample, bool) {
-	var latest collector.QuerySample
+func latestSample(samples []pgstat.QuerySample) (pgstat.QuerySample, bool) {
+	var latest pgstat.QuerySample
 	found := false
 	for _, s := range samples {
 		if !found || s.RecordedAt.After(latest.RecordedAt) {
@@ -373,7 +373,7 @@ type changeStats struct {
 // split) are statistically different. Always runs once a change point is
 // found — evaluateQuery may still discard the result via its own
 // ChangePointTolerance check regardless of significance.
-func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []collector.QuerySample) changeStats {
+func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []pgstat.QuerySample) changeStats {
 	// Work on per-interval latency whenever the samples carry it (see
 	// intervalSamples): the cumulative mean_exec_time is an average over the
 	// whole history since the last reset, so a regression barely moves it and
@@ -428,7 +428,7 @@ func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []col
 	}
 
 	// ---- Stage 1: locate the real change point (E-divisive) ----
-	allSamples := make([]collector.QuerySample, 0, len(preSamples)+len(postSamples))
+	allSamples := make([]pgstat.QuerySample, 0, len(preSamples)+len(postSamples))
 	allSamples = append(allSamples, preSamples...)
 	allSamples = append(allSamples, postSamples...)
 	sort.Slice(allSamples, func(i, j int) bool {
@@ -502,7 +502,7 @@ func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []col
 func (e *Engine) evaluateQuery(
 	ev v1alpha1.DeployEvent,
 	queryID int64,
-	preSamples, postSamples []collector.QuerySample,
+	preSamples, postSamples []pgstat.QuerySample,
 ) v1alpha1.PerformanceRegression {
 	base := v1alpha1.PerformanceRegression{
 		Name:          fmt.Sprintf("%s-q%d", ev.ID, queryID),
@@ -582,7 +582,7 @@ func (e *Engine) evaluateQuery(
 // a new episode worth reporting at all, not just a still-ongoing one.
 func (e *Engine) evaluatePeriodic(
 	queryID int64,
-	preSamples, postSamples []collector.QuerySample,
+	preSamples, postSamples []pgstat.QuerySample,
 	now time.Time,
 ) v1alpha1.PerformanceRegression {
 	base := v1alpha1.PerformanceRegression{
@@ -629,7 +629,7 @@ func (e *Engine) evaluatePeriodic(
 // queryText picks the QueryText to report from whichever of preSamples/
 // postSamples is non-empty, preferring preSamples — shared by evaluateQuery
 // and evaluatePeriodic, which both need this identically.
-func queryText(preSamples, postSamples []collector.QuerySample) string {
+func queryText(preSamples, postSamples []pgstat.QuerySample) string {
 	if len(preSamples) > 0 {
 		return preSamples[0].QueryText
 	}
@@ -658,7 +658,7 @@ func changePointMinSegLen(n int) int {
 // RecordedAt ≥ split. A sample recorded exactly at split appears in both
 // slices, matching the inclusive-boundary semantics of two separate
 // SamplesInRange([before, split]) and SamplesInRange([split, after]) calls.
-func partitionAt(samples []collector.QuerySample, split time.Time) (pre, post []collector.QuerySample) {
+func partitionAt(samples []pgstat.QuerySample, split time.Time) (pre, post []pgstat.QuerySample) {
 	for _, s := range samples {
 		if !s.RecordedAt.After(split) {
 			pre = append(pre, s)
@@ -686,7 +686,7 @@ func partitionAt(samples []collector.QuerySample, split time.Time) (pre, post []
 // the OTel/Prometheus source) are returned unchanged, with intervals=false,
 // and are analysed on MeanExecTimeMs, as before. Their execution counts are
 // unknown, so only the sample floor applies to them.
-func intervalSamples(pre, post []collector.QuerySample) (_, _ []collector.QuerySample, intervals bool) {
+func intervalSamples(pre, post []pgstat.QuerySample) (_, _ []pgstat.QuerySample, intervals bool) {
 	if !anyIntervalKnown(pre) && !anyIntervalKnown(post) {
 		return pre, post, false
 	}
@@ -694,7 +694,7 @@ func intervalSamples(pre, post []collector.QuerySample) (_, _ []collector.QueryS
 }
 
 // executions sums the calls behind samples' interval latencies.
-func executions(samples []collector.QuerySample) int64 {
+func executions(samples []pgstat.QuerySample) int64 {
 	var n int64
 	for _, s := range samples {
 		if s.IntervalKnown {
@@ -704,7 +704,7 @@ func executions(samples []collector.QuerySample) int64 {
 	return n
 }
 
-func anyIntervalKnown(samples []collector.QuerySample) bool {
+func anyIntervalKnown(samples []pgstat.QuerySample) bool {
 	for _, s := range samples {
 		if s.IntervalKnown {
 			return true
@@ -713,8 +713,8 @@ func anyIntervalKnown(samples []collector.QuerySample) bool {
 	return false
 }
 
-func keepIntervals(samples []collector.QuerySample) []collector.QuerySample {
-	out := make([]collector.QuerySample, 0, len(samples))
+func keepIntervals(samples []pgstat.QuerySample) []pgstat.QuerySample {
+	out := make([]pgstat.QuerySample, 0, len(samples))
 	for _, s := range samples {
 		if s.IntervalKnown && s.IntervalCalls > 0 {
 			out = append(out, s)
@@ -726,7 +726,7 @@ func keepIntervals(samples []collector.QuerySample) []collector.QuerySample {
 // extractLatencies returns the latency of each sample: the mean of the calls
 // in its scrape interval when the sample carries one, otherwise the
 // cumulative MeanExecTimeMs reported by the source.
-func extractLatencies(samples []collector.QuerySample) []float64 {
+func extractLatencies(samples []pgstat.QuerySample) []float64 {
 	out := make([]float64, len(samples))
 	for i, s := range samples {
 		if s.IntervalKnown {
@@ -742,7 +742,7 @@ func extractLatencies(samples []collector.QuerySample) []float64 {
 // is total time over total calls, so a busy interval counts for more than a
 // quiet one and the value equals the true mean latency of every call in the
 // window; otherwise it is the plain mean of latencies.
-func windowMean(samples []collector.QuerySample, latencies []float64) float64 {
+func windowMean(samples []pgstat.QuerySample, latencies []float64) float64 {
 	var calls int64
 	var total float64
 	for _, s := range samples {
