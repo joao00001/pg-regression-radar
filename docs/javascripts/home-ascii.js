@@ -1,13 +1,13 @@
 /*
- * Home page: the hero title cell's background is a slowly drifting field of
- * ASCII characters on a canvas.
+ * Home page: the hero's background (title and code block share it) is a slowly
+ * drifting field of ASCII characters on a canvas.
  *
  * Soft noise decides, per character cell, how "dense" the field is. Sparse
  * areas are dots and colons, denser ones are + - | : patterns, and the densest
  * spell a repeating word that scrolls sideways; where the density changes,
  * characters flicker through a few symbols. The field is faded out around the
- * text of the cell so it never fights with it, and it follows the page's color
- * scheme.
+ * text so it never fights with it (the code card is opaque and simply floats
+ * over the field), and it follows the page's color scheme.
  *
  * Honors prefers-reduced-motion (one static frame), pauses while off screen or
  * in a hidden tab, and is purely decorative (aria-hidden).
@@ -15,7 +15,7 @@
 (function () {
   "use strict";
 
-  var cell = document.querySelector(".pgrr-hero > div:first-child");
+  var cell = document.querySelector(".pgrr-hero");
   if (!cell) return;
 
   var WORD = "REGRESSION";
@@ -30,7 +30,8 @@
   var canvas = document.createElement("canvas");
   canvas.className = "pgrr-hero-ascii";
   canvas.setAttribute("aria-hidden", "true");
-  cell.insertBefore(canvas, cell.firstChild);
+  // last child, so the hero's `> div:first-child` styles keep matching the title cell
+  cell.appendChild(canvas);
   var ctx = canvas.getContext("2d");
   if (!ctx) return;
 
@@ -75,10 +76,10 @@
       if (r.width < 1 || r.height < 1) return;
       rects.push([r.left - base.left, r.top - base.top, r.right - base.left, r.bottom - base.top]);
     }
-    var nodes = cell.querySelectorAll("h1, .pgrr-lead, .md-button");
+    var nodes = cell.querySelectorAll("h1, .pgrr-lead, .md-button, .pgrr-hero-cap");
     for (var k = 0; k < nodes.length; k++) {
       var n = nodes[k];
-      if (n.tagName === "H1" || n.classList.contains("pgrr-lead")) {
+      if (n.tagName === "H1" || n.classList.contains("pgrr-lead") || n.classList.contains("pgrr-hero-cap")) {
         var range = document.createRange();
         range.selectNodeContents(n);
         push(range.getBoundingClientRect());
