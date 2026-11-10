@@ -1215,9 +1215,14 @@
   }
 
   .md-search {
-    flex: 0 0 26rem;
+    flex: 0 0 24rem;
     margin: 0;
     padding: 0;
+  }
+
+  /* the version selector shares the name's column on versioned pages */
+  .md-version__current {
+    margin-left: 0.5rem;
   }
 
   .md-search__inner {
