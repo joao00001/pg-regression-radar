@@ -30,3 +30,24 @@
     <strong>Click here to go to the latest version.</strong>
   </a>
 {% endblock %}
+
+{#
+  One theme for the whole site. Material keeps the light/dark choice in
+  localStorage under a key scoped to the page's base path, so the unversioned
+  pages (home, playground, roadmap, our math) and each versioned docs tree
+  each remembered their own. The choice is also kept under one shared key
+  (see theme-toggle.js); this copies it to this page's own key before
+  Material's inline script reads it, so the first paint already has it.
+#}
+{% block extrahead %}
+  <script>
+    (function () {
+      try {
+        var shared = localStorage.getItem("pgrr.palette");
+        if (shared) {
+          localStorage.setItem(new URL("{{ base_url }}", location).pathname + ".__palette", shared);
+        }
+      } catch (e) {}
+    })();
+  </script>
+{% endblock %}

@@ -14,7 +14,7 @@
 
 """MkDocs build hook (https://www.mkdocs.org/user-guide/configuration/#hooks)
 that implements the split between versioned docs and the unversioned home
-page, roadmap and playground (mkdocs.yml vs. mkdocs-unversioned.yml): rewriting links between
+page, roadmap, playground and "Our math" (mkdocs.yml vs. mkdocs-unversioned.yml): rewriting links between
 the two, giving the unversioned build the same menu as the versioned one, and
 giving each version's root a redirect in place of the home page.
 """
@@ -31,7 +31,12 @@ import yaml
 # the site root, from `main` (see mkdocs-unversioned.yml and
 # .github/workflows/docs.yml's `deploy-unversioned` job). Source path under
 # docs/ -> path under the site root.
-UNVERSIONED_PAGES = {"index.md": "", "roadmap.md": "roadmap/", "playground.md": "playground/"}
+UNVERSIONED_PAGES = {
+    "index.md": "",
+    "roadmap.md": "roadmap/",
+    "playground.md": "playground/",
+    "our-math.md": "our-math/",
+}
 
 # Matches either an inline code span (returned untouched) or the
 # `](target.md#frag)` part of an inline Markdown link whose target is a

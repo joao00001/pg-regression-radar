@@ -55,7 +55,9 @@ exclude_docs: |
   /index.md
   /roadmap.md
   /playground.md
+  /our-math.md
   /assets/playground/
+  /assets/math/
 
 # Declaring `plugins:` explicitly replaces MkDocs' implicit default plugin
 # list (which is just `search`) rather than adding to it — `search` is
@@ -102,8 +104,8 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
-# The top level is the header's tab bar (`navigation.tabs`): Home, Playground
-# and Roadmap are absolute links to the unversioned site (see `exclude_docs`
+# The top level is the header's tab bar (`navigation.tabs`): Home, Playground,
+# Our math and Roadmap are absolute links to the unversioned site (see `exclude_docs`
 # above), identical from every version, and everything else lives under Docs,
 # whose groups are the left sidebar (every group starts expanded,
 # `navigation.expand`; a reader can still collapse one). On a narrow screen the
@@ -112,6 +114,7 @@ markdown_extensions:
 nav:
   - Home: https://joao00001.github.io/pg-regression-radar/
   - Playground: https://joao00001.github.io/pg-regression-radar/playground/
+  - Our math: https://joao00001.github.io/pg-regression-radar/our-math/
   - Docs:
       - Get Started:
           - Installation: installation.md
