@@ -39,6 +39,7 @@ extra_css:
 extra_javascript:
   - javascripts/roadmap.js
   - javascripts/code-header.js
+  - javascripts/callouts.js
 
 # Same extensions as mkdocs.yml plus md_in_html (markdown inside the roadmap's
 # HTML cards). Repeated in full rather than inherited, since a list in a child
