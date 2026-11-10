@@ -535,6 +535,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#still-doubting-use-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Still doubting? Use --help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#limits" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1875,7 +1886,7 @@
               
                 
               
-              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" hidden>
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
                     
@@ -1938,6 +1949,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#still-doubting-use-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Still doubting? Use --help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#limits" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1986,24 +2008,36 @@
   
 
 
-<h1 id="playground">Playground<a class="headerlink" href="#playground" title="Permanent link">&para;</a></h1>
-<p><em>Run the real detection engine against a real PostgreSQL, entirely in your browser: no Postgres, no Kubernetes, no install.</em></p>
+<div class="pgrr-home pgrr-playground">
+<p><link rel="stylesheet" href="../assets/playground/playground.css"></p>
+<header class="pg-head">
+<h1 id="playground">Play<em>ground</em><a class="headerlink" href="#playground" title="Permanent link">&para;</a></h1>
+<p class="pg-lead">Run the real detection engine against a real PostgreSQL, entirely in your browser: no Postgres, no Kubernetes, no install.</p>
+</header>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<div class="pg-text">
 <p>The playground runs a small SQL workload against PostgreSQL with <code>pg_stat_statements</code> enabled, applies a "deploy" halfway through, and feeds what the collector would have scraped to pg-regression-radar's correlation engine. Pick a scenario, change the traffic or the thresholds, or write your own schema, workload and deploy, and see which queries the engine flags and why.</p>
 <p>Nothing is sent to a server. Everything runs in your browser tab.</p>
-<p><link rel="stylesheet" href="../assets/playground/playground.css"></p>
+</div>
+<div class="pg-stage">
 <div id="pgrr-playground"></div>
-<noscript><p>The playground needs JavaScript and WebAssembly.</p></noscript>
-<script type="module" src="../assets/playground/playground.js"></script>
-
+<noscript>
+<p>The playground needs JavaScript and WebAssembly.</p>
+</noscript>
+<script src="../assets/playground/playground-bg.js"></script>
+<script src="../assets/playground/playground.js" type="module"></script>
+</div>
 <h2 id="what-you-are-looking-at">What you are looking at<a class="headerlink" href="#what-you-are-looking-at" title="Permanent link">&para;</a></h2>
+<div class="pg-text">
 <p>The chart shows one query's latency over the 22 simulated minutes. Two lines tell the story that motivated the engine's design:</p>
 <ul>
 <li><strong>The dashed line</strong> is <code>pg_stat_statements.mean_exec_time</code>, the average of every call since the counters were last reset. It moves slowly after a regression, and jumps for no reason after a reset.</li>
 <li><strong>The solid line</strong> is the mean latency of only the calls made since the previous scrape, derived from the cumulative <code>calls</code> and <code>total_exec_time</code> counters. This is what the engine analyses. See <a href="https://joao00001.github.io/pg-regression-radar/latest/collector-internals/">Collector Internals</a> and <a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/">Detection Algorithm</a>.</li>
 </ul>
 <p>The table gives the engine's verdict per query. <code>InsufficientData</code> means the query ran too rarely in one of the windows for either answer to be trustworthy; see <code>--min-samples</code> and <code>--min-executions</code> in the <a href="https://joao00001.github.io/pg-regression-radar/latest/configuration/">Configuration Reference</a>.</p>
+</div>
 <h2 id="the-scenarios">The scenarios<a class="headerlink" href="#the-scenarios" title="Permanent link">&para;</a></h2>
+<div class="pg-text">
 <table>
 <thead>
 <tr>
@@ -2041,7 +2075,9 @@
 </tbody>
 </table>
 <p>Under <strong>Edit the SQL</strong> you can replace the schema, the workload (one statement per line, <code>:id</code> becomes a random id) and the deploy.</p>
+</div>
 <h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<div class="pg-text">
 <div class="language-text highlight"><pre><span></span><code>PGlite (PostgreSQL in WebAssembly)        Go engine compiled to WebAssembly
   workload + deploy SQL                     internal/correlation
         |                                          ^
@@ -2053,19 +2089,28 @@
 <li><strong>The engine</strong> is the same <code>internal/correlation</code> package the operator runs, compiled with <code>GOOS=js GOARCH=wasm</code> (about 1 MB compressed) from <code>main</code>. The playground is not tied to a release: it is rebuilt from the <code>main</code> branch on every merge, so it can be a little ahead of the latest release.</li>
 <li><strong>Time is virtual.</strong> The simulation executes the workload as fast as it can and stamps each snapshot as if it were taken every 30 seconds, so a 22-minute scenario takes a few seconds.</li>
 </ul>
+</div>
+<h2 class="pg-cli-heading" hidden="hidden" id="still-doubting-use-help">Still doubting? Use <code>--help</code><a class="headerlink" href="#still-doubting-use-help" title="Permanent link">&para;</a></h2>
+<div class="pg-stage pg-cli-stage" hidden="hidden">
+<div id="pgrr-cli"></div>
+<script src="../assets/playground/playground-cli.js" type="module"></script>
+</div>
 <h2 id="limits">Limits<a class="headerlink" href="#limits" title="Permanent link">&para;</a></h2>
+<div class="pg-text">
 <ul>
 <li><strong>Timings are not production timings.</strong> A browser tab running PostgreSQL in WebAssembly is far slower than a server and its timings are noisier. The playground shows how the engine reasons about a latency series, not what your database will do.</li>
 <li><strong>One database, one process.</strong> There is no replication, connection pooling, I/O contention or autovacuum behaviour of a real cluster.</li>
 <li><strong>No plan capture and no alerting.</strong> The playground covers detection; plan diffs (<code>--capture-plans</code>), alert delivery and deploy-event sources need a real cluster. See <a href="https://joao00001.github.io/pg-regression-radar/latest/getting-started/">Getting Started</a>.</li>
 <li><strong>Browser support.</strong> A current Chrome, Edge, Firefox or Safari (16.4 or later).</li>
 </ul>
+</div>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/">Detection Algorithm</a>: the change-point search and t-test the engine applies.</li>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/collector-internals/">Collector Internals</a>: how cumulative counters become interval samples.</li>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/quickstart-validation/">Quickstart Validation</a>: the same idea against a real cluster.</li>
 </ul>
+</div>
 
 
 
