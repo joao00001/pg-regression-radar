@@ -4,15 +4,22 @@ hide:
   - toc
 ---
 
-# Roadmap
+<div class="pgrr-home pgrr-roadmap" markdown="1">
 
-*What's still open — planned features, known gaps, and operational follow-ups. What's already shipped lives in [CHANGELOG.md](changelog.md) and in each feature's own docs page, not repeated here.*
+<header class="rm-head" markdown="1">
+<h1>Road<em>map</em></h1>
+<p class="rm-lead" markdown="1">What's still open: planned features, known gaps, and operational follow-ups. What's already shipped lives in [CHANGELOG.md](changelog.md) and in each feature's own docs page, not repeated here.</p>
+</header>
 
 <svg class="rm-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><symbol id="rm-i-planned" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol><symbol id="rm-i-proposed" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="3.4 3.4"/><path d="M12 8.5v7M8.5 12h7"/></symbol><symbol id="rm-i-gap" viewBox="0 0 24 24"><path d="M12 3.5 2.8 19.5h18.4L12 3.5z"/><path d="M12 10v4.2M12 17.1v.01"/></symbol><symbol id="rm-i-followup" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M13 8.5l3.5 3.5-3.5 3.5"/></symbol><symbol id="rm-i-deferred" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol></svg>
 
 ## Overview
 
+<div class="rm-overview" markdown="1">
+
 This page tracks only what's *not* done yet: planned features, known robustness gaps, and operational follow-ups that aren't code changes. It is not a running history of delivered work — once an item here ships, it's removed from this page, not reworded as "done"; its details live in [CHANGELOG.md](changelog.md) (what shipped and when) and the relevant feature's own docs page (how it works today).
+
+</div>
 
 <div class="rm-glance" markdown="1">
 <div class="rm-stat"><span class="rm-stat-num" data-rm-count>20</span><span class="rm-stat-label">open items below</span></div>
@@ -368,11 +375,13 @@ Control-group methods (difference-in-differences against comparable queries), co
 
 </div>
 
-**Have an idea?** [Open a feature request](https://github.com/joao00001/pg-regression-radar/issues/new/choose) — dates are not promised, but this page is where accepted ideas land.
-
 ## See also
 
 - [CHANGELOG.md](changelog.md) — what's already shipped, release by release; this page only tracks what's still open.
 - [CI/CD](ci-cd.md) — the workflows referenced by the operational follow-ups above.
 - [Persistence](persistence.md) and [Collector Internals](collector-internals.md) — the two pages with the most detail on the robustness gaps above.
 - [Support Matrix](support-matrix.md) — officially supported PostgreSQL versions and distributions, including real `kind` + CloudNativePG validation coverage (single- and two-cluster) and the remaining `pg_store_plans`-on-CloudNativePG-operand-image follow-up referenced above.
+
+<p class="pgrr-foot" markdown="1">**Have an idea?** [Open a feature request](https://github.com/joao00001/pg-regression-radar/issues/new/choose): dates are not promised, but this page is where accepted ideas land.</p>
+
+</div>

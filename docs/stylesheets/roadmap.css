@@ -1,19 +1,16 @@
 /*
- * Roadmap page (docs/roadmap.md) -- card layout.
+ * Roadmap page (docs/roadmap.md) -- the home page's ruled grid.
  *
- * Loaded only by the unversioned build (mkdocs-unversioned.yml). Everything is
- * scoped under .rm-* classes and built on Material's own custom properties, so
- * it follows the light/dark palettes defined in extra.css. The dense text of
- * each item lives in a native <details>, so the page works with no JavaScript;
- * javascripts/roadmap.js only adds the filter bar, "show more" and "expand all".
+ * Loaded only by the unversioned build (mkdocs-unversioned.yml). The page is a
+ * `.pgrr-home` sheet (home.css): section bands, the two column lines and the
+ * full-width rules come from there. This file only supplies the cells: the
+ * title block, the stats, the initiatives and the items are cells cut by
+ * hairlines, with no floating rounded cards. The dense text of each item lives
+ * in a native <details>, so the page works with no JavaScript; roadmap.js only
+ * adds the filter bar, "show more" and "expand all".
  */
 
 [data-md-color-scheme="default"] {
-  --rm-border: rgba(0, 0, 0, 0.12);
-  --rm-border-strong: rgba(0, 0, 0, 0.28);
-  --rm-card: #ffffff;
-  --rm-card-hover: #fafafa;
-  --rm-soft: rgba(0, 0, 0, 0.045);
   --rm-planned: #1d4ed8;
   --rm-gap: #b45309;
   --rm-proposed: #6d28d9;
@@ -22,11 +19,6 @@
 }
 
 [data-md-color-scheme="slate"] {
-  --rm-border: rgba(255, 255, 255, 0.14);
-  --rm-border-strong: rgba(255, 255, 255, 0.34);
-  --rm-card: #0b0b0b;
-  --rm-card-hover: #111111;
-  --rm-soft: rgba(255, 255, 255, 0.06);
   --rm-planned: #7db0ff;
   --rm-gap: #f5b94a;
   --rm-proposed: #b69cff;
@@ -34,64 +26,158 @@
   --rm-followup: #4fd8c4;
 }
 
-/* ---- At a glance ---- */
+.pgrr-roadmap {
+  --rm-border: var(--h-border);
+  --rm-border-strong: var(--md-default-fg-color--lighter);
+  --rm-soft: color-mix(in srgb, var(--md-default-fg-color) 6%, transparent);
+  --rm-mono: var(--md-code-font-family, ui-monospace, monospace);
+}
+
+/* Cells use the page's own black / white (--h-hero-bg), like the other pages,
+   not the home sheet's grey panels; hover is a faint tint of the text colour. */
+
+/* ---- Title block ---- */
+.md-typeset .pgrr-roadmap .rm-head {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 52px var(--h-pad) 42px;
+  background: transparent;
+}
+
+/* the beams (roadmap.js), thickest to the right, away from the text */
+.md-typeset .rm-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(100deg, transparent 12%, #000 55%);
+  mask-image: linear-gradient(100deg, transparent 12%, #000 55%);
+}
+
+.md-typeset .rm-bg svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.rm-stop-a { stop-color: var(--h-muted); stop-opacity: 0; }
+.rm-stop-b { stop-color: var(--h-accent-solid); }
+.rm-stop-c { stop-color: var(--h-fg); }
+
+.rm-guide {
+  fill: none;
+  stroke: var(--h-border);
+  stroke-width: 1;
+  opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+}
+
+.rm-beam {
+  fill: none;
+  stroke: url(#rm-beam-grad);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+.md-typeset .pgrr-roadmap .rm-head h1 {
+  margin: 0 0 14px;
+  color: var(--h-muted);
+  font-size: clamp(2rem, 1.2rem + 3vw, 2.9rem);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.md-typeset .pgrr-roadmap .rm-head h1 em {
+  color: var(--h-fg);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.md-typeset .rm-lead {
+  max-width: 40rem;
+  margin: 0;
+  color: var(--h-muted);
+  font-size: 0.74rem;
+  line-height: 1.7;
+}
+
+/* ---- Overview ---- */
+.md-typeset .rm-overview {
+  padding: 22px var(--h-pad) 24px;
+  background: var(--h-hero-bg);
+}
+
+.md-typeset .rm-overview p {
+  max-width: 52rem;
+  margin: 0;
+  color: var(--h-muted);
+  font-size: 0.72rem;
+  line-height: 1.75;
+}
+
+/* ---- At a glance: touching cells ---- */
 .md-typeset .rm-glance {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: 0.75rem;
-  margin: 1.25rem 0 0.75rem;
+  gap: 1px;
+  margin: 0;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-border);
 }
 
 .md-typeset .rm-stat {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding: 1rem 1.15rem;
-  border: 1px solid var(--rm-border);
-  border-radius: 14px;
-  background: var(--rm-card);
+  gap: 0.3rem;
+  padding: 22px var(--h-pad) 22px;
+  background: var(--h-hero-bg);
 }
 
 .md-typeset .rm-stat-num {
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  color: var(--h-fg);
+  font-size: 2.1rem;
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 .md-typeset .rm-stat-num small {
-  font-size: 1rem;
-  font-weight: 500;
-  color: var(--md-default-fg-color--lighter);
+  color: var(--h-muted);
+  font-size: 0.95rem;
+  font-weight: 400;
 }
 
 .md-typeset .rm-stat-label {
-  font-size: 0.78rem;
-  color: var(--md-default-fg-color--lighter);
+  color: var(--h-muted);
+  font: 600 0.54rem/1.5 var(--rm-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .md-typeset .rm-steps {
   display: flex;
-  gap: 4px;
-  margin-top: 0.6rem;
+  gap: 3px;
+  margin-top: 0.7rem;
 }
 
 .md-typeset .rm-steps i {
   flex: 1;
-  height: 6px;
-  border-radius: 3px;
+  height: 4px;
   background: var(--rm-followup);
 }
 
 .md-typeset .rm-steps i.rm-step-open {
-  background: var(--rm-soft);
+  background: transparent;
   box-shadow: inset 0 0 0 1px var(--rm-border-strong);
 }
 
 /*
  * <details> reset. Material styles every `.md-typeset details` as an admonition
  * (border, shadow, full-width summary with a leading icon and a chevron), which
- * is not what these cards want, so it is switched off before the pill look is
+ * is not what these cells want, so it is switched off before the button look is
  * applied.
  */
 .md-typeset .rm-item details,
@@ -107,25 +193,25 @@
   overflow: visible;
 }
 
+/* the small ruled buttons, like the home chart's "Inject deploy" */
 .md-typeset .rm-item details > summary,
 .md-typeset details.rm-notes > summary,
 .md-typeset .rm-btn {
   position: static;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
   width: auto;
   min-height: 0;
   margin: 0;
-  padding: 0.28rem 0.8rem;
-  border: 1px solid var(--rm-border);
-  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--h-border);
+  border-radius: 6px;
   background: transparent;
-  color: var(--md-default-fg-color--light);
-  font: inherit;
-  font-size: 0.74rem;
-  font-weight: 600;
-  line-height: 1.4;
+  color: var(--h-muted);
+  font: 600 0.56rem/1.4 var(--rm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
   list-style: none;
   transition: background-color 0.15s, border-color 0.15s, color 0.15s;
@@ -156,6 +242,7 @@
   -webkit-mask: none;
   mask: none;
   transform: none;
+  color: var(--h-accent);
   font-weight: 500;
 }
 
@@ -169,7 +256,7 @@
 .md-typeset .rm-btn:hover {
   background: var(--rm-soft);
   border-color: var(--rm-border-strong);
-  color: var(--md-default-fg-color);
+  color: var(--h-fg);
 }
 
 .md-typeset .rm-item details > summary:focus-visible,
@@ -177,138 +264,158 @@
 .md-typeset .rm-btn:focus-visible,
 .md-typeset .rm-chip:focus-visible,
 .md-typeset .rm-feature:focus-visible {
-  outline: 2px solid var(--md-typeset-a-color);
-  outline-offset: 2px;
+  outline: 2px solid var(--h-accent);
+  outline-offset: -2px;
 }
 
 .md-typeset details > summary .rm-less,
 .md-typeset details[open] > summary .rm-more { display: none; }
 .md-typeset details[open] > summary .rm-less { display: inline; }
 
-.md-typeset details.rm-notes { margin: 0.5rem 0 1rem; }
-.md-typeset details.rm-notes[open] > summary { margin-bottom: 0.75rem; }
-.md-typeset details.rm-notes > :not(summary) { max-width: 60rem; }
+/* "How to read this page": a ruled cell under the stats */
+.md-typeset details.rm-notes {
+  padding: 14px var(--h-pad) 16px;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
+}
 
-/* ---- Key initiatives ---- */
+.md-typeset details.rm-notes[open] > summary { margin-bottom: 0.8rem; }
+
+.md-typeset details.rm-notes > :not(summary) {
+  max-width: 52rem;
+  color: var(--h-muted);
+  font-size: 0.7rem;
+  line-height: 1.75;
+}
+
+.md-typeset details.rm-notes h3 {
+  margin: 1.2rem 0 0.4rem;
+  color: var(--h-fg);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* ---- Key initiatives: touching cells ---- */
 .md-typeset .rm-features {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
-  gap: 1rem;
-  margin: 1rem 0 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1px;
+  margin: 0;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-border);
 }
 
 .md-typeset a.rm-feature {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 1.3rem 1.3rem 1.1rem;
-  border: 1px solid var(--rm-border);
-  border-radius: 18px;
-  background: var(--rm-card);
-  color: var(--md-default-fg-color);
+  padding: 22px var(--h-pad) 20px;
+  background: var(--h-hero-bg);
+  color: var(--h-fg);
   text-decoration: none;
-  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+  transition: background-color 0.15s;
 }
 
 .md-typeset a.rm-feature:hover {
-  transform: translateY(-2px);
-  border-color: var(--rm-border-strong);
-  background: var(--rm-card-hover);
+  background: color-mix(in srgb, var(--h-fg) 4%, var(--h-hero-bg));
 }
 
 .md-typeset .rm-kicker {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  color: var(--h-accent);
+  font: 600 0.54rem/1 var(--rm-mono);
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--md-default-fg-color--lighter);
 }
 
 .md-typeset .rm-feature-title {
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1.25;
   letter-spacing: -0.01em;
 }
 
 .md-typeset .rm-feature-desc {
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: var(--md-default-fg-color--light);
+  color: var(--h-muted);
+  font-size: 0.68rem;
+  line-height: 1.65;
 }
 
 .md-typeset .rm-fields {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem 1.4rem;
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
   padding-top: 0.8rem;
-  border-top: 1px solid var(--rm-border);
-  font-size: 0.8rem;
+  border-top: 1px solid var(--h-border);
+  font-size: 0.7rem;
 }
 
-.md-typeset .rm-fields span { display: flex; flex-direction: column; gap: 0.1rem; white-space: nowrap; }
+.md-typeset .rm-fields span { display: flex; flex-direction: column; gap: 0.15rem; white-space: nowrap; }
 
 .md-typeset .rm-fields b {
-  font-size: 0.64rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  color: var(--h-muted);
+  font: 600 0.5rem/1 var(--rm-mono);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--md-default-fg-color--lighter);
 }
 
 .md-typeset .rm-cta {
   margin-top: auto;
-  padding-top: 0.4rem;
-  font-size: 0.78rem;
+  padding-top: 0.5rem;
+  color: var(--h-accent);
+  font-size: 0.68rem;
   font-weight: 600;
-  color: var(--md-typeset-a-color);
 }
 
-/* ---- Toolbar (built by roadmap.js) ---- */
+/* ---- Toolbar (built by roadmap.js): a ruled strip ---- */
 .md-typeset .rm-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  margin: 1rem 0;
+  margin: 0;
+  padding: 14px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
 }
 
 .md-typeset .rm-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 
 .md-typeset .rm-chip {
-  padding: 0.3rem 0.85rem;
-  border: 1px solid var(--rm-border);
-  border-radius: 999px;
+  padding: 0.32rem 0.75rem;
+  border: 1px solid var(--h-border);
+  border-radius: 6px;
   background: transparent;
-  color: var(--md-default-fg-color--light);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
+  color: var(--h-muted);
+  font: 600 0.56rem/1.4 var(--rm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: background-color 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.md-typeset .rm-chip:hover { background: var(--rm-soft); }
+.md-typeset .rm-chip:hover { background: var(--rm-soft); color: var(--h-fg); }
 
 .md-typeset .rm-chip[aria-pressed="true"] {
-  background: var(--md-default-fg-color);
-  border-color: var(--md-default-fg-color);
-  color: var(--md-default-bg-color);
+  background: var(--h-fg);
+  border-color: var(--h-fg);
+  color: var(--h-hero-bg);
 }
 
-.md-typeset .rm-chip small { opacity: 0.65; font-weight: 500; margin-left: 0.25rem; }
+.md-typeset .rm-chip small { opacity: 0.6; font-weight: 500; margin-left: 0.3rem; font-size: inherit; }
 .md-typeset .rm-toolbar .rm-btn { margin-left: auto; }
 
 .md-typeset .rm-area-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.28rem 0.5rem 0.28rem 0.8rem;
+  padding: 0.28rem 0.4rem 0.28rem 0.75rem;
   border: 1px dashed var(--rm-border-strong);
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 600;
+  border-radius: 6px;
+  color: var(--h-fg);
+  font: 600 0.56rem/1.4 var(--rm-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .md-typeset .rm-area-pill button {
@@ -320,26 +427,40 @@
   padding: 0 0.3rem;
 }
 
-/* ---- Item cards ---- */
+.md-typeset .rm-count {
+  margin: 0;
+  padding: 10px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
+  color: var(--h-muted);
+  font: 500 0.54rem/1.4 var(--rm-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ---- Items: cells cut by hairlines ----
+   Each cell draws its own right and bottom rule (inset), so a last row that
+   is not full leaves clean space instead of a grey fill. */
 .md-typeset .rm-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: 0;
   align-items: stretch;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
 }
 
 .md-typeset .rm-item {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 1.1rem 1.2rem 1rem;
-  border: 1px solid var(--rm-border);
-  border-radius: 16px;
-  background: var(--rm-card);
-  transition: border-color 0.18s ease, background-color 0.18s ease;
+  gap: 0.4rem;
+  padding: 20px var(--h-pad) 18px;
+  background: var(--h-hero-bg);
+  box-shadow: inset -1px 0 0 var(--h-border), inset 0 -1px 0 var(--h-border);
+  transition: background-color 0.15s;
 }
 
-.md-typeset .rm-item:hover { border-color: var(--rm-border-strong); }
+.md-typeset .rm-item:hover { background: color-mix(in srgb, var(--h-fg) 4%, var(--h-hero-bg)); }
 .md-typeset .rm-item:has(> details[open]) { grid-column: 1 / -1; }
 .md-typeset .rm-item[hidden] { display: none; }
 
@@ -350,8 +471,8 @@
 .md-typeset .rm-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
 
 .md-typeset .rm-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -374,21 +495,23 @@
 
 .md-typeset .rm-quarter {
   margin-left: auto;
-  font-size: 0.72rem;
-  font-weight: 600;
+  color: var(--h-muted);
+  font: 600 0.54rem/1 var(--rm-mono);
+  letter-spacing: 0.1em;
   font-variant-numeric: tabular-nums;
-  color: var(--md-default-fg-color--lighter);
 }
 
 .md-typeset .rm-area {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--md-default-fg-color--lighter);
+  color: var(--h-muted);
+  font: 600 0.54rem/1 var(--rm-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .md-typeset .rm-title {
   margin-top: 0.3rem;
-  font-size: 0.98rem;
+  color: var(--h-fg);
+  font-size: 0.88rem;
   font-weight: 700;
   line-height: 1.35;
   letter-spacing: -0.005em;
@@ -397,44 +520,50 @@
 .md-typeset .rm-title code { font-size: 0.85em; }
 
 .md-typeset .rm-summary {
-  font-size: 0.82rem;
-  line-height: 1.55;
-  color: var(--md-default-fg-color--light);
+  color: var(--h-muted);
+  font-size: 0.68rem;
+  line-height: 1.65;
 }
 
-.md-typeset .rm-item details { margin-top: auto; padding-top: 0.55rem; }
+.md-typeset .rm-item details { margin-top: auto; padding-top: 0.7rem; }
 
-.md-typeset .rm-item details[open] > summary { margin-bottom: 0.7rem; }
+.md-typeset .rm-item details[open] > summary { margin-bottom: 0.8rem; }
 
 .md-typeset .rm-item details > :not(summary) {
-  max-width: 62rem;
-  font-size: 0.8rem;
-  line-height: 1.65;
-  color: var(--md-default-fg-color--light);
+  max-width: 56rem;
+  color: var(--h-muted);
+  font-size: 0.68rem;
+  line-height: 1.75;
 }
 
 .md-typeset .rm-item details[open] > summary + * {
   margin-top: 0;
   padding-top: 0.85rem;
-  border-top: 1px solid var(--rm-border);
+  border-top: 1px solid var(--h-border);
 }
 
-.md-typeset .rm-more-wrap { display: flex; justify-content: center; margin: 1.25rem 0 0.5rem; }
-.md-typeset .rm-count { font-size: 0.76rem; color: var(--md-default-fg-color--lighter); margin: 0.75rem 0 0; }
+.md-typeset .rm-more-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 16px var(--h-pad);
+  background: var(--h-hero-bg);
+}
+
+.md-typeset .rm-more-wrap[hidden] { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .md-typeset a.rm-feature,
   .md-typeset .rm-item,
   .md-typeset .rm-chip,
   .md-typeset .rm-btn { transition: none; }
-  .md-typeset a.rm-feature:hover { transform: none; }
 }
 
 /* status icon inside a filter chip */
 .md-typeset .rm-chip .rm-icon {
-  width: 14px;
-  height: 14px;
-  margin: -2px 0.35rem 0 -0.1rem;
+  width: 12px;
+  height: 12px;
+  margin: -2px 0.4rem 0 -0.1rem;
   color: var(--rm-chip-c, currentColor);
 }
 .md-typeset .rm-chip[data-status="planned"] { --rm-chip-c: var(--rm-planned); }
@@ -443,3 +572,124 @@
 .md-typeset .rm-chip[data-status="followup"] { --rm-chip-c: var(--rm-followup); }
 .md-typeset .rm-chip[data-status="deferred"] { --rm-chip-c: var(--rm-deferred); }
 .md-typeset .rm-chip[aria-pressed="true"] .rm-icon { color: inherit; }
+
+/* ---- Motion (roadmap.js) ----
+   Reveal on scroll, the filter's leave and enter, text that settles out of
+   noise, and a small turn of the status icon on hover. Everything here is off
+   under prefers-reduced-motion, and the reveal classes are only added by the
+   script, so with no JavaScript the page is simply visible. */
+.md-typeset .rm-reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  filter: blur(5px);
+  transition:
+    opacity 0.55s ease var(--d, 0ms),
+    transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0ms),
+    filter 0.55s ease var(--d, 0ms),
+    background-color 0.15s;
+  will-change: opacity, transform, filter;
+}
+
+.md-typeset .rm-reveal.is-in {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+@keyframes rm-enter {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+.md-typeset .rm-item.rm-enter {
+  animation: rm-enter 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+.md-typeset .rm-item.rm-leave {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.985);
+  filter: blur(5px);
+  transition:
+    opacity 0.2s ease calc(var(--i, 0) * 25ms),
+    transform 0.2s ease calc(var(--i, 0) * 25ms),
+    filter 0.2s ease calc(var(--i, 0) * 25ms);
+}
+
+/* text settling out of noise: a hair of blur that clears with it */
+.md-typeset .rm-scr {
+  filter: blur(0.6px);
+  font-variant-ligatures: none;
+}
+
+.md-typeset .rm-icon {
+  transform-origin: 50% 50%;
+}
+
+@keyframes rm-turn { to { transform: rotate(360deg); } }
+@keyframes rm-wiggle {
+  20% { transform: rotate(-12deg); }
+  50% { transform: rotate(10deg); }
+  80% { transform: rotate(-5deg); }
+}
+@keyframes rm-nudge {
+  40% { transform: translateX(3px); }
+  70% { transform: translateX(-1px); }
+}
+@keyframes rm-pulse {
+  40% { transform: scale(1.25); }
+}
+
+.md-typeset .rm-item:hover .rm-status .rm-icon { animation-duration: 0.7s; animation-timing-function: cubic-bezier(0.3, 0.7, 0.2, 1); }
+.md-typeset .rm-item[data-status="planned"]:hover .rm-icon { animation-name: rm-turn; }
+.md-typeset .rm-item[data-status="proposed"]:hover .rm-icon { animation-name: rm-turn; }
+.md-typeset .rm-item[data-status="gap"]:hover .rm-icon { animation-name: rm-wiggle; }
+.md-typeset .rm-item[data-status="followup"]:hover .rm-icon { animation-name: rm-nudge; }
+.md-typeset .rm-item[data-status="deferred"]:hover .rm-icon { animation-name: rm-pulse; }
+
+@media (prefers-reduced-motion: reduce) {
+  .md-typeset .rm-reveal,
+  .md-typeset .rm-reveal.is-in,
+  .md-typeset .rm-item.rm-enter,
+  .md-typeset .rm-item.rm-leave {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    animation: none;
+    transition: none;
+  }
+
+  .md-typeset .rm-item:hover .rm-icon { animation: none; }
+}
+
+/* "Read more": the + turns into the - */
+@keyframes rm-sign {
+  from { transform: rotate(-90deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.md-typeset .rm-item details[open] > summary::after,
+.md-typeset details.rm-notes[open] > summary::after {
+  display: inline-block;
+  animation: rm-sign 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.md-typeset .rm-item .rm-body { will-change: opacity, transform; }
+
+@media (prefers-reduced-motion: reduce) {
+  .md-typeset .rm-item details[open] > summary::after,
+  .md-typeset details.rm-notes[open] > summary::after { animation: none; }
+}
+
+/* The grid's traces (roadmap.js): small red pulses that run along the
+   hairlines between the item cells. */
+.md-typeset .rm-list { position: relative; }
+
+.md-typeset .rm-trace {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
