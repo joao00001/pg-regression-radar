@@ -663,3 +663,159 @@
   /* beats the theme's per-type border colors */
   border-color: var(--pgrr-adm-border);
 }
+
+/* ---- Numbered lists as steps ----
+   An ordered list becomes a sequence of steps: a numbered circle per item,
+   joined by a thin line that stops short of the next circle and fades out
+   after the last item. Nested ordered lists and footnotes keep plain
+   numbering. The number comes from the list's own counter, so `start="3"`
+   and lists continued by Markdown keep working. */
+.md-typeset ol {
+  --pgrr-step-bg: #242525;
+  --pgrr-step-fg: #f4f6f4;
+  --pgrr-step-line: #242525;
+
+  margin: 1.25em 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-md-color-scheme="default"] .md-typeset ol {
+  --pgrr-step-bg: #eceeee;
+  --pgrr-step-fg: #2c3030;
+  --pgrr-step-line: #dfe2e2;
+}
+
+.md-typeset ol > li {
+  position: relative;
+  margin: 0;
+  padding: 0 0 28px 44px;
+}
+
+.md-typeset ol > li:last-child {
+  padding-bottom: 8px;
+}
+
+.md-typeset ol > li::before {
+  content: counter(list-item);
+  position: absolute;
+  top: -1px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--pgrr-step-bg);
+  color: var(--pgrr-step-fg);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.md-typeset ol > li::after {
+  content: "";
+  position: absolute;
+  top: 36px;
+  bottom: 8px;
+  left: 13px;
+  width: 1px;
+  background-color: var(--pgrr-step-line);
+}
+
+/* After the last item the line fades out instead of ending. */
+.md-typeset ol > li:last-child::after {
+  bottom: -20px;
+  background: linear-gradient(to bottom, var(--pgrr-step-line), transparent);
+}
+
+.md-typeset ol > li > :first-child {
+  margin-top: 0;
+}
+
+.md-typeset ol > li > :last-child {
+  margin-bottom: 0;
+}
+
+/* Nested lists and footnotes: ordinary numbering. */
+.md-typeset ol ol,
+.md-typeset .footnote ol {
+  margin: 0.5em 0 0.5em 1.4em;
+  list-style: decimal;
+}
+
+.md-typeset ol ol > li,
+.md-typeset .footnote ol > li {
+  padding: 0;
+  margin-bottom: 0.4em;
+}
+
+.md-typeset ol ol > li::before,
+.md-typeset ol ol > li::after,
+.md-typeset .footnote ol > li::before,
+.md-typeset .footnote ol > li::after {
+  content: none;
+}
+
+/* ---- Tables: the cards' look ----
+   A rounded, thinly bordered table with a tinted header row and soft row
+   dividers, in both color schemes. */
+.md-typeset table:not([class]) {
+  --pgrr-tbl-border: #3a3d3d;
+  --pgrr-tbl-head: #1d1f1f;
+  --pgrr-tbl-line: #2a2c2c;
+  --pgrr-tbl-hover: rgba(255, 255, 255, 0.035);
+
+  border: 1px solid var(--pgrr-tbl-border);
+  border-radius: 16px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: transparent;
+  box-shadow: none;
+  font-size: 0.7rem;
+}
+
+[data-md-color-scheme="default"] .md-typeset table:not([class]) {
+  --pgrr-tbl-border: #d4d8d8;
+  --pgrr-tbl-head: #f1f2f2;
+  --pgrr-tbl-line: #e6e8e8;
+  --pgrr-tbl-hover: rgba(0, 0, 0, 0.03);
+}
+
+.md-typeset table:not([class]) th {
+  padding: 0.75em 1.1em;
+  border-bottom: 1px solid var(--pgrr-tbl-border);
+  background-color: var(--pgrr-tbl-head);
+  font-weight: 600;
+}
+
+.md-typeset table:not([class]) td {
+  padding: 0.75em 1.1em;
+  border-top: 1px solid var(--pgrr-tbl-line);
+}
+
+.md-typeset table:not([class]) tbody tr:first-child td {
+  border-top: 0;
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: var(--pgrr-tbl-hover);
+  box-shadow: none;
+}
+
+.md-typeset table:not([class]) thead tr:first-child th:first-child {
+  border-top-left-radius: 15px;
+}
+
+.md-typeset table:not([class]) thead tr:first-child th:last-child {
+  border-top-right-radius: 15px;
+}
+
+.md-typeset table:not([class]) tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 15px;
+}
+
+.md-typeset table:not([class]) tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 15px;
+}
