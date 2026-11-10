@@ -1125,3 +1125,11 @@
 .md-search-result__item {
   box-shadow: 0 -1px 0 0 var(--pgrr-ui-line);
 }
+
+/* Header logo (the pixel mark): a little larger than Material's default 1.2rem
+   so the 5x5 matrix stays readable. */
+.md-header__button.md-logo svg,
+.md-header__button.md-logo img {
+  width: 1.6rem;
+  height: 1.6rem;
+}

@@ -76,7 +76,7 @@
       if (r.width < 1 || r.height < 1) return;
       rects.push([r.left - base.left, r.top - base.top, r.right - base.left, r.bottom - base.top]);
     }
-    var nodes = cell.querySelectorAll("h1, .pgrr-lead, .md-button, .pgrr-hero-cap");
+    var nodes = cell.querySelectorAll("h1, .pgrr-lead, .md-button, .pgrr-hero-cap, .pgrr-mark");
     for (var k = 0; k < nodes.length; k++) {
       var n = nodes[k];
       if (n.tagName === "H1" || n.classList.contains("pgrr-lead") || n.classList.contains("pgrr-hero-cap")) {
