@@ -61,6 +61,15 @@ spec:
               PostgresWatchReconciler, which translates it into a
               internal/collector.Config and internal/correlation.Config pair.
             properties:
+              adjustAutocorrelation:
+                description: |-
+                  adjustAutocorrelation widens Welch's t-test for serial correlation
+                  between consecutive scrapes by shrinking each segment to its effective
+                  sample size, so correlated noise (a cache warming, a batch job) is less
+                  often mistaken for a regression. It can only raise p-values. Off by
+                  default. See
+                  docs/detection-algorithm.md#controlling-false-positives-across-many-queries.
+                type: boolean
               alerting:
                 description: |-
                   alerting configures how detected regressions are reported and
@@ -258,6 +267,23 @@ spec:
                 format: int64
                 minimum: 1
                 type: integer
+              multipleTesting:
+                default: none
+                description: |-
+                  multipleTesting controls the false-discovery rate across the queries
+                  of one analysis pass. A pass judges up to the top 500 queries, so even
+                  with every individual test at pValueThreshold some unchanged queries
+                  are flagged by chance. "none" (the default) judges each query on its own
+                  p-value, as before. "bh" applies the Benjamini-Hochberg step-up at level
+                  pValueThreshold and "by" the stricter Benjamini-Yekutieli step-up, which
+                  holds under any dependence between queries. Both only remove detections,
+                  at a cost in sensitivity. See
+                  docs/detection-algorithm.md#controlling-false-positives-across-many-queries.
+                enum:
+                - none
+                - bh
+                - by
+                type: string
               otlpExport:
                 description: |-
                   otlpExport optionally publishes every detected regression as an

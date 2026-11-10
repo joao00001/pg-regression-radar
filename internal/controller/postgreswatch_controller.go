@@ -594,6 +594,13 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	}
 	latencyThreshold := parseFloatOr(watch.Spec.LatencyChangeThreshold, 0.20)
 	pValueThreshold := parseFloatOr(watch.Spec.PValueThreshold, 0.05)
+	multipleTesting, err := correlation.ParseMultipleTesting(watch.Spec.MultipleTesting)
+	if err != nil {
+		// The CRD's enum rejects anything else, so this only happens for an
+		// object written around the API server; keep the default.
+		r.Logger.Warn("ignoring unknown spec.multipleTesting", "watch", watch.Name, "value", watch.Spec.MultipleTesting, "err", err)
+		multipleTesting = correlation.MultipleTestingNone
+	}
 
 	periodicEnabled := watch.Spec.PeriodicDetection != nil && watch.Spec.PeriodicDetection.Enabled
 	periodicWindowMinutes := 60
@@ -614,6 +621,8 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		MinExecutions:          minExecutions,
 		LatencyChangeThreshold: latencyThreshold,
 		PValueThreshold:        pValueThreshold,
+		MultipleTesting:        multipleTesting,
+		AutocorrelationAdjust:  watch.Spec.AdjustAutocorrelation,
 		PeriodicWindowMinutes:  periodicWindowMinutes,
 	}, sampleSrc, r.Logger)
 
