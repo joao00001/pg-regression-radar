@@ -1,5 +1,5 @@
 /*
- * Home page, "How it works": a small pulse of light travels along the
+ * Home page, "How it works": a soft beam of light travels along the
  * architecture diagram's edges in the order the data really flows
  * (sources -> collector/ingester -> correlation engine -> alerting/status),
  * and each node lights up briefly as the pulse reaches it. Every second loop
@@ -39,50 +39,86 @@
   var hitsMain = [[0.0, [0, 1]], [0.9, [2, 3]], [2.0, [5], true], [3.35, [6, 7]]];
   var hitsAlt = [[0.9, [4]], [2.0, [5], true], [3.35, [6, 7]]];
 
+  var defs = svg.querySelector("defs");
   var anchor = edges[edges.length - 1];
-  var pulses = [];
+  var icons = svg.querySelectorAll(".pgrr-ic");
+  var NODE_ICON = { 0: 0, 1: 1, 2: 2, 3: 3, 5: 4, 6: 5, 7: 6 };
+
+  // Each beam is a soft gradient (transparent -> light -> transparent) used as the
+  // stroke of its edge; moving the gradient's two end points moves the light.
+  var beams = [];
   for (var i = 0; i < edges.length; i++) {
-    var len = edges[i].getTotalLength();
-    var accent = edges[i].classList.contains("pgrr-edge--accent");
-    var tail = document.createElementNS(NS, "path");
-    var head = document.createElementNS(NS, "path");
-    [tail, head].forEach(function (p, k) {
-      p.setAttribute("d", edges[i].getAttribute("d"));
-      p.setAttribute("class", "pgrr-pulse " + (k ? "pgrr-pulse--head" : "pgrr-pulse--tail") + (accent ? " pgrr-pulse--accent" : ""));
-      p.setAttribute("aria-hidden", "true");
-      p.style.strokeDasharray = "0 " + (len + 200);
+    var path = edges[i];
+    var len = path.getTotalLength();
+    var a0 = path.getPointAtLength(0), a1 = path.getPointAtLength(len);
+    var accent = path.classList.contains("pgrr-edge--accent");
+    var grad = document.createElementNS(NS, "linearGradient");
+    grad.setAttribute("id", "pgrr-beam-" + i);
+    grad.setAttribute("gradientUnits", "userSpaceOnUse");
+    var stops = [[0, 0], [0.7, 1], [1, 0]];
+    stops.forEach(function (st) {
+      var el = document.createElementNS(NS, "stop");
+      el.setAttribute("offset", st[0]);
+      el.setAttribute("class", "pgrr-beam-stop" + (accent ? " pgrr-beam-stop--accent" : ""));
+      el.setAttribute("stop-opacity", st[1]);
+      grad.appendChild(el);
     });
-    anchor.parentNode.insertBefore(tail, anchor.nextSibling);
-    anchor.parentNode.insertBefore(head, tail.nextSibling);
-    pulses.push({ tail: tail, head: head, len: len });
+    defs.appendChild(grad);
+    var glow = document.createElementNS(NS, "path");
+    var core = document.createElementNS(NS, "path");
+    [glow, core].forEach(function (el, k) {
+      el.setAttribute("d", path.getAttribute("d"));
+      el.setAttribute("class", "pgrr-beam " + (k ? "pgrr-beam--core" : "pgrr-beam--glow"));
+      el.setAttribute("stroke", "url(#pgrr-beam-" + i + ")");
+      el.setAttribute("aria-hidden", "true");
+      el.style.opacity = "0";
+      anchor.parentNode.insertBefore(el, anchor.nextSibling);
+    });
+    var dx = a1.x - a0.x, dy = a1.y - a0.y, chord = Math.sqrt(dx * dx + dy * dy) || 1;
+    beams.push({ grad: grad, glow: glow, core: core, x: a0.x, y: a0.y, ux: dx / chord, uy: dy / chord, chord: chord, span: Math.max(70, chord * 0.5) });
   }
 
-  function place(p, prog) {
-    // a dash of length `d` whose leading edge sits at prog * (len + d)
-    function set(el, d) {
-      if (prog <= 0 || prog >= 1) { el.style.strokeDasharray = "0 " + (p.len + 200); return; }
-      var h = prog * (p.len + d);
-      el.style.strokeDasharray = d + " " + (p.len + 200);
-      el.style.strokeDashoffset = String(d - h);
-    }
-    set(p.tail, 70);
-    set(p.head, 16);
+  function place(b, prog) {
+    if (prog <= 0 || prog >= 1) { b.glow.style.opacity = b.core.style.opacity = "0"; return; }
+    var head = prog * (b.chord + b.span * 0.3);
+    var tail = head - b.span;
+    b.grad.setAttribute("x1", b.x + b.ux * tail);
+    b.grad.setAttribute("y1", b.y + b.uy * tail);
+    b.grad.setAttribute("x2", b.x + b.ux * head);
+    b.grad.setAttribute("y2", b.y + b.uy * head);
+    // fade the whole beam in and out near the ends so it never pops
+    var edge = Math.min(1, prog / 0.12, (1 - prog) / 0.12);
+    b.core.style.opacity = String(edge);
+    b.glow.style.opacity = String(edge * 0.35);
   }
 
   function ease(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
 
   function hit(n, strong) {
     var el = nodes[n];
+    var ic = icons[NODE_ICON[n]];
     el.classList.remove("pgrr-hit");
+    if (ic) ic.classList.remove("pgrr-hit");
     void el.getBoundingClientRect(); // restart the transition
     el.classList.add("pgrr-hit");
-    setTimeout(function () { el.classList.remove("pgrr-hit"); }, 120);
+    if (ic) ic.classList.add("pgrr-hit");
+    setTimeout(function () {
+      el.classList.remove("pgrr-hit");
+      if (ic) ic.classList.remove("pgrr-hit");
+    }, 140);
     if (strong) {
-      var ring = el.cloneNode(false);
-      ring.setAttribute("class", "pgrr-ring");
-      ring.setAttribute("aria-hidden", "true");
-      el.parentNode.insertBefore(ring, el.nextSibling);
-      setTimeout(function () { ring.remove(); }, 1300);
+      // a short light runs once around the engine's border while it correlates
+      var g = document.createElementNS(NS, "g");
+      g.setAttribute("class", "pgrr-bbeam");
+      g.setAttribute("aria-hidden", "true");
+      [0, 1].forEach(function (k) {
+        var r = el.cloneNode(false);
+        r.setAttribute("class", "pgrr-bbeam-rect " + (k ? "pgrr-bbeam-rect--core" : "pgrr-bbeam-rect--glow"));
+        r.setAttribute("pathLength", "100");
+        g.appendChild(r);
+      });
+      el.parentNode.insertBefore(g, el.nextSibling);
+      setTimeout(function () { g.remove(); }, 1900);
     }
   }
 
@@ -97,12 +133,12 @@
     var odd = cycle % 2 === 1;
     var steps = odd ? alt : main;
 
-    for (var q = 0; q < pulses.length; q++) place(pulses[q], 0);
+    for (var q = 0; q < beams.length; q++) place(beams[q], 0);
     for (var s = 0; s < steps.length; s++) {
       var st = steps[s];
       if (t >= st.from && t <= st.to) {
         var prog = ease((t - st.to + (st.to - st.from)) / (st.to - st.from));
-        for (var k = 0; k < st.e.length; k++) place(pulses[st.e[k]], prog);
+        for (var k = 0; k < st.e.length; k++) place(beams[st.e[k]], prog);
       }
     }
 
@@ -124,7 +160,7 @@
   }
   function stop() {
     running = false;
-    for (var q = 0; q < pulses.length; q++) place(pulses[q], 0);
+    for (var q = 0; q < beams.length; q++) place(beams[q], 0);
   }
 
   if ("IntersectionObserver" in window) {
