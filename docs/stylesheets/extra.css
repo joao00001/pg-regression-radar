@@ -13,6 +13,40 @@
  * not by fighting its compiled CSS with !important overrides.
  */
 
+/* ---- Theme color: red ----
+   The site's accent comes from these tokens instead of a fixed color: links
+   in the text, the home page's highlights, the diagram's engine, the table of
+   contents' dot and the "Back to top" button. Statuses and callout types keep
+   their own colors (the roadmap's "proposed", the "example" callout, ...). */
+[data-md-color-scheme="slate"] {
+  --pgrr-accent: #ff7b86;
+  --pgrr-accent-hover: #ffa3ab;
+  --pgrr-accent-solid: #dc2626;
+  --pgrr-accent-solid-hover: #ef4444;
+  --pgrr-accent-bg: #2a1114;
+  --pgrr-accent-border: #86262f;
+  --pgrr-accent-glow: rgba(239, 68, 68, 0.2);
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-accent: #b91c1c;
+  --pgrr-accent-hover: #7f1d1d;
+  --pgrr-accent-solid: #dc2626;
+  --pgrr-accent-solid-hover: #b91c1c;
+  --pgrr-accent-bg: #fff0f0;
+  --pgrr-accent-border: #f3b4b4;
+  --pgrr-accent-glow: rgba(220, 38, 38, 0.12);
+}
+
+/* Links and hover colors follow the theme color. Material sets them per
+   palette (`[data-md-color-scheme=slate][data-md-color-primary=indigo]`), so
+   this needs the same two attributes to win. */
+[data-md-color-scheme][data-md-color-primary],
+[data-md-color-scheme][data-md-color-accent] {
+  --md-typeset-a-color: var(--pgrr-accent);
+  --md-accent-fg-color: var(--pgrr-accent-hover);
+}
+
 /* ---- Dark mode: true black ---- */
 [data-md-color-scheme="slate"] {
   --md-default-bg-color: #000000;
@@ -26,7 +60,6 @@
   --md-default-fg-color--lightest: #4d4d4d;
 
   --md-typeset-color: #e8e8e8;
-  --md-typeset-a-color: #8ab4ff;
 
   --md-code-bg-color: #0d0d0d;
   --md-code-fg-color: #d8d8d8;
@@ -56,7 +89,6 @@
   --md-default-fg-color--lightest: #cfcfcf;
 
   --md-typeset-color: #1a1a1a;
-  --md-typeset-a-color: #2451c9;
 
   --md-code-bg-color: #f5f5f5;
   --md-code-fg-color: #262626;
@@ -173,18 +205,17 @@
   color: var(--md-default-fg-color--lighter);
 }
 
-/* ---- "Back to top" button: always purple, not just on hover ----
+/* ---- "Back to top" button: always in the theme color, not just on hover ----
    Material only colors it on :hover (background-color:
-   var(--md-accent-fg-color)); this repo's accent is indigo, whose
-   accent-fg is blue-leaning (#526cfe), so a dedicated purple is used here
-   instead of the theme accent, applied unconditionally. */
+   var(--md-accent-fg-color)), and its accent is indigo, so the theme color
+   is used here instead, applied unconditionally. */
 .md-top {
-  background-color: #7c4dff;
+  background-color: var(--pgrr-accent-solid);
   color: #ffffff;
 }
 
 .md-top:hover {
-  background-color: #6a3df0;
+  background-color: var(--pgrr-accent-solid-hover);
   color: #ffffff;
 }
 
@@ -901,11 +932,7 @@
    Without the script (or with reduced motion) the active entry is simply
    bold, and the dot jumps or is absent. */
 .md-sidebar--secondary .md-nav--secondary {
-  --pgrr-toc-dot: #b69cff;
-}
-
-[data-md-color-scheme="default"] .md-sidebar--secondary .md-nav--secondary {
-  --pgrr-toc-dot: #6d28d9;
+  --pgrr-toc-dot: var(--pgrr-accent);
 }
 
 .md-sidebar--secondary .md-nav--secondary > .md-nav__list {
