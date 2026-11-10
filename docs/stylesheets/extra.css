@@ -738,14 +738,16 @@
   margin-bottom: 0;
 }
 
-/* Nested lists and footnotes: ordinary numbering. */
+/* Nested lists, lists inside a heading step, and footnotes: ordinary numbering. */
 .md-typeset ol ol,
+.md-typeset .pgrr-step ol,
 .md-typeset .footnote ol {
   margin: 0.5em 0 0.5em 1.4em;
   list-style: decimal;
 }
 
 .md-typeset ol ol > li,
+.md-typeset .pgrr-step ol > li,
 .md-typeset .footnote ol > li {
   padding: 0;
   margin-bottom: 0.4em;
@@ -753,6 +755,8 @@
 
 .md-typeset ol ol > li::before,
 .md-typeset ol ol > li::after,
+.md-typeset .pgrr-step ol > li::before,
+.md-typeset .pgrr-step ol > li::after,
 .md-typeset .footnote ol > li::before,
 .md-typeset .footnote ol > li::after {
   content: none;
@@ -818,4 +822,76 @@
 
 .md-typeset table:not([class]) tbody tr:last-child td:last-child {
   border-bottom-right-radius: 15px;
+}
+
+/* ---- Numbered section headings as steps (docs/javascripts/steps.js) ----
+   The same circles and connecting line as numbered lists, for a run of
+   "1) ...", "2) ..." section headings: the heading is the step's title and
+   the content under it is the step's body. */
+.md-typeset .pgrr-step {
+  --pgrr-step-bg: #242525;
+  --pgrr-step-fg: #f4f6f4;
+  --pgrr-step-line: #242525;
+
+  position: relative;
+  padding: 0 0 36px 44px;
+}
+
+[data-md-color-scheme="default"] .md-typeset .pgrr-step {
+  --pgrr-step-bg: #eceeee;
+  --pgrr-step-fg: #2c3030;
+  --pgrr-step-line: #dfe2e2;
+}
+
+.md-typeset .pgrr-step:last-of-type {
+  padding-bottom: 8px;
+}
+
+.md-typeset .pgrr-step::before {
+  content: attr(data-step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--pgrr-step-bg);
+  color: var(--pgrr-step-fg);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.md-typeset .pgrr-step::after {
+  content: "";
+  position: absolute;
+  top: 36px;
+  bottom: 8px;
+  left: 13px;
+  width: 1px;
+  background-color: var(--pgrr-step-line);
+}
+
+.md-typeset .pgrr-step:last-of-type::after {
+  bottom: -20px;
+  background: linear-gradient(to bottom, var(--pgrr-step-line), transparent);
+}
+
+.md-typeset .pgrr-step > h2 {
+  margin: 0 0 0.7em;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 28px;
+}
+
+.md-typeset .pgrr-step > :nth-child(2) {
+  margin-top: 0;
+}
+
+.md-typeset .pgrr-step > :last-child {
+  margin-bottom: 0;
 }
