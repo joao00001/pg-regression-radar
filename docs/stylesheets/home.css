@@ -259,6 +259,49 @@
   transition-duration: 0s;
 }
 
+/* Live data above each card: slides up and fades in as the light arrives, holds,
+   then lifts away. Opacity and transform only. */
+.pgrr-home .pgrr-data {
+  opacity: 0;
+  transform: translateY(7px);
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-data.is-on {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.55s ease-out, transform 0.7s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+
+.pgrr-home .pgrr-data.is-out {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.5s ease-in, transform 0.6s ease-in;
+}
+
+.pgrr-home .pgrr-data .pgrr-d1 {
+  transition: inherit;
+}
+
+.pgrr-home .pgrr-d {
+  fill: var(--h-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  text-anchor: middle;
+}
+
+.pgrr-home .pgrr-d--end {
+  text-anchor: end;
+}
+
+.pgrr-home .pgrr-dv {
+  fill: var(--h-fg);
+}
+
+.pgrr-home .pgrr-dv--a {
+  fill: var(--h-accent);
+}
+
 /* The engine "works" for a moment: a short light runs once around its border. */
 .pgrr-home .pgrr-bbeam-rect {
   fill: none;
