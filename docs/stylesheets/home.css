@@ -1125,3 +1125,25 @@
     opacity: 0.6;
   }
 }
+
+/* ----------------------------------------------------------------------
+ * Rules above cells
+ *
+ * Cells with their own background (the hero's title cell, the chart stage,
+ * the step cards, the bands) are positioned and later in the document than
+ * the grid's pseudo-element rules, so they were painted over them and the
+ * left and top edges disappeared. Lift every rule above the cells.
+ * -------------------------------------------------------------------- */
+.pgrr-home::before,
+.pgrr-home::after,
+.pgrr-home .pgrr-hero::before,
+.pgrr-home h2::before,
+.pgrr-home h2::after,
+.pgrr-home .pgrr-cards::before,
+.pgrr-home.pgrr-home > ul > li::before,
+.pgrr-home .pgrr-foot::before,
+.pgrr-home .pgrr-foot::after,
+.pgrr-radar-bar::after,
+.pgrr-radar-note::before {
+  z-index: 3;
+}
