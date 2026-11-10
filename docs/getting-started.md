@@ -43,7 +43,7 @@ kubectl apply -f config/crd/bases/
 
 # 2. Create a Secret holding the DSN, a PostgresWatch, and a DeploySource.
 kubectl create secret generic my-cluster-dsn \
-  --from-literal=dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"
+  --from-literal=dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=require"
 
 cat <<'EOF' | kubectl apply -f -
 apiVersion: radar.pgregressionradar.io/v1alpha1
@@ -89,7 +89,7 @@ kubectl get performanceregressions -A
 
 ```bash
 helm install pg-regression-radar ./deploy/helm/deploylens \
-  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=require" \
   --set postgres.clusterName=cnpg-cluster \
   --set postgres.namespace=production \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
@@ -101,7 +101,7 @@ The chart's `mode` value picks the entrypoint (`operator`, the default above, or
 helm install pg-regression-radar ./deploy/helm/deploylens \
   --set mode=manager \
   --set manager.replicaCount=2 \
-  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=require" \
   --set postgres.clusterName=cnpg-cluster \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```
