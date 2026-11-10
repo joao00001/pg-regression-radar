@@ -35,6 +35,10 @@ PostgreSQL 13 split the old `total_time`/`mean_time` columns into `total_plan_ti
 
 CloudNativePG's currently supported releases only ship PostgreSQL 14+ (see [Supported releases](https://cloudnative-pg.io/docs/devel/supported_releases)), and PostgreSQL 13 itself reached community end-of-life on 2025-11-13, so a query hard-coded to the modern column names is already safe for every CloudNativePG-managed cluster in support today. The collector nonetheless detects `server_version_num` once at startup and falls back to the legacy column names below PostgreSQL 13, so it also works against older or self-managed Postgres instances.
 
+## Counters, resets and interval latency
+
+`calls` and `total_exec_time` accumulate until the entry is reset or evicted, so the collector stores each scrape's cumulative values and derives the latency of the calls made since the previous scrape. On PostgreSQL 17+ it also reads `stats_since` to recognise a reset that the counters alone would not reveal. See [Detection Algorithm](detection-algorithm.md#what-a-latency-sample-is) for the formula, the reset rules and their limits.
+
 ## See also
 
 - [Detection Algorithm](detection-algorithm.md) — how the samples described here are consumed by the Correlation Engine.

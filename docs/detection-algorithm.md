@@ -6,6 +6,29 @@
 
 The Correlation Engine (`internal/correlation`) doesn't just compare a before/after mean — a naive comparison alone is prone to false positives whenever an unrelated latency shift happens to overlap the analysis window. This page explains the real two-stage pipeline it runs instead, inspired by [Hunter — DataStax Labs](https://github.com/datastax-labs/hunter) and the accompanying ICPE'23 paper, ["Hunter: Using Change Point Detection to Hunt for Performance Regressions"](https://arxiv.org/abs/2301.03034).
 
+## What a latency sample is
+
+`pg_stat_statements` does not report the latency of the last scrape interval. `calls` and `total_exec_time` are counters that accumulate from the last reset, and `mean_exec_time` is their ratio, an average over the query's whole history. Feeding that value to a change-point test hides regressions: after a million calls at 10 ms, a query that becomes 5x slower for fifteen minutes moves the all-time mean from 10.0 ms to about 10.4 ms. A reset has the opposite effect and shows up as a step in the series that looks like a latency change.
+
+The Collector therefore stores, next to the cumulative counters, the latency of only the calls made since the previous snapshot of the same `queryid`:
+
+```text
+interval mean = (total_exec_time_now - total_exec_time_prev) / (calls_now - calls_prev)
+```
+
+The engine runs its statistics on this series:
+
+- **Interval means are the series.** Stage 1 and stage 2 read the per-interval mean. The reported `MeanLatencyBefore`/`MeanLatencyAfter` are total time over total calls in each window, so busy intervals weigh more than quiet ones.
+- **Intervals with no calls are dropped.** They carry no latency information. The first sample of a `queryid` (nothing to subtract) is dropped too. `--min-executions` is checked against the samples that remain.
+- **Resets are detected, not trusted.** The counters are considered restarted when `calls` or `total_exec_time` decreases (`pg_stat_statements_reset()`, a crash, or eviction once `pg_stat_statements.max` is exceeded), or, on PostgreSQL 17+, when `stats_since` changes. The second signal also catches a reset whose counters have already climbed past their old values by the next scrape. After a reset the counters start from zero, so the new values are the activity since the reset and are used as that interval. Each detection increments `pg_regression_radar_collector_stats_resets_detected_total`.
+- **History survives restarts.** Persisted rows hold only cumulative counters, so `Backfill` rebuilds the intervals from consecutive rows with the same rules.
+
+The collector also exports the latest value as `pg_regression_radar_query_interval_mean_exec_time_ms{queryid}`.
+
+Samples that carry no interval data (a source that only exposes a mean, such as the [OTel/Prometheus source](otel-prometheus-source.md)) are analysed on that value as before. For that source, the configured metric must already be a per-interval mean.
+
+Limits: the series is made of interval means, so the t-test measures variation between scrape intervals, not between individual calls, and a long gap between scrapes yields one interval that spans the gap. Per-call variance (`stddev_exec_time`) is not used yet.
+
 ## Stage 0: cheap pre-filter
 
 The naive mean latency over the whole pre-deploy window is compared against the naive mean over the whole post-deploy window. If the relative change is below `LatencyChangeThreshold` (default 20%), the query is rejected immediately without running the more expensive stages below.
