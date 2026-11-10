@@ -191,3 +191,150 @@
   background-color: #6a3df0;
   color: #ffffff;
 }
+
+/* ---- Code blocks: a dark card with the code in an inset panel ----
+   Two layers, in both color schemes: the card (lighter, thin border) holds
+   the header row -- the block's `title="..."` or, from
+   docs/javascripts/code-header.js, its language, plus the copy button --
+   and, inset a hair from the card's edge, the darker code panel. There is
+   no divider between header and code. The language comes from the
+   `language-*` class that `pygments_lang_class` puts on the block; with no
+   JS, or on a page whose build doesn't set it, the card simply has no
+   header row. */
+.md-typeset .highlight {
+  /* Dark (the default, and the slate scheme). */
+  --pgrr-card-bg: #1d1f1f;
+  --pgrr-card-border: #3a3d3d;
+  --pgrr-panel-bg: #0b0c0e;
+  --pgrr-header-fg: #e4e6e4;
+  --pgrr-icon-fg: #aeb2b1;
+  --pgrr-icon-hover: #ffffff;
+  --pgrr-scrollbar: rgba(255, 255, 255, 0.22);
+
+  --md-code-bg-color: var(--pgrr-panel-bg);
+  --md-code-fg-color: #d9d9d9;
+  --md-code-hl-color: rgba(255, 255, 255, 0.08);
+  --md-code-hl-keyword-color: #c586c0;
+  --md-code-hl-function-color: #dcdcaa;
+  --md-code-hl-string-color: #ce9178;
+  --md-code-hl-number-color: #b5cea8;
+  --md-code-hl-constant-color: #569cd6;
+  --md-code-hl-special-color: #d7ba7d;
+  --md-code-hl-name-color: #9cdcfe;
+  --md-code-hl-variable-color: #9cdcfe;
+  --md-code-hl-operator-color: #d9d9d9;
+  --md-code-hl-punctuation-color: #c4c4c4;
+  --md-code-hl-comment-color: #8d9a92;
+  --md-code-hl-generic-color: #c4c4c4;
+
+  position: relative;
+  margin: 1.25em 0;
+  padding: 2px;
+  overflow: hidden;
+  border: 1px solid var(--pgrr-card-border);
+  border-radius: 16px;
+  background-color: var(--pgrr-card-bg);
+  color: var(--md-code-fg-color);
+}
+
+/* Light scheme: the same card and inset panel, inverted. */
+[data-md-color-scheme="default"] .md-typeset .highlight {
+  --pgrr-card-bg: #f1f2f2;
+  --pgrr-card-border: #d4d8d8;
+  --pgrr-panel-bg: #ffffff;
+  --pgrr-header-fg: #2c3030;
+  --pgrr-icon-fg: #646a6a;
+  --pgrr-icon-hover: #000000;
+  --pgrr-scrollbar: rgba(0, 0, 0, 0.25);
+
+  --md-code-fg-color: #24292e;
+  --md-code-hl-color: rgba(0, 0, 0, 0.06);
+  --md-code-hl-keyword-color: #af00db;
+  --md-code-hl-function-color: #795e26;
+  --md-code-hl-string-color: #a31515;
+  --md-code-hl-number-color: #098658;
+  --md-code-hl-constant-color: #0000ff;
+  --md-code-hl-special-color: #811f3f;
+  --md-code-hl-name-color: #001080;
+  --md-code-hl-variable-color: #001080;
+  --md-code-hl-operator-color: #383a42;
+  --md-code-hl-punctuation-color: #44474c;
+  --md-code-hl-comment-color: #5d6b63;
+  --md-code-hl-generic-color: #44474c;
+}
+
+/* The header row: Material's `.filename` (a block with a title) and ours. */
+.md-typeset .highlight > .filename {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 48px 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--pgrr-header-fg);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.md-typeset .highlight > .filename::before {
+  content: none;
+}
+
+/* The code panel. `pre` is static so the copy button positions against the
+   card and sits in the header row. */
+.md-typeset .highlight pre {
+  position: static;
+  margin: 0;
+  border-radius: 14px;
+  background-color: var(--pgrr-panel-bg);
+}
+
+.md-typeset .highlight pre > code {
+  padding: 16px;
+  background-color: transparent;
+  font-size: 14px;
+  line-height: 1.7;
+  scrollbar-color: var(--pgrr-scrollbar) transparent;
+}
+
+/* Copy button: in the header row's right corner, plain and muted. */
+.md-typeset .highlight .md-code__nav {
+  top: 6px;
+  right: 10px;
+  padding: 0;
+  background-color: transparent;
+}
+
+.md-typeset .highlight .md-code__button,
+.md-typeset .highlight .md-clipboard {
+  color: var(--pgrr-icon-fg);
+}
+
+.md-typeset .highlight .md-code__button:hover,
+.md-typeset .highlight .md-code__button:focus,
+.md-typeset .highlight .md-clipboard:hover,
+.md-typeset .highlight .md-clipboard:focus {
+  color: var(--pgrr-icon-hover);
+}
+
+/* A block with no header row (no language known): the copy button floats
+   over the panel's corner instead. */
+.md-typeset .highlight:not(:has(> .filename)) .md-code__nav {
+  top: 10px;
+  right: 12px;
+}
+
+/* Line-numbered tables keep their own layout inside the card. */
+.md-typeset .highlighttable {
+  overflow: hidden;
+  border: 1px solid var(--pgrr-card-border);
+  border-radius: 16px;
+}
+
+.md-typeset .highlighttable .highlight {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
