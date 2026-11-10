@@ -879,28 +879,3 @@
   font-size: 1.02rem;
   letter-spacing: 0.12em;
 }
-
-/* On this page the current tab is a pill, not an underline */
-.pgrr-on-math .md-tabs__item--active {
-  box-shadow: none;
-}
-
-.pgrr-on-math .md-tabs__link {
-  margin-top: 0.32rem;
-  padding: 0.2rem 0.8rem;
-  border-radius: 999px;
-  transition: color 0.15s, background-color 0.2s;
-}
-
-.pgrr-on-math .md-tabs__item {
-  padding-left: 0.2rem;
-  padding-right: 0.2rem;
-}
-
-.pgrr-on-math .md-tabs__item--active .md-tabs__link {
-  background: color-mix(in srgb, var(--md-default-fg-color) 9%, transparent);
-}
-
-.pgrr-on-math .md-tabs__link:hover:not(:where(.md-tabs__item--active *)) {
-  background: color-mix(in srgb, var(--md-default-fg-color) 5%, transparent);
-}

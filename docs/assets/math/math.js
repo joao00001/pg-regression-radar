@@ -871,7 +871,7 @@
       return out;
     }
 
-    function convert(host, plain, hoverOn) {
+    function convert(host, plain) {
       host.textContent = "";
       var vis = document.createElement("span");
       vis.className = "pgrr-sym";
@@ -882,23 +882,13 @@
       host.appendChild(vis);
       host.appendChild(sr);
       var symbols = sym(plain);
-      vis._t = symbols;
       vis.textContent = symbols;
-      if (hoverOn) {
-        var on = function () { setText(vis, plain); };
-        var off = function () { setText(vis, symbols); };
-        hoverOn.addEventListener("mouseenter", on);
-        hoverOn.addEventListener("focus", on);
-        hoverOn.addEventListener("mouseleave", off);
-        hoverOn.addEventListener("blur", off);
-      }
     }
 
-    document.body.classList.add("pgrr-on-math");
     var tops = document.querySelectorAll(".md-header__title .md-header__topic .md-ellipsis");
     if (tops.length > 1) {
       var span = tops[tops.length - 1];
-      convert(span, span.textContent.trim(), null);
+      convert(span, span.textContent.trim());
     }
   })();
 
