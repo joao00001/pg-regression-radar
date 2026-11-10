@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Playground
 
 *Run the real detection engine against a real PostgreSQL, entirely in your browser: no Postgres, no Kubernetes, no install.*

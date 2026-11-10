@@ -41,6 +41,7 @@ extra_css:
 extra_javascript:
   - javascripts/roadmap.js
   - javascripts/code-header.js
+  - javascripts/theme-toggle.js
   - javascripts/callouts.js
   - javascripts/steps.js
   - javascripts/toc-indicator.js

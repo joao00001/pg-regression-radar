@@ -15,6 +15,7 @@ theme:
   custom_dir: overrides
   icon:
     logo: pgrr/mark
+    repo: fontawesome/brands/github
   favicon: assets/brand/favicon.svg
   palette:
     - media: "(prefers-color-scheme: light)"
@@ -22,16 +23,18 @@ theme:
       primary: indigo
       accent: indigo
       toggle:
-        icon: material/brightness-7
+        icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: indigo
       accent: indigo
       toggle:
-        icon: material/brightness-4
+        icon: material/weather-sunny
         name: Switch to light mode
   features:
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.top
     - navigation.expand
     - navigation.indexes
@@ -81,6 +84,7 @@ extra_css:
 extra_javascript:
   - javascripts/version-flyout.js
   - javascripts/code-header.js
+  - javascripts/theme-toggle.js
   - javascripts/callouts.js
   - javascripts/steps.js
   - javascripts/toc-indicator.js
@@ -98,48 +102,50 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
-# Shown as the left sidebar on every page (the Material theme's default
-# navigation, like kubernetes.io's docs): every group below starts expanded
-# (`navigation.expand`; a reader can still collapse one). Related pages are grouped under
-# a shared parent instead of listing every page at the top level. "Home" and "Roadmap" are absolute
-# links to the unversioned site (see `exclude_docs` above), identical from
-# every version.
+# The top level is the header's tab bar (`navigation.tabs`): Home, Playground
+# and Roadmap are absolute links to the unversioned site (see `exclude_docs`
+# above), identical from every version, and everything else lives under Docs,
+# whose groups are the left sidebar (every group starts expanded,
+# `navigation.expand`; a reader can still collapse one). On a narrow screen the
+# tabs fold into the sidebar drawer. The first page of Docs is what its tab
+# opens, so keep Get Started first.
 nav:
   - Home: https://joao00001.github.io/pg-regression-radar/
   - Playground: https://joao00001.github.io/pg-regression-radar/playground/
-  - Changelog: changelog.md
-  - Get Started:
-      - Installation: installation.md
-      - Getting Started: getting-started.md
-      - Quickstart Validation: quickstart-validation.md
-      - Regression Scenario Example: examples/regression-scenario.md
-      - Alerting Example: examples/alerting-example.md
-      - Supply Chain Verification: supply-chain.md
-  - Architecture:
-      - architecture.md
-      - Detection Algorithm: detection-algorithm.md
-      - Collector Internals: collector-internals.md
-      - OpenTelemetry / Prometheus Sample Source: otel-prometheus-source.md
-      - OTLP Deploy Events: otlp-deploy-events.md
-      - OTLP Regression Export: otlp-export.md
-      - Multi-Cluster (Fleet) Mode: multi-cluster.md
-      - Security Model & Threat Model: security-model.md
-      - Deployment Security (Helm): deployment-security.md
-  - Reference:
-      - Configuration Reference: configuration.md
-      - API Reference: api-reference.md
-      - API Versioning & Compatibility: api-versioning.md
-      - Persistence: persistence.md
-      - Deploy Sources & Webhooks: webhooks.md
-      - Alerting: alerting.md
-      - Auto-Abort (Argo Rollouts): auto-abort.md
-      - Periodic (Deploy-Independent) Detection: periodic-detection.md
-      - Support Matrix: support-matrix.md
-  - Contributing:
-      - Testing: testing.md
-      - CI/CD: ci-cd.md
-      - Backporting: backporting.md
-      - Branch Protection: branch-protection.md
-      - Roadmap: https://joao00001.github.io/pg-regression-radar/roadmap/
-      - Page Template: TEMPLATE.md
-      - Contributing Guide: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
+  - Docs:
+      - Get Started:
+          - Installation: installation.md
+          - Getting Started: getting-started.md
+          - Quickstart Validation: quickstart-validation.md
+          - Regression Scenario Example: examples/regression-scenario.md
+          - Alerting Example: examples/alerting-example.md
+          - Supply Chain Verification: supply-chain.md
+      - Architecture:
+          - architecture.md
+          - Detection Algorithm: detection-algorithm.md
+          - Collector Internals: collector-internals.md
+          - OpenTelemetry / Prometheus Sample Source: otel-prometheus-source.md
+          - OTLP Deploy Events: otlp-deploy-events.md
+          - OTLP Regression Export: otlp-export.md
+          - Multi-Cluster (Fleet) Mode: multi-cluster.md
+          - Security Model & Threat Model: security-model.md
+          - Deployment Security (Helm): deployment-security.md
+      - Reference:
+          - Configuration Reference: configuration.md
+          - API Reference: api-reference.md
+          - API Versioning & Compatibility: api-versioning.md
+          - Persistence: persistence.md
+          - Deploy Sources & Webhooks: webhooks.md
+          - Alerting: alerting.md
+          - Auto-Abort (Argo Rollouts): auto-abort.md
+          - Periodic (Deploy-Independent) Detection: periodic-detection.md
+          - Support Matrix: support-matrix.md
+      - Contributing:
+          - Testing: testing.md
+          - CI/CD: ci-cd.md
+          - Backporting: backporting.md
+          - Branch Protection: branch-protection.md
+          - Page Template: TEMPLATE.md
+          - Contributing Guide: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
+      - Changelog: changelog.md
+  - Roadmap: https://joao00001.github.io/pg-regression-radar/roadmap/
