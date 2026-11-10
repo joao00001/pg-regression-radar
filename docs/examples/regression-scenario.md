@@ -24,7 +24,7 @@ docker run --name radar-pg -e POSTGRES_PASSWORD=pass -e POSTGRES_DB=mydb \
 Create schema, data, and an indexed query:
 
 ```bash
-psql "******localhost:5432/mydb?sslmode=disable" <<'SQL'
+psql "postgres://user:password@localhost:5432/mydb?sslmode=disable" <<'SQL'
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 CREATE TABLE IF NOT EXISTS orders (
   id BIGSERIAL PRIMARY KEY,
@@ -44,7 +44,7 @@ Generate baseline (fast) query executions:
 
 ```bash
 for i in $(seq 1 600); do
-  psql "******localhost:5432/mydb?sslmode=disable" \
+  psql "postgres://user:password@localhost:5432/mydb?sslmode=disable" \
     -c "SELECT pg_sleep(0.04); SELECT count(*) FROM orders WHERE customer_id = 42;" >/dev/null
 done
 ```
@@ -68,7 +68,7 @@ curl -sS -X POST http://localhost:8080/webhook \
 Remove the index so the same query becomes much slower:
 
 ```bash
-psql "******localhost:5432/mydb?sslmode=disable" \
+psql "postgres://user:password@localhost:5432/mydb?sslmode=disable" \
   -c "DROP INDEX IF EXISTS idx_orders_customer_id;"
 ```
 
@@ -76,7 +76,7 @@ Drive post-change workload with the same query:
 
 ```bash
 for i in $(seq 1 600); do
-  psql "******localhost:5432/mydb?sslmode=disable" \
+  psql "postgres://user:password@localhost:5432/mydb?sslmode=disable" \
     -c "SELECT pg_sleep(0.04); SELECT count(*) FROM orders WHERE customer_id = 42;" >/dev/null
 done
 ```

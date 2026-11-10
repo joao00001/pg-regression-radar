@@ -9,10 +9,10 @@ By default (`--state-backend=memory`) all state lives only in process memory: th
 ## Configuring it
 
 ```bash
-operator --dsn "host:5432/monitored_db?sslmode=disable" --state-backend postgres
+operator --dsn "postgres://user:password@host:5432/monitored_db?sslmode=disable" --state-backend postgres
 # --state-dsn defaults to --dsn above: state lives in the SAME Postgres
 # cluster being monitored. To isolate it, point at a separate instance:
-# --state-dsn "host:5432/pgrr_state?sslmode=disable"
+# --state-dsn "postgres://user:password@host:5432/pgrr_state?sslmode=disable"
 ```
 
 - **Same Postgres as the monitored cluster** (default, `--state-dsn` empty): simplest to operate — one connection string, one cluster. Trade-off: the tool's own write traffic shows up in the very `pg_stat_statements` it watches, and an outage of the monitored cluster also takes down the history.

@@ -27,7 +27,7 @@
 // Usage:
 //
 //	operator \
-//	  --dsn "host:5432/dbname?sslmode=disable" \
+//	  --dsn "postgres://user:password@host:5432/dbname?sslmode=disable" \
 //	  --cluster-name my-cluster \
 //	  --namespace production \
 //	  --webhook-listen :8080 \
@@ -40,7 +40,7 @@
 //	  --changepoint-tolerance 6m \
 //	  --retention-minutes 180 \
 //	  --state-backend postgres \
-//	  --state-dsn "host:5432/dbname?sslmode=disable"
+//	  --state-dsn "postgres://user:password@host:5432/dbname?sslmode=disable"
 package main
 
 import (

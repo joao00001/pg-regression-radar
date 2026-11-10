@@ -26,7 +26,7 @@
 // Usage:
 //
 //	collector \
-//	  --dsn "******host:5432/dbname?sslmode=disable" \
+//	  --dsn "postgres://user:password@host:5432/dbname?sslmode=disable" \
 //	  --scrape-interval 60s \
 //	  --cluster-name my-cluster \
 //	  --namespace production \

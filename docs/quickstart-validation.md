@@ -28,7 +28,7 @@ postgres://user:pass@localhost:5432/mydb?sslmode=disable
 
 ```bash
 go run ./cmd/operator \
-  --dsn "******localhost:5432/mydb?sslmode=disable" \
+  --dsn "postgres://user:password@localhost:5432/mydb?sslmode=disable" \
   --cluster-name demo-cluster \
   --namespace demo \
   --webhook-listen :8080 \
@@ -47,7 +47,7 @@ kubectl apply -f config/crd/bases/
 
 kubectl create namespace demo
 kubectl create secret generic demo-db-dsn -n demo \
-  --from-literal=dsn="******localhost:5432/mydb?sslmode=disable"
+  --from-literal=dsn="postgres://user:password@localhost:5432/mydb?sslmode=disable"
 
 cat <<'EOF' | kubectl apply -f -
 apiVersion: radar.pgregressionradar.io/v1alpha1
@@ -85,7 +85,7 @@ go run ./cmd/manager \
 ```bash
 helm install pg-regression-radar ./deploy/helm/deploylens \
   --set mode=operator \
-  --set postgres.dsn="******localhost:5432/mydb?sslmode=disable" \
+  --set postgres.dsn="postgres://user:password@localhost:5432/mydb?sslmode=disable" \
   --set postgres.clusterName=demo-cluster \
   --set ingester.sourceType=generic
 ```

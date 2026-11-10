@@ -44,10 +44,6 @@ docker run -d --name pgrr-test -e POSTGRES_PASSWORD=test -p 5432:5432 \
 export PGRR_TEST_DSN="postgres://postgres:test@localhost:5432/postgres?sslmode=disable"
 go test -tags=integration ./internal/storage/... ./internal/collector/... ./internal/e2e/... ./internal/cli/...
 ```
-> **Note:** `PGRR_TEST_DSN` must be a full PostgreSQL connection URI, for example
-> `postgres://username:password@localhost:5432/postgres?sslmode=disable`.
-> The redacted form shown above is for documentation safety only and cannot be used as-is —
-> replace it with your real connection string.
 
 ### Real `pg_store_plans` extension {#real-pg_store_plans-extension}
 
@@ -57,7 +53,7 @@ go test -tags=integration ./internal/storage/... ./internal/collector/... ./inte
 docker build -t pgrr-pg-store-plans scripts/pg_store_plans
 docker run -d --name pgrr-test-storeplans -e POSTGRES_PASSWORD=test -p 5432:5432 \
   pgrr-pg-store-plans
-export PGRR_STOREPLANS_TEST_DSN="******localhost:5432/postgres?sslmode=disable"
+export PGRR_STOREPLANS_TEST_DSN="postgres://user:password@localhost:5432/postgres?sslmode=disable"
 go test -tags=integration -run StorePlans -v ./internal/planner/...
 ```
 

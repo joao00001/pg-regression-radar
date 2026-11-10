@@ -33,7 +33,7 @@
 //	docker build -t pgrr-pg-store-plans scripts/pg_store_plans
 //	docker run --rm -d --name pgrr-storeplans-test -p 5432:5432 \
 //	  -e POSTGRES_PASSWORD=test pgrr-pg-store-plans
-//	export PGRR_STOREPLANS_TEST_DSN="******localhost:5432/postgres?sslmode=disable"
+//	export PGRR_STOREPLANS_TEST_DSN="postgres://user:password@localhost:5432/postgres?sslmode=disable"
 //	go test -tags=integration -run StorePlans ./internal/planner/...
 package planner_test
 
