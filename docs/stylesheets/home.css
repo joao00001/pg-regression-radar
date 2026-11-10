@@ -216,61 +216,82 @@
   fill: var(--h-accent-border);
 }
 
-/* Pulses (home-flow.js): a faint tail and a bright head travelling along an edge. */
-.pgrr-home .pgrr-pulse {
+/* Beams (home-flow.js): a soft gradient light travels along an edge. Only opacity
+   and gradient positions change, never fills, so nothing repaints a card. */
+.pgrr-home .pgrr-beam {
   fill: none;
   stroke-linecap: round;
   pointer-events: none;
-  stroke: var(--h-fg);
 }
 
-.pgrr-home .pgrr-pulse--tail {
-  stroke-width: 2.4;
-  opacity: 0.22;
+.pgrr-home .pgrr-beam--core {
+  stroke-width: 2.2;
 }
 
-.pgrr-home .pgrr-pulse--head {
-  stroke-width: 2.6;
-  opacity: 0.95;
+.pgrr-home .pgrr-beam--glow {
+  stroke-width: 7;
 }
 
-.pgrr-home .pgrr-pulse--accent {
-  stroke: var(--h-accent);
+.pgrr-home .pgrr-beam-stop {
+  stop-color: var(--h-fg);
 }
 
-/* Nodes light up as a pulse arrives, then ease back. */
+.pgrr-home .pgrr-beam-stop--accent {
+  stop-color: var(--h-accent);
+}
+
+/* Nodes only brighten their outline and icon as the light arrives. */
 .pgrr-home .pgrr-node {
-  transition: stroke 0.9s ease-out, fill 0.9s ease-out;
+  transition: stroke 1s ease-out;
 }
 
 .pgrr-home .pgrr-node.pgrr-hit {
+  stroke: color-mix(in srgb, var(--h-fg) 55%, var(--h-border));
+  transition-duration: 0s;
+}
+
+.pgrr-home .pgrr-ic {
+  transition: stroke 1s ease-out;
+}
+
+.pgrr-home .pgrr-ic.pgrr-hit {
   stroke: var(--h-fg);
   transition-duration: 0s;
 }
 
-.pgrr-home .pgrr-node--engine.pgrr-hit {
-  stroke: var(--h-accent);
-  fill: color-mix(in srgb, var(--h-accent) 22%, var(--h-hero-bg));
-}
-
-.pgrr-home .pgrr-ring {
+/* The engine "works" for a moment: a short light runs once around its border. */
+.pgrr-home .pgrr-bbeam-rect {
   fill: none;
   stroke: var(--h-accent);
-  stroke-width: 1.5;
+  stroke-linecap: round;
   pointer-events: none;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: pgrr-ring 1.2s ease-out forwards;
+  stroke-dasharray: 22 78;
+  animation: pgrr-bbeam 1.7s cubic-bezier(0.45, 0, 0.35, 1) forwards;
 }
 
-@keyframes pgrr-ring {
-  from {
-    opacity: 0.7;
-    transform: scale(1);
-  }
-  to {
+.pgrr-home .pgrr-bbeam-rect--core {
+  stroke-width: 1.8;
+}
+
+.pgrr-home .pgrr-bbeam-rect--glow {
+  stroke-width: 5;
+  opacity: 0.22;
+}
+
+@keyframes pgrr-bbeam {
+  0% {
+    stroke-dashoffset: 8;
     opacity: 0;
-    transform: scale(1.14, 1.2);
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -92;
+    opacity: 0;
   }
 }
 
