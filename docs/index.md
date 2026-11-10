@@ -8,8 +8,6 @@ hide:
 <section class="pgrr-hero" markdown="1">
 <div markdown="1">
 
-<span class="pgrr-kicker">PostgreSQL on Kubernetes</span>
-
 # pg-regression-radar
 
 <p class="pgrr-lead">Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.</p>
