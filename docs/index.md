@@ -17,6 +17,8 @@ hide:
 [Get started](installation.md){ .md-button .md-button--primary }
 [How it works](#how-it-works){ .md-button }
 
+<div class="pgrr-blips" aria-hidden="true"><i style="--d: 2.13s; left: 390px; top: 40px"></i><i style="--d: 3.39s; left: 150px; top: 290px"></i><i style="--d: 2.68s; left: 440px; top: 262px"></i></div>
+
 </div>
 <div class="pgrr-alert" aria-label="Example alert">
 <div class="pgrr-alert-head"><span>Example alert</span><span class="pgrr-pill">Regression</span></div>

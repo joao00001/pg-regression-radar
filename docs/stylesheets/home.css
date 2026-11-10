@@ -999,3 +999,129 @@
     animation: none;
   }
 }
+
+/* ======================================================================
+ * Hero title cell: a radar scope instead of a grid.
+ *
+ * Pure black (white in the light scheme), thin concentric rings fading out
+ * from the top-left corner, a red sweep turning around that corner, and a few
+ * blips that flash when the sweep reaches them. The sweep period (--sweep)
+ * and each blip's animation delay (set inline in index.md from the blip's
+ * angle) are tied together so the flashes line up with the beam.
+ * ==================================================================== */
+.pgrr-home {
+  --h-hero-bg: #000;
+  --h-ring: rgba(255, 255, 255, 0.085);
+  --sweep: 8s;
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-hero-bg: #fff;
+  --h-ring: rgba(0, 0, 0, 0.09);
+}
+
+.pgrr-home .pgrr-hero {
+  background: transparent;
+}
+
+.pgrr-home .pgrr-hero > div:first-child {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(70% 90% at 0% 0%, var(--h-glow), transparent 70%),
+    var(--h-hero-bg);
+}
+
+/* rings */
+.pgrr-home .pgrr-hero > div:first-child::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: repeating-radial-gradient(circle at 0 0, transparent 0 63px, var(--h-ring) 63px 64px);
+  -webkit-mask-image: radial-gradient(circle at 0 0, #000 0, #000 120px, transparent 600px);
+  mask-image: radial-gradient(circle at 0 0, #000 0, #000 120px, transparent 600px);
+  pointer-events: none;
+}
+
+/* sweep: a conic wedge turning around the corner */
+.pgrr-home .pgrr-hero > div:first-child::after {
+  content: "";
+  position: absolute;
+  left: -640px;
+  top: -640px;
+  width: 1280px;
+  height: 1280px;
+  z-index: -1;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 250deg,
+    color-mix(in srgb, var(--h-accent-solid) 26%, transparent) 359deg,
+    color-mix(in srgb, var(--h-accent) 42%, transparent) 360deg
+  );
+  -webkit-mask-image: radial-gradient(circle, #000 0, #000 30%, transparent 68%);
+  mask-image: radial-gradient(circle, #000 0, #000 30%, transparent 68%);
+  animation: pgrr-sweep var(--sweep) linear infinite;
+  will-change: transform;
+  pointer-events: none;
+}
+
+@keyframes pgrr-sweep {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* blips */
+.pgrr-home .pgrr-blips {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-blips i {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: var(--h-accent);
+  opacity: 0.22;
+  animation: pgrr-blip var(--sweep) linear infinite;
+  animation-delay: var(--d, 0s);
+}
+
+@keyframes pgrr-blip {
+  0% {
+    opacity: 1;
+    transform: scale(1.5);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--h-accent) 70%, transparent);
+  }
+  10% {
+    box-shadow: 0 0 0 16px transparent;
+  }
+  40% {
+    opacity: 0.22;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.22;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-home .pgrr-hero > div:first-child::after {
+    animation: none;
+    transform: rotate(120deg);
+  }
+
+  .pgrr-home .pgrr-blips i {
+    animation: none;
+    opacity: 0.6;
+  }
+}
