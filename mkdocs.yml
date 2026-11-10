@@ -30,6 +30,7 @@ theme:
         name: Switch to light mode
   features:
     - navigation.top
+    - navigation.expand
     - navigation.indexes
     - content.code.copy
     - content.action.edit
@@ -92,8 +93,8 @@ markdown_extensions:
       alternate_style: true
 
 # Shown as the left sidebar on every page (the Material theme's default
-# navigation, like kubernetes.io's docs): each group below is collapsed
-# except the one holding the current page. Related pages are grouped under
+# navigation, like kubernetes.io's docs): every group below starts expanded
+# (`navigation.expand`; a reader can still collapse one). Related pages are grouped under
 # a shared parent instead of listing every page at the top level. "Home" and "Roadmap" are absolute
 # links to the unversioned site (see `exclude_docs` above), identical from
 # every version.
