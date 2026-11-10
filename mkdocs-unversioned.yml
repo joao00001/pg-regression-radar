@@ -45,6 +45,7 @@ extra_javascript:
   - javascripts/toc-indicator.js
   - javascripts/home-radar.js
   - javascripts/home-ascii.js
+  - javascripts/home-flow.js
 
 # Same extensions as mkdocs.yml plus md_in_html (markdown inside the roadmap's
 # HTML cards). Repeated in full rather than inherited, since a list in a child
