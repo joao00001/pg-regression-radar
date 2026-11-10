@@ -76,6 +76,7 @@ extra_javascript:
   - javascripts/version-flyout.js
   - javascripts/code-header.js
   - javascripts/callouts.js
+  - javascripts/steps.js
 
 markdown_extensions:
   - admonition
