@@ -29,10 +29,7 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
-    - navigation.tabs
-    - navigation.tabs.sticky
     - navigation.top
-    - navigation.sections
     - navigation.indexes
     - content.code.copy
     - content.action.edit
@@ -76,8 +73,6 @@ extra_css:
   - stylesheets/extra.css
 
 extra_javascript:
-  - javascripts/nav-data.js
-  - javascripts/nav-flyout.js
   - javascripts/version-flyout.js
 
 markdown_extensions:
@@ -92,15 +87,10 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
-# Grouped into a handful of umbrella top-level tabs on purpose: this repo
-# started with 14 flat top-level entries, more than fit in the tabs bar at
-# any viewport width, forcing a hidden horizontal scroll. Related pages are
-# grouped under a shared parent instead (mirroring how e.g. apple.com's top
-# nav works: hovering "Get Started"/"Reference"/"Contributing" expands the
-# header downward to reveal its pages — see docs/javascripts/nav-flyout.js
-# and hooks.py, which feeds it the tree below). "Home" has nothing that
-# needs grouping, so it stays a standalone entry per the "pages that don't
-# need it can stay on their own" rule. "Home" and "Roadmap" are absolute
+# Shown as the left sidebar on every page (the Material theme's default
+# navigation, like kubernetes.io's docs): each group below is collapsed
+# except the one holding the current page. Related pages are grouped under
+# a shared parent instead of listing every page at the top level. "Home" and "Roadmap" are absolute
 # links to the unversioned site (see `exclude_docs` above), identical from
 # every version.
 nav:
