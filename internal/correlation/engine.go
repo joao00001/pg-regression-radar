@@ -352,6 +352,12 @@ type changeStats struct {
 // found — evaluateQuery may still discard the result via its own
 // ChangePointTolerance check regardless of significance.
 func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []collector.QuerySample) changeStats {
+	// Work on per-interval latency whenever the samples carry it (see
+	// intervalSamples): the cumulative mean_exec_time is an average over the
+	// whole history since the last reset, so a regression barely moves it and
+	// a reset looks like a spurious step.
+	preSamples, postSamples = intervalSamples(preSamples, postSamples)
+
 	// Require minimum sample counts in both windows to avoid false positives from sparse data.
 	if int64(len(preSamples)) < e.cfg.MinExecutions || int64(len(postSamples)) < e.cfg.MinExecutions {
 		// This is the routine, expected case for a deploy event analysed
@@ -375,8 +381,8 @@ func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []col
 	preLatencies := extractLatencies(preSamples)
 	postLatencies := extractLatencies(postSamples)
 
-	meanPre := mean(preLatencies)
-	meanPost := mean(postLatencies)
+	meanPre := windowMean(preSamples, preLatencies)
+	meanPost := windowMean(postSamples, postLatencies)
 
 	changeFactor := 0.0
 	if meanPre > 0 {
@@ -626,13 +632,78 @@ func partitionAt(samples []collector.QuerySample, split time.Time) (pre, post []
 
 // ----- statistical helpers -----
 
-// extractLatencies returns the MeanExecTimeMs from each sample as a slice.
+// intervalSamples prepares the pre- and post-window samples for the
+// statistics.
+//
+// Samples produced by the Collector carry the latency of just the calls made
+// during each scrape interval (QuerySample.IntervalMeanMs, derived from the
+// delta of the cumulative pg_stat_statements counters). When any sample in
+// either window has it, only samples with a known interval and at least one
+// call in it are kept: an interval with no calls says nothing about latency,
+// and the first sample of a queryid has no predecessor to subtract.
+//
+// Samples without interval data (a source that only exposes the cumulative
+// mean, such as the OTel/Prometheus source) are returned unchanged and are
+// analysed on MeanExecTimeMs, as before.
+func intervalSamples(pre, post []collector.QuerySample) ([]collector.QuerySample, []collector.QuerySample) {
+	if !anyIntervalKnown(pre) && !anyIntervalKnown(post) {
+		return pre, post
+	}
+	return keepIntervals(pre), keepIntervals(post)
+}
+
+func anyIntervalKnown(samples []collector.QuerySample) bool {
+	for _, s := range samples {
+		if s.IntervalKnown {
+			return true
+		}
+	}
+	return false
+}
+
+func keepIntervals(samples []collector.QuerySample) []collector.QuerySample {
+	out := make([]collector.QuerySample, 0, len(samples))
+	for _, s := range samples {
+		if s.IntervalKnown && s.IntervalCalls > 0 {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// extractLatencies returns the latency of each sample: the mean of the calls
+// in its scrape interval when the sample carries one, otherwise the
+// cumulative MeanExecTimeMs reported by the source.
 func extractLatencies(samples []collector.QuerySample) []float64 {
 	out := make([]float64, len(samples))
 	for i, s := range samples {
-		out[i] = s.MeanExecTimeMs
+		if s.IntervalKnown {
+			out[i] = s.IntervalMeanMs
+		} else {
+			out[i] = s.MeanExecTimeMs
+		}
 	}
 	return out
+}
+
+// windowMean is the mean latency reported for a window. With interval data it
+// is total time over total calls, so a busy interval counts for more than a
+// quiet one and the value equals the true mean latency of every call in the
+// window; otherwise it is the plain mean of latencies.
+func windowMean(samples []collector.QuerySample, latencies []float64) float64 {
+	var calls int64
+	var total float64
+	for _, s := range samples {
+		if !s.IntervalKnown {
+			return mean(latencies)
+		}
+		calls += s.IntervalCalls
+		total += s.IntervalTotalMs
+	}
+	if calls == 0 {
+		return mean(latencies)
+	}
+	return total / float64(calls)
 }
 
 // mean returns the arithmetic mean of vals. Returns 0 for an empty slice.

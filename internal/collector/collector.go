@@ -55,6 +55,34 @@ type QuerySample struct {
 	MeanExecTimeMs  float64
 	RecordedAt      time.Time
 
+	// StatsSince is the pg_stat_statements.stats_since value of the entry
+	// (PostgreSQL 17+; zero on older servers). It changes whenever the entry
+	// is reset or evicted and recreated, which lets the Collector detect a
+	// reset even when the counters have already climbed past their old values
+	// by the next scrape.
+	StatsSince time.Time
+
+	// IntervalKnown reports whether the Interval* fields below are
+	// meaningful. It is false for the first observation of a queryid (there
+	// is no earlier snapshot to subtract) and for samples that did not come
+	// from this Collector (for example the OTel/Prometheus source).
+	IntervalKnown bool
+	// IntervalCalls and IntervalTotalMs are the executions and total
+	// execution time (ms) that accrued since the previous snapshot of this
+	// queryid, that is, the delta of the cumulative counters.
+	IntervalCalls   int64
+	IntervalTotalMs float64
+	// IntervalMeanMs is IntervalTotalMs / IntervalCalls: the mean latency of
+	// only the calls made during this scrape interval. Unlike MeanExecTimeMs
+	// it is not diluted by the query's entire history, so a regression shows
+	// up in the very next sample. Zero when IntervalCalls is zero.
+	IntervalMeanMs float64
+	// ResetDetected is true when the counters were found to have restarted
+	// since the previous snapshot (pg_stat_statements_reset(), an eviction,
+	// or a crash). The Interval* fields then describe the activity since the
+	// reset rather than a difference against the previous snapshot.
+	ResetDetected bool
+
 	// Fingerprint is the normalized-text hash produced by FingerprintQuery
 	// for QueryText. It is additive metadata: existing consumers that only
 	// read the original fields are unaffected. The Collector uses it
@@ -171,6 +199,9 @@ type Collector struct {
 	// column-name detection described on queryStatStatementsFor.
 	versionOnce         sync.Once
 	legacyTimingColumns bool
+	// hasStatsSince is true on PostgreSQL 17+, where pg_stat_statements
+	// exposes stats_since (when the entry's counters last started from zero).
+	hasStatsSince bool
 
 	// planMu guards planHistory. It is separate from mu (which guards
 	// samples/queryFingerprint/fingerprintIndex) because plan capture runs
@@ -185,13 +216,16 @@ type Collector struct {
 	// entire process lifetime on an unsupported server).
 	planVersionWarnOnce sync.Once
 
-	scrapeTotal     prometheus.Counter
-	scrapeErrors    prometheus.Counter
-	meanExecTime    *prometheus.GaugeVec
-	callsTotal      *prometheus.GaugeVec
-	trackedQueries  prometheus.Gauge
-	retainedSamples prometheus.Gauge
-	explainSkipped  prometheus.Counter
+	scrapeTotal  prometheus.Counter
+	scrapeErrors prometheus.Counter
+	meanExecTime *prometheus.GaugeVec
+	callsTotal   *prometheus.GaugeVec
+	statsResets  prometheus.Counter
+
+	intervalMeanExecTime *prometheus.GaugeVec
+	trackedQueries       prometheus.Gauge
+	retainedSamples      prometheus.Gauge
+	explainSkipped       prometheus.Counter
 
 	// lastScrapeTime holds the UTC time of the most recent successful scrape
 	// as an atomic.Value (stores time.Time) so that LastScrapeTime() can
@@ -236,6 +270,16 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 		Help:        "Mean query execution time in milliseconds (last scrape).",
 		ConstLabels: labels,
 	}, []string{"queryid"})
+	intervalMeanExecTime := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "pg_regression_radar_query_interval_mean_exec_time_ms",
+		Help:        "Mean execution time in milliseconds of only the calls made since the previous scrape (delta of total_exec_time over delta of calls). Not updated for intervals with no calls.",
+		ConstLabels: labels,
+	}, []string{"queryid"})
+	statsResets := prometheus.NewCounter(prometheus.CounterOpts{
+		Name:        "pg_regression_radar_collector_stats_resets_detected_total",
+		Help:        "Total number of times a query's pg_stat_statements counters were found to have restarted (reset, eviction or crash) between scrapes.",
+		ConstLabels: labels,
+	})
 	callsTotal := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "pg_regression_radar_query_calls_total",
 		Help:        "Cumulative call count from pg_stat_statements.",
@@ -257,7 +301,7 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 		ConstLabels: labels,
 	})
 
-	for _, m := range []prometheus.Collector{scrapeTotal, scrapeErrors, meanExecTime, callsTotal, trackedQueries, retainedSamples, explainSkipped} {
+	for _, m := range []prometheus.Collector{scrapeTotal, scrapeErrors, meanExecTime, intervalMeanExecTime, callsTotal, statsResets, trackedQueries, retainedSamples, explainSkipped} {
 		if err := reg.Register(m); err != nil {
 			return nil, fmt.Errorf("collector: register metric: %w", err)
 		}
@@ -275,9 +319,12 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 		scrapeErrors:     scrapeErrors,
 		meanExecTime:     meanExecTime,
 		callsTotal:       callsTotal,
-		trackedQueries:   trackedQueries,
-		retainedSamples:  retainedSamples,
-		explainSkipped:   explainSkipped,
+		statsResets:      statsResets,
+
+		intervalMeanExecTime: intervalMeanExecTime,
+		trackedQueries:       trackedQueries,
+		retainedSamples:      retainedSamples,
+		explainSkipped:       explainSkipped,
 	}, nil
 }
 
@@ -384,6 +431,16 @@ func (c *Collector) Backfill(samples []QuerySample) {
 	for qid := range c.samples {
 		s := c.samples[qid]
 		sort.Slice(s, func(i, j int) bool { return s[i].RecordedAt.Before(s[j].RecordedAt) })
+		// Persisted rows only carry the cumulative counters, so rebuild the
+		// per-interval fields the same way the live path does. The first row
+		// of a queryid has no predecessor and stays IntervalKnown=false.
+		for i := range s {
+			if i == 0 {
+				s[i].IntervalKnown, s[i].IntervalCalls, s[i].IntervalTotalMs, s[i].IntervalMeanMs, s[i].ResetDetected = false, 0, 0, 0, false
+				continue
+			}
+			s[i] = deriveInterval(s[i-1], s[i])
+		}
 	}
 	now := time.Now().UTC()
 	c.pruneLocked(now)
@@ -511,8 +568,13 @@ func (c *Collector) scrape(ctx context.Context) error {
 		var queryText string
 		var calls int64
 		var totalExecTime, meanExecTime float64
+		var statsSince sql.NullTime
 
-		if err := rows.Scan(&qid, &queryText, &calls, &totalExecTime, &meanExecTime); err != nil {
+		dest := []any{&qid, &queryText, &calls, &totalExecTime, &meanExecTime}
+		if c.hasStatsSince {
+			dest = append(dest, &statsSince)
+		}
+		if err := rows.Scan(dest...); err != nil {
 			return fmt.Errorf("scan row: %w", err)
 		}
 
@@ -531,7 +593,7 @@ func (c *Collector) scrape(ctx context.Context) error {
 			continue
 		}
 
-		c.ingestSample(now, qid, queryText, calls, totalExecTime, meanExecTime)
+		c.ingestSampleSince(now, qid, queryText, calls, totalExecTime, meanExecTime, statsSince.Time.UTC())
 		if c.cfg.CapturePlans {
 			tracked = append(tracked, trackedQuery{queryID: qid, queryText: queryText})
 		}
@@ -671,11 +733,21 @@ func (c *Collector) PlansAround(queryID int64, at time.Time) (before, after *pla
 	return before, after
 }
 
-// ingestSample records one observation for qid at time now. It is factored
-// out of scrape's row loop so that both the real scrape path and tests can
-// drive the collector's storage/fingerprint bookkeeping one sample at a time
-// without needing a live pg_stat_statements connection.
+// ingestSample records one observation for qid at time now, without a
+// stats_since value. See ingestSampleSince.
 func (c *Collector) ingestSample(now time.Time, qid int64, queryText string, calls int64, totalExecTime, meanExecTime float64) {
+	c.ingestSampleSince(now, qid, queryText, calls, totalExecTime, meanExecTime, time.Time{})
+}
+
+// ingestSampleSince records one observation for qid at time now. It is
+// factored out of scrape's row loop so that both the real scrape path and
+// tests can drive the collector's storage/fingerprint bookkeeping one sample
+// at a time without needing a live pg_stat_statements connection.
+//
+// pg_stat_statements reports counters that accumulate from the last reset, so
+// the sample's per-interval fields are derived here by subtracting the
+// previous snapshot of the same queryid (see deriveInterval).
+func (c *Collector) ingestSampleSince(now time.Time, qid int64, queryText string, calls int64, totalExecTime, meanExecTime float64, statsSince time.Time) {
 	// Truncate to stay within the configured budget; tail bytes are diagnostically redundant.
 	if len(queryText) > c.cfg.MaxQueryTextLen {
 		queryText = queryText[:c.cfg.MaxQueryTextLen] + "…"
@@ -689,18 +761,74 @@ func (c *Collector) ingestSample(now time.Time, qid int64, queryText string, cal
 		Calls:           calls,
 		TotalExecTimeMs: totalExecTime,
 		MeanExecTimeMs:  meanExecTime,
+		StatsSince:      statsSince,
 		RecordedAt:      now,
 		Fingerprint:     fingerprint,
 	}
 
 	c.mu.Lock()
+	if hist := c.samples[qid]; len(hist) > 0 {
+		sample = deriveInterval(hist[len(hist)-1], sample)
+	}
 	c.samples[qid] = append(c.samples[qid], sample)
 	c.indexFingerprintLocked(qid, fingerprint)
 	c.mu.Unlock()
 
+	if sample.ResetDetected {
+		c.statsResets.Inc()
+		c.logger.Info("collector: pg_stat_statements counters restarted for query; using activity since the reset",
+			"query_id", qid, "calls", calls, "stats_since", statsSince)
+	}
+
 	qidStr := fmt.Sprintf("%d", qid)
 	c.meanExecTime.WithLabelValues(qidStr).Set(meanExecTime)
 	c.callsTotal.WithLabelValues(qidStr).Set(float64(calls))
+	if sample.IntervalKnown && sample.IntervalCalls > 0 {
+		c.intervalMeanExecTime.WithLabelValues(qidStr).Set(sample.IntervalMeanMs)
+	}
+}
+
+// deriveInterval fills cur's Interval* fields from the cumulative counters of
+// the previous snapshot prev of the same queryid, and returns cur.
+//
+// pg_stat_statements' calls and total_exec_time only ever grow until the entry
+// is reset (pg_stat_statements_reset, a crash, or eviction once
+// pg_stat_statements.max is exceeded), and mean_exec_time is their ratio, so
+// the mean is an average over the entire history since that reset. The change
+// in that average from one scrape to the next shrinks as calls accumulate, and
+// a regression that doubles a query's latency barely moves a mean built from
+// millions of earlier calls. The latency of the calls made *between* two
+// snapshots is the delta of the totals over the delta of the counts:
+//
+//	interval mean = (total_now - total_prev) / (calls_now - calls_prev)
+//
+// A reset is recognised from any of these signals:
+//   - calls or total_exec_time went down;
+//   - stats_since (PostgreSQL 17+) changed, which also catches a reset after
+//     which the counters have already climbed past their old values.
+//
+// After a reset the counters restart from zero, so cur's own cumulative values
+// are exactly the activity since the reset and are used as the interval.
+func deriveInterval(prev, cur QuerySample) QuerySample {
+	reset := cur.Calls < prev.Calls || cur.TotalExecTimeMs < prev.TotalExecTimeMs
+	if !cur.StatsSince.IsZero() && !prev.StatsSince.IsZero() && !cur.StatsSince.Equal(prev.StatsSince) {
+		reset = true
+	}
+
+	dCalls, dTotal := cur.Calls-prev.Calls, cur.TotalExecTimeMs-prev.TotalExecTimeMs
+	if reset {
+		dCalls, dTotal = cur.Calls, cur.TotalExecTimeMs
+	}
+
+	cur.IntervalKnown = true
+	cur.ResetDetected = reset
+	cur.IntervalCalls = dCalls
+	cur.IntervalTotalMs = dTotal
+	cur.IntervalMeanMs = 0
+	if dCalls > 0 {
+		cur.IntervalMeanMs = dTotal / float64(dCalls)
+	}
+	return cur
 }
 
 // pruneAndUpdateMetrics evicts samples older than now-RetentionDuration and
@@ -852,6 +980,7 @@ func (c *Collector) resolveColumns(ctx context.Context) {
 			return
 		}
 		major := versionNum / 10000
+		c.hasStatsSince = major >= 17
 		if major < 13 {
 			c.legacyTimingColumns = true
 			c.logger.Info("collector: detected PostgreSQL older than 13; using legacy pg_stat_statements column names (total_time/mean_time)",
@@ -875,17 +1004,21 @@ func (c *Collector) queryStatStatements() string {
 	if maxQueryTextLen == 0 {
 		maxQueryTextLen = defaultMaxQueryTextLen
 	}
+	sinceCol := ""
+	if c.hasStatsSince {
+		sinceCol = ",\n    stats_since"
+	}
 	return fmt.Sprintf(`
 SELECT
     queryid,
     LEFT(query, %d)           AS query,
     calls,
     %s                        AS total_exec_time,
-    %s                        AS mean_exec_time
+    %s                        AS mean_exec_time%s
 FROM pg_stat_statements
 WHERE queryid IS NOT NULL
   AND query NOT LIKE '%%pg_stat_statements%%'
 ORDER BY %s DESC
 LIMIT 500
-`, maxQueryTextLen+1, execCol, meanCol, execCol)
+`, maxQueryTextLen+1, execCol, meanCol, sinceCol, execCol)
 }
