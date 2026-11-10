@@ -1974,11 +1974,16 @@
   
 
 
-<h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
-<p><em>What's still open — planned features, known gaps, and operational follow-ups. What's already shipped lives in <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a> and in each feature's own docs page, not repeated here.</em></p>
+<div class="pgrr-home pgrr-roadmap">
+<header class="rm-head">
+<h1 id="roadmap">Road<em>map</em><a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
+<p class="rm-lead">What's still open: planned features, known gaps, and operational follow-ups. What's already shipped lives in <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a> and in each feature's own docs page, not repeated here.</p>
+</header>
 <p><svg class="rm-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><symbol id="rm-i-planned" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol><symbol id="rm-i-proposed" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="3.4 3.4"/><path d="M12 8.5v7M8.5 12h7"/></symbol><symbol id="rm-i-gap" viewBox="0 0 24 24"><path d="M12 3.5 2.8 19.5h18.4L12 3.5z"/><path d="M12 10v4.2M12 17.1v.01"/></symbol><symbol id="rm-i-followup" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M13 8.5l3.5 3.5-3.5 3.5"/></symbol><symbol id="rm-i-deferred" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol></svg></p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<div class="rm-overview">
 <p>This page tracks only what's <em>not</em> done yet: planned features, known robustness gaps, and operational follow-ups that aren't code changes. It is not a running history of delivered work — once an item here ships, it's removed from this page, not reworded as "done"; its details live in <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a> (what shipped and when) and the relevant feature's own docs page (how it works today).</p>
+</div>
 <div class="rm-glance">
 <div class="rm-stat"><span class="rm-stat-num" data-rm-count>20</span><span class="rm-stat-label">open items below</span></div>
 <div class="rm-stat rm-stat--progress"><span class="rm-stat-num">6<small> / 7</small></span><span class="rm-stat-label">security and robustness checklist steps complete</span><span class="rm-steps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="rm-step-open"></i></span></div>
@@ -2004,7 +2009,6 @@
 <a class="rm-feature" href="#roadmap-items" data-area="Attribution"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Honest attribution</span><span class="rm-feature-desc">Say when a deploy is the likely cause, when several could be, and when the database as a whole slowed down.</span><span class="rm-fields"><span><b>Open items</b>3</span><span><b>Impact</b>High</span><span><b>Timeline</b>Q1 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
 <a class="rm-feature" href="#roadmap-items" data-area="Validation"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Proven in real environments</span><span class="rm-feature-desc">Close the gap between what CI proves and what operators will run: real-runner e2e, real ArgoCD, and an external-user quickstart.</span><span class="rm-fields"><span><b>Open items</b>3</span><span><b>Impact</b>Medium</span><span><b>Timeline</b>Q4 2026 – Q1 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
 </div>
-
 <h2 id="roadmap-items">Roadmap items<a class="headerlink" href="#roadmap-items" title="Permanent link">&para;</a></h2>
 <div class="rm-list">
 <div class="rm-item" data-area="Statistics" data-quarter="Q1 2027" data-status="proposed">
@@ -2180,7 +2184,6 @@
 </details>
 </div>
 </div>
-<p><strong>Have an idea?</strong> <a href="https://github.com/joao00001/pg-regression-radar/issues/new/choose">Open a feature request</a> — dates are not promised, but this page is where accepted ideas land.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a> — what's already shipped, release by release; this page only tracks what's still open.</li>
@@ -2188,6 +2191,8 @@
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/persistence/">Persistence</a> and <a href="https://joao00001.github.io/pg-regression-radar/latest/collector-internals/">Collector Internals</a> — the two pages with the most detail on the robustness gaps above.</li>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/support-matrix/">Support Matrix</a> — officially supported PostgreSQL versions and distributions, including real <code>kind</code> + CloudNativePG validation coverage (single- and two-cluster) and the remaining <code>pg_store_plans</code>-on-CloudNativePG-operand-image follow-up referenced above.</li>
 </ul>
+<p class="pgrr-foot"><strong>Have an idea?</strong> <a href="https://github.com/joao00001/pg-regression-radar/issues/new/choose">Open a feature request</a>: dates are not promised, but this page is where accepted ideas land.</p>
+</div>
 
 
 
