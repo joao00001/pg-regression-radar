@@ -55,6 +55,15 @@ type logRecord struct {
 	spanID        []byte
 }
 
+// pValueSuffix is ", p-value 0.02" for the log body, or "" when the
+// significance test did not run.
+func pValueSuffix(p *float64) string {
+	if p == nil {
+		return ""
+	}
+	return fmt.Sprintf(", p-value %.2g", *p)
+}
+
 func nanos(t time.Time) uint64 {
 	if t.IsZero() || t.UnixNano() <= 0 {
 		return 0
@@ -82,11 +91,11 @@ func buildRecord(res v1alpha1.PerformanceRegression, observed time.Time) logReco
 		trigger = string(v1alpha1.TriggerTypeDeploy)
 	}
 	if res.TriggerType == v1alpha1.TriggerTypePeriodic || res.DeployEventID == "" {
-		rec.body = fmt.Sprintf("Query %d latency regressed %.2fx (mean %.2f ms -> %.2f ms), confidence %.2f",
-			res.QueryID, res.LatencyChangeFactor, res.MeanLatencyBefore, res.MeanLatencyAfter, res.ConfidenceScore)
+		rec.body = fmt.Sprintf("Query %d latency regressed %.2fx (mean %.2f ms -> %.2f ms), confidence %.2f%s",
+			res.QueryID, res.LatencyChangeFactor, res.MeanLatencyBefore, res.MeanLatencyAfter, res.ConfidenceScore, pValueSuffix(res.PValue))
 	} else {
-		rec.body = fmt.Sprintf("Query %d latency regressed %.2fx (mean %.2f ms -> %.2f ms) after deploy %s, confidence %.2f",
-			res.QueryID, res.LatencyChangeFactor, res.MeanLatencyBefore, res.MeanLatencyAfter, res.DeployEventID, res.ConfidenceScore)
+		rec.body = fmt.Sprintf("Query %d latency regressed %.2fx (mean %.2f ms -> %.2f ms) after deploy %s, confidence %.2f%s",
+			res.QueryID, res.LatencyChangeFactor, res.MeanLatencyBefore, res.MeanLatencyAfter, res.DeployEventID, res.ConfidenceScore, pValueSuffix(res.PValue))
 	}
 
 	a := []attr{
@@ -101,6 +110,9 @@ func buildRecord(res v1alpha1.PerformanceRegression, observed time.Time) logReco
 		{"pg_regression_radar.latency.change_factor", res.LatencyChangeFactor},
 		{"pg_regression_radar.external_cause_suspected", res.ExternalCauseSuspected},
 		{"pg_regression_radar.auto_abort.triggered", res.AutoAbortTriggered},
+	}
+	if res.PValue != nil {
+		a = append(a, attr{"pg_regression_radar.p_value", *res.PValue})
 	}
 	if res.QueryText != "" {
 		a = append(a, attr{"db.query.text", res.QueryText})

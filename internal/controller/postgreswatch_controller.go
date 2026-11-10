@@ -960,6 +960,7 @@ func applyRegressionStatus(obj *radarv1alpha1.PerformanceRegression, res dto.Per
 	obj.Status = radarv1alpha1.PerformanceRegressionStatus{
 		Status:                 radarv1alpha1.RegressionStatus(res.Status),
 		ConfidenceScore:        strconv.FormatFloat(res.ConfidenceScore, 'f', 4, 64),
+		PValue:                 formatPValue(res.PValue),
 		MeanLatencyBeforeMs:    strconv.FormatFloat(res.MeanLatencyBefore, 'f', 4, 64),
 		MeanLatencyAfterMs:     strconv.FormatFloat(res.MeanLatencyAfter, 'f', 4, 64),
 		LatencyChangeFactor:    strconv.FormatFloat(res.LatencyChangeFactor, 'f', 4, 64),
@@ -974,8 +975,27 @@ func applyRegressionStatus(obj *radarv1alpha1.PerformanceRegression, res dto.Per
 		Type:    "Detected",
 		Status:  metav1.ConditionTrue,
 		Reason:  "RegressionDetected",
-		Message: fmt.Sprintf("query %d latency changed by %.2fx (confidence %.0f%%)", res.QueryID, res.LatencyChangeFactor, res.ConfidenceScore*100),
+		Message: fmt.Sprintf("query %d latency changed by %.2fx (%s)", res.QueryID, res.LatencyChangeFactor, significanceText(res)),
 	})
+}
+
+// formatPValue renders p with four significant digits, or "" when the
+// significance test did not run. 'g' rather than 'f': a p-value of 3e-9 must
+// not collapse to "0.0000".
+func formatPValue(p *float64) string {
+	if p == nil {
+		return ""
+	}
+	return strconv.FormatFloat(*p, 'g', 4, 64)
+}
+
+// significanceText describes how significant the shift is for human-readable
+// messages, leading with the p-value rather than the derived "confidence".
+func significanceText(res dto.PerformanceRegression) string {
+	if res.PValue == nil {
+		return fmt.Sprintf("confidence score %.2f", res.ConfidenceScore)
+	}
+	return fmt.Sprintf("p-value %.2g", *res.PValue)
 }
 
 // SetupWithManager wires this reconciler into mgr.

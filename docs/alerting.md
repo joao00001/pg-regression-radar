@@ -104,12 +104,16 @@ The template is executed against these fields:
 | `.QueryText` | string | `SELECT * FROM orders WHERE customer_id = $1` |
 | `.ConfidenceScore` | float64 | `0.97` |
 | `.ConfidencePercent` | string (pre-formatted) | `97%` |
+| `.PValue` | float64 | `0.03` (`0` when the significance test did not run) |
+| `.PValueText` | string (pre-formatted) | `0.03` (empty when the test did not run) |
 | `.MeanLatencyBeforeMs` | string (pre-formatted) | `12.50` |
 | `.MeanLatencyAfterMs` | string (pre-formatted) | `84.20` |
 | `.LatencyChangeFactor` | string (pre-formatted) | `6.74x` |
 | `.ChangePointRFC3339` | string | `2026-08-12T10:00:00Z` |
 | `.ExternalCauseSuspected` | bool | `false` |
 | `.PlanDiffSummary` | string | `` (empty unless `--capture-plans`/`spec.capturePlans` is on) |
+
+`ConfidenceScore` is `1 - PValue`, a significance score and not a probability; see [Detection Algorithm](detection-algorithm.md#what-the-p-value-and-the-confidence-score-mean). The Slack, Teams and PagerDuty layouts show it as `97% (1 − p)` next to the p-value.
 
 The pre-formatted fields (`ConfidencePercent`, `MeanLatencyBeforeMs`, etc.) match exactly what the built-in Slack/Teams/PagerDuty formatters render, so a template author gets the same numbers without reimplementing that formatting.
 

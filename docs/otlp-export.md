@@ -64,7 +64,7 @@ One log record per regression, in a Resource identifying this project (`service.
 | `severity_number` / `severity_text` | `13` / `WARN` |
 | `time_unix_nano` | when the change point was detected (falling back to creation time) |
 | `observed_time_unix_nano` | export time |
-| `body` | human-readable summary, e.g. `Query 123 latency regressed 3.00x (mean 10.00 ms -> 30.00 ms) after deploy otlp-…, confidence 0.97` |
+| `body` | human-readable summary, e.g. `Query 123 latency regressed 3.00x (mean 10.00 ms -> 30.00 ms) after deploy otlp-…, confidence 0.97, p-value 0.03` |
 | `trace_id` / `span_id` | present when the triggering deploy came from an [OTLP span](otlp-deploy-events.md); links the regression to the deploy trace |
 
 | Attribute | Type | Notes |
@@ -73,7 +73,8 @@ One log record per regression, in a Resource identifying this project (`service.
 | `db.query.text` | string | truncated query text, when known |
 | `pg_regression_radar.regression.name` / `.status` / `.trigger_type` | string | `trigger_type` is `deploy` or `periodic` |
 | `pg_regression_radar.query_id` | int | `pg_stat_statements` queryid |
-| `pg_regression_radar.confidence` | double | |
+| `pg_regression_radar.confidence` | double | `1 - p_value`; a significance score, not a probability |
+| `pg_regression_radar.p_value` | double | Welch's t-test p-value; omitted when the test did not run |
 | `pg_regression_radar.latency.before_ms` / `.after_ms` / `.change_factor` | double | |
 | `pg_regression_radar.deploy_event_id` | string | when deploy-triggered |
 | `pg_regression_radar.detected_change_at` | string | RFC 3339 |

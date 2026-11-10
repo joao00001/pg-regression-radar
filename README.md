@@ -62,7 +62,7 @@ Full walkthrough: [Regression Scenario Example](https://joao00001.github.io/pg-r
 
 1. `checkout-api` deploys as `v1`. A frequently run query has a baseline latency of about 3 ms.
 2. Revision `v2` drops the index behind `orders.customer_id`. The same query now takes about 49 ms.
-3. The change point is located, Welch's t-test confirms it is not noise, and the regression is attributed to the `v2` deploy: a 15.7x change with 0.98 confidence.
+3. The change point is located, Welch's t-test confirms it is not noise, and the regression is attributed to the `v2` deploy: a 15.7x change with a p-value of 0.02 (`confidenceScore` 0.98, defined as 1 − p, not a probability).
 
 ![checkout-api query latency: flat at about 3 ms through deploy v1, then about 49 ms after deploy v2, with the detected regression annotated at 15.7x and 0.98 confidence](https://github.com/user-attachments/assets/78ef1e6c-9512-4d1a-8f60-b5dd341c1f5e)
 

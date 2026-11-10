@@ -34,6 +34,7 @@ Produced by the Ingester from any of the four webhook sources — see [Deploy So
   "queryText": "SELECT * FROM orders WHERE user_id = $1",
   "status": "Detected",
   "confidenceScore": 0.98,
+  "pValue": 0.02,
   "meanLatencyBefore": 4.2,
   "meanLatencyAfter": 13.7,
   "latencyChangeFactor": 3.26,
@@ -43,7 +44,7 @@ Produced by the Ingester from any of the four webhook sources — see [Deploy So
 }
 ```
 
-Produced by the Correlation Engine for every query analysed against a `DeployEvent` — see [Detection Algorithm](detection-algorithm.md) for what `status`, `confidenceScore`, and the latency fields mean, and how `Detected` is decided. `status` is one of `Detected`, `NoRegression`, or `InsufficientData`. `planDiffSummary` is only populated when plan-diff correlation is enabled (`--capture-plans` / `spec.capturePlans`) — see [Detection Algorithm: Plan-diff correlation](detection-algorithm.md#plan-diff-correlation-optional).
+Produced by the Correlation Engine for every query analysed against a `DeployEvent` — see [Detection Algorithm](detection-algorithm.md) for what `status`, `pValue`, `confidenceScore`, and the latency fields mean. `confidenceScore` is `1 - pValue`, a significance score and not a probability, and `pValue` is omitted when the significance test did not run, and how `Detected` is decided. `status` is one of `Detected`, `NoRegression`, or `InsufficientData`. `planDiffSummary` is only populated when plan-diff correlation is enabled (`--capture-plans` / `spec.capturePlans`) — see [Detection Algorithm: Plan-diff correlation](detection-algorithm.md#plan-diff-correlation-optional).
 
 ## Dashboard API
 
@@ -70,6 +71,7 @@ Lists `PerformanceRegression` objects (`api/v1alpha1/performanceregression_types
   "status": "Detected",
   "triggerType": "deploy",
   "confidenceScore": "0.98",
+  "pValue": "0.02",
   "meanLatencyBeforeMs": "4.2",
   "meanLatencyAfterMs": "13.7",
   "latencyChangeFactor": "3.26",

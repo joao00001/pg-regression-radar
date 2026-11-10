@@ -58,7 +58,7 @@ Below that, the test is not wrong, it is underpowered: a "no regression" verdict
 
 What the floors do not do:
 
-- **They do not control false positives.** The p-value threshold does that. In simulations of per-call log-normal latency with Poisson traffic, Welch's t-test on per-interval means stayed close to its nominal 5% size even with one-call intervals, and a traffic step with no latency change stayed near 0% `Detected` through the full pipeline. The floors decide when to answer, not how often a wrong answer is raised.
+- **They do not control false positives.** The p-value threshold does that. In simulations of per-call log-normal latency with Poisson traffic, Welch's t-test on per-interval means stayed close to its nominal 5% size even with one-call intervals, and a traffic step with no latency change stayed near 0% `Detected` through the full pipeline. Both results assume independent noise; with serially correlated noise the false-positive rate is higher (see [what the p-value and the confidence score mean](#what-the-p-value-and-the-confidence-score-mean)). The floors decide when to answer, not how often a wrong answer is raised.
 - **They do not merge intervals.** Merging consecutive intervals until each holds a minimum number of calls was tested and rejected: it left the test size unchanged, reduced the number of observations, cost power, and delayed detection (at 3 calls per interval, a +50% regression was found in 78% of trials unmerged and 0% when merged to 30 calls per observation, which left about a dozen observations per window).
 - **They need call counts.** Executions are known only for samples the Collector produced. A source that reports just a mean, such as the [OTel/Prometheus source](otel-prometheus-source.md), is gated by `--min-samples` alone.
 
@@ -76,7 +76,27 @@ If E-divisive finds no change point, or the one it finds is too far from the dep
 
 ## Stage 2: Welch's t-test (confirm)
 
-The two segments actually defined by the change point E-divisive found (not the naive deploy-timestamp split) are compared with Welch's t-test to confirm the difference in means is statistically significant (configurable p-value threshold, default p < 0.05). `ConfidenceScore` is derived from this p-value.
+The two segments actually defined by the change point E-divisive found (not the naive deploy-timestamp split) are compared with Welch's t-test to confirm the difference in means is statistically significant (configurable p-value threshold, default p < 0.05). The p-value is reported as `pValue`, and `ConfidenceScore` is derived from it as `1 - pValue`; read [What the p-value and the confidence score mean](#what-the-p-value-and-the-confidence-score-mean) before relying on either.
+
+## What the p-value and the confidence score mean
+
+`pValue` is the probability of seeing a latency difference at least as large as the one observed between the two segments if the query's latency had not changed at all. `confidenceScore` is `1 - pValue`, kept as a convenient number that grows with significance. It is not a probability, and it should not be read as one:
+
+- **It is not the probability that the regression is real.** A p-value conditions on "nothing changed"; the probability that something changed requires a prior, which the test does not have. The [American Statistical Association's statement on p-values](https://doi.org/10.1080/00031305.2016.1154108) (Wasserstein and Lazar, 2016) names this misreading among its principles. The calibration of [Sellke, Bayarri and Berger (2001)](https://doi.org/10.1198/000313001300339950) shows how far apart the two can be: for p below 1/e and a broad class of alternatives (symmetric and unimodal around "no change"), the evidence against "no change" is at most 1 / (-e * p * ln p), so with even odds of a change beforehand the probability that nothing changed is at least:
+
+  | `pValue` | `confidenceScore` | Lowest possible probability that nothing changed |
+  |---|---|---|
+  | 0.05 | 0.95 | 29% |
+  | 0.02 | 0.98 | 18% |
+  | 0.01 | 0.99 | 11% |
+  | 0.001 | 0.999 | 1.8% |
+
+  A `confidenceScore` of 0.98 therefore leaves at least a one-in-six chance that the shift is noise, under that prior, and usually more.
+- **It is optimistic, because the split was chosen from the same data.** Stage 1 picks the most extreme split and stage 2 tests it as if it had been fixed in advance. This is the known problem of maximally selected statistics, whose p-values need a correction that accounts for the search (Miller and Siegmund, 1982; Lausen and Schumacher, 1992; see the R [`maxstat`](https://cran.r-universe.dev/maxstat/doc/manual.html) package). E-divisive means itself judges significance with a permutation test over the whole search, not with a t-test at the chosen split. Measured with this project's own E-divisive and Welch code on series with no change at all (1,500 per row, 30 to 240 points): with independent noise, 35-39% had p < 0.05 and 11-17% had p < 0.01 at the split E-divisive chose; with first-order autocorrelation of 0.5 and 0.8, 60-90% and 85-99% had p < 0.05. Through the whole engine (120 samples per side, `--latency-threshold` 0.20, change-point tolerance, p threshold), the share of no-change analyses reported as `Detected` was 0-2% with independent noise but up to 8% with autocorrelated, heavy-tailed noise, and lowering the p threshold from 0.05 to 0.01 barely changed that (5.5-6%). Those false detections have tiny p-values, so they also clear `autoAbort.confidenceThreshold`. These are simulated series (AR(1) log-latency, 100 calls per interval), not production traces. See the [Roadmap](roadmap.md) for the calibration work.
+- **It says nothing about the cause.** The deploy is blamed because the change point falls close to it in time. A confident shift near a deploy can still come from load, a plan flip or a neighbour.
+- **It is per query.** Across hundreds of queries and many deploys, some will clear any threshold by chance; the p-value does not account for that.
+
+In practice: treat `pValue` as the number to read, `confidenceScore` as a threshold knob (`autoAbort.confidenceThreshold: "0.99"` means `pValue <= 0.01`), and the change factor and `detectedChangeAt` as the evidence a person should look at. `pValue` is absent, not zero, when the test did not run, for example for an `InsufficientData` result.
 
 ## Both stages must agree
 

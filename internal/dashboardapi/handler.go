@@ -175,6 +175,7 @@ type regressionDTO struct {
 	Status                 string `json:"status"`
 	TriggerType            string `json:"triggerType"`
 	ConfidenceScore        string `json:"confidenceScore"`
+	PValue                 string `json:"pValue,omitempty"`
 	MeanLatencyBeforeMs    string `json:"meanLatencyBeforeMs"`
 	MeanLatencyAfterMs     string `json:"meanLatencyAfterMs"`
 	LatencyChangeFactor    string `json:"latencyChangeFactor"`
@@ -196,6 +197,7 @@ func toRegressionDTO(r radarv1alpha1.PerformanceRegression) regressionDTO {
 		Status:                 string(r.Status.Status),
 		TriggerType:            string(r.Spec.TriggerType),
 		ConfidenceScore:        r.Status.ConfidenceScore,
+		PValue:                 r.Status.PValue,
 		MeanLatencyBeforeMs:    r.Status.MeanLatencyBeforeMs,
 		MeanLatencyAfterMs:     r.Status.MeanLatencyAfterMs,
 		LatencyChangeFactor:    r.Status.LatencyChangeFactor,

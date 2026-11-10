@@ -473,8 +473,10 @@ func (e *Engine) computeChangeStats(queryID int64, preSamples, postSamples []col
 		"change_factor", changeFactor,
 		"change_at", changeAt)
 
-	// Confidence is derived from the p-value: a p-value close to zero means the
-	// observed shift is extremely unlikely to be random noise.
+	// Confidence is 1 - p. It ranks results and drives thresholds, but it is
+	// not a probability that the regression is real: the p-value says how
+	// surprising this shift would be if nothing had changed, and it is
+	// optimistic here because the change point was chosen from the same data.
 	confidence := 1.0 - pValue
 	if confidence > 1 {
 		confidence = 1
@@ -529,6 +531,8 @@ func (e *Engine) evaluateQuery(
 		base.Status = v1alpha1.StatusNoRegression
 		return base
 	}
+	p := stats.pValue
+	base.PValue = &p
 
 	// The change point must fall close to the deploy to be attributable to
 	// it — otherwise we'd be alerting on some unrelated shift that merely
@@ -600,6 +604,10 @@ func (e *Engine) evaluatePeriodic(
 	base.MeanLatencyAfter = stats.meanPost
 	base.LatencyChangeFactor = stats.changeFactor
 
+	if stats.changePointFound {
+		p := stats.pValue
+		base.PValue = &p
+	}
 	if !stats.changePointFound || !stats.significant {
 		base.Status = v1alpha1.StatusNoRegression
 		return base

@@ -29,6 +29,9 @@ spec:
     - jsonPath: .status.confidenceScore
       name: Confidence
       type: string
+    - jsonPath: .status.pValue
+      name: P-Value
+      type: string
     - jsonPath: .status.latencyChangeFactor
       name: Change
       type: string
@@ -200,8 +203,9 @@ spec:
                 x-kubernetes-list-type: map
               confidenceScore:
                 description: |-
-                  confidenceScore is 1 - p-value from Welch's t-test; closer to 1 means
-                  the observed latency shift is extremely unlikely to be random noise.
+                  confidenceScore is 1 - pValue. It is a significance score, not the
+                  probability that the regression is real or that the deploy caused it.
+                  Use pValue for the underlying quantity.
                 type: string
               detectedAt:
                 description: detectedAt is when the Correlation Engine produced this
@@ -225,6 +229,13 @@ spec:
                 description: |-
                   meanLatencyBeforeMs is the mean query latency in the pre-deploy
                   window, in milliseconds.
+                type: string
+              pValue:
+                description: |-
+                  pValue is the two-sided Welch's t-test p-value comparing the latency
+                  segments on either side of the located change point, with four
+                  significant digits. Empty when the test did not run. It is optimistic,
+                  because the change point is chosen from the same data the test uses.
                 type: string
               planDiffSummary:
                 description: |-

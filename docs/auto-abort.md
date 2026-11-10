@@ -34,11 +34,11 @@ spec:
 | Field | Default | Description |
 |---|---|---|
 | `enabled` | `false` | Turns on automatic abortion for this watch. |
-| `confidenceThreshold` | `"0.99"` | Minimum `confidenceScore` (`1 - p-value`) required before aborting, on top of already having cleared `pValueThreshold` to be reported as `Detected` at all. |
+| `confidenceThreshold` | `"0.99"` | Minimum `confidenceScore` (`1 - pValue`, so `"0.99"` means `pValue <= 0.01`) required before aborting, on top of already having cleared `pValueThreshold` to be reported as `Detected` at all. |
 
 ## Confidence threshold
 
-A regression is already reported as `Detected` once its p-value clears `spec.pValueThreshold` (default `0.05`, i.e. `confidenceScore` ≥ `0.95`). `autoAbort.confidenceThreshold` defaults higher, at `0.99`, deliberately: alerting a human on a `0.95`-confidence signal costs nothing but their attention, but automatically aborting a production canary on the same signal is a more consequential action, and false positives are more expensive to get wrong in that direction. Set `confidenceThreshold` explicitly if your workload's noise profile calls for something other than the default — it must be a value the `Welch's t-test` p-value can plausibly clear; see [Detection Algorithm](detection-algorithm.md) for how confidence is computed.
+A regression is already reported as `Detected` once its p-value clears `spec.pValueThreshold` (default `0.05`, i.e. `confidenceScore` ≥ `0.95`; a significance score, not a probability that the regression is real — see [what the confidence score means](detection-algorithm.md#what-the-p-value-and-the-confidence-score-mean)). `autoAbort.confidenceThreshold` defaults higher, at `0.99`, deliberately: alerting a human on a `0.95`-confidence signal costs nothing but their attention, but automatically aborting a production canary on the same signal is a more consequential action, and false positives are more expensive to get wrong in that direction. Set `confidenceThreshold` explicitly if your workload's noise profile calls for something other than the default — it must be a value the `Welch's t-test` p-value can plausibly clear; see [Detection Algorithm](detection-algorithm.md) for how confidence is computed.
 
 ## What actually gets changed
 
