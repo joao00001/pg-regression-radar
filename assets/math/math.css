@@ -873,30 +873,11 @@
   }
 }
 
-/* the page's name and the menu are written with math symbols (math.js) */
-.pgrr-sym {
-  font-family: "PGRR Math", "STIX Two Math", "Cambria Math", "Apple Symbols", serif;
-  font-weight: 400;
-  letter-spacing: 0.1em;
-  text-transform: none;
-}
-
+/* the page's name in the header is written with math symbols (math.js);
+   the base .pgrr-sym / .pgrr-sr rules are in stylesheets/extra.css */
 .md-header__title .md-header__topic .md-ellipsis .pgrr-sym {
   font-size: 1.02rem;
   letter-spacing: 0.12em;
-}
-
-.md-tabs__link .pgrr-sym {
-  font-size: 0.82rem;
-}
-
-.pgrr-sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 /* On this page the current tab is a pill, not an underline */
