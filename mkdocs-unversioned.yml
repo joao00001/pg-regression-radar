@@ -30,9 +30,32 @@ extra:
   pgrr_build: unversioned
   version: !!null ~
 
+# roadmap.css / roadmap.js style the roadmap's card layout; they are only wired
+# into this build because the versioned docs have no roadmap page.
+extra_css:
+  - stylesheets/extra.css
+  - stylesheets/roadmap.css
+
 extra_javascript:
   - javascripts/nav-data.js
   - javascripts/nav-flyout.js
+  - javascripts/roadmap.js
+
+# Same extensions as mkdocs.yml plus md_in_html (markdown inside the roadmap's
+# HTML cards). Repeated in full rather than inherited, since a list in a child
+# config replaces the parent's list.
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.tabbed:
+      alternate_style: true
 
 nav:
   - Home: index.md
