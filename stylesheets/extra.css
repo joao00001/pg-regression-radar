@@ -116,6 +116,59 @@
   color: var(--md-default-fg-color);
 }
 
+/* ---- Header tabs: Home, Playground, Docs, Roadmap ----
+   Material draws the tab bar (`navigation.tabs`, mkdocs.yml) as a second row
+   of the sticky header, with the theme's primary color (indigo) behind it.
+   Here it is a thin, quiet strip instead: transparent, so it shares the
+   header's frosted glass, set off by a hairline on its top edge; the tabs are
+   muted text, and the current one is full-strength with a short accent
+   underline. Below 76.25em Material hides it and the same entries are in the
+   sidebar drawer. */
+.md-tabs {
+  background-color: transparent;
+  color: var(--md-default-fg-color);
+  border-top: 1px solid var(--pgrr-ui-line);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+}
+
+.md-tabs__item {
+  height: 1.9rem;
+}
+
+.md-tabs__link {
+  margin-top: 0.45rem;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 1;
+  transition: color 0.15s;
+}
+
+.md-tabs__link:hover,
+.md-tabs__link:focus-visible {
+  color: var(--md-default-fg-color);
+}
+
+.md-tabs__item--active {
+  box-shadow: inset 0 -1.5px 0 var(--pgrr-accent);
+}
+
+.md-tabs__item--active .md-tabs__link {
+  color: var(--md-default-fg-color);
+}
+
+/* The tab row is 0.5rem thinner than Material assumes (2.4rem), so the
+   sticky sidebars sit 0.5rem higher to stay flush under it. */
+.md-header--lifted ~ .md-container .md-sidebar {
+  top: 4.3rem;
+}
+
+.md-tabs__item--active .md-tabs__link {
+  color: var(--md-default-fg-color);
+}
+
 /* The collapsed header search box's placeholder/icon have the same
    opaque-header assumption as the header text above (var(--md-primary-bg-color)) --
    force them to a color that's actually readable against the blur. */
@@ -206,6 +259,9 @@
 }
 
 /* ---- Code blocks: a dark card with the code in an inset panel ----
+   `.pgrr-term` (the docs playground, assets/playground/playground.css) shares
+   the card, the header row and every colour token below, so the playground's
+   terminal can never drift from the code blocks it is meant to match.
    Two layers, in both color schemes: the card (lighter, thin border) holds
    the header row -- the block's `title="..."` or, from
    docs/javascripts/code-header.js, its language, plus the copy button --
@@ -214,7 +270,8 @@
    `language-*` class that `pygments_lang_class` puts on the block; with no
    JS, or on a page whose build doesn't set it, the card simply has no
    header row. */
-.md-typeset .highlight {
+.md-typeset .highlight,
+.md-typeset .pgrr-term {
   /* Dark (the default, and the slate scheme). */
   --pgrr-card-bg: #1d1f1f;
   --pgrr-card-border: #3a3d3d;
@@ -251,7 +308,8 @@
 }
 
 /* Light scheme: the same card and inset panel, inverted. */
-[data-md-color-scheme="default"] .md-typeset .highlight {
+[data-md-color-scheme="default"] .md-typeset .highlight,
+[data-md-color-scheme="default"] .md-typeset .pgrr-term {
   --pgrr-card-bg: #f1f2f2;
   --pgrr-card-border: #d4d8d8;
   --pgrr-panel-bg: #ffffff;
@@ -277,7 +335,8 @@
 }
 
 /* The header row: Material's `.filename` (a block with a title) and ours. */
-.md-typeset .highlight > .filename {
+.md-typeset .highlight > .filename,
+.md-typeset .pgrr-term > .filename {
   display: flex;
   align-items: center;
   min-height: 36px;
@@ -291,7 +350,8 @@
   line-height: 1.3;
 }
 
-.md-typeset .highlight > .filename::before {
+.md-typeset .highlight > .filename::before,
+.md-typeset .pgrr-term > .filename::before {
   content: none;
 }
 
@@ -1030,10 +1090,10 @@
   border-bottom: 1px solid var(--pgrr-ui-line);
 }
 
-/* Search box: a card-colored rounded field instead of Material's flat tint. */
+/* Search box: a card-colored pill (like the home page's buttons) instead of Material's flat tint. */
 .md-search__form {
   border: 1px solid var(--pgrr-ui-border);
-  border-radius: 12px;
+  border-radius: 999px;
   background-color: var(--pgrr-ui-bg);
   box-shadow: none;
   transition: border-color 0.15s;
@@ -1050,7 +1110,7 @@
 
 [data-md-toggle="search"]:checked ~ .md-header .md-search__form {
   border-color: var(--pgrr-accent);
-  border-radius: 12px 12px 0 0;
+  border-radius: 18px 18px 0 0;
   background-color: var(--pgrr-ui-bg);
   box-shadow: none;
 }
@@ -1058,7 +1118,7 @@
 .md-search__output {
   border: 1px solid var(--pgrr-ui-border);
   border-top: 0;
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 16px 16px;
   background-color: var(--pgrr-ui-bg);
 }
 
@@ -1137,4 +1197,237 @@
 /* Keep the site title close to the logo. */
 .md-header__title {
   margin-left: 0.1rem;
+}
+
+/* ---- Header controls: centered search; repo link and theme toggle on the right ----
+   Desktop only (Material's drawer layout takes over below 76.25em). The site
+   name on the left and the repo link on the right take equal shares of the
+   row, so the search box sits in the middle of the page, wider than
+   Material's default. Everything is a pill, like the home page's buttons:
+   the search field, the repo link and the (round) theme toggle. */
+@media screen and (min-width: 76.25em) {
+  .md-header__inner .md-header__title {
+    flex: 1 1 0;
+    min-width: 0;
+    margin-left: 0.12rem;
+    /* balances the theme button on the other side of the search box */
+    margin-right: var(--pgrr-title-balance, 2.2rem);
+  }
+
+  .md-search {
+    flex: 0 0 26rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  .md-search__inner {
+    width: 100%;
+  }
+
+  .md-header__source {
+    flex: 1 1 0;
+    order: 4;
+    display: flex;
+    justify-content: flex-end;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    margin: 0;
+  }
+
+  /* the theme toggle is the last control of the row */
+  .md-header__option {
+    order: 5;
+    margin: 0 0 0 0.5rem;
+    max-width: none;
+  }
+}
+
+/* The right-hand controls are quiet, borderless icon buttons, the way
+   shadcn/ui and Starlight do it: no frame at rest, a soft round highlight on
+   hover. Only the search field keeps its outline, as the one real input. */
+.md-header__button[for^="__palette"],
+.md-header__source .md-source {
+  --pgrr-ghost: color-mix(in srgb, var(--md-default-fg-color) 9%, transparent);
+  box-sizing: border-box;
+  height: 1.9rem;
+  border: 0;
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--md-default-fg-color--light);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.md-header__button[for^="__palette"]:hover,
+.md-header__source .md-source:hover,
+.md-header__source .md-source:focus-visible {
+  background-color: var(--pgrr-ghost);
+  color: var(--md-default-fg-color);
+  opacity: 1;
+}
+
+/* Theme toggle: a round icon button; the icon spins in when it swaps. */
+/* The extra selector parts out-rank Material's per-scheme rules, which reset
+   the visible label to `display: block` after a swap and left the icon
+   stuck in the corner of its button. */
+.md-header__option label.md-header__button[for^="__palette"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  margin: 0;
+  padding: 0;
+}
+
+.md-header__option label.md-header__button[for^="__palette"][hidden] {
+  display: none;
+}
+
+.md-header__button[for^="__palette"] svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentcolor;
+}
+
+.pgrr-theme-swap .md-header__option svg {
+  animation: pgrr-icon-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes pgrr-icon-in {
+  from {
+    opacity: 0;
+    transform: rotate(-110deg) scale(0.5);
+  }
+}
+
+/* A hairline divides the repo link from the theme toggle. */
+@media screen and (min-width: 76.25em) {
+  .md-header__option {
+    position: relative;
+    margin-left: 0.7rem;
+  }
+
+  .md-header__option::before {
+    content: "";
+    position: absolute;
+    left: -0.4rem;
+    top: 50%;
+    height: 1rem;
+    border-left: 1px solid var(--pgrr-ui-border);
+    transform: translateY(-50%);
+  }
+}
+
+/* Repo link: the GitHub mark and the star count, nothing else. The name is
+   the site's title context; version and forks live on the repo page. */
+.md-header__source .md-source {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  padding: 0 0.7rem 0 0.6rem;
+}
+
+[dir] .md-source__icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  fill: currentcolor;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.md-source:hover .md-source__icon svg,
+.md-source:focus-visible .md-source__icon svg {
+  transform: rotate(-12deg) scale(1.08);
+}
+
+.md-source__icon {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  height: auto;
+}
+
+[dir] .md-source__icon + .md-source__repository {
+  display: flex;
+  align-items: center;
+  max-width: none;
+  margin-left: 0.4rem;
+  padding-left: 0;
+  font-size: 0; /* hides the long repo name */
+  line-height: 1;
+}
+
+.md-source__facts {
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+/* only the stars */
+.md-source__fact:not(.md-source__fact--stars) {
+  display: none;
+}
+
+.md-source__fact--stars {
+  display: inline-flex;
+  align-items: center;
+}
+
+.md-source__fact--stars::before {
+  transition: background-color 0.2s;
+}
+
+.md-source:hover .md-source__fact--stars::before {
+  background-color: var(--pgrr-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-theme-swap .md-header__option svg {
+    animation: none;
+  }
+
+  .md-source__icon svg {
+    transition: none;
+  }
+}
+
+/* On a narrow screen the theme toggle stays a plain icon, like the search one. */
+@media screen and (max-width: 76.1875em) {
+  .md-header__button[for^="__palette"] {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0;
+    color: var(--md-default-fg-color);
+  }
+}
+
+/* ---- Site name: a lockup with the mark ----
+   The mark is a grid of small square dots. The name is set the way the home
+   page sets its labels: the code font in small, widely tracked capitals, so the
+   letters repeat the grid's even rhythm and the two read as one unit. The mark
+   sits on the text's baseline (its solid bottom row is the line the letters
+   stand on), and its height is trimmed to the type's scale. */
+@media screen and (min-width: 76.25em) {
+  .md-header__button.md-logo svg {
+    height: 1.1rem;
+    width: 1.1rem;
+  }
+
+  /* about one x-height between the mark and the first letter */
+  .md-header__button.md-logo {
+    margin-right: 0;
+    padding-right: 0;
+  }
+}
+
+.md-header__title .md-header__topic .md-ellipsis {
+  font-family: var(--md-code-font-family);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  position: relative;
+  top: var(--pgrr-name-drop, -0.04rem);
 }
