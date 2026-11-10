@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Publish the unversioned docs pages (home + roadmap) to a gh-pages checkout.
+"""Publish the unversioned docs pages (home, roadmap, playground) to a gh-pages checkout.
 
 mike owns the per-version directories of the gh-pages branch (`v1.5.0/`,
 `latest/`, ...) plus `versions.json`. This script owns everything else at the
@@ -83,8 +83,9 @@ def copy_site(site, target):
         os.makedirs(dest, exist_ok=True)
         for name in files:
             # sitemap.xml.gz embeds a timestamp, so it would make every
-            # publish a non-empty commit.
-            if name.endswith(".gz"):
+            # publish a non-empty commit. Only that file: other .gz files are
+            # real assets (the playground's pgrr.wasm.gz).
+            if name == "sitemap.xml.gz":
                 continue
             shutil.copy2(os.path.join(root, name), os.path.join(dest, name))
 

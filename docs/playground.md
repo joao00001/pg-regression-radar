@@ -45,7 +45,7 @@ PGlite (PostgreSQL in WebAssembly)        Go engine compiled to WebAssembly
 ```
 
 - **PostgreSQL** is [PGlite](https://pglite.dev) running PostgreSQL 18 compiled to WebAssembly, with the real `pg_stat_statements` extension. It is loaded on first use from the jsDelivr CDN (about 5 MB compressed).
-- **The engine** is the same `internal/correlation` package the operator runs, compiled with `GOOS=js GOARCH=wasm` (about 1 MB compressed) from the same commit as this page. The playground is part of each release's docs, so it runs that release's algorithm.
+- **The engine** is the same `internal/correlation` package the operator runs, compiled with `GOOS=js GOARCH=wasm` (about 1 MB compressed) from `main`. The playground is not tied to a release: it is rebuilt from the `main` branch on every merge, so it can be a little ahead of the latest release.
 - **Time is virtual.** The simulation executes the workload as fast as it can and stamps each snapshot as if it were taken every 30 seconds, so a 22-minute scenario takes a few seconds.
 
 ## Limits

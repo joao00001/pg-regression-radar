@@ -15,10 +15,10 @@
 
 """Guard for the `docs-unversioned` pull request label.
 
-The label means "this PR only edits the version-independent docs pages (home
-and roadmap) and the assets only they use, and its changes go live for every
-docs version as soon as it merges". If a labeled PR changes anything else, this posts (or updates) a
-warning comment on it; once the PR is back to touching only those pages, or
+The label means "this PR only edits the version-independent docs pages (home,
+roadmap and playground) and the assets only they use, and its changes go live
+for every docs version as soon as it merges". If a labeled PR changes anything
+else, this posts (or updates) a warning comment on it; once the PR is back to touching only those pages, or
 the label is removed, the comment is deleted. It never fails the check -- the
 comment is the alert, and a maintainer decides what to do with it.
 
@@ -35,7 +35,7 @@ import sys
 
 LABEL = "docs-unversioned"
 # Keep in sync with hooks.py's UNVERSIONED_PAGES.
-UNVERSIONED_PAGES = frozenset({"docs/index.md", "docs/roadmap.md"})
+UNVERSIONED_PAGES = frozenset({"docs/index.md", "docs/roadmap.md", "docs/playground.md"})
 # Files only the unversioned build uses (see mkdocs-unversioned.yml): the
 # roadmap's card styling and script, and that build's own config. They reach
 # the site together with the pages, on merge, so a PR that changes them is
@@ -45,6 +45,9 @@ UNVERSIONED_ASSETS = frozenset(
     {
         "docs/stylesheets/roadmap.css",
         "docs/javascripts/roadmap.js",
+        "docs/assets/playground/playground.css",
+        "docs/assets/playground/playground.js",
+        "docs/assets/playground/playground-core.js",
         "mkdocs-unversioned.yml",
     }
 )
@@ -87,8 +90,9 @@ def build_comment(offenders):
             f"### :warning: `{LABEL}` label: unexpected files changed",
             "",
             f"The `{LABEL}` label is only for changes to the docs pages that are **not versioned**: "
-            "the home page (`docs/index.md`) and the roadmap (`docs/roadmap.md`), plus the files only "
-            "their build uses (the roadmap's `roadmap.css` / `roadmap.js` and `mkdocs-unversioned.yml`). "
+            "the home page (`docs/index.md`), the roadmap (`docs/roadmap.md`) and the playground "
+            "(`docs/playground.md`), plus the files only their build uses (the roadmap's `roadmap.css` / "
+            "`roadmap.js`, the playground's `docs/assets/playground/` scripts and styles, and `mkdocs-unversioned.yml`). "
             "They are published once, independently of any release, so merging this PR changes them "
             "for every docs version immediately.",
             "",

@@ -138,14 +138,12 @@ jobs:
         run: pip install -r requirements-docs.txt
 
       - name: Set up Go (the playground page embeds a WebAssembly build of the engine)
-        if: hashFiles('scripts/build_playground.sh') != ''
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Build the playground's WebAssembly module
-        if: hashFiles('scripts/build_playground.sh') != ''
         run: scripts/build_playground.sh
 
       - name: Build versioned docs (strict — broken nav/links fail the build)
@@ -201,17 +199,6 @@ jobs:
 
       - name: Install MkDocs Material + mike
         run: pip install -r requirements-docs.txt
-
-      - name: Set up Go (the playground page embeds a WebAssembly build of the engine)
-        if: hashFiles('scripts/build_playground.sh') != ''
-        uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Build the playground's WebAssembly module
-        if: hashFiles('scripts/build_playground.sh') != ''
-        run: scripts/build_playground.sh
 
       - name: Configure git identity for mike's commits
         run: |
@@ -286,6 +273,15 @@ jobs:
 
       - name: Install MkDocs Material
         run: pip install -r requirements-docs.txt
+
+      - name: Set up Go (the playground page embeds a WebAssembly build of the engine)
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build the playground's WebAssembly module
+        run: scripts/build_playground.sh
 
       - name: Build unversioned pages
         run: mkdocs build --strict -f mkdocs-unversioned.yml

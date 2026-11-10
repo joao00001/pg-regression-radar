@@ -51,6 +51,8 @@ hooks:
 exclude_docs: |
   /index.md
   /roadmap.md
+  /playground.md
+  /assets/playground/
 
 # Declaring `plugins:` explicitly replaces MkDocs' implicit default plugin
 # list (which is just `search`) rather than adding to it — `search` is
@@ -104,12 +106,12 @@ markdown_extensions:
 # every version.
 nav:
   - Home: https://joao00001.github.io/pg-regression-radar/
+  - Playground: https://joao00001.github.io/pg-regression-radar/playground/
   - Changelog: changelog.md
   - Get Started:
       - Installation: installation.md
       - Getting Started: getting-started.md
       - Quickstart Validation: quickstart-validation.md
-      - Playground: playground.md
       - Regression Scenario Example: examples/regression-scenario.md
       - Alerting Example: examples/alerting-example.md
       - Supply Chain Verification: supply-chain.md

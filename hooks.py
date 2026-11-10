@@ -14,7 +14,7 @@
 
 """MkDocs build hook (https://www.mkdocs.org/user-guide/configuration/#hooks)
 that implements the split between versioned docs and the unversioned home
-page/roadmap (mkdocs.yml vs. mkdocs-unversioned.yml): rewriting links between
+page, roadmap and playground (mkdocs.yml vs. mkdocs-unversioned.yml): rewriting links between
 the two, giving the unversioned build the same menu as the versioned one, and
 giving each version's root a redirect in place of the home page.
 """
@@ -31,7 +31,7 @@ import yaml
 # the site root, from `main` (see mkdocs-unversioned.yml and
 # .github/workflows/docs.yml's `deploy-unversioned` job). Source path under
 # docs/ -> path under the site root.
-UNVERSIONED_PAGES = {"index.md": "", "roadmap.md": "roadmap/"}
+UNVERSIONED_PAGES = {"index.md": "", "roadmap.md": "roadmap/", "playground.md": "playground/"}
 
 # Matches either an inline code span (returned untouched) or the
 # `](target.md#frag)` part of an inline Markdown link whose target is a
@@ -82,15 +82,14 @@ def _nav_title(config, src_uri):
 def _unversioned_nav_item(title, target, config):
     """One nav entry of the unversioned build, derived from mkdocs.yml's.
 
-    The home page and the roadmap stay local pages (so their tab shows as
-    active); every other page becomes an absolute link into the `latest`
+    The unversioned pages (home, roadmap, playground) stay local pages (so
+    their tab shows as active); every other page becomes an absolute link into the `latest`
     docs, which is where this build can't reach but readers want to go.
     Entries that already are URLs (the CHANGELOG/CONTRIBUTING links) stay."""
     site_url = config["site_url"].rstrip("/") + "/"
-    if target == site_url:
-        target = "index.md"
-    elif target == site_url + UNVERSIONED_PAGES["roadmap.md"]:
-        target = "roadmap.md"
+    local = {site_url + path: src for src, path in UNVERSIONED_PAGES.items()}
+    if target in local:
+        target = local[target]
     elif target.endswith(".md") and target not in UNVERSIONED_PAGES and "://" not in target:
         title = title or _nav_title(config, target)
         page = target[: -len(".md")]
