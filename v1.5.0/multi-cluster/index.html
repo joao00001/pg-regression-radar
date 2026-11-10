@@ -1832,7 +1832,7 @@
 <h2 id="cluster-registry">Cluster registry<a class="headerlink" href="#cluster-registry" title="Permanent link">&para;</a></h2>
 <h3 id="registering-a-cluster">Registering a cluster<a class="headerlink" href="#registering-a-cluster" title="Permanent link">&para;</a></h3>
 <p>An administrator creates a <code>PostgresRadarCluster</code> resource (cluster-scoped) for each remote cluster. Only users with create/update/delete access to <code>PostgresRadarCluster</code> can add or change cluster registrations — watch creators have no say in which clusters are reachable.</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PostgresRadarCluster</span>
 <span class="nt">metadata</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west</span>
@@ -1844,7 +1844,7 @@
 <span class="w">  </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres</span><span class="w">            </span><span class="c1"># optional: default namespace on the remote cluster for DSN Secrets</span>
 </code></pre></div>
 <p>The kubeconfig Secret must carry the <a href="#secret-consent-label">consent label</a> and must contain only static credentials (bearer token or client certificate). See <a href="#kubeconfig-restrictions">Kubeconfig restrictions</a> for what is rejected and why.</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>prod-eu-west-kubeconfig<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>prod-eu-west-kubeconfig<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--from-file<span class="o">=</span><span class="nv">kubeconfig</span><span class="o">=</span>./spoke-scoped.kubeconfig<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-n<span class="w"> </span>pg-radar-system
 
@@ -1854,7 +1854,7 @@ kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w
 </code></pre></div>
 <h3 id="referencing-a-registered-cluster">Referencing a registered cluster<a class="headerlink" href="#referencing-a-registered-cluster" title="Permanent link">&para;</a></h3>
 <p>A <code>PostgresWatch</code> references a registered cluster by name via <code>spec.remoteClusterRef</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PostgresWatch</span>
 <span class="nt">metadata</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west</span>
@@ -1876,7 +1876,7 @@ kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w
 <p>Use <code>hardened</code> in new installations and in clusters where you want to enforce that only pre-registered clusters are reachable.</p>
 <h3 id="rbac-for-cluster-administrators">RBAC for cluster administrators<a class="headerlink" href="#rbac-for-cluster-administrators" title="Permanent link">&para;</a></h3>
 <p>Only bind <code>create</code>/<code>update</code>/<code>delete</code> on <code>postgresradarclusters</code> to administrators — watch creators need no write access to this resource. The Helm chart creates a <code>ClusterRole</code> for this purpose:</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>clusterrolebinding<span class="w"> </span>pg-radar-cluster-admins<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>create<span class="w"> </span>clusterrolebinding<span class="w"> </span>pg-radar-cluster-admins<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--clusterrole<span class="o">=</span>&lt;release&gt;-cluster-registry-admin<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--group<span class="o">=</span>cluster-admins
 </code></pre></div>
@@ -1898,7 +1898,7 @@ kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w
 <p>Any failure in that chain — the <code>PostgresRadarCluster</code> doesn't exist, its kubeconfig Secret is missing, the kubeconfig is malformed, or the remote API server is unreachable — is treated exactly like any other DSN resolution failure: <code>Reconcile</code> calls <code>markFailed</code>, setting <code>status.phase: Failed</code>, <code>status.message</code> to the error, and returning it so controller-runtime's rate limiter retries with backoff.</p>
 <h2 id="generating-and-storing-the-kubeconfig-secret">Generating and storing the kubeconfig Secret<a class="headerlink" href="#generating-and-storing-the-kubeconfig-secret" title="Permanent link">&para;</a></h2>
 <p>The kubeconfig you put in the Secret should be scoped down to the bare minimum on the <strong>spoke</strong> side — least privilege lives entirely in the kubeconfig's own embedded credentials/RBAC, not in anything the hub cluster enforces (the hub cluster has no way to know or limit what a kubeconfig can do once it's handed to a remote API server). A reasonable way to build one:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># On/against the SPOKE cluster:</span>
+<div class="language-bash highlight"><pre><span></span><code><span class="c1"># On/against the SPOKE cluster:</span>
 kubectl<span class="w"> </span>create<span class="w"> </span>serviceaccount<span class="w"> </span>pg-regression-radar-reader<span class="w"> </span>-n<span class="w"> </span>&lt;spoke-namespace&gt;
 
 kubectl<span class="w"> </span>create<span class="w"> </span>role<span class="w"> </span>pg-regression-radar-dsn-reader<span class="w"> </span><span class="se">\</span>
@@ -1956,10 +1956,10 @@ kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w
 <h2 id="secret-consent-label">Secret consent label<a class="headerlink" href="#secret-consent-label" title="Permanent link">&para;</a></h2>
 <p>That cluster-wide <code>secrets: get;list;watch</code> grant means anyone who can create or edit a <code>PostgresWatch</code> in a namespace — a much weaker permission than being able to read Secrets in that namespace directly — could otherwise name <em>any</em> Secret there in <code>dsnSecretRef</code> or <code>remoteClusterSecretRef</code> and have the manager read it on their behalf: a classic confused-deputy path, since it's the manager's own broader Secret-read privilege being exercised at the referencer's request, not the Secret owner's.</p>
 <p><code>internal/controller/secret_consent.go</code> closes this: before either Secret's contents are used, the manager checks it carries the label</p>
-<div class="highlight"><pre><span></span><code>pg-regression-radar.io/allow-postgreswatch-access: "true"
+<div class="language-text highlight"><pre><span></span><code>pg-regression-radar.io/allow-postgreswatch-access: "true"
 </code></pre></div>
 <p>If the label is missing, <code>resolveDSN</code>/<code>dsnSecretClient</code> return an error (surfaced the same way any other DSN resolution failure is — <code>status.phase: Failed</code>, <code>status.message</code> set) instead of using the Secret's contents. This applies to <strong>both</strong> <code>dsnSecretRef</code> (the DSN Secret itself) and <code>remoteClusterSecretRef</code> (the kubeconfig Secret) — whoever owns a Secret must explicitly opt it in before any <code>PostgresWatch</code> can reference it, in the hub cluster or, via a remote kubeconfig, in a spoke cluster's own Secrets:</p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w"> </span>prod-eu-west-app-superuser<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w"> </span>prod-eu-west-app-superuser<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>pg-regression-radar.io/allow-postgreswatch-access<span class="o">=</span><span class="nb">true</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-n<span class="w"> </span>&lt;namespace&gt;
 </code></pre></div>
@@ -2002,7 +2002,7 @@ kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w
 <p>The <code>remoteClusterSecretRef</code> field on <code>PostgresWatch</code> is deprecated. It continues to work in <code>controlled</code> security-profile mode (the default), but will be rejected in <code>hardened</code> mode. Migrating is a two-step process:</p>
 <p><strong>Step 1 — Register the cluster as a <code>PostgresRadarCluster</code>.</strong></p>
 <p>Move the kubeconfig Secret to the administrator-managed namespace (e.g. <code>pg-radar-system</code>) if it isn't there already, and create the <code>PostgresRadarCluster</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Move the kubeconfig Secret if needed (or create a new one in the admin namespace)</span>
+<div class="language-bash highlight"><pre><span></span><code><span class="c1"># Move the kubeconfig Secret if needed (or create a new one in the admin namespace)</span>
 kubectl<span class="w"> </span>create<span class="w"> </span>secret<span class="w"> </span>generic<span class="w"> </span>prod-eu-west-kubeconfig<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--from-file<span class="o">=</span><span class="nv">kubeconfig</span><span class="o">=</span>./spoke-scoped.kubeconfig<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-n<span class="w"> </span>pg-radar-system
@@ -2025,12 +2025,12 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 <span class="s">EOF</span>
 </code></pre></div>
 <p><strong>Step 2 — Update each <code>PostgresWatch</code> to use <code>remoteClusterRef</code>.</strong></p>
-<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>postgreswatch<span class="w"> </span>prod-eu-west<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>patch<span class="w"> </span>postgreswatch<span class="w"> </span>prod-eu-west<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--type<span class="o">=</span>merge<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-p<span class="w"> </span><span class="s1">'{"spec":{"remoteClusterRef":"prod-eu-west","remoteClusterSecretRef":null}}'</span>
 </code></pre></div>
 <p>Or apply a new manifest replacing <code>remoteClusterSecretRef</code> with <code>remoteClusterRef</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">remoteClusterRef</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west</span><span class="w">    </span><span class="c1"># replaces remoteClusterSecretRef</span>
 <span class="w">  </span><span class="nt">dsnSecretRef</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-eu-west-app-superuser</span>
@@ -2104,6 +2104,8 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

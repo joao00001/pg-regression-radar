@@ -1620,7 +1620,7 @@
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>By default (<code>--state-backend=memory</code>) all state lives only in process memory: the Collector keeps its per-<code>queryid</code> samples in an in-memory map, and the Ingester keeps deploy events in an in-memory slice. That means a pod restart loses all history, and running multiple replicas gives each one an inconsistent, independent view of the world. Setting <code>--state-backend=postgres</code> additionally persists both to Postgres, so history survives restarts and can be inspected/shared across replicas.</p>
 <h2 id="configuring-it">Configuring it<a class="headerlink" href="#configuring-it" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>operator<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">"host:5432/monitored_db?sslmode=disable"</span><span class="w"> </span>--state-backend<span class="w"> </span>postgres
+<div class="language-bash highlight"><pre><span></span><code>operator<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">"host:5432/monitored_db?sslmode=disable"</span><span class="w"> </span>--state-backend<span class="w"> </span>postgres
 <span class="c1"># --state-dsn defaults to --dsn above: state lives in the SAME Postgres</span>
 <span class="c1"># cluster being monitored. To isolate it, point at a separate instance:</span>
 <span class="c1"># --state-dsn "host:5432/pgrr_state?sslmode=disable"</span>
@@ -1631,7 +1631,7 @@
 </ul>
 <h2 id="schema">Schema<a class="headerlink" href="#schema" title="Permanent link">&para;</a></h2>
 <p>Everything lives in its own schema so it never collides with application tables and can be dropped cleanly:</p>
-<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">SCHEMA</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">regression_radar</span><span class="p">;</span>
+<div class="language-sql highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">SCHEMA</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">regression_radar</span><span class="p">;</span>
 
 <span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">regression_radar</span><span class="p">.</span><span class="n">query_samples</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w">                  </span><span class="n">BIGSERIAL</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
@@ -1743,6 +1743,8 @@
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

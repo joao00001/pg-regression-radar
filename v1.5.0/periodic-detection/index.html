@@ -1668,7 +1668,7 @@
 <p>This suppression state is in-memory, matching the rest of this project's default runtime state (the Collector's samples, <code>PendingSet</code>'s dedup) — it resets on restart. A regression already in progress at restart time will fire one more alert rather than staying silently suppressed forever.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <h3 id="cmdoperator-cli-mode"><code>cmd/operator</code> (CLI mode)<a class="headerlink" href="#cmdoperator-cli-mode" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>--periodic-detection
+<div class="language-text highlight"><pre><span></span><code>--periodic-detection
 --periodic-window-minutes=60
 --periodic-interval-minutes=15
 </code></pre></div>
@@ -1699,7 +1699,7 @@
 </tbody>
 </table>
 <h3 id="postgreswatch-managercrd-mode"><code>PostgresWatch</code> (manager/CRD mode)<a class="headerlink" href="#postgreswatch-managercrd-mode" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
 <span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PostgresWatch</span>
 <span class="nt">metadata</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">prod-db</span>
@@ -1808,6 +1808,8 @@
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

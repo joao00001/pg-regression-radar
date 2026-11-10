@@ -1722,7 +1722,7 @@
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>pg-regression-radar has five distinct layers of testing, each catching a different class of bug. This page lists all five and how to run each locally; see <a href="../ci-cd/">CI/CD</a> for which of them run automatically and when.</p>
 <h2 id="unit-tests-fakesmocks-no-external-services">Unit tests (fakes/mocks, no external services)<a class="headerlink" href="#unit-tests-fakesmocks-no-external-services" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./...<span class="w">       </span><span class="c1"># run all tests</span>
+<div class="language-bash highlight"><pre><span></span><code>go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./...<span class="w">       </span><span class="c1"># run all tests</span>
 go<span class="w"> </span>vet<span class="w"> </span>./...<span class="w">        </span><span class="c1"># static analysis</span>
 go<span class="w"> </span>build<span class="w"> </span>./...<span class="w">      </span><span class="c1"># build all binaries</span>
 </code></pre></div>
@@ -1736,7 +1736,7 @@ go<span class="w"> </span>build<span class="w"> </span>./...<span class="w">    
 </ul>
 <h2 id="real-infrastructure-integration-tests">Real-infrastructure integration tests<a class="headerlink" href="#real-infrastructure-integration-tests" title="Permanent link">&para;</a></h2>
 <p>Gated behind the <code>integration</code> build tag so <code>go test ./...</code> stays safe with no database or Kubernetes API available:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Real PostgreSQL (internal/storage/postgres, internal/collector, and</span>
+<div class="language-bash highlight"><pre><span></span><code><span class="c1"># Real PostgreSQL (internal/storage/postgres, internal/collector, and</span>
 <span class="c1"># internal/e2e — the last one runs the full Collector -&gt; correlation.Engine</span>
 <span class="c1"># -&gt; alerting pipeline against real pg_stat_statements data, the closest</span>
 <span class="c1"># thing to a proof that regressions are actually detected end to end).</span>
@@ -1757,14 +1757,14 @@ go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-t
 The redacted form shown above is for documentation safety only and cannot be used as-is —
 replace it with your real connection string.</p>
 </blockquote>
-<div class="highlight"><pre><span></span><code><span class="c1"># Real kube-apiserver + etcd (internal/controller):</span>
+<div class="language-bash highlight"><pre><span></span><code><span class="c1"># Real kube-apiserver + etcd (internal/controller):</span>
 go<span class="w"> </span>install<span class="w"> </span>sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 <span class="nb">export</span><span class="w"> </span><span class="nv">KUBEBUILDER_ASSETS</span><span class="o">=</span><span class="s2">"</span><span class="k">$(</span>setup-envtest<span class="w"> </span>use<span class="w"> </span><span class="m">1</span>.31.0<span class="w"> </span>-p<span class="w"> </span>path<span class="k">)</span><span class="s2">"</span>
 go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./internal/controller/...<span class="w"> </span>-run<span class="w"> </span>TestEnvtest<span class="w"> </span>-v
 </code></pre></div>
 <h3 id="diagnosing-a-failure-internaltestlogger">Diagnosing a failure: <code>internal/testlogger</code><a class="headerlink" href="#diagnosing-a-failure-internaltestlogger" title="Permanent link">&para;</a></h3>
 <p>Every test in this section (plus the envtest suite and the rest of <code>internal/controller</code>'s reconciler-backed tests) builds its <code>*slog.Logger</code> via <code>testlogger.New(t)</code> instead of constructing one directly. It behaves exactly like a discarded logger while a test passes — nothing extra printed, no change to the fast path — but if the test fails, <code>t.Cleanup</code> dumps everything the code under test logged during that test through <code>t.Log</code>, right next to the failing assertion:</p>
-<div class="highlight"><pre><span></span><code>--- FAIL: TestEnvtest_PostgresWatch_RemoteClusterSecretRef_FetchesDSNFromRemoteAPIServer (4.07s)
+<div class="language-text highlight"><pre><span></span><code>--- FAIL: TestEnvtest_PostgresWatch_RemoteClusterSecretRef_FetchesDSNFromRemoteAPIServer (4.07s)
     remote_cluster_envtest_test.go:142: reconcile: dsn secret default/remote-dsn is missing the required consent label ...
     testlogger.go:78: --- captured application logs (only shown because this test failed) ---
     testlogger.go:79: time=... level=INFO msg="resolving dsn secret" secret=default/remote-dsn
@@ -1784,7 +1784,7 @@ go<span class="w"> </span><span class="nb">test</span><span class="w"> </span>./
 <p>It runs as two jobs (<code>build-image</code>, then <code>e2e</code>) so a failure to build the image and a failure to detect the regression show up as two distinct, independently-inspectable results in the Actions UI, with the image crossing the job boundary via <code>docker save</code>/<code>upload-artifact</code> and <code>download-artifact</code>/<code>docker load</code>.</p>
 <p>It's <code>workflow_dispatch</code>-only (not on every push/PR, since it spins up several containers and sleeps through real wall-clock windows): trigger it from the <strong>Actions</strong> tab -&gt; "Manual E2E (real container)" -&gt; <strong>Run workflow</strong>.</p>
 <p>To build the image locally:</p>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>operator<span class="w"> </span>-t<span class="w"> </span>pg-regression-radar/operator<span class="w"> </span>.
+<div class="language-bash highlight"><pre><span></span><code>docker<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>operator<span class="w"> </span>-t<span class="w"> </span>pg-regression-radar/operator<span class="w"> </span>.
 docker<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>manager<span class="w">  </span>-t<span class="w"> </span>pg-regression-radar/manager<span class="w">  </span>.
 </code></pre></div>
 <p>It deliberately uses <code>--source-type=generic</code> with an explicit, already-elapsed deploy timestamp rather than <code>--source-type=argocd</code>: <code>cmd/operator</code>'s ingester-poll loop analyses a deploy event exactly once, on the first 5s poll tick that observes it, with no retry. An <code>argocd</code>-shaped webhook always stamps the deploy timestamp at receipt time, which would race that fixed poll interval against however much "after" traffic had been generated so far. Recording the timestamp after both traffic phases have already happened removes that race entirely.</p>
@@ -1806,7 +1806,7 @@ docker<span class="w"> </span>build<span class="w"> </span>--target<span class="
 <p>It's <code>workflow_dispatch</code>-only, for the same reason as the manual e2e above: creating a Kubernetes cluster, installing two operators, and sleeping through real traffic-generation windows takes several minutes.</p>
 <h3 id="running-it-locally">Running it locally<a class="headerlink" href="#running-it-locally" title="Permanent link">&para;</a></h3>
 <p>You need <code>kind</code>, <code>kubectl</code>, <code>helm</code>, and <code>docker</code> installed. This mirrors the CI workflow's steps exactly:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># 1. Build the manager image and create a kind cluster.</span>
+<div class="language-bash highlight"><pre><span></span><code><span class="c1"># 1. Build the manager image and create a kind cluster.</span>
 docker<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>manager<span class="w"> </span>-t<span class="w"> </span>pg-regression-radar/manager:e2e-kind<span class="w"> </span>.
 kind<span class="w"> </span>create<span class="w"> </span>cluster<span class="w"> </span>--name<span class="w"> </span>pgrr-e2e<span class="w"> </span>--wait<span class="w"> </span>90s
 kind<span class="w"> </span>load<span class="w"> </span>docker-image<span class="w"> </span>pg-regression-radar/manager:e2e-kind<span class="w"> </span>--name<span class="w"> </span>pgrr-e2e
@@ -1953,6 +1953,8 @@ kind<span class="w"> </span>delete<span class="w"> </span>cluster<span class="w"
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

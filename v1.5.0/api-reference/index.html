@@ -1554,7 +1554,7 @@
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>These are the two types every webhook source normalises into and every alert is built from. Both are plain Go DTOs in <code>pkg/apis/v1alpha1</code> — see <a href="../architecture/">Architecture Overview</a>'s note on the difference between these and the real Kubernetes CRDs in <code>api/v1alpha1</code>.</p>
 <h2 id="deployevent"><code>DeployEvent</code><a class="headerlink" href="#deployevent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd-my-app-1234567890"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"prod-argocd"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"app"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my-app"</span><span class="p">,</span>
@@ -1567,7 +1567,7 @@
 </code></pre></div>
 <p>Produced by the Ingester from any of the four webhook sources — see <a href="../webhooks/">Deploy Sources &amp; Webhooks</a> for how each source populates <code>cluster</code>.</p>
 <h2 id="performanceregression"><code>PerformanceRegression</code><a class="headerlink" href="#performanceregression" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd-my-app-1234567890-q8675309"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"namespace"</span><span class="p">:</span><span class="w"> </span><span class="s2">"production"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"deployEventId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd-my-app-1234567890"</span><span class="p">,</span>
@@ -1650,6 +1650,8 @@
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>
