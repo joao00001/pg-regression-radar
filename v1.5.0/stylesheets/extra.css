@@ -13,6 +13,40 @@
  * not by fighting its compiled CSS with !important overrides.
  */
 
+/* ---- Theme color: red ----
+   The site's accent comes from these tokens instead of a fixed color: links
+   in the text, the home page's highlights, the diagram's engine, the table of
+   contents' dot and the "Back to top" button. Statuses and callout types keep
+   their own colors (the roadmap's "proposed", the "example" callout, ...). */
+[data-md-color-scheme="slate"] {
+  --pgrr-accent: #ff7b86;
+  --pgrr-accent-hover: #ffa3ab;
+  --pgrr-accent-solid: #dc2626;
+  --pgrr-accent-solid-hover: #ef4444;
+  --pgrr-accent-bg: #2a1114;
+  --pgrr-accent-border: #86262f;
+  --pgrr-accent-glow: rgba(239, 68, 68, 0.2);
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-accent: #b91c1c;
+  --pgrr-accent-hover: #7f1d1d;
+  --pgrr-accent-solid: #dc2626;
+  --pgrr-accent-solid-hover: #b91c1c;
+  --pgrr-accent-bg: #fff0f0;
+  --pgrr-accent-border: #f3b4b4;
+  --pgrr-accent-glow: rgba(220, 38, 38, 0.12);
+}
+
+/* Links and hover colors follow the theme color. Material sets them per
+   palette (`[data-md-color-scheme=slate][data-md-color-primary=indigo]`), so
+   this needs the same two attributes to win. */
+[data-md-color-scheme][data-md-color-primary],
+[data-md-color-scheme][data-md-color-accent] {
+  --md-typeset-a-color: var(--pgrr-accent);
+  --md-accent-fg-color: var(--pgrr-accent-hover);
+}
+
 /* ---- Dark mode: true black ---- */
 [data-md-color-scheme="slate"] {
   --md-default-bg-color: #000000;
@@ -26,7 +60,6 @@
   --md-default-fg-color--lightest: #4d4d4d;
 
   --md-typeset-color: #e8e8e8;
-  --md-typeset-a-color: #8ab4ff;
 
   --md-code-bg-color: #0d0d0d;
   --md-code-fg-color: #d8d8d8;
@@ -43,10 +76,6 @@
   background-color: #050505;
 }
 
-[data-md-color-scheme="slate"] .md-typeset code {
-  background-color: #111111;
-}
-
 /* ---- Light mode: true white ---- */
 [data-md-color-scheme="default"] {
   --md-default-bg-color: #ffffff;
@@ -60,7 +89,6 @@
   --md-default-fg-color--lightest: #cfcfcf;
 
   --md-typeset-color: #1a1a1a;
-  --md-typeset-a-color: #2451c9;
 
   --md-code-bg-color: #f5f5f5;
   --md-code-fg-color: #262626;
@@ -175,21 +203,6 @@
    already here" the same way a disabled control usually does. */
 .pgrr-version-flyout .md-version__link[data-md-state="active"] {
   color: var(--md-default-fg-color--lighter);
-}
-
-/* ---- "Back to top" button: always purple, not just on hover ----
-   Material only colors it on :hover (background-color:
-   var(--md-accent-fg-color)); this repo's accent is indigo, whose
-   accent-fg is blue-leaning (#526cfe), so a dedicated purple is used here
-   instead of the theme accent, applied unconditionally. */
-.md-top {
-  background-color: #7c4dff;
-  color: #ffffff;
-}
-
-.md-top:hover {
-  background-color: #6a3df0;
-  color: #ffffff;
 }
 
 /* ---- Code blocks: a dark card with the code in an inset panel ----
@@ -896,4 +909,218 @@
 
 .md-typeset .pgrr-step > :last-child {
   margin-bottom: 0;
+}
+
+/* ---- Table of contents (right sidebar): a moving active dot ----
+   More air between the entries and a dot in the left margin that follows
+   the active entry. docs/javascripts/toc-indicator.js moves the
+   dot: it stretches toward the new entry, then the trailing end catches up.
+   Without the script (or with reduced motion) the active entry is simply
+   bold, and the dot jumps or is absent. */
+.md-sidebar--secondary .md-nav--secondary {
+  --pgrr-toc-dot: var(--pgrr-accent);
+}
+
+.md-sidebar--secondary .md-nav--secondary > .md-nav__list {
+  position: relative;
+  padding-left: 18px;
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav__link {
+  margin-top: 0;
+  padding: 0.5em 0;
+  line-height: 1.4;
+  color: var(--md-default-fg-color--light);
+  transition: color 0.2s;
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav__link:hover {
+  color: var(--md-default-fg-color);
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav__link--active {
+  color: var(--md-default-fg-color);
+  font-weight: 650;
+}
+
+/* Sub-headings: indented, a little quieter. */
+.md-sidebar--secondary .md-nav--secondary .md-nav .md-nav__list {
+  padding-left: 0.8em;
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav .md-nav__link {
+  padding: 0.4em 0;
+  font-size: 0.62rem;
+}
+
+.pgrr-toc-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--pgrr-toc-dot);
+  opacity: 0;
+  pointer-events: none;
+  transition-property: top, height, opacity;
+  transition-duration: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-toc-dot {
+    transition: none !important;
+  }
+
+/* ---- Inline code: a chip in the same card colors ----
+   More contrast than Material's flat tint: a lighter fill, a thin border and
+   brighter text, in both color schemes. Only inline code (not inside a `pre`);
+   callouts, the roadmap and the home page set their own and win by
+   specificity (this selector is kept low with :where). */
+[data-md-color-scheme="slate"] {
+  --pgrr-chip-bg: #1f2222;
+  --pgrr-chip-border: #3f4343;
+  --pgrr-chip-fg: #f4f6f4;
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-chip-bg: #eceeee;
+  --pgrr-chip-border: #d0d5d5;
+  --pgrr-chip-fg: #14181a;
+}
+
+.md-typeset code:where(:not(pre) > code) {
+  padding: 0.1em 0.42em;
+  border: 1px solid var(--pgrr-chip-border);
+  border-radius: 6px;
+  background-color: var(--pgrr-chip-bg);
+  color: var(--pgrr-chip-fg);
+  font-size: 0.84em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* In a callout the chip borrows the callout's own border color. */
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) code {
+  border-color: var(--pgrr-adm-border);
+}
+
+/* ---- Header, search, "Back to top" and the copy toast: the card look ----
+   The same surface and border as the code blocks and cards (--pgrr-ui-*), the
+   theme color for the accents. */
+[data-md-color-scheme="slate"] {
+  --pgrr-ui-bg: #1d1f1f;
+  --pgrr-ui-border: #3a3d3d;
+  --pgrr-ui-fg: #f1f3f1;
+  --pgrr-ui-line: rgba(255, 255, 255, 0.1);
+  --pgrr-ui-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.75);
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-ui-bg: #f1f2f2;
+  --pgrr-ui-border: #d4d8d8;
+  --pgrr-ui-fg: #1a1c1c;
+  --pgrr-ui-line: rgba(0, 0, 0, 0.1);
+  --pgrr-ui-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.28);
+}
+
+/* Header: a hairline under the frosted bar. */
+.md-header {
+  border-bottom: 1px solid var(--pgrr-ui-line);
+}
+
+/* Search box: a card-colored rounded field instead of Material's flat tint. */
+.md-search__form {
+  border: 1px solid var(--pgrr-ui-border);
+  border-radius: 12px;
+  background-color: var(--pgrr-ui-bg);
+  box-shadow: none;
+  transition: border-color 0.15s;
+}
+
+.md-search__form:hover {
+  border-color: var(--pgrr-accent);
+  background-color: var(--pgrr-ui-bg);
+}
+
+.md-search__input {
+  color: var(--pgrr-ui-fg);
+}
+
+[data-md-toggle="search"]:checked ~ .md-header .md-search__form {
+  border-color: var(--pgrr-accent);
+  border-radius: 12px 12px 0 0;
+  background-color: var(--pgrr-ui-bg);
+  box-shadow: none;
+}
+
+.md-search__output {
+  border: 1px solid var(--pgrr-ui-border);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background-color: var(--pgrr-ui-bg);
+}
+
+/* "Back to top": a pill in the card colors with the arrow in the theme color. */
+.md-top {
+  border: 1px solid var(--pgrr-ui-border);
+  background-color: var(--pgrr-ui-bg);
+  box-shadow: var(--pgrr-ui-shadow);
+  color: var(--pgrr-ui-fg);
+  font-weight: 600;
+  transition: border-color 0.15s, opacity 0.2s, transform 0.2s;
+}
+
+.md-top:hover {
+  border-color: var(--pgrr-accent);
+  background-color: var(--pgrr-ui-bg);
+  color: var(--pgrr-ui-fg);
+}
+
+.md-top svg {
+  color: var(--pgrr-accent);
+}
+
+/* "Copied to clipboard": a card with a check in the theme color, replacing
+   Material's inverted box. */
+.md-dialog {
+  border: 1px solid var(--pgrr-ui-border);
+  border-radius: 12px;
+  background-color: var(--pgrr-ui-bg);
+  box-shadow: var(--pgrr-ui-shadow);
+  color: var(--pgrr-ui-fg);
+}
+
+.md-dialog__inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem 0.5rem 0.7rem;
+  font-weight: 600;
+}
+
+.md-dialog__inner::before {
+  content: "";
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background-color: var(--pgrr-accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4.5%2012.5l5%205L19.5%207%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4.5%2012.5l5%205L19.5%207%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+}
+
+.md-dialog__inner {
+  color: var(--pgrr-ui-fg);
+}
+
+/* Search results: the same surface; the "N matching documents" bar loses its
+   flat gray. */
+.md-search-result__meta {
+  border-bottom: 1px solid var(--pgrr-ui-line);
+  background-color: transparent;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-search-result__item {
+  box-shadow: 0 -1px 0 0 var(--pgrr-ui-line);
 }
