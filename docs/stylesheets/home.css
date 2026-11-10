@@ -1207,3 +1207,189 @@
   outline: 2px solid var(--h-accent);
   outline-offset: 3px;
 }
+
+/* ======================================================================
+ * Title cells (chart and diagram) and the problem cell
+ * ==================================================================== */
+
+/* A centered display title: mono kicker, light headline with one heavy phrase,
+   short sub line. Replaces the small band heading for the two visual cells. */
+.pgrr-home h2.pgrr-title {
+  display: block;
+  padding: 52px var(--h-pad) 46px;
+  background: var(--h-hero-bg);
+  text-align: center;
+  font-size: clamp(1.45rem, 0.9rem + 2.4vw, 2.05rem);
+  font-weight: 300;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  color: var(--h-muted);
+}
+
+.pgrr-home h2.pgrr-title em {
+  color: var(--h-fg);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.pgrr-home h2.pgrr-title .pgrr-kick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  color: var(--h-accent);
+  font: 600 0.54rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.pgrr-home h2.pgrr-title .pgrr-kick::before,
+.pgrr-home h2.pgrr-title .pgrr-kick::after {
+  content: "";
+  width: 34px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--h-accent-border));
+}
+
+.pgrr-home h2.pgrr-title .pgrr-kick::after {
+  transform: scaleX(-1);
+}
+
+.pgrr-home h2.pgrr-title .pgrr-sub {
+  display: block;
+  max-width: 34em;
+  margin: 16px auto 0;
+  color: var(--h-muted);
+  font-size: 0.64rem;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+/* The problem: context and the question on one side, the manual loop on the
+   other, split by a rule like the hero. */
+.pgrr-home .pgrr-problem {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  background: var(--h-hero-bg);
+}
+
+.pgrr-home .pgrr-problem-lead {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 34px;
+  padding: 36px var(--h-pad) 38px;
+}
+
+.pgrr-home .pgrr-problem p {
+  margin: 0;
+}
+
+.pgrr-home .pgrr-problem-ctx {
+  color: var(--h-muted);
+  font-size: 0.68rem;
+  line-height: 1.7;
+}
+
+.pgrr-home .pgrr-problem .pgrr-question {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--h-muted);
+  font-size: clamp(1.7rem, 1rem + 2.6vw, 2.35rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.pgrr-home .pgrr-problem .pgrr-question em {
+  color: var(--h-fg);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.pgrr-home .pgrr-problem-today {
+  border-left: 1px solid var(--h-border);
+  padding: 36px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pgrr-home .pgrr-problem-label {
+  padding: 0 var(--h-pad) 14px;
+  color: var(--h-muted);
+  font: 600 0.54rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.pgrr-home .pgrr-manual {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: pgrr-manual;
+}
+
+.pgrr-home .pgrr-manual li {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 0;
+  padding: 13px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  color: var(--h-fg);
+  font-size: 0.68rem;
+  counter-increment: pgrr-manual;
+}
+
+.pgrr-home .pgrr-manual li::before {
+  content: "0" counter(pgrr-manual);
+  color: var(--h-muted);
+  font: 500 0.54rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.1em;
+}
+
+.pgrr-home .pgrr-problem-note {
+  padding: 13px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  color: var(--h-muted);
+  font-size: 0.64rem;
+  font-style: italic;
+}
+
+.pgrr-home .pgrr-problem-answer {
+  margin-top: auto !important;
+  padding: 15px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: color-mix(in srgb, var(--h-accent) 6%, var(--h-hero-bg));
+  color: var(--h-accent);
+  font-size: 0.74rem;
+}
+
+.pgrr-home .pgrr-problem-answer strong {
+  font-weight: 700;
+}
+
+.pgrr-home .pgrr-problem-answer strong::before {
+  content: "\2192\00a0\00a0";
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-home .pgrr-problem {
+    grid-template-columns: 1fr;
+  }
+
+  .pgrr-home .pgrr-problem-today {
+    border-top: 1px solid var(--h-border);
+    border-left: 0;
+    padding-top: 28px;
+  }
+
+  .pgrr-home h2.pgrr-title {
+    padding: 38px var(--h-pad) 34px;
+  }
+}
