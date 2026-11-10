@@ -367,17 +367,77 @@
   border-color: var(--h-accent-solid);
 }
 
+/* Step marker: "01 ———— collect". It echoes the mono numerals on the diagram's
+   nodes and the page's section markers, and links to the matching node on hover. */
 .pgrr-home .pgrr-num {
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-bottom: 4px;
-  border-radius: 50%;
-  background: var(--h-chip);
-  color: var(--h-fg);
-  font-size: 0.62rem;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: var(--h-accent);
+  font: 600 0.58rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+}
+
+.pgrr-home .pgrr-num::before {
+  content: "";
+  order: 1;
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, var(--h-accent-border), var(--h-border) 55%, transparent);
+  opacity: 0.9;
+  transform-origin: left;
+  transition: transform 0.45s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+
+.pgrr-home .pgrr-num::after {
+  content: attr(data-stage);
+  order: 2;
+  color: var(--h-muted);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: color 0.25s;
+}
+
+.pgrr-home .pgrr-card:hover .pgrr-num::after,
+.pgrr-home .pgrr-card:focus-within .pgrr-num::after {
+  color: var(--h-accent);
+}
+
+/* hovering a step lights its node on the diagram */
+.pgrr-home .pgrr-n {
+  fill: var(--h-muted);
+  font: 600 12px var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  transition: fill 0.9s ease-out;
+}
+
+.pgrr-home .pgrr-n.pgrr-hit {
+  fill: var(--h-fg);
+  transition-duration: 0s;
+}
+
+.pgrr-home .pgrr-n[data-step="3"] {
+  fill: var(--h-accent);
+}
+
+@supports selector(:has(a)) {
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(1):is(:hover, :focus-within)) .pgrr-node[data-step="1"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(2):is(:hover, :focus-within)) .pgrr-node[data-step="2"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(3):is(:hover, :focus-within)) .pgrr-node[data-step="3"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(4):is(:hover, :focus-within)) .pgrr-node[data-step="4"] {
+    stroke: var(--h-accent-solid);
+    transition-duration: 0.2s;
+  }
+
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(1):is(:hover, :focus-within)) .pgrr-n[data-step="1"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(2):is(:hover, :focus-within)) .pgrr-n[data-step="2"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(3):is(:hover, :focus-within)) .pgrr-n[data-step="3"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(4):is(:hover, :focus-within)) .pgrr-n[data-step="4"] {
+    fill: var(--h-accent);
+    transition-duration: 0.2s;
+  }
 }
 
 .pgrr-home .pgrr-card-title {
@@ -549,15 +609,6 @@
 .pgrr-home .pgrr-card:hover,
 .pgrr-home .pgrr-card:focus-within {
   background: var(--h-card);
-}
-
-.pgrr-home .pgrr-num {
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--h-border);
-  border-radius: 6px;
-  background: var(--h-card);
-  color: var(--h-accent);
 }
 
 /* Where to go next: ruled rows (doubled class beats Material's list margins) */
@@ -754,34 +805,51 @@
   color: var(--h-accent);
 }
 
+/* "Inject deploy": a quiet outlined control (hairline, mono, small radius) with a
+   plus that turns on hover. No fill, no glow. */
 .pgrr-radar-inject {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   margin-left: auto;
-  padding: 0.5em 1.1em 0.5em 0.95em;
-  border: 0;
-  border-radius: 8px;
-  background: var(--h-accent-solid);
-  color: #fff;
-  font: 650 0.64rem/1 var(--md-text-font-family, inherit);
+  padding: 0.55em 0.95em 0.55em 0.8em;
+  border: 1px solid var(--h-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--h-fg);
+  font: 500 0.58rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.04em;
   cursor: pointer;
   overflow: hidden;
-  transition: filter 0.15s, transform 0.1s;
+  transition: border-color 0.2s, color 0.2s, background-color 0.2s, transform 0.1s;
 }
 
 .pgrr-radar-inject::before {
   content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #fff;
-  animation: pgrr-radar-live 1.6s ease-out infinite;
+  width: 9px;
+  height: 9px;
+  flex: none;
+  background:
+    linear-gradient(currentColor, currentColor) center / 100% 1px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 1px 100% no-repeat;
+  color: var(--h-accent);
+  transition: transform 0.35s cubic-bezier(0.16, 0.8, 0.24, 1);
 }
 
 .pgrr-radar-inject:hover {
-  filter: brightness(1.12);
+  border-color: var(--h-accent-border);
+  color: var(--h-accent);
+  background-color: color-mix(in srgb, var(--h-accent) 6%, transparent);
+}
+
+.pgrr-radar-inject:hover::before {
+  transform: rotate(90deg);
+}
+
+.pgrr-radar-inject:focus-visible {
+  outline: 2px solid var(--h-accent);
+  outline-offset: 2px;
 }
 
 .pgrr-radar-inject:active {
@@ -792,19 +860,14 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.55), transparent 60%);
-  animation: pgrr-radar-flash 0.6s ease-out forwards;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--h-accent) 28%, transparent), transparent);
+  animation: pgrr-radar-flash 0.7s ease-out forwards;
   pointer-events: none;
 }
 
-@keyframes pgrr-radar-live {
-  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
-  100% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0); }
-}
-
 @keyframes pgrr-radar-flash {
-  from { opacity: 1; transform: translateX(0); }
-  to { opacity: 0; transform: translateX(60%); }
+  from { opacity: 1; transform: translateX(-100%); }
+  to { opacity: 0; transform: translateX(100%); }
 }
 
 .pgrr-radar-stage {
@@ -920,8 +983,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pgrr-radar-inject::before,
-  .pgrr-radar-inject.is-pressed::after {
+  .pgrr-radar-inject.is-pressed::after,
+  .pgrr-home .pgrr-num::before {
     animation: none;
+    transition: none;
   }
 }
 
@@ -991,7 +1056,7 @@
 
 .pgrr-home .pgrr-card:hover,
 .pgrr-home .pgrr-card:focus-within {
-  background: var(--h-card);
+  background: color-mix(in srgb, var(--h-accent) 5%, var(--h-hero-bg));
 }
 
 .pgrr-home .pgrr-diagram {
