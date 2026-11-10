@@ -378,9 +378,11 @@
    red: danger/failure, violet: example, gray: quote), in both color schemes.
    A callout whose title is just its type ("Note") hides that title
    (docs/javascripts/callouts.js marks it); a custom title stays, as a bold
-   first line. Without the script the default title simply shows. */
+   first line. Without the script the default title simply shows.
+   Only `details` that carry a type class are callouts: the roadmap's own
+   native <details> (no class, or .rm-notes) keep roadmap.css's look. */
 .md-typeset .admonition,
-.md-typeset details {
+.md-typeset details:where([class]:not(.rm-notes)) {
   --pgrr-adm-bg: #141e37;
   --pgrr-adm-border: #253985;
   --pgrr-adm-fg: #9dc4f8;
@@ -401,7 +403,7 @@
 }
 
 
-.md-typeset :is(.admonition, details)::before {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes)))::before {
   content: "";
   position: absolute;
   top: 17px;
@@ -414,7 +416,7 @@
 }
 
 /* Material's own title bar and icon, replaced by the card's. */
-.md-typeset :is(.admonition, details) > :is(.admonition-title, summary) {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > :is(.admonition-title, summary) {
   margin: 0 0 0.3em;
   padding: 0;
   border: 0;
@@ -424,7 +426,7 @@
   font-weight: 650;
 }
 
-.md-typeset :is(.admonition, details) > :is(.admonition-title, summary)::before {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > :is(.admonition-title, summary)::before {
   display: none;
 }
 
@@ -432,101 +434,101 @@
   display: none;
 }
 
-.md-typeset details > summary {
+.md-typeset details:where([class]:not(.rm-notes)) > summary {
   padding-right: 1.6em;
 }
 
-.md-typeset :is(.admonition, details) > :nth-child(2) {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > :nth-child(2) {
   margin-top: 0;
 }
 
-.md-typeset :is(.admonition, details) > :last-child {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > :last-child {
   margin-bottom: 0;
 }
 
-.md-typeset :is(.admonition, details) p {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) p {
   margin: 0.6em 0;
 }
 
-.md-typeset :is(.admonition, details) > p:first-of-type {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > p:first-of-type {
   margin-top: 0;
 }
 
-.md-typeset :is(.admonition, details) > p:last-child {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > p:last-child {
   margin-bottom: 0;
 }
 
 /* Inline code and links take the callout's color. */
-.md-typeset :is(.admonition, details) code {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) code {
   background-color: var(--pgrr-adm-code-bg);
   color: inherit;
   border-radius: 6px;
 }
 
-.md-typeset :is(.admonition, details) a {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) a {
   color: inherit;
   font-weight: 650;
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-.md-typeset :is(.admonition, details).note,
-.md-typeset :is(.admonition, details).info,
-.md-typeset :is(.admonition, details).abstract,
-.md-typeset :is(.admonition, details).summary,
-.md-typeset :is(.admonition, details).tldr {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).note,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).info,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).abstract,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).summary,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tldr {
   --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229.25%22%2F%3E%3Cpath%20d%3D%22M12%207.5v5.5%22%2F%3E%3Cpath%20d%3D%22M12%2016.4v.1%22%2F%3E%3C%2Fsvg%3E");
 }
 
-.md-typeset :is(.admonition, details).todo,
-.md-typeset :is(.admonition, details).success,
-.md-typeset :is(.admonition, details).check,
-.md-typeset :is(.admonition, details).done {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).todo,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).success,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).check,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).done {
   --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229.25%22%2F%3E%3Cpath%20d%3D%22M8.2%2012.4l2.7%202.7%205-5.4%22%2F%3E%3C%2Fsvg%3E");
 }
 
-.md-typeset :is(.admonition, details).tip,
-.md-typeset :is(.admonition, details).hint,
-.md-typeset :is(.admonition, details).important {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tip,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).hint,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).important {
   --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%2018.5h5%22%2F%3E%3Cpath%20d%3D%22M10.2%2021h3.6%22%2F%3E%3Cpath%20d%3D%22M12%203a6%206%200%200%200-3.7%2010.7c.6.5%201%201.3%201.1%202.1h5.2c.1-.8.5-1.6%201.1-2.1A6%206%200%200%200%2012%203z%22%2F%3E%3C%2Fsvg%3E");
 }
 
-.md-typeset :is(.admonition, details).warning,
-.md-typeset :is(.admonition, details).caution,
-.md-typeset :is(.admonition, details).attention {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).warning,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).caution,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).attention {
   --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%203.6%202.9%2019.4h18.2L12%203.6z%22%2F%3E%3Cpath%20d%3D%22M12%2010v4.4%22%2F%3E%3Cpath%20d%3D%22M12%2017.2v.1%22%2F%3E%3C%2Fsvg%3E");
 }
 
-.md-typeset :is(.admonition, details).question,
-.md-typeset :is(.admonition, details).help,
-.md-typeset :is(.admonition, details).faq {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).question,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).help,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).faq {
   --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229.25%22%2F%3E%3Cpath%20d%3D%22M9.5%209.6a2.6%202.6%200%201%201%203.7%202.3c-.8.4-1.2%201-1.2%201.8%22%2F%3E%3Cpath%20d%3D%22M12%2017v.1%22%2F%3E%3C%2Fsvg%3E");
 }
 
-.md-typeset :is(.admonition, details).failure,
-.md-typeset :is(.admonition, details).fail,
-.md-typeset :is(.admonition, details).missing,
-.md-typeset :is(.admonition, details).danger,
-.md-typeset :is(.admonition, details).error,
-.md-typeset :is(.admonition, details).bug {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).failure,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).fail,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).missing,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).danger,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).error,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).bug {
   --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229.25%22%2F%3E%3Cpath%20d%3D%22M9%209l6%206M15%209l-6%206%22%2F%3E%3C%2Fsvg%3E");
 }
 
-.md-typeset :is(.admonition, details).example {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).example {
   --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%207h14M5%2012h14M5%2017h9%22%2F%3E%3C%2Fsvg%3E");
 }
 
-.md-typeset :is(.admonition, details).quote,
-.md-typeset :is(.admonition, details).cite {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).quote,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).cite {
   --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%208H6.5v5h3.5c0%201.6-.8%202.6-2.4%203%22%2F%3E%3Cpath%20d%3D%22M17.5%208h-3v5H18c0%201.6-.8%202.6-2.4%203%22%2F%3E%3C%2Fsvg%3E");
 }
 
-.md-typeset :is(.admonition, details).note,
-.md-typeset :is(.admonition, details).info,
-.md-typeset :is(.admonition, details).abstract,
-.md-typeset :is(.admonition, details).summary,
-.md-typeset :is(.admonition, details).tldr,
-.md-typeset :is(.admonition, details).todo {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).note,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).info,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).abstract,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).summary,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tldr,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).todo {
   --pgrr-adm-bg: #141e37;
   --pgrr-adm-border: #253985;
   --pgrr-adm-fg: #9dc4f8;
@@ -534,12 +536,12 @@
   border-color: var(--pgrr-adm-border);
 }
 
-.md-typeset :is(.admonition, details).tip,
-.md-typeset :is(.admonition, details).hint,
-.md-typeset :is(.admonition, details).important,
-.md-typeset :is(.admonition, details).success,
-.md-typeset :is(.admonition, details).check,
-.md-typeset :is(.admonition, details).done {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tip,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).hint,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).important,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).success,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).check,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).done {
   --pgrr-adm-bg: #182a1b;
   --pgrr-adm-border: #285231;
   --pgrr-adm-fg: #a0ecb1;
@@ -547,12 +549,12 @@
   border-color: var(--pgrr-adm-border);
 }
 
-.md-typeset :is(.admonition, details).warning,
-.md-typeset :is(.admonition, details).caution,
-.md-typeset :is(.admonition, details).attention,
-.md-typeset :is(.admonition, details).question,
-.md-typeset :is(.admonition, details).help,
-.md-typeset :is(.admonition, details).faq {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).warning,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).caution,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).attention,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).question,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).help,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).faq {
   --pgrr-adm-bg: #2b2210;
   --pgrr-adm-border: #6b4e12;
   --pgrr-adm-fg: #f5d98a;
@@ -560,12 +562,12 @@
   border-color: var(--pgrr-adm-border);
 }
 
-.md-typeset :is(.admonition, details).failure,
-.md-typeset :is(.admonition, details).fail,
-.md-typeset :is(.admonition, details).missing,
-.md-typeset :is(.admonition, details).danger,
-.md-typeset :is(.admonition, details).error,
-.md-typeset :is(.admonition, details).bug {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).failure,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).fail,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).missing,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).danger,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).error,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).bug {
   --pgrr-adm-bg: #2e1417;
   --pgrr-adm-border: #7a2530;
   --pgrr-adm-fg: #f6a5ae;
@@ -573,7 +575,7 @@
   border-color: var(--pgrr-adm-border);
 }
 
-.md-typeset :is(.admonition, details).example {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).example {
   --pgrr-adm-bg: #1c1733;
   --pgrr-adm-border: #4b3a8c;
   --pgrr-adm-fg: #cdbdff;
@@ -581,8 +583,8 @@
   border-color: var(--pgrr-adm-border);
 }
 
-.md-typeset :is(.admonition, details).quote,
-.md-typeset :is(.admonition, details).cite {
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).quote,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).cite {
   --pgrr-adm-bg: #1d1f1f;
   --pgrr-adm-border: #3a3d3d;
   --pgrr-adm-fg: #d4d6d4;
@@ -591,16 +593,16 @@
 }
 
 /* Light scheme */
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details) {
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) {
   --pgrr-adm-code-bg: rgba(0, 0, 0, 0.06);
 }
 
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).note,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).info,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).abstract,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).summary,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).tldr,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).todo {
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).note,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).info,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).abstract,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).summary,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tldr,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).todo {
   --pgrr-adm-bg: #eef4ff;
   --pgrr-adm-border: #bcd0fb;
   --pgrr-adm-fg: #1d3f91;
@@ -608,12 +610,12 @@
   border-color: var(--pgrr-adm-border);
 }
 
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).tip,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).hint,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).important,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).success,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).check,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).done {
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tip,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).hint,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).important,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).success,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).check,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).done {
   --pgrr-adm-bg: #edf9f0;
   --pgrr-adm-border: #b5e0c0;
   --pgrr-adm-fg: #1b5e2f;
@@ -621,12 +623,12 @@
   border-color: var(--pgrr-adm-border);
 }
 
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).warning,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).caution,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).attention,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).question,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).help,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).faq {
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).warning,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).caution,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).attention,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).question,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).help,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).faq {
   --pgrr-adm-bg: #fff8e6;
   --pgrr-adm-border: #f0d68a;
   --pgrr-adm-fg: #7a5200;
@@ -634,12 +636,12 @@
   border-color: var(--pgrr-adm-border);
 }
 
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).failure,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).fail,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).missing,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).danger,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).error,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).bug {
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).failure,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).fail,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).missing,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).danger,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).error,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).bug {
   --pgrr-adm-bg: #fff0f1;
   --pgrr-adm-border: #f4b6bc;
   --pgrr-adm-fg: #8f1d2a;
@@ -647,7 +649,7 @@
   border-color: var(--pgrr-adm-border);
 }
 
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).example {
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).example {
   --pgrr-adm-bg: #f3f0ff;
   --pgrr-adm-border: #cfc5f5;
   --pgrr-adm-fg: #4b3a8c;
@@ -655,8 +657,8 @@
   border-color: var(--pgrr-adm-border);
 }
 
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).quote,
-[data-md-color-scheme="default"] .md-typeset :is(.admonition, details).cite {
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).quote,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).cite {
   --pgrr-adm-bg: #f1f2f2;
   --pgrr-adm-border: #d4d8d8;
   --pgrr-adm-fg: #2c3030;
