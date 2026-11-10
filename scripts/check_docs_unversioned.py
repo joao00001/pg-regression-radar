@@ -16,8 +16,8 @@
 """Guard for the `docs-unversioned` pull request label.
 
 The label means "this PR only edits the version-independent docs pages (home
-and roadmap), and its changes go live for every docs version as soon as it
-merges". If a labeled PR changes anything else, this posts (or updates) a
+and roadmap) and the assets only they use, and its changes go live for every
+docs version as soon as it merges". If a labeled PR changes anything else, this posts (or updates) a
 warning comment on it; once the PR is back to touching only those pages, or
 the label is removed, the comment is deleted. It never fails the check -- the
 comment is the alert, and a maintainer decides what to do with it.
@@ -35,7 +35,20 @@ import sys
 
 LABEL = "docs-unversioned"
 # Keep in sync with hooks.py's UNVERSIONED_PAGES.
-ALLOWED_FILES = frozenset({"docs/index.md", "docs/roadmap.md"})
+UNVERSIONED_PAGES = frozenset({"docs/index.md", "docs/roadmap.md"})
+# Files only the unversioned build uses (see mkdocs-unversioned.yml): the
+# roadmap's card styling and script, and that build's own config. They reach
+# the site together with the pages, on merge, so a PR that changes them is
+# still an "unversioned-pages-only" change. Add a file here when it is wired
+# into mkdocs-unversioned.yml and nothing in the versioned build.
+UNVERSIONED_ASSETS = frozenset(
+    {
+        "docs/stylesheets/roadmap.css",
+        "docs/javascripts/roadmap.js",
+        "mkdocs-unversioned.yml",
+    }
+)
+ALLOWED_FILES = UNVERSIONED_PAGES | UNVERSIONED_ASSETS
 MARKER = "<!-- docs-unversioned-guard -->"
 MAX_LISTED = 50
 DOCS_URL = "https://joao00001.github.io/pg-regression-radar/latest/ci-cd/#docs-unversioned-guardyml-on-pr-label-changes"
@@ -60,7 +73,7 @@ def paginate(endpoint):
 
 def unexpected_files(changed):
     """`changed` holds every path a PR touches, including a renamed file's old
-    path. Returns the ones that aren't unversioned pages."""
+    path. Returns the ones that aren't unversioned pages or their assets."""
     return sorted(set(changed) - ALLOWED_FILES)
 
 
@@ -74,9 +87,10 @@ def build_comment(offenders):
             f"### :warning: `{LABEL}` label: unexpected files changed",
             "",
             f"The `{LABEL}` label is only for changes to the docs pages that are **not versioned**: "
-            "the home page (`docs/index.md`) and the roadmap (`docs/roadmap.md`). They are published "
-            "once, independently of any release, so merging this PR changes them for every docs "
-            "version immediately.",
+            "the home page (`docs/index.md`) and the roadmap (`docs/roadmap.md`), plus the files only "
+            "their build uses (the roadmap's `roadmap.css` / `roadmap.js` and `mkdocs-unversioned.yml`). "
+            "They are published once, independently of any release, so merging this PR changes them "
+            "for every docs version immediately.",
             "",
             "This PR also changes:",
             "",

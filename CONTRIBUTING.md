@@ -142,8 +142,10 @@ to a given component.
 The docs home page (`docs/index.md`) and the roadmap (`docs/roadmap.md`) are
 not versioned: they look the same for every docs version and go live as soon
 as your PR merges, without waiting for a release. If your PR *only* edits
-those two pages, a maintainer applies the `docs-unversioned` label. If a
-labeled PR also changes any other file, a bot comments with a warning — split
+those two pages (plus the roadmap's own styling and the unversioned build
+config, which only they use), a maintainer applies the `docs-unversioned`
+label. If a labeled PR also changes any other file, a bot comments with a
+warning — split
 those changes into a separate PR (or the label comes off). See
 [CI/CD](https://joao00001.github.io/pg-regression-radar/latest/ci-cd/#unversioned-pages-home-and-roadmap)
 for how this works.
