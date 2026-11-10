@@ -75,7 +75,8 @@ Namespace: demo
 Revision: v2
 Query ID: 123456
 Latency: 3.1ms -> 48.7ms (15.7x)
-Confidence: 98%
+Confidence: 98% (1 − p)
+p-value: 0.02
 ```
 
 If you are testing without a real Slack workspace, use a temporary webhook sink (for example, an internal relay or test endpoint) and confirm the same fields appear in the payload body.

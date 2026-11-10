@@ -115,3 +115,33 @@ func TestFloors_SourcesWithoutCallCountsAreGatedBySamplesOnly(t *testing.T) {
 		}
 	}
 }
+
+func TestPValue_IsExposedAndConfidenceIsOneMinusIt(t *testing.T) {
+	t.Parallel()
+	r := analyseFloors(t, correlation.Config{MinSamples: 10, MinExecutions: 20}, 50, 15)
+	if r.Status != v1alpha1.StatusDetected {
+		t.Fatalf("status = %v, want Detected", r.Status)
+	}
+	if r.PValue == nil {
+		t.Fatal("a Detected regression must carry the p-value it was decided on")
+	}
+	if *r.PValue < 0 || *r.PValue > 0.05 {
+		t.Errorf("p-value = %g, want within [0, 0.05] for a Detected regression at the default threshold", *r.PValue)
+	}
+	if diff := r.ConfidenceScore - (1 - *r.PValue); diff > 1e-12 || diff < -1e-12 {
+		t.Errorf("ConfidenceScore = %v, want 1 - PValue = %v", r.ConfidenceScore, 1-*r.PValue)
+	}
+}
+
+func TestPValue_IsAbsentWhenTheTestDidNotRun(t *testing.T) {
+	t.Parallel()
+	// Too few executions: the significance test never ran, so there is no
+	// p-value to report. nil is not the same claim as "p = 0".
+	r := analyseFloors(t, correlation.Config{MinSamples: 10, MinExecutions: 100}, 2, 15)
+	if r.Status != v1alpha1.StatusInsufficientData {
+		t.Fatalf("status = %v, want InsufficientData", r.Status)
+	}
+	if r.PValue != nil {
+		t.Errorf("PValue = %g, want nil when the test did not run", *r.PValue)
+	}
+}

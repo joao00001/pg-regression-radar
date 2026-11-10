@@ -413,3 +413,10 @@ func TestRoutes_MethodNotAllowed(t *testing.T) {
 		t.Fatalf("status = %d, want 405", rec.Code)
 	}
 }
+
+func TestToRegressionDTO_PassesThePValue(t *testing.T) {
+	r := radarv1alpha1.PerformanceRegression{Status: radarv1alpha1.PerformanceRegressionStatus{ConfidenceScore: "0.9787", PValue: "0.0213"}}
+	if got := toRegressionDTO(r); got.PValue != "0.0213" || got.ConfidenceScore != "0.9787" {
+		t.Errorf("dto = %+v, want pValue 0.0213 alongside confidenceScore 0.9787", got)
+	}
+}

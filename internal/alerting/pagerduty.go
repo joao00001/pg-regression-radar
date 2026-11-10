@@ -91,6 +91,9 @@ func (f *PagerDutyFormatter) Format(r v1alpha1.PerformanceRegression, clusterNam
 		"change_point":        r.DetectedChangeAt.Format(time.RFC3339),
 		"external_cause_note": r.ExternalCauseSuspected,
 	}
+	if pv := formatPValue(r.PValue); pv != "" {
+		details["p_value"] = pv
+	}
 	if r.PlanDiffSummary != "" {
 		details["plan_diff"] = r.PlanDiffSummary
 	}

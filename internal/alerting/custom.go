@@ -32,12 +32,17 @@ import (
 // docs/alerting.md#custom-format for the full field list and a worked
 // example.
 type CustomTemplateData struct {
-	ClusterName            string
-	DeployEventID          string
-	QueryID                int64
-	QueryText              string
-	ConfidenceScore        float64
-	ConfidencePercent      string
+	ClusterName       string
+	DeployEventID     string
+	QueryID           int64
+	QueryText         string
+	ConfidenceScore   float64
+	ConfidencePercent string
+	// PValue is the Welch's t-test p-value, 0 when the test did not run;
+	// PValueText is the same value with two significant digits, and empty in
+	// that case. Prefer PValueText when you need to tell "not run" apart.
+	PValue                 float64
+	PValueText             string
 	MeanLatencyBeforeMs    string
 	MeanLatencyAfterMs     string
 	LatencyChangeFactor    string
@@ -83,12 +88,17 @@ func (f *CustomFormatter) Format(r v1alpha1.PerformanceRegression, clusterName s
 		QueryText:              r.QueryText,
 		ConfidenceScore:        r.ConfidenceScore,
 		ConfidencePercent:      fmt.Sprintf("%.0f%%", r.ConfidenceScore*100),
+		PValueText:             formatPValue(r.PValue),
 		MeanLatencyBeforeMs:    fmt.Sprintf("%.2f", r.MeanLatencyBefore),
 		MeanLatencyAfterMs:     fmt.Sprintf("%.2f", r.MeanLatencyAfter),
 		LatencyChangeFactor:    fmt.Sprintf("%.2fx", r.LatencyChangeFactor),
 		ChangePointRFC3339:     r.DetectedChangeAt.Format(time.RFC3339),
 		ExternalCauseSuspected: r.ExternalCauseSuspected,
 		PlanDiffSummary:        r.PlanDiffSummary,
+	}
+
+	if r.PValue != nil {
+		data.PValue = *r.PValue
 	}
 
 	var buf bytes.Buffer

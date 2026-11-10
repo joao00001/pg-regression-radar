@@ -68,8 +68,12 @@ func (TeamsFormatter) Format(r v1alpha1.PerformanceRegression, clusterName strin
 		{Name: "Latency Before", Value: fmt.Sprintf("%.2f ms", r.MeanLatencyBefore)},
 		{Name: "Latency After", Value: fmt.Sprintf("%.2f ms", r.MeanLatencyAfter)},
 		{Name: "Change Factor", Value: fmt.Sprintf("%.2fx", r.LatencyChangeFactor)},
-		{Name: "Confidence", Value: fmt.Sprintf("%.0f%%", r.ConfidenceScore*100)},
+		{Name: "Confidence", Value: fmt.Sprintf("%.0f%% (1 − p)", r.ConfidenceScore*100)},
 		{Name: "Change Point", Value: r.DetectedChangeAt.Format(time.RFC3339)},
+	}
+
+	if pv := formatPValue(r.PValue); pv != "" {
+		facts = append(facts, teamsFact{Name: "p-value", Value: pv})
 	}
 
 	color := teamsColorDanger

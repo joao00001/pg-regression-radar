@@ -58,11 +58,16 @@ func (SlackFormatter) Format(r v1alpha1.PerformanceRegression, clusterName strin
 					{Title: "Latency Before", Value: fmt.Sprintf("%.2f ms", r.MeanLatencyBefore), Short: true},
 					{Title: "Latency After", Value: fmt.Sprintf("%.2f ms", r.MeanLatencyAfter), Short: true},
 					{Title: "Change Factor", Value: fmt.Sprintf("%.2fx", r.LatencyChangeFactor), Short: true},
-					{Title: "Confidence", Value: fmt.Sprintf("%.0f%%", r.ConfidenceScore*100), Short: true},
+					{Title: "Confidence", Value: fmt.Sprintf("%.0f%% (1 − p)", r.ConfidenceScore*100), Short: true},
 					{Title: "Change Point", Value: r.DetectedChangeAt.Format(time.RFC3339), Short: true},
 				},
 			},
 		},
+	}
+
+	if pv := formatPValue(r.PValue); pv != "" {
+		payload.Attachments[0].Fields = append(payload.Attachments[0].Fields,
+			slackField{Title: "p-value", Value: pv, Short: true})
 	}
 
 	if r.ExternalCauseSuspected {

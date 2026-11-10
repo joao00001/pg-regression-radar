@@ -144,16 +144,26 @@ const (
 
 // PerformanceRegression is created by the Correlation Engine when it analyses a deploy.
 type PerformanceRegression struct {
-	Name                string                      `json:"name"`
-	Namespace           string                      `json:"namespace"`
-	DeployEventID       string                      `json:"deployEventId"`
-	QueryID             int64                       `json:"queryId"`
-	QueryText           string                      `json:"queryText"`
-	Status              PerformanceRegressionStatus `json:"status"`
-	ConfidenceScore     float64                     `json:"confidenceScore"`
-	MeanLatencyBefore   float64                     `json:"meanLatencyBefore"`
-	MeanLatencyAfter    float64                     `json:"meanLatencyAfter"`
-	LatencyChangeFactor float64                     `json:"latencyChangeFactor"`
+	Name          string                      `json:"name"`
+	Namespace     string                      `json:"namespace"`
+	DeployEventID string                      `json:"deployEventId"`
+	QueryID       int64                       `json:"queryId"`
+	QueryText     string                      `json:"queryText"`
+	Status        PerformanceRegressionStatus `json:"status"`
+	// ConfidenceScore is 1 - PValue. It is a significance score, not the
+	// probability that the regression is real or that the deploy caused it;
+	// see docs/detection-algorithm.md. Zero when the significance test did not run.
+	ConfidenceScore float64 `json:"confidenceScore"`
+	// PValue is the two-sided Welch's t-test p-value comparing the latency
+	// segments on either side of the located change point. It is nil when the
+	// test did not run (insufficient data, or no change point found), which is
+	// different from a p-value of zero. Because the change point is chosen from
+	// the same data the test then uses, it is optimistic: see
+	// docs/detection-algorithm.md.
+	PValue              *float64 `json:"pValue,omitempty"`
+	MeanLatencyBefore   float64  `json:"meanLatencyBefore"`
+	MeanLatencyAfter    float64  `json:"meanLatencyAfter"`
+	LatencyChangeFactor float64  `json:"latencyChangeFactor"`
 	// ExternalCauseSuspected hints that CPU/IO also shifted, so the deploy may not be the sole cause.
 	ExternalCauseSuspected bool `json:"externalCauseSuspected,omitempty"`
 	// AutoAbortTriggered is true if the owning PostgresWatch had auto-abort

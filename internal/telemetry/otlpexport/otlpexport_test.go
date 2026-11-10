@@ -621,3 +621,34 @@ func TestNew_Validation(t *testing.T) {
 		t.Error("double registration on the same registry should fail, not panic")
 	}
 }
+
+func TestBuildRecord_PValue(t *testing.T) {
+	t.Parallel()
+	res := sampleRegression()
+	p := 0.0213
+	res.PValue = &p
+	rec := buildRecord(res, time.Now())
+	var got any
+	for _, a := range rec.attrs {
+		if a.key == "pg_regression_radar.p_value" {
+			got = a.val
+		}
+	}
+	if got != 0.0213 {
+		t.Errorf("p_value attribute = %v, want 0.0213", got)
+	}
+	if !strings.Contains(rec.body, "p-value 0.021") {
+		t.Errorf("body %q does not mention the p-value", rec.body)
+	}
+
+	res.PValue = nil
+	rec = buildRecord(res, time.Now())
+	for _, a := range rec.attrs {
+		if a.key == "pg_regression_radar.p_value" {
+			t.Error("p_value attribute emitted although the test did not run")
+		}
+	}
+	if strings.Contains(rec.body, "p-value") {
+		t.Errorf("body %q mentions a p-value although none was computed", rec.body)
+	}
+}

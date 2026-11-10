@@ -89,10 +89,18 @@ type PerformanceRegressionStatus struct {
 	// +optional
 	Status RegressionStatus `json:"status,omitempty"`
 
-	// confidenceScore is 1 - p-value from Welch's t-test; closer to 1 means
-	// the observed latency shift is extremely unlikely to be random noise.
+	// confidenceScore is 1 - pValue. It is a significance score, not the
+	// probability that the regression is real or that the deploy caused it.
+	// Use pValue for the underlying quantity.
 	// +optional
 	ConfidenceScore string `json:"confidenceScore,omitempty"`
+
+	// pValue is the two-sided Welch's t-test p-value comparing the latency
+	// segments on either side of the located change point, with four
+	// significant digits. Empty when the test did not run. It is optimistic,
+	// because the change point is chosen from the same data the test uses.
+	// +optional
+	PValue string `json:"pValue,omitempty"`
 
 	// meanLatencyBeforeMs is the mean query latency in the pre-deploy
 	// window, in milliseconds.
@@ -158,6 +166,7 @@ type PerformanceRegressionStatus struct {
 // +kubebuilder:printcolumn:name="Query",type=integer,JSONPath=".spec.queryId"
 // +kubebuilder:printcolumn:name="Status",type=string,JSONPath=".status.status"
 // +kubebuilder:printcolumn:name="Confidence",type=string,JSONPath=".status.confidenceScore"
+// +kubebuilder:printcolumn:name="P-Value",type=string,JSONPath=".status.pValue"
 // +kubebuilder:printcolumn:name="Change",type=string,JSONPath=".status.latencyChangeFactor"
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=".metadata.creationTimestamp"
 

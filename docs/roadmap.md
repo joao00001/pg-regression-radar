@@ -14,7 +14,7 @@ hide:
 This page tracks only what's *not* done yet: planned features, known robustness gaps, and operational follow-ups that aren't code changes. It is not a running history of delivered work — once an item here ships, it's removed from this page, not reworded as "done"; its details live in [CHANGELOG.md](changelog.md) (what shipped and when) and the relevant feature's own docs page (how it works today).
 
 <div class="rm-glance" markdown="1">
-<div class="rm-stat"><span class="rm-stat-num" data-rm-count>21</span><span class="rm-stat-label">open items below</span></div>
+<div class="rm-stat"><span class="rm-stat-num" data-rm-count>20</span><span class="rm-stat-label">open items below</span></div>
 <div class="rm-stat rm-stat--progress"><span class="rm-stat-num">6<small> / 7</small></span><span class="rm-stat-label">security and robustness checklist steps complete</span><span class="rm-steps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="rm-step-open"></i></span></div>
 </div>
 
@@ -71,22 +71,6 @@ Stage 2 weighs a one-call interval like a ten-thousand-call one, while the repor
 <summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
 
 The reported `MeanLatencyBefore`/`MeanLatencyAfter` are total time over total calls, but the t-test compares unweighted per-interval means. A ratio-estimator test (mean = total time / total calls, with a cluster-robust variance that treats each scrape interval as a cluster) is consistent with the reported numbers and, in simulation with bursty traffic and log-normal latency, kept the 5% size while raising power for a +30% regression from 41% to 73% at 3 calls per interval. It would also make `--min-executions` act directly on the precision of the test. Per-call variance from `stddev_exec_time` is a further input that is not used yet.
-
-</details>
-</div>
-
-<div class="rm-item" data-status="proposed" data-area="Statistics" data-quarter="Q4 2026" markdown="1">
-<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q4 2026</span></div>
-
-<div class="rm-title" markdown="span">`ConfidenceScore` is `1 - pValue`, which is not a probability</div>
-
-The score is 1 minus the p-value, which reads like a probability but isn't one. Expose the raw p-value and document the score.
-{ .rm-summary }
-
-<details markdown="1">
-<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
-
-A p-value of 0.001 does not mean a 99.9% chance the regression is real, and says nothing about the probability that a deploy caused it; the README's "0.98 confidence" example invites exactly that reading. Planned direction: expose the raw `pValue` (and an adjusted one, once the item below lands) on `PerformanceRegression`, document `ConfidenceScore` as a significance-derived score rather than a probability, and only later introduce a score with explicit attribution semantics. Renaming or removing the existing CRD field is a compatibility decision covered by [API Versioning](api-versioning.md), not something to do in passing.
 
 </details>
 </div>
@@ -150,7 +134,7 @@ The significance test runs on a split the same data picked, so its p-value is op
 <details markdown="1">
 <summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
 
-Stage 1 searches every candidate split for the best E-divisive change point and stage 2 then tests that split as if it had been chosen independently, which makes the p-value optimistic (post-selection inference). The stage 0 pre-filter and the `LatencyChangeThreshold` mask most of the effect on typical series, but the p-value should not be read as a calibrated 5% false-positive rate. Options, roughly in order of cost: a minimum effect-size floor alongside the p-value; empirical calibration against recorded no-regression series; a permutation test that repeats the full change-point search on each permuted series. Series with autocorrelated noise are the case most worth measuring first.
+Stage 1 searches every candidate split for the best E-divisive change point and stage 2 then tests that split as if it had been chosen independently, which makes the p-value optimistic (post-selection inference). The stage 0 pre-filter and the `LatencyChangeThreshold` mask most of the effect on typical series, but the p-value should not be read as a calibrated 5% false-positive rate: measured with the project's own E-divisive and Welch code on no-change series, 35-39% had p < 0.05 with independent noise and 60-99% with autocorrelated noise, and through the full engine up to 8% of no-change analyses were reported `Detected` with autocorrelated, heavy-tailed noise. Options, roughly in order of cost: a minimum effect-size floor alongside the p-value; empirical calibration against recorded no-regression series; a permutation test that repeats the full change-point search on each permuted series. Series with autocorrelated noise are the case most worth measuring first.
 
 </details>
 </div>
