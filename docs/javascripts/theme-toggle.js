@@ -46,8 +46,8 @@ document.addEventListener("click", function (event) {
 
 /* "Our math" in the tab menu is written with math symbols on every page (the
    unversioned pages, the versioned docs and, through restyle-versions.sh, the
-   old versions). The real words stay for screen readers and the link's title,
-   and show while the link is hovered or focused. See extra.css. */
+   old versions). The real words stay for screen readers and the link's title.
+   See extra.css. */
 (function () {
   var SYM = {
     a: "α", b: "β", c: "∁", d: "∂", e: "ε", f: "∫", g: "ℊ", h: "ℏ", i: "ⅈ", j: "ⅉ", k: "κ", l: "ℓ", m: "m",
@@ -86,13 +86,5 @@ document.addEventListener("click", function (event) {
     a.textContent = "";
     a.appendChild(vis);
     a.appendChild(sr);
-    (function (a, vis, plain, symbols) {
-      function words() { vis.textContent = plain; vis.style.fontFamily = "inherit"; vis.style.fontSize = "inherit"; }
-      function marks() { vis.textContent = symbols; vis.style.fontFamily = ""; vis.style.fontSize = ""; }
-      a.addEventListener("mouseenter", words);
-      a.addEventListener("focus", words);
-      a.addEventListener("mouseleave", marks);
-      a.addEventListener("blur", marks);
-    })(a, vis, plain, symbols);
   }
 })();
