@@ -2436,13 +2436,13 @@
 <h3 id="option-a-kyverno-policy">Option A: Kyverno policy<a class="headerlink" href="#option-a-kyverno-policy" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Apply RBAC example identities:
-   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/rbac-consent-labeler-example.yaml
+   <div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/rbac-consent-labeler-example.yaml
 </code></pre></div></li>
 <li>Apply Kyverno policy:
-   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/kyverno-consent-label-policy.yaml
+   <div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/kyverno-consent-label-policy.yaml
 </code></pre></div></li>
 <li>Verify enforcement:
-   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>cpol<span class="w"> </span>restrict-postgreswatch-consent-label
+   <div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>cpol<span class="w"> </span>restrict-postgreswatch-consent-label
 kubectl<span class="w"> </span>describe<span class="w"> </span>cpol<span class="w"> </span>restrict-postgreswatch-consent-label
 </code></pre></div></li>
 </ol>
@@ -2450,13 +2450,13 @@ kubectl<span class="w"> </span>describe<span class="w"> </span>cpol<span class="
 <ol>
 <li>Ensure your cluster supports ValidatingAdmissionPolicy (Kubernetes 1.26+ with feature enabled).</li>
 <li>Apply RBAC example identities:
-   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/rbac-consent-labeler-example.yaml
+   <div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/rbac-consent-labeler-example.yaml
 </code></pre></div></li>
 <li>Apply CEL policy + binding:
-   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/validating-admission-policy-consent-label.yaml
+   <div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> </span>docs/policies/validating-admission-policy-consent-label.yaml
 </code></pre></div></li>
 <li>Verify enforcement:
-   <div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy<span class="w"> </span>restrict-postgreswatch-consent-label
+   <div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicy<span class="w"> </span>restrict-postgreswatch-consent-label
 kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpolicybinding<span class="w"> </span>restrict-postgreswatch-consent-label
 </code></pre></div></li>
 </ol>
@@ -2472,7 +2472,7 @@ kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpol
 <p>Replace <code>&lt;ns&gt;</code> with a namespace where your policy applies.</p>
 </blockquote>
 <p>Attempt without consent label (should be admitted; controller will still refuse to use it):</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -n &lt;ns&gt; --dry-run=server -f -</span>
+<div class="language-bash highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -n &lt;ns&gt; --dry-run=server -f -</span>
 <span class="s">apiVersion: v1</span>
 <span class="s">kind: Secret</span>
 <span class="s">metadata:</span>
@@ -2483,7 +2483,7 @@ kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpol
 <span class="s">EOF</span>
 </code></pre></div>
 <p>Attempt with consent label as unauthorized identity (should be denied):</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:team-a:app-operator --dry-run=server -f -</span>
+<div class="language-bash highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:team-a:app-operator --dry-run=server -f -</span>
 <span class="s">apiVersion: v1</span>
 <span class="s">kind: Secret</span>
 <span class="s">metadata:</span>
@@ -2496,7 +2496,7 @@ kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpol
 <span class="s">EOF</span>
 </code></pre></div>
 <p>Attempt with consent label as approved labeler identity (should succeed):</p>
-<div class="highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:platform-security:secret-consent-labeler --dry-run=server -f -</span>
+<div class="language-bash highlight"><pre><span></span><code>cat<span class="w"> </span><span class="s">&lt;&lt;'EOF' | kubectl apply -n &lt;ns&gt; --as=system:serviceaccount:platform-security:secret-consent-labeler --dry-run=server -f -</span>
 <span class="s">apiVersion: v1</span>
 <span class="s">kind: Secret</span>
 <span class="s">metadata:</span>
@@ -2585,6 +2585,8 @@ kubectl<span class="w"> </span>get<span class="w"> </span>validatingadmissionpol
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

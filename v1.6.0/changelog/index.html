@@ -2366,7 +2366,7 @@ build</code> as described above.</p>
 <li><strong><code>relay-only</code></strong>: per-watch <code>spec.alerting.url</code> is ignored entirely; all alerts are forwarded to the fixed relay endpoint in <code>--alerting-destination-policy-relay-url</code>. The manager and operator both fail at startup if the relay URL is missing, surfacing misconfiguration before any watch is reconciled.</li>
 </ul>
 <p>The policy is configured via two new flags shared by both the <code>manager</code> and the standalone <code>operator</code>:</p>
-<div class="highlight"><pre><span></span><code>--alerting-destination-policy=&lt;permissive|allowlist|relay-only&gt;
+<div class="language-text highlight"><pre><span></span><code>--alerting-destination-policy=&lt;permissive|allowlist|relay-only&gt;
 --alerting-destination-policy-relay-url=&lt;url&gt;          # required for relay-only
 </code></pre></div>
 <p><code>PostgresWatch.spec.alerting.destinationPolicy</code> mirrors these values at the per-watch level and is honoured when no manager-level policy is set.</p>
@@ -2645,6 +2645,8 @@ for what's shipped since. Predates this file; not reconstructed here since
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>

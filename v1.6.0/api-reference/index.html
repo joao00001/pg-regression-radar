@@ -1676,7 +1676,7 @@
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>These are the two types every webhook source normalises into and every alert is built from. Both are plain Go DTOs in <code>pkg/apis/v1alpha1</code> — see <a href="../architecture/">Architecture Overview</a>'s note on the difference between these and the real Kubernetes CRDs in <code>api/v1alpha1</code>.</p>
 <h2 id="deployevent"><code>DeployEvent</code><a class="headerlink" href="#deployevent" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd-my-app-1234567890"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"source"</span><span class="p">:</span><span class="w"> </span><span class="s2">"prod-argocd"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"app"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my-app"</span><span class="p">,</span>
@@ -1689,7 +1689,7 @@
 </code></pre></div>
 <p>Produced by the Ingester from any of the four webhook sources — see <a href="../webhooks/">Deploy Sources &amp; Webhooks</a> for how each source populates <code>cluster</code>.</p>
 <h2 id="performanceregression"><code>PerformanceRegression</code><a class="headerlink" href="#performanceregression" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd-my-app-1234567890-q8675309"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"namespace"</span><span class="p">:</span><span class="w"> </span><span class="s2">"production"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"deployEventId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd-my-app-1234567890"</span><span class="p">,</span>
@@ -1711,7 +1711,7 @@
 <p>Each route returns <code>501 Not Implemented</code> if the process serving it wasn't wired with the dependency that route needs. <code>/api/v1/regressions</code> and <code>/api/v1/watches</code> list Kubernetes objects and need a <code>client.Client</code> — only <code>cmd/manager</code> has one, so they always 501 on <code>cmd/operator</code>. <code>/api/v1/deploys</code> and <code>/api/v1/queries</code> need query-sample/deploy-event history, which only <code>cmd/operator</code> builds (via its <code>Collector</code>/deploy-event <code>Store</code>, or the postgres state backend when <code>--state-backend=postgres</code>) — they always 501 on <code>cmd/manager</code>.</p>
 <h3 id="get-apiv1regressionsnamespacestatus"><code>GET /api/v1/regressions?namespace=&amp;status=</code><a class="headerlink" href="#get-apiv1regressionsnamespacestatus" title="Permanent link">&para;</a></h3>
 <p>Lists <code>PerformanceRegression</code> objects (<code>api/v1alpha1/performanceregression_types.go</code>) via a <code>client.Client</code>, optionally filtered by namespace and <code>status</code> (<code>Detected</code>, <code>NoRegression</code>, <code>InsufficientData</code>). Each item:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"argocd-my-app-1234567890-q8675309"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"namespace"</span><span class="p">:</span><span class="w"> </span><span class="s2">"production"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"clusterName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"prod-cluster"</span><span class="p">,</span>
@@ -1733,7 +1733,7 @@
 <p>Returns <code>DeployEvent</code> (above), unmodified. Backed by <code>storage.EventStore.EventsInRange</code> when <code>--state-backend=postgres</code>, or otherwise directly by the operator's own in-process deploy-event history (<code>internal/ingester.Store</code>) — either way this works with <code>cmd/operator</code>'s default configuration, not only when postgres persistence is opted into. Defaults to the last 7 days when <code>since</code>/<code>until</code> are omitted.</p>
 <h3 id="get-apiv1querieswindowminutes60"><code>GET /api/v1/queries?windowMinutes=60</code><a class="headerlink" href="#get-apiv1querieswindowminutes60" title="Permanent link">&para;</a></h3>
 <p>Returns, per tracked <code>queryId</code>, an aggregate over samples recorded in the last <code>windowMinutes</code> (default 60). Backed by <code>storage.SampleStore</code> when <code>--state-backend=postgres</code>, or otherwise directly by the operator's own in-process query-sample history (<code>internal/collector.Collector</code>) — either way this works with <code>cmd/operator</code>'s default configuration:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span>
 <span class="w">  </span><span class="nt">"queryId"</span><span class="p">:</span><span class="w"> </span><span class="mi">8675309</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"queryText"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SELECT * FROM orders WHERE user_id = $1"</span><span class="p">,</span>
 <span class="w">  </span><span class="nt">"calls"</span><span class="p">:</span><span class="w"> </span><span class="mi">4213</span><span class="p">,</span>
@@ -1810,6 +1810,8 @@
       <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
       
     
   </body>
