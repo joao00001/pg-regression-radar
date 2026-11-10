@@ -43,15 +43,31 @@ hide:
 
 ## The problem
 
-Teams running Postgres on Kubernetes (CloudNativePG, Zalando, Crunchy, Percona...) deploy applications many times a day via GitOps (ArgoCD, Flux, Argo Rollouts). When query latency spikes, the first question in every post-mortem is:
+<div class="pgrr-problem" markdown="1">
 
-<p class="pgrr-question">Which deploy caused this?</p>
+<div class="pgrr-problem-lead" markdown="1">
 
-Today that question is answered manually: open Grafana, look at `pg_stat_statements`, try to recall when the last deploy happened, cross-reference timestamps by eye. No open-source tool closes that loop automatically.
+<p class="pgrr-problem-ctx">Teams running Postgres on Kubernetes (CloudNativePG, Zalando, Crunchy, Percona...) deploy applications many times a day via GitOps (ArgoCD, Flux, Argo Rollouts). When query latency spikes, the first question in every post-mortem is:</p>
 
-**pg-regression-radar does.**
+<p class="pgrr-question">Which <em>deploy</em> caused this?</p>
 
-## Regression capture
+</div>
+
+<div class="pgrr-problem-today">
+<p class="pgrr-problem-label">Answered by hand, today</p>
+<ul class="pgrr-manual">
+<li>Open Grafana</li>
+<li>Look at <code>pg_stat_statements</code></li>
+<li>Try to recall when the last deploy happened</li>
+<li>Cross-reference timestamps by eye</li>
+</ul>
+<p class="pgrr-problem-note">No open-source tool closes that loop automatically.</p>
+<p class="pgrr-problem-answer"><strong>pg-regression-radar does.</strong></p>
+</div>
+
+</div>
+
+## <span class="pgrr-kick">Live detection</span>Watch a regression *get caught*<span class="pgrr-sub">A deploy lands, latency steps up, and the change point is attributed to it.</span> { #regression-capture .pgrr-title data-toc-label="Regression capture" }
 
 <div class="pgrr-radar">
 <div class="pgrr-radar-bar">
@@ -66,7 +82,7 @@ Today that question is answered manually: open Grafana, look at `pg_stat_stateme
 <p class="pgrr-radar-live" role="status"></p>
 </div>
 
-## How it works
+## <span class="pgrr-kick">Architecture</span>From scrape to *alert*<span class="pgrr-sub">Four components turn pg_stat_statements and deploy webhooks into a single answer.</span> { #how-it-works .pgrr-title data-toc-label="How it works" }
 
 <div class="pgrr-diagram">
 <svg viewBox="0 0 1280 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="pgrr-arch-title pgrr-arch-desc">
