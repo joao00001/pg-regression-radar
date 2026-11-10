@@ -1,0 +1,445 @@
+/*
+ * Roadmap page (docs/roadmap.md) -- card layout.
+ *
+ * Loaded only by the unversioned build (mkdocs-unversioned.yml). Everything is
+ * scoped under .rm-* classes and built on Material's own custom properties, so
+ * it follows the light/dark palettes defined in extra.css. The dense text of
+ * each item lives in a native <details>, so the page works with no JavaScript;
+ * javascripts/roadmap.js only adds the filter bar, "show more" and "expand all".
+ */
+
+[data-md-color-scheme="default"] {
+  --rm-border: rgba(0, 0, 0, 0.12);
+  --rm-border-strong: rgba(0, 0, 0, 0.28);
+  --rm-card: #ffffff;
+  --rm-card-hover: #fafafa;
+  --rm-soft: rgba(0, 0, 0, 0.045);
+  --rm-planned: #1d4ed8;
+  --rm-gap: #b45309;
+  --rm-proposed: #6d28d9;
+  --rm-deferred: #52525b;
+  --rm-followup: #0f766e;
+}
+
+[data-md-color-scheme="slate"] {
+  --rm-border: rgba(255, 255, 255, 0.14);
+  --rm-border-strong: rgba(255, 255, 255, 0.34);
+  --rm-card: #0b0b0b;
+  --rm-card-hover: #111111;
+  --rm-soft: rgba(255, 255, 255, 0.06);
+  --rm-planned: #7db0ff;
+  --rm-gap: #f5b94a;
+  --rm-proposed: #b69cff;
+  --rm-deferred: #a1a1aa;
+  --rm-followup: #4fd8c4;
+}
+
+/* ---- At a glance ---- */
+.md-typeset .rm-glance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0 0.75rem;
+}
+
+.md-typeset .rm-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--rm-border);
+  border-radius: 14px;
+  background: var(--rm-card);
+}
+
+.md-typeset .rm-stat-num {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.md-typeset .rm-stat-num small {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--md-default-fg-color--lighter);
+}
+
+.md-typeset .rm-stat-label {
+  font-size: 0.78rem;
+  color: var(--md-default-fg-color--lighter);
+}
+
+.md-typeset .rm-steps {
+  display: flex;
+  gap: 4px;
+  margin-top: 0.6rem;
+}
+
+.md-typeset .rm-steps i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rm-followup);
+}
+
+.md-typeset .rm-steps i.rm-step-open {
+  background: var(--rm-soft);
+  box-shadow: inset 0 0 0 1px var(--rm-border-strong);
+}
+
+/*
+ * <details> reset. Material styles every `.md-typeset details` as an admonition
+ * (border, shadow, full-width summary with a leading icon and a chevron), which
+ * is not what these cards want, so it is switched off before the pill look is
+ * applied.
+ */
+.md-typeset .rm-item details,
+.md-typeset details.rm-notes {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  font-size: inherit;
+  overflow: visible;
+}
+
+.md-typeset .rm-item details > summary,
+.md-typeset details.rm-notes > summary,
+.md-typeset .rm-btn {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0.28rem 0.8rem;
+  border: 1px solid var(--rm-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.md-typeset .rm-item details > summary::-webkit-details-marker,
+.md-typeset details.rm-notes > summary::-webkit-details-marker {
+  display: none;
+}
+
+.md-typeset .rm-item details > summary::before,
+.md-typeset details.rm-notes > summary::before {
+  content: none;
+  display: none;
+}
+
+.md-typeset .rm-item details > summary::after,
+.md-typeset details.rm-notes > summary::after,
+.md-typeset .rm-item details[open] > summary::after,
+.md-typeset details.rm-notes[open] > summary::after {
+  content: "+";
+  position: static;
+  display: inline;
+  width: auto;
+  height: auto;
+  margin: 0;
+  background: none;
+  -webkit-mask: none;
+  mask: none;
+  transform: none;
+  font-weight: 500;
+}
+
+.md-typeset .rm-item details[open] > summary::after,
+.md-typeset details.rm-notes[open] > summary::after {
+  content: "\2212";
+}
+
+.md-typeset .rm-item details > summary:hover,
+.md-typeset details.rm-notes > summary:hover,
+.md-typeset .rm-btn:hover {
+  background: var(--rm-soft);
+  border-color: var(--rm-border-strong);
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset .rm-item details > summary:focus-visible,
+.md-typeset details.rm-notes > summary:focus-visible,
+.md-typeset .rm-btn:focus-visible,
+.md-typeset .rm-chip:focus-visible,
+.md-typeset .rm-feature:focus-visible {
+  outline: 2px solid var(--md-typeset-a-color);
+  outline-offset: 2px;
+}
+
+.md-typeset details > summary .rm-less,
+.md-typeset details[open] > summary .rm-more { display: none; }
+.md-typeset details[open] > summary .rm-less { display: inline; }
+
+.md-typeset details.rm-notes { margin: 0.5rem 0 1rem; }
+.md-typeset details.rm-notes[open] > summary { margin-bottom: 0.75rem; }
+.md-typeset details.rm-notes > :not(summary) { max-width: 60rem; }
+
+/* ---- Key initiatives ---- */
+.md-typeset .rm-features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.md-typeset a.rm-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.3rem 1.3rem 1.1rem;
+  border: 1px solid var(--rm-border);
+  border-radius: 18px;
+  background: var(--rm-card);
+  color: var(--md-default-fg-color);
+  text-decoration: none;
+  transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.md-typeset a.rm-feature:hover {
+  transform: translateY(-2px);
+  border-color: var(--rm-border-strong);
+  background: var(--rm-card-hover);
+}
+
+.md-typeset .rm-kicker {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--lighter);
+}
+
+.md-typeset .rm-feature-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.md-typeset .rm-feature-desc {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .rm-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.4rem;
+  margin-top: 0.4rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--rm-border);
+  font-size: 0.8rem;
+}
+
+.md-typeset .rm-fields span { display: flex; flex-direction: column; gap: 0.1rem; white-space: nowrap; }
+
+.md-typeset .rm-fields b {
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--md-default-fg-color--lighter);
+}
+
+.md-typeset .rm-cta {
+  margin-top: auto;
+  padding-top: 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--md-typeset-a-color);
+}
+
+/* ---- Toolbar (built by roadmap.js) ---- */
+.md-typeset .rm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.md-typeset .rm-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.md-typeset .rm-chip {
+  padding: 0.3rem 0.85rem;
+  border: 1px solid var(--rm-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--md-default-fg-color--light);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.md-typeset .rm-chip:hover { background: var(--rm-soft); }
+
+.md-typeset .rm-chip[aria-pressed="true"] {
+  background: var(--md-default-fg-color);
+  border-color: var(--md-default-fg-color);
+  color: var(--md-default-bg-color);
+}
+
+.md-typeset .rm-chip small { opacity: 0.65; font-weight: 500; margin-left: 0.25rem; }
+.md-typeset .rm-toolbar .rm-btn { margin-left: auto; }
+
+.md-typeset .rm-area-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.5rem 0.28rem 0.8rem;
+  border: 1px dashed var(--rm-border-strong);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.md-typeset .rm-area-pill button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0 0.3rem;
+}
+
+/* ---- Item cards ---- */
+.md-typeset .rm-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.md-typeset .rm-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.1rem 1.2rem 1rem;
+  border: 1px solid var(--rm-border);
+  border-radius: 16px;
+  background: var(--rm-card);
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.md-typeset .rm-item:hover { border-color: var(--rm-border-strong); }
+.md-typeset .rm-item:has(> details[open]) { grid-column: 1 / -1; }
+.md-typeset .rm-item[hidden] { display: none; }
+
+.md-typeset .rm-item > p { margin: 0; }
+
+.md-typeset .rm-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+
+.md-typeset .rm-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+.md-typeset .rm-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: middle;
+}
+
+.md-typeset .rm-status {
+  --c: var(--rm-deferred);
+  display: inline-flex;
+  color: var(--c);
+}
+
+.md-typeset .rm-status--planned { --c: var(--rm-planned); }
+.md-typeset .rm-status--gap { --c: var(--rm-gap); }
+.md-typeset .rm-status--proposed { --c: var(--rm-proposed); }
+.md-typeset .rm-status--deferred { --c: var(--rm-deferred); }
+.md-typeset .rm-status--followup { --c: var(--rm-followup); }
+
+.md-typeset .rm-quarter {
+  margin-left: auto;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--md-default-fg-color--lighter);
+}
+
+.md-typeset .rm-area {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--md-default-fg-color--lighter);
+}
+
+.md-typeset .rm-title {
+  margin-top: 0.3rem;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+}
+
+.md-typeset .rm-title code { font-size: 0.85em; }
+
+.md-typeset .rm-summary {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .rm-item details { margin-top: auto; padding-top: 0.55rem; }
+
+.md-typeset .rm-item details[open] > summary { margin-bottom: 0.7rem; }
+
+.md-typeset .rm-item details > :not(summary) {
+  max-width: 62rem;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .rm-item details[open] > summary + * {
+  margin-top: 0;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--rm-border);
+}
+
+.md-typeset .rm-more-wrap { display: flex; justify-content: center; margin: 1.25rem 0 0.5rem; }
+.md-typeset .rm-count { font-size: 0.76rem; color: var(--md-default-fg-color--lighter); margin: 0.75rem 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .md-typeset a.rm-feature,
+  .md-typeset .rm-item,
+  .md-typeset .rm-chip,
+  .md-typeset .rm-btn { transition: none; }
+  .md-typeset a.rm-feature:hover { transform: none; }
+}
+
+/* status icon inside a filter chip */
+.md-typeset .rm-chip .rm-icon {
+  width: 14px;
+  height: 14px;
+  margin: -2px 0.35rem 0 -0.1rem;
+  color: var(--rm-chip-c, currentColor);
+}
+.md-typeset .rm-chip[data-status="planned"] { --rm-chip-c: var(--rm-planned); }
+.md-typeset .rm-chip[data-status="proposed"] { --rm-chip-c: var(--rm-proposed); }
+.md-typeset .rm-chip[data-status="gap"] { --rm-chip-c: var(--rm-gap); }
+.md-typeset .rm-chip[data-status="followup"] { --rm-chip-c: var(--rm-followup); }
+.md-typeset .rm-chip[data-status="deferred"] { --rm-chip-c: var(--rm-deferred); }
+.md-typeset .rm-chip[aria-pressed="true"] .rm-icon { color: inherit; }

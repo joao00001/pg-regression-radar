@@ -53,6 +53,8 @@
     
       <link rel="stylesheet" href="../stylesheets/extra.css">
     
+      <link rel="stylesheet" href="../stylesheets/roadmap.css">
+    
     <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -291,6 +293,8 @@
           
             
               
+                
+              
               <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
@@ -454,13 +458,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-and-robustness-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security and robustness checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#feature-roadmap" class="md-nav__link">
+  <a href="#key-initiatives" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Feature roadmap
+        Key initiatives
       
     </span>
   </a>
@@ -468,32 +489,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#known-robustness-gaps" class="md-nav__link">
+  <a href="#roadmap-items" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Known robustness gaps
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#operational-follow-ups" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Operational follow-ups
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-step-security-and-robustness-checklist-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7-step security and robustness checklist status
+        Roadmap items
       
     </span>
   </a>
@@ -527,7 +526,9 @@
             
             
               
-              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" hidden>
                 <div class="md-sidebar__scrollwrap">
                   <div class="md-sidebar__inner">
                     
@@ -554,13 +555,30 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#security-and-robustness-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security and robustness checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
-  <a href="#feature-roadmap" class="md-nav__link">
+  <a href="#key-initiatives" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Feature roadmap
+        Key initiatives
       
     </span>
   </a>
@@ -568,32 +586,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#known-robustness-gaps" class="md-nav__link">
+  <a href="#roadmap-items" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Known robustness gaps
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#operational-follow-ups" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Operational follow-ups
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-step-security-and-robustness-checklist-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7-step security and robustness checklist status
+        Roadmap items
       
     </span>
   </a>
@@ -625,6 +621,8 @@
               <article class="md-content__inner md-typeset">
                 
                   
+  
+
 
 
   
@@ -638,32 +636,220 @@
 
 <h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
 <p><em>What's still open — planned features, known gaps, and operational follow-ups. What's already shipped lives in <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a> and in each feature's own docs page, not repeated here.</em></p>
+<p><svg class="rm-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><symbol id="rm-i-planned" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol><symbol id="rm-i-proposed" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-dasharray="3.4 3.4"/><path d="M12 8.5v7M8.5 12h7"/></symbol><symbol id="rm-i-gap" viewBox="0 0 24 24"><path d="M12 3.5 2.8 19.5h18.4L12 3.5z"/><path d="M12 10v4.2M12 17.1v.01"/></symbol><symbol id="rm-i-followup" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M13 8.5l3.5 3.5-3.5 3.5"/></symbol><symbol id="rm-i-deferred" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol></svg></p>
 <h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
 <p>This page tracks only what's <em>not</em> done yet: planned features, known robustness gaps, and operational follow-ups that aren't code changes. It is not a running history of delivered work — once an item here ships, it's removed from this page, not reworded as "done"; its details live in <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a> (what shipped and when) and the relevant feature's own docs page (how it works today).</p>
-<h2 id="feature-roadmap">Feature roadmap<a class="headerlink" href="#feature-roadmap" title="Permanent link">&para;</a></h2>
+<div class="rm-glance">
+<div class="rm-stat"><span class="rm-stat-num" data-rm-count>21</span><span class="rm-stat-label">open items below</span></div>
+<div class="rm-stat rm-stat--progress"><span class="rm-stat-num">6<small> / 7</small></span><span class="rm-stat-label">security and robustness checklist steps complete</span><span class="rm-steps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="rm-step-open"></i></span></div>
+</div>
+<details class="rm-notes">
+<summary><span class="rm-more">How to read this page</span><span class="rm-less">Hide</span></summary>
 <p>This project does not commit features to specific version numbers — a version tag marks when something shipped, not a promise of what a future one will contain. What's below has no version committed yet:</p>
-<ul>
-<li>GitHub/GitLab PR comment on detected regression; Grafana annotation.</li>
-<li>An OLM bundle for OperatorHub.io.</li>
-</ul>
-<h2 id="known-robustness-gaps">Known robustness gaps<a class="headerlink" href="#known-robustness-gaps" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Real <code>auto_explain</code> log ingestion is not yet built.</strong> <code>internal/planner</code> captures a query's execution plan from either <code>pg_store_plans</code> (the real, previously-executed plan — see <a href="https://joao00001.github.io/pg-regression-radar/latest/testing/#real-pg_store_plans-extension">Testing</a> for how it's validated against a real install) or <code>EXPLAIN (FORMAT JSON, GENERIC_PLAN)</code> (an estimate, PostgreSQL 16+ only) and diffs two captures — see <a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/#plan-diff-correlation-optional">Detection Algorithm</a>. A full <code>auto_explain</code> log-shipping pipeline remains a heavier, not-yet-started alternative for clusters that have neither <code>pg_store_plans</code> nor PostgreSQL 16 available — see the "Honest limitations" note on <a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/#honest-limitations">Detection Algorithm</a>.</li>
-<li><strong>No real ArgoCD or <code>pg_store_plans</code> in the kind + CloudNativePG e2e.</strong> The <a href="https://joao00001.github.io/pg-regression-radar/latest/testing/#e2e-kind-cloudnativepg">kind + CloudNativePG e2e workflow</a> (<code>.github/workflows/e2e-kind.yml</code>) posts a <code>sourceType: generic</code> webhook directly to the DeploySource route rather than standing up ArgoCD's Application controller and Notifications engine (the part that actually emits a real <code>on-sync-succeeded</code> webhook — see <a href="https://joao00001.github.io/pg-regression-radar/latest/webhooks/">Deploy Sources &amp; Webhooks</a>); that's a second, mostly-orthogonal integration surface, a natural follow-up once someone needs to validate ArgoCD's own webhook delivery specifically. Separately, it doesn't run with <code>pg_store_plans</code> on the CloudNativePG instance: that C extension isn't compiled into CloudNativePG's default operand images, and building/maintaining a custom operand image just for this smoke test hasn't been judged worth it yet (narrower than "is <code>pg_store_plans</code> validated against a real server at all" — see <a href="https://joao00001.github.io/pg-regression-radar/latest/testing/#real-pg_store_plans-extension">Testing</a> for that validation, which runs outside of CloudNativePG specifically).</li>
-<li><strong>Neither kind-based e2e workflow has a real GitHub Actions run yet.</strong> <code>.github/workflows/e2e-kind.yml</code> and <code>.github/workflows/e2e-kind-multicluster.yml</code> were both authored, actionlint/YAML-checked, and validated against real clusters in a local sandbox that lacks GitHub Actions' kernel support for <code>kind</code>/Docker-in-Docker (see <a href="https://joao00001.github.io/pg-regression-radar/latest/multi-cluster/#operational-considerations">Multi-Cluster: Operational considerations</a> for the networking workaround that local validation needed) — but neither has actually executed as a real <code>workflow_dispatch</code>/labeled-PR run on an actual GitHub Actions runner. Treat each workflow's first real run as part of reviewing the change that introduces it, not as an already-passing check.</li>
-</ul>
-<h2 id="operational-follow-ups">Operational follow-ups<a class="headerlink" href="#operational-follow-ups" title="Permanent link">&para;</a></h2>
+<p><em>See the <strong>Planned</strong> items below.</em></p>
+<p><em>Quarters on each item are estimates of when we expect to pick it up, not commitments or release dates. Items marked Unscheduled have no target.</em></p>
+<p><em>Open items from a code audit of <code>internal/correlation</code>, <code>internal/collector</code>, <code>internal/planner</code>, and <code>internal/ingester</code> — each is a gap in what the engine can currently claim, not a bug in what it already does. Ordered by how much they affect the trustworthiness of a reported regression, not by planned release.</em></p>
 <p>Shipped operational work (publishing signed release artifacts, per-release docs versioning, per-PR release-notes fragments) is documented where it actually lives — <a href="https://joao00001.github.io/pg-regression-radar/latest/ci-cd/">CI/CD</a> and <a href="https://joao00001.github.io/pg-regression-radar/latest/installation/">Installation</a> — and logged in <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a>, rather than listed again here once it's done. What's below is genuinely still open:</p>
-<ul>
-<li><strong>Branch protection review.</strong> See <a href="https://joao00001.github.io/pg-regression-radar/latest/branch-protection/">Branch Protection</a> — the CI checks in <a href="https://joao00001.github.io/pg-regression-radar/latest/ci-cd/">CI/CD</a> only have real effect once <code>main</code>'s ruleset actually requires each one by name.</li>
-<li><strong>GitHub Discussions link.</strong> <code>.github/ISSUE_TEMPLATE/config.yml</code> links to the repo's Discussions tab; whether Discussions is actually enabled on the repo hasn't been confirmed.</li>
-</ul>
-<h2 id="7-step-security-and-robustness-checklist-status">7-step security and robustness checklist status<a class="headerlink" href="#7-step-security-and-robustness-checklist-status" title="Permanent link">&para;</a></h2>
+<p><em>See the <strong>Follow-up</strong> items below.</em></p>
+<p>These are consciously not planned yet: without external users and an objective definition of "correct attribution" there is nothing to calibrate them against.</p>
+<p><em>See the <strong>Deferred</strong> items below.</em></p>
+<h3 id="security-and-robustness-checklist">Security and robustness checklist<a class="headerlink" href="#security-and-robustness-checklist" title="Permanent link">&para;</a></h3>
 <p>This repository's code/docs/workflow-addressable checklist has 6 of its 7 steps complete — security model and trust boundaries, secret-consent and policy controls, alert destination controls, Kubernetes hardening defaults, the tenant-safe remote cluster model, and supply-chain controls, in that order. Each is documented in full on its own page, not restated here: <a href="https://joao00001.github.io/pg-regression-radar/latest/security-model/">Security Model</a>, <a href="https://joao00001.github.io/pg-regression-radar/latest/multi-cluster/">Multi-Cluster (Fleet) Mode</a>, <a href="https://joao00001.github.io/pg-regression-radar/latest/deployment-security/">Deployment Security</a>, and <a href="https://joao00001.github.io/pg-regression-radar/latest/supply-chain/">Supply Chain</a> cover how; <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a> covers when.</p>
 <p>Step 7 remains intentionally <strong>operational</strong>, and genuinely open:</p>
-<ul>
-<li><strong>External-user quickstart validation is reproducibly documented but not auto-provable from code alone.</strong> The execution checklist exists in <a href="https://joao00001.github.io/pg-regression-radar/latest/quickstart-validation/">Quickstart Validation</a>, but completion still depends on a real human/operator run in an external environment.</li>
-</ul>
+<p><em>See the <strong>External-user quickstart validation</strong> item below.</em></p>
+</details>
+<h2 id="key-initiatives">Key initiatives<a class="headerlink" href="#key-initiatives" title="Permanent link">&para;</a></h2>
+<div class="rm-features">
+<a class="rm-feature" href="#roadmap-items" data-area="Statistics"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Trustworthy statistics</span><span class="rm-feature-desc">Make the significance the engine reports mean what it says: honest thresholds, calibrated p-values and multiple-comparison control.</span><span class="rm-fields"><span><b>Open items</b>4</span><span><b>Impact</b>High</span><span><b>Timeline</b>Q4 2026 – Q2 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
+<a class="rm-feature" href="#roadmap-items" data-area="Attribution"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Honest attribution</span><span class="rm-feature-desc">Say when a deploy is the likely cause, when several could be, and when the database as a whole slowed down.</span><span class="rm-fields"><span><b>Open items</b>3</span><span><b>Impact</b>High</span><span><b>Timeline</b>Q1 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
+<a class="rm-feature" href="#roadmap-items" data-area="Validation"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Proven in real environments</span><span class="rm-feature-desc">Close the gap between what CI proves and what operators will run: real-runner e2e, real ArgoCD, and an external-user quickstart.</span><span class="rm-fields"><span><b>Open items</b>3</span><span><b>Impact</b>Medium</span><span><b>Timeline</b>Q4 2026 – Q1 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
+</div>
+
+<h2 id="roadmap-items">Roadmap items<a class="headerlink" href="#roadmap-items" title="Permanent link">&para;</a></h2>
+<div class="rm-list">
+<div class="rm-item" data-area="Statistics" data-quarter="Q4 2026" data-status="proposed">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q4 2026</span></div>
+<div class="rm-title"><code>MinExecutions</code> counts samples, not executions</div>
+<p class="rm-summary">The flag counts scrape samples, not executions, so the threshold doesn't mean what its name says.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p><code>Engine.computeChangeStats</code> compares <code>len(preSamples)</code> and <code>len(postSamples)</code> against <code>--min-executions</code>, so with a 60-second scrape ten samples may stand for ten executions or ten million. The flag name promises the second meaning and the code delivers the first. The fix is to separate a minimum number of samples per segment from a minimum number of executions behind each observation — which needs the per-interval execution count to be available on the sample.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Statistics" data-quarter="Q4 2026" data-status="proposed">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q4 2026</span></div>
+<div class="rm-title"><code>ConfidenceScore</code> is <code>1 - pValue</code>, which is not a probability</div>
+<p class="rm-summary">The score is 1 minus the p-value, which reads like a probability but isn't one. Expose the raw p-value and document the score.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>A p-value of 0.001 does not mean a 99.9% chance the regression is real, and says nothing about the probability that a deploy caused it; the README's "0.98 confidence" example invites exactly that reading. Planned direction: expose the raw <code>pValue</code> (and an adjusted one, once the item below lands) on <code>PerformanceRegression</code>, document <code>ConfidenceScore</code> as a significance-derived score rather than a probability, and only later introduce a score with explicit attribution semantics. Renaming or removing the existing CRD field is a compatibility decision covered by <a href="https://joao00001.github.io/pg-regression-radar/latest/api-versioning/">API Versioning</a>, not something to do in passing.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Validation" data-quarter="Q4 2026" data-status="gap">
+<div class="rm-meta"><span class="rm-status rm-status--gap" role="img" aria-label="Known gap" title="Known gap"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-gap"/></svg></span><span class="rm-area">Validation</span><span class="rm-quarter">Q4 2026</span></div>
+<div class="rm-title">Neither kind-based e2e workflow has a real GitHub Actions run yet</div>
+<p class="rm-summary">Both kind-based workflows were validated locally but have never run on a real GitHub Actions runner.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p><code>.github/workflows/e2e-kind.yml</code> and <code>.github/workflows/e2e-kind-multicluster.yml</code> were both authored, actionlint/YAML-checked, and validated against real clusters in a local sandbox that lacks GitHub Actions' kernel support for <code>kind</code>/Docker-in-Docker (see <a href="https://joao00001.github.io/pg-regression-radar/latest/multi-cluster/#operational-considerations">Multi-Cluster: Operational considerations</a> for the networking workaround that local validation needed) — but neither has actually executed as a real <code>workflow_dispatch</code>/labeled-PR run on an actual GitHub Actions runner. Treat each workflow's first real run as part of reviewing the change that introduces it, not as an already-passing check.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Operations" data-quarter="Q4 2026" data-status="followup">
+<div class="rm-meta"><span class="rm-status rm-status--followup" role="img" aria-label="Follow-up" title="Follow-up"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-followup"/></svg></span><span class="rm-area">Operations</span><span class="rm-quarter">Q4 2026</span></div>
+<div class="rm-title">Branch protection review</div>
+<p class="rm-summary">Required checks only have effect once <code>main</code>'s ruleset requires each one by name.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>See <a href="https://joao00001.github.io/pg-regression-radar/latest/branch-protection/">Branch Protection</a> — the CI checks in <a href="https://joao00001.github.io/pg-regression-radar/latest/ci-cd/">CI/CD</a> only have real effect once <code>main</code>'s ruleset actually requires each one by name.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Operations" data-quarter="Q4 2026" data-status="followup">
+<div class="rm-meta"><span class="rm-status rm-status--followup" role="img" aria-label="Follow-up" title="Follow-up"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-followup"/></svg></span><span class="rm-area">Operations</span><span class="rm-quarter">Q4 2026</span></div>
+<div class="rm-title">GitHub Discussions link</div>
+<p class="rm-summary">The issue template links to Discussions; whether it is enabled on the repo hasn't been confirmed.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p><code>.github/ISSUE_TEMPLATE/config.yml</code> links to the repo's Discussions tab; whether Discussions is actually enabled on the repo hasn't been confirmed.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Statistics" data-quarter="Q1 2027" data-status="proposed">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q1 2027</span></div>
+<div class="rm-title">The Welch's t-test is applied to segments chosen by the same data</div>
+<p class="rm-summary">The significance test runs on a split the same data picked, so its p-value is optimistic. Calibrate it before reading it as a 5% rate.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>Stage 1 searches every candidate split for the best E-divisive change point and stage 2 then tests that split as if it had been chosen independently, which makes the p-value optimistic (post-selection inference). The stage 0 pre-filter and the <code>LatencyChangeThreshold</code> mask most of the effect on typical series, but the p-value should not be read as a calibrated 5% false-positive rate. Options, roughly in order of cost: a minimum effect-size floor alongside the p-value; empirical calibration against recorded no-regression series; a permutation test that repeats the full change-point search on each permuted series. Series with autocorrelated noise are the case most worth measuring first.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Attribution" data-quarter="Q1 2027" data-status="proposed">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Attribution</span><span class="rm-quarter">Q1 2027</span></div>
+<div class="rm-title">Attribution is by time proximity only, and the proximity check is symmetric</div>
+<p class="rm-summary">A shift before the deploy can still be blamed on it. Make the window asymmetric, depending on how the event was timestamped.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p><code>evaluateQuery</code> rejects a change point only when its absolute distance from the deploy exceeds <code>ChangePointTolerance</code>, so a shift that happened <em>before</em> the event can still be attributed to it. That is sometimes right — the ArgoCD and Argo Rollouts parsers stamp <code>DeployEvent.Timestamp</code> with <code>time.Now()</code> when the webhook arrives (typically at sync completion), while the real effect can start when the first replicas roll — and sometimes wrong. <a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/">Detection Algorithm</a> currently justifies the tolerance only by effects <em>lagging</em> a deploy, which is the opposite case. Planned direction: an asymmetric window whose lead and lag depend on how the event's timestamp was obtained. The OTLP source already lets an operator choose the span's <code>start</code> or <code>end</code>; the webhook sources have no equivalent, so a lightweight first step is to record a timestamp-quality indicator (source-provided vs. receipt time) on the event rather than adding separate started/completed fields to the public <code>DeployEvent</code> type.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Attribution" data-quarter="Q1 2027" data-status="proposed">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Attribution</span><span class="rm-quarter">Q1 2027</span></div>
+<div class="rm-title">No way to say "several deploys could explain this."</div>
+<p class="rm-summary">When several deploys could explain a change, say so with an Ambiguous result instead of presenting one as the cause.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p><code>Engine.Analyse</code> evaluates one event at a time and every tracked query is a candidate for every event on the same watch — nothing links a <code>queryid</code> to an application, and <code>pg_stat_statements</code> does not record one. Two deploys inside one tolerance window therefore each produce their own regression for the same change point. A first step that needs no new data: when more than one event falls inside the window, mark the result <code>Ambiguous</code> and list the candidate events instead of presenting one as the cause. Further outcomes (<code>Unattributed</code> when no event is close enough, <code>InsufficientEvidence</code>) and candidate ranking by cluster, namespace, and workload can follow once that vocabulary exists.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Attribution" data-quarter="Q1 2027" data-status="proposed">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Attribution</span><span class="rm-quarter">Q1 2027</span></div>
+<div class="rm-title">No signal for "everything got slower."</div>
+<p class="rm-summary">Report how many other queries shifted at the same moment, to tell a deploy-local change from a saturated database.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>Whether a regression is local to one query or shared by most tracked queries at the same moment is already computable from data the collector holds, and separates "this deploy changed this query" from "the database is saturated". Reporting the fraction of other tracked queries that shifted at the same change point is a cheap first control signal; richer workload context (CPU, connections, lock waits, I/O) is deliberately not planned until there is evidence the cheaper signal is not enough, since requiring it would raise the barrier to adoption.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Validation" data-quarter="Q1 2027" data-status="gap">
+<div class="rm-meta"><span class="rm-status rm-status--gap" role="img" aria-label="Known gap" title="Known gap"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-gap"/></svg></span><span class="rm-area">Validation</span><span class="rm-quarter">Q1 2027</span></div>
+<div class="rm-title">No real ArgoCD or <code>pg_store_plans</code> in the kind + CloudNativePG e2e</div>
+<p class="rm-summary">The CloudNativePG e2e posts a generic webhook instead of a real ArgoCD one, and runs without <code>pg_store_plans</code>.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>The <a href="https://joao00001.github.io/pg-regression-radar/latest/testing/#e2e-kind-cloudnativepg">kind + CloudNativePG e2e workflow</a> (<code>.github/workflows/e2e-kind.yml</code>) posts a <code>sourceType: generic</code> webhook directly to the DeploySource route rather than standing up ArgoCD's Application controller and Notifications engine (the part that actually emits a real <code>on-sync-succeeded</code> webhook — see <a href="https://joao00001.github.io/pg-regression-radar/latest/webhooks/">Deploy Sources &amp; Webhooks</a>); that's a second, mostly-orthogonal integration surface, a natural follow-up once someone needs to validate ArgoCD's own webhook delivery specifically. Separately, it doesn't run with <code>pg_store_plans</code> on the CloudNativePG instance: that C extension isn't compiled into CloudNativePG's default operand images, and building/maintaining a custom operand image just for this smoke test hasn't been judged worth it yet (narrower than "is <code>pg_store_plans</code> validated against a real server at all" — see <a href="https://joao00001.github.io/pg-regression-radar/latest/testing/#real-pg_store_plans-extension">Testing</a> for that validation, which runs outside of CloudNativePG specifically).</p>
+</details>
+</div>
+<div class="rm-item" data-area="Integrations" data-quarter="Q1 2027" data-status="planned">
+<div class="rm-meta"><span class="rm-status rm-status--planned" role="img" aria-label="Planned" title="Planned"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-planned"/></svg></span><span class="rm-area">Integrations</span><span class="rm-quarter">Q1 2027</span></div>
+<div class="rm-title">PR comments and Grafana annotations</div>
+<p class="rm-summary">GitHub/GitLab PR comment on detected regression; Grafana annotation.</p>
+</div>
+<div class="rm-item" data-area="Validation" data-quarter="Q1 2027" data-status="followup">
+<div class="rm-meta"><span class="rm-status rm-status--followup" role="img" aria-label="Follow-up" title="Follow-up"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-followup"/></svg></span><span class="rm-area">Validation</span><span class="rm-quarter">Q1 2027</span></div>
+<div class="rm-title">External-user quickstart validation is reproducibly documented but not auto-provable from code alone</div>
+<p class="rm-summary">Step 7 of the checklist needs a real operator run in an external environment, which code alone can't prove.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>The execution checklist exists in <a href="https://joao00001.github.io/pg-regression-radar/latest/quickstart-validation/">Quickstart Validation</a>, but completion still depends on a real human/operator run in an external environment.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Statistics" data-quarter="Q2 2027" data-status="proposed">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q2 2027</span></div>
+<div class="rm-title">No multiple-comparison control across queries</div>
+<p class="rm-summary">Up to 500 queries are tested per pass with no correction. Options: false-discovery-rate control, or ranking by impact.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>One <code>Analyse</code> or <code>AnalysePeriodic</code> pass can evaluate up to the top 500 queries, each against <code>PValueThreshold</code>, and periodic analysis repeats that on every tick. A false-discovery-rate correction (Benjamini-Hochberg is the obvious first candidate) is one option; ranking and surfacing regressions by their share of total execution time is another that also helps operators triage. Whichever is chosen, the more conservative behaviour should be a separate mode, not a silent change to what <code>PValueThreshold</code> means.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Plan-diff" data-quarter="Q2 2027" data-status="proposed">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Plan-diff</span><span class="rm-quarter">Q2 2027</span></div>
+<div class="rm-title"><code>planner.Diff</code> compares only the root node type, total estimated cost, and snapshot source</div>
+<p class="rm-summary">The diff only compares the root node, total cost and source. Walking the whole plan tree would explain the “why”.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>A root that stays an <code>Index Scan</code> while its row estimate moves by four orders of magnitude, or a join order change below an unchanged root, is invisible to it. Walking the whole plan tree — scan types, index names, join methods and order, estimated rows, and sorts — would make the hint far more useful for the "why". Actual rows and buffer counts are only worth adding for sources that record them; <code>EXPLAIN (GENERIC_PLAN)</code> never does.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Sources" data-quarter="Q2 2027" data-status="proposed">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Sources</span><span class="rm-quarter">Q2 2027</span></div>
+<div class="rm-title"><code>SampleSource</code> abstracts where samples come from, not what a sample means</div>
+<p class="rm-summary">Make explicit what each observation means, so new sources can't be mixed into the same statistical test by accident.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p><code>internal/telemetry/promsource</code> already requires a per-interval mean, but nothing in the interface enforces it, and a future histogram- or percentile-based source would be indistinguishable from a mean-based one to the engine. Making the meaning of each observation explicit (interval mean, cumulative mean, histogram-derived, gauge) in the sample type — with a single normalisation step in front of the engine rather than per-source conventions — would keep the engine independent of the ingestion protocol. Percentile (p95/p99) detection needs its own statistical path and calibration; feeding percentiles through the mean-based Welch test is not an option.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Integrations" data-quarter="Q2 2027" data-status="planned">
+<div class="rm-meta"><span class="rm-status rm-status--planned" role="img" aria-label="Planned" title="Planned"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-planned"/></svg></span><span class="rm-area">Integrations</span><span class="rm-quarter">Q2 2027</span></div>
+<div class="rm-title">OLM bundle for OperatorHub.io</div>
+<p class="rm-summary">An OLM bundle for OperatorHub.io.</p>
+</div>
+<div class="rm-item" data-area="Plan-diff" data-quarter="Unscheduled" data-status="gap">
+<div class="rm-meta"><span class="rm-status rm-status--gap" role="img" aria-label="Known gap" title="Known gap"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-gap"/></svg></span><span class="rm-area">Plan-diff</span><span class="rm-quarter">Unscheduled</span></div>
+<div class="rm-title">Real <code>auto_explain</code> log ingestion is not yet built</div>
+<p class="rm-summary">A log-shipping pipeline for clusters that have neither <code>pg_store_plans</code> nor PostgreSQL 16.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p><code>internal/planner</code> captures a query's execution plan from either <code>pg_store_plans</code> (the real, previously-executed plan — see <a href="https://joao00001.github.io/pg-regression-radar/latest/testing/#real-pg_store_plans-extension">Testing</a> for how it's validated against a real install) or <code>EXPLAIN (FORMAT JSON, GENERIC_PLAN)</code> (an estimate, PostgreSQL 16+ only) and diffs two captures — see <a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/#plan-diff-correlation-optional">Detection Algorithm</a>. A full <code>auto_explain</code> log-shipping pipeline remains a heavier, not-yet-started alternative for clusters that have neither <code>pg_store_plans</code> nor PostgreSQL 16 available — see the "Honest limitations" note on <a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/#honest-limitations">Detection Algorithm</a>.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Statistics" data-quarter="Unscheduled" data-status="deferred">
+<div class="rm-meta"><span class="rm-status rm-status--deferred" role="img" aria-label="Deferred" title="Deferred"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-deferred"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Unscheduled</span></div>
+<div class="rm-title">Block bootstrap and adaptive baselines</div>
+<p class="rm-summary">Better significance for autocorrelated series, and baselines that adapt over time.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>Block-permutation or block-bootstrap significance for autocorrelated series, and adaptive baseline models.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Statistics" data-quarter="Unscheduled" data-status="deferred">
+<div class="rm-meta"><span class="rm-status rm-status--deferred" role="img" aria-label="Deferred" title="Deferred"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-deferred"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Unscheduled</span></div>
+<div class="rm-title">Histogram and tail-latency detection</div>
+<p class="rm-summary">Detect regressions in the tail of the distribution, not only in the mean.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>Histogram and tail-latency change detection.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Attribution" data-quarter="Unscheduled" data-status="deferred">
+<div class="rm-meta"><span class="rm-status rm-status--deferred" role="img" aria-label="Deferred" title="Deferred"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-deferred"/></svg></span><span class="rm-area">Attribution</span><span class="rm-quarter">Unscheduled</span></div>
+<div class="rm-title">Traces as attribution evidence</div>
+<p class="rm-summary">Traces add context and execution paths to an attribution; they don't prove one.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>Using OpenTelemetry traces as extra attribution evidence (which service, endpoint, and application version was affected). Traces give context and execution paths, not a counterfactual, so they should inform an attribution result rather than prove one.</p>
+</details>
+</div>
+<div class="rm-item" data-area="Attribution" data-quarter="Unscheduled" data-status="deferred">
+<div class="rm-meta"><span class="rm-status rm-status--deferred" role="img" aria-label="Deferred" title="Deferred"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-deferred"/></svg></span><span class="rm-area">Attribution</span><span class="rm-quarter">Unscheduled</span></div>
+<div class="rm-title">Control groups and causal methods</div>
+<p class="rm-summary">Compare against control queries and history to estimate calibrated attribution probabilities.</p>
+<details>
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+<p>Control-group methods (difference-in-differences against comparable queries), counterfactual baselines from history, and empirically calibrated attribution probabilities.</p>
+</details>
+</div>
+</div>
+<p><strong>Have an idea?</strong> <a href="https://github.com/joao00001/pg-regression-radar/issues/new/choose">Open a feature request</a> — dates are not promised, but this page is where accepted ideas land.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">CHANGELOG.md</a> — what's already shipped, release by release; this page only tracks what's still open.</li>
@@ -678,8 +864,13 @@
 
 
 
+  
+  
 
 
+
+
+  
 
 
 
@@ -734,6 +925,8 @@
         <script src="../javascripts/nav-data.js"></script>
       
         <script src="../javascripts/nav-flyout.js"></script>
+      
+        <script src="../javascripts/roadmap.js"></script>
       
     
   </body>
