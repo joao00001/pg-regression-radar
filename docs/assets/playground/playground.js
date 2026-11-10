@@ -1,6 +1,7 @@
 // Docs playground UI. Loads lazily: nothing heavy is fetched until the reader
 // presses "Run simulation" (PGlite is about 5 MB gzipped, the engine about 1 MB).
 import { SCENARIOS, DEFAULTS, simulate } from './playground-core.js';
+import { introOnView, typeLog, landResults, drawLines, reduced } from './playground-motion.js';
 
 const HERE = new URL('.', import.meta.url);
 const ROOT = document.getElementById('pgrr-playground');
@@ -170,7 +171,7 @@ function renderForm() {
   els.cmdName = h('span', { class: 'pgrr-arg' }, state.scenario.id);
 
   els.run = h('button', { type: 'button', class: 'pgrr-run', onclick: run }, '⏎ Run simulation');
-  els.status = h('p', { class: 'pgrr-log', role: 'status', 'aria-live': 'polite' });
+  els.status = h('p', { class: 'pgrr-log', 'aria-hidden': 'true' });
   els.bar = h('span', { class: 'pgrr-bar', role: 'progressbar', 'aria-label': 'Simulation progress', 'aria-valuemin': '0', hidden: true });
 
   els.sqlToggle = h('button', { type: 'button', class: 'pgrr-toggle', 'aria-expanded': 'false', 'aria-controls': 'pgrr-files', onclick: () => setSqlOpen(!state.sqlOpen) },
@@ -178,18 +179,30 @@ function renderForm() {
     h('span', { class: 'pgrr-comment-inline' }, 'schema, workload and deploy'));
   els.files = h('div', { id: 'pgrr-files', class: 'pgrr-files', hidden: true }, FILES.map(fileCard));
 
+  const promptScenarios = prompt('playground ', h('span', { class: 'pgrr-cmd' }, 'scenarios'));
+  const scenarioList = h('div', { class: 'pgrr-scenarios', role: 'group', 'aria-label': 'Scenario' }, els.scenarioButtons);
+  const promptRun = prompt('playground ', h('span', { class: 'pgrr-cmd' }, 'run'), ' ', els.cmdName, ' \\');
+  const optRows = OPTIONS.map((o, i) => optionRow(o, i === OPTIONS.length - 1));
+  const optList = h('div', { class: 'pgrr-opts' }, optRows);
+  const runRow = h('div', { class: 'pgrr-runrow' }, els.run, els.bar);
+  els.prog = h('div', { class: 'pgrr-prog', 'aria-hidden': 'true' });
+  els.sr = h('p', { class: 'pgrr-sr', role: 'status', 'aria-live': 'polite' });
+
   const main = term('Playground',
-    prompt('playground ', h('span', { class: 'pgrr-cmd' }, 'scenarios')),
-    h('div', { class: 'pgrr-scenarios', role: 'group', 'aria-label': 'Scenario' }, els.scenarioButtons),
-    els.scenarioNote,
-    prompt('playground ', h('span', { class: 'pgrr-cmd' }, 'run'), ' ', els.cmdName, ' \\'),
-    h('div', { class: 'pgrr-opts' }, OPTIONS.map((o, i) => optionRow(o, i === OPTIONS.length - 1))),
-    els.sqlToggle,
-    h('div', { class: 'pgrr-runrow' }, els.run, els.bar),
-    els.status);
+    promptScenarios, scenarioList, els.scenarioNote, promptRun, optList, els.sqlToggle, runRow, els.status, els.sr);
+  main.append(els.prog);
 
   els.form.replaceChildren(main, els.files);
   setSqlOpen(state.sqlOpen);
+  if (!state.introDone) {
+    state.introDone = true;
+    introOnView(main, {
+      promptScenarios, promptRun,
+      scenarioBlock: [...scenarioList.children, els.scenarioNote],
+      optionBlock: optRows,
+      tail: [els.sqlToggle, runRow],
+    });
+  }
 }
 
 const STATUS_MARK = { Detected: '✖', NoRegression: '✔', InsufficientData: '?' };
@@ -227,9 +240,9 @@ function renderResults() {
   },
   h('td', {}, badge(res.status)),
   h('td', { class: 'pgrr-q' }, h('code', {}, res.query)),
-  h('td', { class: 'pgrr-num', 'data-label': 'mean' }, res.status === 'InsufficientData' ? '-' : `${fmtMs(res.meanLatencyBefore)} → ${fmtMs(res.meanLatencyAfter)} ms`),
-  h('td', { class: 'pgrr-num', 'data-label': 'change' }, res.status === 'InsufficientData' ? '-' : `×${res.latencyChangeFactor.toFixed(2)}`),
-  h('td', { class: 'pgrr-num', 'data-label': 'confidence' }, res.status === 'Detected' ? res.confidenceScore.toFixed(3) : '-')));
+  h('td', { class: 'pgrr-val', 'data-label': 'mean' }, res.status === 'InsufficientData' ? '-' : `${fmtMs(res.meanLatencyBefore)} → ${fmtMs(res.meanLatencyAfter)} ms`),
+  h('td', { class: 'pgrr-val', 'data-label': 'change' }, res.status === 'InsufficientData' ? '-' : `×${res.latencyChangeFactor.toFixed(2)}`),
+  h('td', { class: 'pgrr-val', 'data-label': 'confidence' }, res.status === 'Detected' ? res.confidenceScore.toFixed(3) : '-')));
 
   const table = h('table', { class: 'pgrr-table' },
     h('thead', {}, h('tr', {}, ...['Verdict', 'Query', 'Before → after', 'Change', 'Confidence'].map((t) => h('th', {}, t)))),
@@ -333,6 +346,7 @@ function drawChart() {
     h('li', {}, h('i', { class: 'pgrr-sw pgrr-sw-cum' }), 'pg_stat_statements.mean_exec_time (cumulative since the last reset)'),
     series.points.some((p) => p.reset) && h('li', {}, h('i', { class: 'pgrr-sw pgrr-sw-reset' }), 'counter reset detected'));
   els.chartBox.replaceChildren(h('p', { class: 'pgrr-comment pgrr-chart-title' }, res.query), g, legend);
+  drawLines(g);
 }
 
 // ---- run ----------------------------------------------------------------
@@ -355,7 +369,16 @@ function spin(on) {
 }
 
 function setStatus(text) {
-  els.status.textContent = text ? `> ${text}` : '';
+  els.sr.textContent = text || '';
+  typeLog(els.status, text);
+}
+
+// The rail across the top of the card: sliding while the engine loads,
+// then filling as the simulation advances.
+function setProgress(frac) {
+  els.prog.classList.toggle('is-on', frac !== null);
+  els.prog.classList.toggle('is-wait', frac === 0);
+  if (frac !== null && frac > 0) els.prog.style.setProperty('--prog', String(frac));
 }
 
 async function run() {
@@ -365,6 +388,7 @@ async function run() {
   els.bar.hidden = false;
   els.bar.removeAttribute('aria-valuenow');
   els.bar.removeAttribute('aria-valuemax');
+  setProgress(0);
   try {
     setStatus('Loading PostgreSQL and the detection engine (first run only)…');
     spin(true);
@@ -376,13 +400,18 @@ async function run() {
       els.bar.setAttribute('aria-valuemax', String(total));
       els.bar.setAttribute('aria-valuenow', String(done));
       els.bar.textContent = barText(done, total);
+      setProgress(Math.max(.02, done / total));
       if (phase !== lastPhase) { lastPhase = phase; setStatus(phase); }
     });
     setStatus('Analysing with the correlation engine…');
     const response = JSON.parse(globalThis.pgrrAnalyse(JSON.stringify(request)));
     state.result = { request, response };
     state.selected = (response.results?.find((x) => x.status === 'Detected') ?? response.results?.[0])?.queryid ?? null;
+    setProgress(1);
     renderResults();
+    landResults(els.results);
+    const r = els.results.getBoundingClientRect();
+    if (r.top > innerHeight * .7) scrollTo({ top: scrollY + r.top - innerHeight * .22, behavior: reduced() ? 'auto' : 'smooth' });
     const expected = !state.custom && state.scenario.expected;
     setStatus(expected ? `Done. This scenario is expected to report ${expected}.` : 'Done.');
   } catch (err) {
@@ -393,6 +422,7 @@ async function run() {
     state.running = false;
     els.run.disabled = false;
     els.bar.hidden = true;
+    setTimeout(() => setProgress(null), 500);
   }
 }
 

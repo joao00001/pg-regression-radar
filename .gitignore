@@ -31,3 +31,4 @@ __pycache__/
 /docs/assets/playground/pgrr.wasm
 /docs/assets/playground/pgrr.wasm.gz
 /docs/assets/playground/wasm_exec.js
+/docs/assets/playground/cli-help.json
