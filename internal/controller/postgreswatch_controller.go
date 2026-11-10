@@ -584,9 +584,13 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	if windowMinutes <= 0 {
 		windowMinutes = 30
 	}
+	minSamples := watch.Spec.MinSamples
+	if minSamples <= 0 {
+		minSamples = correlation.DefaultMinSamples
+	}
 	minExecutions := watch.Spec.MinExecutions
 	if minExecutions <= 0 {
-		minExecutions = 10
+		minExecutions = correlation.DefaultMinExecutions
 	}
 	latencyThreshold := parseFloatOr(watch.Spec.LatencyChangeThreshold, 0.20)
 	pValueThreshold := parseFloatOr(watch.Spec.PValueThreshold, 0.05)
@@ -606,6 +610,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	engine := correlation.New(correlation.Config{
 		Namespace:              watch.Namespace,
 		WindowMinutes:          windowMinutes,
+		MinSamples:             minSamples,
 		MinExecutions:          minExecutions,
 		LatencyChangeThreshold: latencyThreshold,
 		PValueThreshold:        pValueThreshold,

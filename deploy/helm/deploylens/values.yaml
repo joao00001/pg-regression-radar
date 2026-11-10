@@ -106,7 +106,10 @@ state:
 # sets the equivalent spec fields.
 analysis:
   windowMinutes: 30
-  minExecutions: 10
+  # Observations (scrape intervals with at least one call) required per window.
+  minSamples: 10
+  # Executions, summed over those observations, required per window.
+  minExecutions: 100
   latencyThreshold: "0.20"
   pValueThreshold: "0.05"
 

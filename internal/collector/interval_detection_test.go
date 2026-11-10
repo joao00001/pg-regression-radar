@@ -89,6 +89,7 @@ func (l legacySource) SamplesInRange(q int64, from, to time.Time) []collector.Qu
 func newEngine(src correlation.SampleSource) *correlation.Engine {
 	return correlation.New(correlation.Config{
 		WindowMinutes:          15,
+		MinSamples:             10,
 		MinExecutions:          10,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,

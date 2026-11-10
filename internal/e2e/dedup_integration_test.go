@@ -253,7 +253,8 @@ func TestIntegration_FullPipeline_DedupsQueryIDRotationAcrossDeploy(t *testing.T
 	// --- Real correlation.Engine, fed by the real Collector. ---
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          5,
-		MinExecutions:          int64(samplesPerPhase) - 2, // small margin below samplesPerPhase, mirrors pipeline_integration_test.go
+		MinSamples:             int64(samplesPerPhase) - 2, // small margin below samplesPerPhase, mirrors pipeline_integration_test.go
+		MinExecutions:          1,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}, col, logger)

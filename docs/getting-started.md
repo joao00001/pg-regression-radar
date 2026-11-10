@@ -29,7 +29,8 @@ go run ./cmd/operator \
   --slack-url https://hooks.slack.com/services/XXX/YYY/ZZZ \
   --source-type argocd \
   --window-minutes 30 \
-  --min-executions 10 \
+  --min-samples 10 \
+  --min-executions 100 \
   --latency-threshold 0.20
 ```
 > **Note:** The `--dsn` value above is a placeholder. Replace it with a full PostgreSQL
@@ -59,7 +60,8 @@ spec:
     name: my-cluster-dsn
     key: dsn
   windowMinutes: 30
-  minExecutions: 10
+  minSamples: 10
+  minExecutions: 100
   latencyChangeThreshold: "0.20"
   slackWebhookUrl: "https://hooks.slack.com/services/XXX/YYY/ZZZ"
 ---
@@ -147,7 +149,7 @@ Depending on mode and configuration, this appears in logs, in `PerformanceRegres
 ## Troubleshooting common setup issues
 
 - **No deploy events are being ingested:** verify your webhook URL/path (`/webhook`), source type, and authentication header if `--webhook-secret` is enabled.
-- **No regression detected yet:** increase traffic volume for the target query, verify `pg_stat_statements` is enabled, and check detection thresholds (`windowMinutes`, `minExecutions`, latency threshold).
+- **No regression detected yet:** increase traffic volume for the target query, verify `pg_stat_statements` is enabled, and check detection thresholds (`windowMinutes`, `minSamples`, `minExecutions`, latency threshold).
 - **Manager exits with `address already in use` on startup:** the health probe endpoint listens on `:8081` by default (`--health-probe-bind-address`). If that port is already taken (for example by another manager instance), set a free port, for example `--health-probe-bind-address=:18081`.
 - **Manager mode does not produce resources:** confirm CRDs are installed and check namespace-scoped `PostgresWatch`/`DeploySource` reconciliation status.
 - **Helm manager mode seems missing CRDs on upgrade:** Helm installs `crds/` only on initial install; apply updated CRDs manually as noted above.

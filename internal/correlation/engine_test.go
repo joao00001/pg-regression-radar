@@ -90,7 +90,7 @@ func TestAnalyse_DetectsRegression(t *testing.T) {
 
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          20,
-		MinExecutions:          10,
+		MinSamples:             10,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}, src, nil)
@@ -147,7 +147,7 @@ func TestAnalyse_NoRegression(t *testing.T) {
 	src := &fakeSampleSource{data: map[int64][]collector.QuerySample{7: samples}}
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          20,
-		MinExecutions:          10,
+		MinSamples:             10,
 		LatencyChangeThreshold: 0.20,
 	}, src, nil)
 
@@ -175,7 +175,7 @@ func TestAnalyse_InsufficientData(t *testing.T) {
 	src := &fakeSampleSource{data: map[int64][]collector.QuerySample{99: append(preSamples, postSamples...)}}
 	engine := correlation.New(correlation.Config{
 		WindowMinutes: 10,
-		MinExecutions: 10,
+		MinSamples:    10,
 	}, src, nil)
 
 	results := engine.Analyse(v1alpha1.DeployEvent{ID: "deploy-3", Timestamp: now})
@@ -257,7 +257,7 @@ func TestAnalyse_DedupesQueryIDRotation(t *testing.T) {
 
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          20,
-		MinExecutions:          10,
+		MinSamples:             10,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}, src, nil)
@@ -358,7 +358,7 @@ func TestWelchTTest_SignificantDifference(t *testing.T) {
 		data: map[int64][]collector.QuerySample{1: makeSamplesFromLatencies(1, a, b, time.Now())},
 	}
 	engine := correlation.New(correlation.Config{
-		WindowMinutes: 20, MinExecutions: 5, LatencyChangeThreshold: 0.20,
+		WindowMinutes: 20, MinSamples: 5, LatencyChangeThreshold: 0.20,
 	}, src, nil)
 
 	results := engine.Analyse(v1alpha1.DeployEvent{ID: "d", Timestamp: time.Now()})
@@ -421,7 +421,7 @@ func TestAnalyse_TwoStage_ToleratesDelayedRollout(t *testing.T) {
 
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          30,
-		MinExecutions:          10,
+		MinSamples:             10,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}, src, nil)
@@ -476,7 +476,7 @@ func TestAnalyse_TwoStage_RejectsDistantChangePoint(t *testing.T) {
 
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          30,
-		MinExecutions:          10,
+		MinSamples:             10,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 		// ChangePointTolerance left at 0 => defaults to 20% of the 30m
@@ -547,7 +547,7 @@ func TestAnalyse_TwoStage_NoiseRejected(t *testing.T) {
 
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          20,
-		MinExecutions:          10,
+		MinSamples:             10,
 		LatencyChangeThreshold: 0.0001,
 		PValueThreshold:        0.05,
 	}, src, nil)

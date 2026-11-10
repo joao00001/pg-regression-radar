@@ -15,6 +15,7 @@ spec:
     key: dsn
   scrapeIntervalSeconds: {{ .Values.postgres.scrapeIntervalSeconds }}
   windowMinutes: {{ .Values.analysis.windowMinutes }}
+  minSamples: {{ .Values.analysis.minSamples }}
   minExecutions: {{ .Values.analysis.minExecutions }}
   latencyChangeThreshold: {{ .Values.analysis.latencyThreshold | quote }}
   pValueThreshold: {{ .Values.analysis.pValueThreshold | quote }}

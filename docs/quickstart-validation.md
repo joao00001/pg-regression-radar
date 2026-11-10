@@ -35,6 +35,7 @@ go run ./cmd/operator \
   --metrics-listen :9090 \
   --source-type generic \
   --window-minutes 15 \
+  --min-samples 5 \
   --min-executions 5 \
   --latency-threshold 0.20
 ```
@@ -60,6 +61,7 @@ spec:
     name: demo-db-dsn
     key: dsn
   windowMinutes: 15
+  minSamples: 5
   minExecutions: 5
   latencyChangeThreshold: "0.20"
 ---

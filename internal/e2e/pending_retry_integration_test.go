@@ -104,7 +104,8 @@ func TestIntegration_PendingSet_RetriesUntilRealDataArrives(t *testing.T) {
 
 	engine := correlation.New(correlation.Config{
 		WindowMinutes:          5,
-		MinExecutions:          int64(samplesPerRun) - 2, // small margin below what runProbe actually produces
+		MinSamples:             int64(samplesPerRun) - 2, // small margin below what runProbe actually produces
+		MinExecutions:          1,
 		LatencyChangeThreshold: 0.20,
 		PValueThreshold:        0.05,
 	}, col, logger)

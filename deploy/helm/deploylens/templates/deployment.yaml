@@ -90,6 +90,7 @@ spec:
             - --webhook-secret=$(WEBHOOK_SECRET)
             {{- end }}
             - --window-minutes={{ .Values.analysis.windowMinutes }}
+            - --min-samples={{ .Values.analysis.minSamples }}
             - --min-executions={{ .Values.analysis.minExecutions }}
             - --latency-threshold={{ .Values.analysis.latencyThreshold }}
             - --retention-minutes={{ .Values.postgres.retentionMinutes }}
