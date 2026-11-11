@@ -36,7 +36,6 @@ theme:
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.top
-    - navigation.expand
     - navigation.indexes
     - content.code.copy
     - content.action.edit
@@ -107,49 +106,54 @@ markdown_extensions:
 # The top level is the header's tab bar (`navigation.tabs`): Home, Playground,
 # Our math and Roadmap are absolute links to the unversioned site (see `exclude_docs`
 # above), identical from every version, and everything else lives under Docs,
-# whose groups are the left sidebar (every group starts expanded,
-# `navigation.expand`; a reader can still collapse one). On a narrow screen the
-# tabs fold into the sidebar drawer. The first page of Docs is what its tab
-# opens, so keep Get Started first.
+# whose groups are the left sidebar. The groups start collapsed and only the one
+# holding the current page is open (no `navigation.expand`), the way
+# kubernetes.io's sidebar works; a reader opens the others as needed. Keep group
+# names to one or two words and page titles short: they have to fit the sidebar
+# without wrapping. A page's own `# Title` can stay long; the entry here is only
+# its label in the menu. On a narrow screen the tabs fold into the sidebar
+# drawer. The first page of Docs is what its tab opens, so keep Get started first.
 nav:
   - Home: https://joao00001.github.io/pg-regression-radar/
   - Playground: https://joao00001.github.io/pg-regression-radar/playground/
   - Our math: https://joao00001.github.io/pg-regression-radar/our-math/
   - Docs:
-      - Get Started:
-          - Try it in five minutes (lab): lab.md
-          - Installation: installation.md
-          - Getting Started: getting-started.md
-          - Quickstart Validation: quickstart-validation.md
-          - Regression Scenario Example: examples/regression-scenario.md
-          - Alerting Example: examples/alerting-example.md
-          - Supply Chain Verification: supply-chain.md
-      - Architecture:
-          - architecture.md
-          - Detection Algorithm: detection-algorithm.md
-          - Collector Internals: collector-internals.md
-          - OpenTelemetry / Prometheus Sample Source: otel-prometheus-source.md
-          - OTLP Deploy Events: otlp-deploy-events.md
-          - OTLP Regression Export: otlp-export.md
-          - Multi-Cluster (Fleet) Mode: multi-cluster.md
-          - Security Model & Threat Model: security-model.md
-          - Deployment Security (Helm): deployment-security.md
-      - Reference:
-          - Configuration Reference: configuration.md
-          - API Reference: api-reference.md
-          - API Versioning & Compatibility: api-versioning.md
-          - Persistence: persistence.md
-          - Deploy Sources & Webhooks: webhooks.md
+      - Get started:
+          - Try the lab: lab.md
+          - Install: installation.md
+          - Quickstart: getting-started.md
+          - Validate your setup: quickstart-validation.md
+          - "Example: a regression": examples/regression-scenario.md
+          - "Example: alerting": examples/alerting-example.md
+      - Concepts:
+          - Architecture: architecture.md
+          - Detection algorithm: detection-algorithm.md
+          - Collector internals: collector-internals.md
+          - Periodic detection: periodic-detection.md
+          - Multi-cluster: multi-cluster.md
+          - Auto-abort: auto-abort.md
+      - Integrations:
+          - Deploy sources: webhooks.md
           - Alerting: alerting.md
-          - Auto-Abort (Argo Rollouts): auto-abort.md
-          - Periodic (Deploy-Independent) Detection: periodic-detection.md
-          - Support Matrix: support-matrix.md
-      - Contributing:
+          - Prometheus / OTel source: otel-prometheus-source.md
+          - OTLP deploy events: otlp-deploy-events.md
+          - OTLP export: otlp-export.md
+      - Security:
+          - Security model: security-model.md
+          - Hardening (Helm): deployment-security.md
+          - Supply chain: supply-chain.md
+      - Reference:
+          - Configuration: configuration.md
+          - API: api-reference.md
+          - API versioning: api-versioning.md
+          - Persistence: persistence.md
+          - Support matrix: support-matrix.md
+      - Contribute:
           - Testing: testing.md
           - CI/CD: ci-cd.md
           - Backporting: backporting.md
-          - Branch Protection: branch-protection.md
-          - Page Template: TEMPLATE.md
-          - Contributing Guide: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
+          - Branch protection: branch-protection.md
+          - Page template: TEMPLATE.md
+          - Contributing guide ↗: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
       - Changelog: changelog.md
   - Roadmap: https://joao00001.github.io/pg-regression-radar/roadmap/
