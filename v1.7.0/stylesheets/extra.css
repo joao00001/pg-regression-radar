@@ -1086,12 +1086,10 @@
   margin-bottom: 0;
 }
 
-/* ---- Table of contents (right sidebar): a moving active dot ----
-   More air between the entries and a dot in the left margin that follows
-   the active entry. docs/javascripts/toc-indicator.js moves the
-   dot: it stretches toward the new entry, then the trailing end catches up.
-   Without the script (or with reduced motion) the active entry is simply
-   bold, and the dot jumps or is absent. */
+/* ---- Table of contents (right sidebar): a sliding active dot ----
+   More air between the entries and a small dot in the left margin that slides
+   to the active entry (as on mintlify.com/docs). The active entry changes
+   colour, not weight. docs/javascripts/toc-indicator.js moves the dot. */
 .md-sidebar--secondary .md-nav--secondary {
   --pgrr-toc-dot: var(--pgrr-accent);
 }
@@ -1113,9 +1111,9 @@
   color: var(--md-default-fg-color);
 }
 
-.md-sidebar--secondary .md-nav--secondary .md-nav__link--active {
-  color: var(--md-default-fg-color);
-  font-weight: 650;
+.md-sidebar--secondary .md-nav--secondary .md-nav__link--active,
+.md-sidebar--secondary .md-nav--secondary .md-nav__link--active:hover {
+  color: var(--pgrr-accent);
 }
 
 /* Sub-headings: indented, a little quieter. */
@@ -1132,14 +1130,13 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
   background: var(--pgrr-toc-dot);
   opacity: 0;
   pointer-events: none;
-  transition-property: top, height, opacity;
-  transition-duration: 0ms;
+  transition: top 0.16s cubic-bezier(0.25, 0.75, 0.2, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1584,4 +1581,205 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* ---- Docs menu (left sidebar): grouped, collapsed, quiet ----
+   The groups (Get started, Concepts, ...) are collapsed except the one holding
+   the current page, as on kubernetes.io. A group is a bold label with a
+   chevron; its pages hang off a thin rule, and the current page takes the
+   accent on that rule. Desktop only: on a narrow screen the sidebar is the
+   drawer, which keeps Material's own look. */
+@media screen and (min-width: 76.25em) {
+  /* "Docs": a small eyebrow instead of a heading, so the groups lead. */
+  .md-sidebar--primary .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link,
+  .md-sidebar--primary .md-nav[data-md-level="1"] > .md-nav__title {
+    padding: 0 0.4rem 0.5rem;
+    font-size: 0.6rem;
+    font-weight: 650;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--md-default-fg-color--lighter);
+    box-shadow: none;
+    background: none;
+  }
+
+  .md-sidebar--primary .md-nav[data-md-level="1"] > .md-nav__title .md-nav__icon {
+    display: none;
+  }
+
+  /* Group labels. */
+  .md-sidebar--primary .md-nav[data-md-level="1"] > .md-nav__list > .md-nav__item {
+    padding: 0;
+    margin-top: 0.15rem;
+  }
+
+  .md-sidebar--primary .md-nav[data-md-level="1"] > .md-nav__list > .md-nav__item > .md-nav__link {
+    margin-top: 0;
+    padding: 0.42rem 0.4rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 650;
+    color: var(--md-default-fg-color);
+    transition: background-color 0.15s;
+  }
+
+  /* Hover: no pill, no bar. Same quiet cue as the right-hand TOC: the chevron firms up. */
+  .md-sidebar--primary .md-nav[data-md-level="1"] .md-nav__item--nested > .md-nav__link:hover > .md-nav__icon {
+    opacity: 1;
+  }
+
+  /* A group with no children (Changelog) is a plain link, not a heading. */
+  .md-sidebar--primary .md-nav[data-md-level="1"] > .md-nav__list > .md-nav__item:not(.md-nav__item--nested) > .md-nav__link {
+    font-weight: 500;
+    color: var(--md-default-fg-color--light);
+  }
+
+  .md-sidebar--primary .md-nav[data-md-level="1"] .md-nav__item--nested > .md-nav__link > .md-nav__icon {
+    opacity: 0.55;
+    transform: scale(0.8);
+  }
+
+  /* The pages of a group, on a thin rule. */
+  .md-sidebar--primary .md-nav[data-md-level="2"] > .md-nav__title {
+    display: none;
+  }
+
+  .md-sidebar--primary .md-nav[data-md-level="2"] > .md-nav__list {
+    margin: 0.1rem 0 0.4rem 0.55rem;
+    border-left: 1px solid var(--md-default-fg-color--lightest);
+  }
+
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__item {
+    padding: 0;
+  }
+
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__link {
+    margin: 0 0 0 -1px;
+    padding: 0.3rem 0.75rem;
+    border-left: 2px solid transparent;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    color: var(--md-default-fg-color--light);
+    transition: color 0.2s;
+  }
+
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__link:hover {
+    color: var(--md-default-fg-color);
+  }
+
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__link--active {
+    color: var(--pgrr-accent);
+    font-weight: 650;
+    border-left-color: transparent;
+  }
+}
+
+/* ── Docs menu: motion ──────────────────────────────────────────────────
+   Material already animates a group opening/closing (grid-template-rows);
+   this only softens its easing and staggers the pages in. Page changes use
+   cross-document view transitions (Chromium/Safari; others just navigate),
+   and everything stands down for prefers-reduced-motion. */
+@media screen and (min-width: 76.25em) and (prefers-reduced-motion: no-preference) {
+  .md-sidebar--primary .md-nav[data-md-level="1"] .md-nav__item--nested > .md-nav {
+    transition:
+      grid-template-rows 0.32s cubic-bezier(0.22, 0.8, 0.26, 1),
+      opacity 0.2s ease,
+      visibility 0ms 0.32s;
+  }
+
+  .md-sidebar--primary .md-nav[data-md-level="1"] .md-nav__item--nested > .md-toggle:checked ~ .md-nav,
+  .md-sidebar--primary .md-nav[data-md-level="1"] .md-nav__item--nested > .md-toggle--indeterminate ~ .md-nav {
+    transition:
+      grid-template-rows 0.32s cubic-bezier(0.22, 0.8, 0.26, 1),
+      opacity 0.25s ease 0.05s,
+      visibility 0ms;
+  }
+
+  /* Pages slide down into place as the group opens; on close they just fade. */
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__item {
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+
+  .md-sidebar--primary .md-toggle:checked ~ .md-nav[data-md-level="2"] .md-nav__item,
+  .md-sidebar--primary .md-toggle--indeterminate ~ .md-nav[data-md-level="2"] .md-nav__item {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.22, 0.8, 0.26, 1);
+    transition-delay: calc(0.04s + var(--pgrr-i, 0) * 0.025s);
+  }
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__item:nth-child(1) { --pgrr-i: 0; }
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__item:nth-child(2) { --pgrr-i: 1; }
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__item:nth-child(3) { --pgrr-i: 2; }
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__item:nth-child(4) { --pgrr-i: 3; }
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__item:nth-child(5) { --pgrr-i: 4; }
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__item:nth-child(n+6) { --pgrr-i: 5; }
+
+  /* Chevron turns smoothly instead of snapping. */
+  .md-sidebar--primary .md-nav[data-md-level="1"] .md-nav__item--nested > .md-nav__link > .md-nav__icon::after {
+    transition: transform 0.25s cubic-bezier(0.22, 0.8, 0.26, 1);
+  }
+
+  /* The current page's colour and weight ease in on arrival. */
+  .md-sidebar--primary .md-nav[data-md-level="2"] .md-nav__link--active {
+    animation: pgrr-nav-active 0.35s ease both;
+  }
+
+  @keyframes pgrr-nav-active {
+    from { color: var(--md-default-fg-color--light); }
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+
+  .md-sidebar--primary { view-transition-name: pgrr-sidebar; }
+  .md-content { view-transition-name: pgrr-content; }
+
+  ::view-transition-group(pgrr-sidebar) { animation-duration: 0.25s; }
+  ::view-transition-old(pgrr-sidebar),
+  ::view-transition-new(pgrr-sidebar) { animation-duration: 0.2s; }
+
+  ::view-transition-old(pgrr-content) { animation: pgrr-page-out 0.14s ease both; }
+  ::view-transition-new(pgrr-content) { animation: pgrr-page-in 0.28s cubic-bezier(0.22, 0.8, 0.26, 1) 0.06s both; }
+
+  @keyframes pgrr-page-out { to { opacity: 0; } }
+  @keyframes pgrr-page-in { from { opacity: 0; transform: translateY(6px); } }
+}
+
+/* ---- Diagrams (Mermaid) ----
+   Tokens for docs/javascripts/mermaid-theme.js, which turns them into node
+   styles. See the class list there. */
+[data-md-color-scheme="slate"] {
+  --pgrr-dg-card: #1d1f1f;
+  --pgrr-dg-line: #3a3d3d;
+  --pgrr-dg-k8s: #6ea8ff;
+  --pgrr-dg-k8s-bg: #121c2e;
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-dg-card: #f1f2f2;
+  --pgrr-dg-line: #c9cece;
+  --pgrr-dg-k8s: #2f6fdb;
+  --pgrr-dg-k8s-bg: #eaf2ff;
+}
+
+[data-md-color-scheme] {
+  --md-mermaid-font-family: var(--md-text-font-family), sans-serif;
+  --md-mermaid-label-bg-color: var(--md-default-bg-color);
+  --md-mermaid-label-fg-color: var(--md-default-fg-color--light);
+  --md-mermaid-edge-color: var(--md-default-fg-color--light);
+  --md-mermaid-node-bg-color: var(--pgrr-dg-card);
+  --md-mermaid-node-fg-color: var(--pgrr-dg-line);
+}
+
+.md-typeset .mermaid {
+  margin: 1.2em 0 0.4em;
+}
+
+/* The line under a diagram says what to look at. */
+.md-typeset .mermaid + p > em:only-child {
+  font-size: 0.7rem;
+  color: var(--md-default-fg-color--light);
 }
