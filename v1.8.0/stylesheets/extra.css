@@ -1,0 +1,1587 @@
+/*
+ * Custom palette for pg-regression-radar's docs site.
+ *
+ * Material's default themes are a soft off-white (light) and a dark gray,
+ * not black (slate). This overrides both to a true monochrome pair --
+ * pure black / white-gray text in dark mode, pure white / black-gray text
+ * in light mode -- and adds a frosted-glass backdrop blur to the sticky
+ * header so content is still legible as it scrolls underneath it, instead
+ * of a flat opaque bar.
+ *
+ * Written against Material for MkDocs' documented CSS custom properties
+ * (https://squidfunk.github.io/mkdocs-material/setup/changing-the-colors/#custom-colors),
+ * not by fighting its compiled CSS with !important overrides.
+ */
+
+/* ---- Theme color: red ----
+   The site's accent comes from these tokens instead of a fixed color: links
+   in the text, the home page's highlights, the diagram's engine, the table of
+   contents' dot and the "Back to top" button. Statuses and callout types keep
+   their own colors (the roadmap's "proposed", the "example" callout, ...). */
+[data-md-color-scheme="slate"] {
+  --pgrr-accent: #ff7b86;
+  --pgrr-accent-hover: #ffa3ab;
+  --pgrr-accent-solid: #dc2626;
+  --pgrr-accent-solid-hover: #ef4444;
+  --pgrr-accent-bg: #2a1114;
+  --pgrr-accent-border: #86262f;
+  --pgrr-accent-glow: rgba(239, 68, 68, 0.2);
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-accent: #b91c1c;
+  --pgrr-accent-hover: #7f1d1d;
+  --pgrr-accent-solid: #dc2626;
+  --pgrr-accent-solid-hover: #b91c1c;
+  --pgrr-accent-bg: #fff0f0;
+  --pgrr-accent-border: #f3b4b4;
+  --pgrr-accent-glow: rgba(220, 38, 38, 0.12);
+}
+
+/* Links and hover colors follow the theme color. Material sets them per
+   palette (`[data-md-color-scheme=slate][data-md-color-primary=indigo]`), so
+   this needs the same two attributes to win. */
+[data-md-color-scheme][data-md-color-primary],
+[data-md-color-scheme][data-md-color-accent] {
+  --md-typeset-a-color: var(--pgrr-accent);
+  --md-accent-fg-color: var(--pgrr-accent-hover);
+}
+
+/* ---- Dark mode: true black ---- */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #000000;
+  --md-default-bg-color--light: #000000;
+  --md-default-bg-color--lighter: #000000;
+  --md-default-bg-color--lightest: #0a0a0a;
+
+  --md-default-fg-color: #e8e8e8;
+  --md-default-fg-color--light: #c2c2c2;
+  --md-default-fg-color--lighter: #8a8a8a;
+  --md-default-fg-color--lightest: #4d4d4d;
+
+  --md-typeset-color: #e8e8e8;
+
+  --md-code-bg-color: #0d0d0d;
+  --md-code-fg-color: #d8d8d8;
+
+  --md-footer-bg-color: #000000;
+  --md-footer-bg-color--dark: #000000;
+  --md-footer-fg-color: #e8e8e8;
+  --md-footer-fg-color--light: #b0b0b0;
+
+  --md-header-bg-color: rgba(0, 0, 0, 0.72);
+}
+
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) {
+  background-color: #050505;
+}
+
+/* ---- Light mode: true white ---- */
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #ffffff;
+  --md-default-bg-color--light: #ffffff;
+  --md-default-bg-color--lighter: #ffffff;
+  --md-default-bg-color--lightest: #fafafa;
+
+  --md-default-fg-color: #1a1a1a;
+  --md-default-fg-color--light: #3d3d3d;
+  --md-default-fg-color--lighter: #6b6b6b;
+  --md-default-fg-color--lightest: #cfcfcf;
+
+  --md-typeset-color: #1a1a1a;
+
+  --md-code-bg-color: #f5f5f5;
+  --md-code-fg-color: #262626;
+
+  --md-footer-bg-color: #111111;
+  --md-footer-bg-color--dark: #0a0a0a;
+
+  --md-header-bg-color: rgba(255, 255, 255, 0.72);
+}
+
+/* ---- Frosted-glass sticky header (both schemes) ---- */
+.md-header {
+  background-color: var(--md-header-bg-color);
+  backdrop-filter: blur(14px) saturate(180%);
+  box-shadow: none;
+}
+
+/* Material's header text is white (`--md-primary-bg-color`), meant for an
+   opaque, saturated (indigo) header. Against our translucent blur that's
+   white-on-white in light mode, so set the color where it's inherited
+   from, so every descendant picks it up. */
+.md-header,
+.md-header__title,
+.md-header__button {
+  color: var(--md-default-fg-color);
+}
+
+/* ---- Header tabs: Home, Playground, Docs, Roadmap ----
+   Material draws the tab bar (`navigation.tabs`, mkdocs.yml) as a second row
+   of the sticky header, with the theme's primary color (indigo) behind it.
+   Here it is a thin, quiet strip instead: transparent, so it shares the
+   header's frosted glass, set off by a hairline on its top edge; the tabs are
+   muted text, and the current one is full-strength with a short accent
+   underline. Below 76.25em Material hides it and the same entries are in the
+   sidebar drawer. */
+.md-tabs {
+  background-color: transparent;
+  color: var(--md-default-fg-color);
+  border-top: 1px solid var(--pgrr-ui-line);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+}
+
+.md-tabs__item {
+  height: 1.9rem;
+}
+
+.md-tabs__link {
+  color: var(--md-default-fg-color--light);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 1;
+  transition: color 0.15s;
+}
+
+.md-tabs__link:hover,
+.md-tabs__link:focus-visible {
+  color: var(--md-default-fg-color);
+}
+
+/* the current tab is a pill, not an underline */
+.md-tabs__item {
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+}
+
+.md-tabs__link {
+  margin-top: 0.32rem;
+  padding: 0.2rem 0.8rem;
+  border-radius: 999px;
+  transition: color 0.15s, background-color 0.2s;
+}
+
+.md-tabs__item--active .md-tabs__link {
+  color: var(--md-default-fg-color);
+  background: color-mix(in srgb, var(--md-default-fg-color) 9%, transparent);
+}
+
+.md-tabs__link:hover:not(:where(.md-tabs__item--active *)) {
+  background: color-mix(in srgb, var(--md-default-fg-color) 5%, transparent);
+}
+
+/* The tab row is 0.5rem thinner than Material assumes (2.4rem), so the
+   sticky sidebars sit 0.5rem higher to stay flush under it. */
+.md-header--lifted ~ .md-container .md-sidebar {
+  top: 4.3rem;
+}
+
+.md-tabs__item--active .md-tabs__link {
+  color: var(--md-default-fg-color);
+}
+
+/* The collapsed header search box's placeholder/icon have the same
+   opaque-header assumption as the header text above (var(--md-primary-bg-color)) --
+   force them to a color that's actually readable against the blur. */
+.md-search__input::placeholder,
+.md-search__input ~ .md-search__icon {
+  color: var(--md-default-fg-color--light) !important;
+}
+
+/* Search dialog gets the same treatment when open. */
+.md-search__overlay {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ---- Version selector: a dropdown menu ----
+   Material injects `.md-version` into the header after it fetches
+   versions.json. docs/javascripts/version-flyout.js moves the real
+   `.md-version__list` out of Material's hover-only card into `.pgrr-vmenu`,
+   a floating panel under the button, and runs the menu-button behavior
+   (click, arrows, Escape). If the script never runs, Material's own card
+   is untouched. The button is a quiet pill with a chevron; the panel is a
+   small frosted card, like the search results and the code blocks, with one
+   row per version and a check on the one being read. */
+.md-version__current {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 1.45rem;
+  padding: 0 0.45rem 0 0.6rem;
+  border: 1px solid var(--pgrr-ui-line);
+  border-radius: 999px;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.62rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.md-version__current:hover,
+.md-version__current:focus-visible,
+.md-version.is-open .md-version__current {
+  color: var(--md-default-fg-color);
+  border-color: var(--md-default-fg-color--lighter);
+  background: color-mix(in srgb, var(--md-default-fg-color) 5%, transparent);
+}
+
+.md-version__current:focus-visible {
+  outline: 2px solid var(--pgrr-accent);
+  outline-offset: 2px;
+}
+
+/* the menu names the alias; the button keeps to the number */
+.md-version__current .md-version__alias {
+  display: none;
+}
+
+/* Material's own caret becomes the chevron: it turns over while open */
+.md-version__current::after {
+  content: "";
+  display: block;
+  width: 0.42rem;
+  height: 0.42rem;
+  margin: -0.14rem 0 0 0.1rem;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  background: none;
+  -webkit-mask: none;
+  mask: none;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease, margin 0.2s ease;
+}
+
+.md-version.is-open .md-version__current::after {
+  margin-top: 0.14rem;
+  transform: rotate(225deg);
+}
+
+.pgrr-vmenu {
+  position: absolute;
+  z-index: 5;
+  min-width: 11rem;
+  max-width: calc(100vw - 24px);
+  max-height: min(60vh, 22rem);
+  overflow-y: auto;
+  padding: 0.3rem;
+  border: 1px solid var(--pgrr-ui-line);
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--md-default-bg-color) 97%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: 0 14px 36px -14px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: top left;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.pgrr-vmenu[hidden] {
+  display: none;
+}
+
+.pgrr-vmenu.is-open {
+  opacity: 1;
+  transform: none;
+}
+
+/* undo Material's card: the list is a plain column of rows here */
+.pgrr-vmenu .md-version__list {
+  position: static;
+  margin: 0;
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+  list-style: none;
+  scroll-snap-type: none;
+}
+
+.pgrr-vmenu .md-version__item {
+  height: auto;
+  padding: 0;
+  line-height: 1.3;
+}
+
+.pgrr-vmenu .md-version__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  padding: 0.4rem 0.6rem 0.4rem 0.7rem;
+  border-radius: 0.5rem;
+  line-height: 1.3;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.68rem;
+  font-weight: 500;
+  transition: color 0.12s, background-color 0.12s;
+}
+
+.pgrr-vmenu .md-version__link:hover,
+.pgrr-vmenu .md-version__link:focus-visible {
+  outline: none;
+  color: var(--md-default-fg-color);
+  background: color-mix(in srgb, var(--md-default-fg-color) 7%, transparent);
+}
+
+.pgrr-vmenu .md-version__link:focus-visible {
+  box-shadow: inset 0 0 0 1.5px var(--pgrr-accent);
+}
+
+.pgrr-vmenu .md-version__alias {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-default-fg-color) 8%, transparent);
+  color: var(--md-default-fg-color--light);
+  font-size: 0.56rem;
+}
+
+/* the version being read: full-strength, with a check */
+.pgrr-vmenu .md-version__link.is-current {
+  color: var(--md-default-fg-color);
+  pointer-events: none;
+}
+
+.pgrr-vmenu .md-version__link.is-current::after {
+  content: "";
+  flex: none;
+  width: 0.28rem;
+  height: 0.5rem;
+  margin-left: auto;
+  border: solid var(--pgrr-accent);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) translate(-0.05rem, -0.05rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-vmenu,
+  .md-version__current::after {
+    transition: none;
+  }
+}
+
+/* ---- Code blocks: a dark card with the code in an inset panel ----
+   `.pgrr-term` (the docs playground, assets/playground/playground.css) shares
+   the card, the header row and every colour token below, so the playground's
+   terminal can never drift from the code blocks it is meant to match.
+   Two layers, in both color schemes: the card (lighter, thin border) holds
+   the header row -- the block's `title="..."` or, from
+   docs/javascripts/code-header.js, its language, plus the copy button --
+   and, inset a hair from the card's edge, the darker code panel. There is
+   no divider between header and code. The language comes from the
+   `language-*` class that `pygments_lang_class` puts on the block; with no
+   JS, or on a page whose build doesn't set it, the card simply has no
+   header row. */
+.md-typeset .highlight,
+.md-typeset .pgrr-term {
+  /* Dark (the default, and the slate scheme). */
+  --pgrr-card-bg: #1d1f1f;
+  --pgrr-card-border: #3a3d3d;
+  --pgrr-panel-bg: #0b0c0e;
+  --pgrr-header-fg: #e4e6e4;
+  --pgrr-icon-fg: #aeb2b1;
+  --pgrr-icon-hover: #ffffff;
+  --pgrr-scrollbar: rgba(255, 255, 255, 0.22);
+
+  --md-code-bg-color: var(--pgrr-panel-bg);
+  --md-code-fg-color: #d9d9d9;
+  --md-code-hl-color: rgba(255, 255, 255, 0.08);
+  --md-code-hl-keyword-color: #c586c0;
+  --md-code-hl-function-color: #dcdcaa;
+  --md-code-hl-string-color: #ce9178;
+  --md-code-hl-number-color: #b5cea8;
+  --md-code-hl-constant-color: #569cd6;
+  --md-code-hl-special-color: #d7ba7d;
+  --md-code-hl-name-color: #9cdcfe;
+  --md-code-hl-variable-color: #9cdcfe;
+  --md-code-hl-operator-color: #d9d9d9;
+  --md-code-hl-punctuation-color: #c4c4c4;
+  --md-code-hl-comment-color: #8d9a92;
+  --md-code-hl-generic-color: #c4c4c4;
+
+  position: relative;
+  margin: 1.25em 0;
+  padding: 2px;
+  overflow: hidden;
+  border: 1px solid var(--pgrr-card-border);
+  border-radius: 16px;
+  background-color: var(--pgrr-card-bg);
+  color: var(--md-code-fg-color);
+}
+
+/* Light scheme: the same card and inset panel, inverted. */
+[data-md-color-scheme="default"] .md-typeset .highlight,
+[data-md-color-scheme="default"] .md-typeset .pgrr-term {
+  --pgrr-card-bg: #f1f2f2;
+  --pgrr-card-border: #d4d8d8;
+  --pgrr-panel-bg: #ffffff;
+  --pgrr-header-fg: #2c3030;
+  --pgrr-icon-fg: #646a6a;
+  --pgrr-icon-hover: #000000;
+  --pgrr-scrollbar: rgba(0, 0, 0, 0.25);
+
+  --md-code-fg-color: #24292e;
+  --md-code-hl-color: rgba(0, 0, 0, 0.06);
+  --md-code-hl-keyword-color: #af00db;
+  --md-code-hl-function-color: #795e26;
+  --md-code-hl-string-color: #a31515;
+  --md-code-hl-number-color: #098658;
+  --md-code-hl-constant-color: #0000ff;
+  --md-code-hl-special-color: #811f3f;
+  --md-code-hl-name-color: #001080;
+  --md-code-hl-variable-color: #001080;
+  --md-code-hl-operator-color: #383a42;
+  --md-code-hl-punctuation-color: #44474c;
+  --md-code-hl-comment-color: #5d6b63;
+  --md-code-hl-generic-color: #44474c;
+}
+
+/* The header row: Material's `.filename` (a block with a title) and ours. */
+.md-typeset .highlight > .filename,
+.md-typeset .pgrr-term > .filename {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 48px 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--pgrr-header-fg);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.md-typeset .highlight > .filename::before,
+.md-typeset .pgrr-term > .filename::before {
+  content: none;
+}
+
+/* The code panel. `pre` is static so the copy button positions against the
+   card and sits in the header row. */
+.md-typeset .highlight pre {
+  position: static;
+  margin: 0;
+  border-radius: 14px;
+  background-color: var(--pgrr-panel-bg);
+}
+
+.md-typeset .highlight pre > code {
+  padding: 16px;
+  background-color: transparent;
+  font-size: 14px;
+  line-height: 1.7;
+  scrollbar-color: var(--pgrr-scrollbar) transparent;
+}
+
+/* Copy button: in the header row's right corner, plain and muted. */
+.md-typeset .highlight .md-code__nav {
+  top: 6px;
+  right: 10px;
+  padding: 0;
+  background-color: transparent;
+}
+
+.md-typeset .highlight .md-code__button,
+.md-typeset .highlight .md-clipboard {
+  color: var(--pgrr-icon-fg);
+}
+
+.md-typeset .highlight .md-code__button:hover,
+.md-typeset .highlight .md-code__button:focus,
+.md-typeset .highlight .md-clipboard:hover,
+.md-typeset .highlight .md-clipboard:focus {
+  color: var(--pgrr-icon-hover);
+}
+
+/* "Report incorrect code" (docs/javascripts/code-header.js): an icon button
+   just left of the copy button. */
+.md-typeset .highlight .pgrr-report {
+  position: absolute;
+  top: 6px;
+  right: 44px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--pgrr-icon-fg);
+  transition: color 0.25s;
+}
+
+.md-typeset .highlight .pgrr-report:hover,
+.md-typeset .highlight .pgrr-report:focus-visible {
+  color: var(--pgrr-icon-hover);
+}
+
+.md-typeset .highlight .pgrr-report:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 1px;
+}
+
+/* A block with no header row (no language known): the copy button floats
+   over the panel's corner instead. */
+.md-typeset .highlight:not(:has(> .filename)) .md-code__nav {
+  top: 10px;
+  right: 12px;
+}
+
+.md-typeset .highlight:not(:has(> .filename)) .pgrr-report {
+  top: 10px;
+  right: 46px;
+}
+
+/* Line-numbered tables keep their own layout inside the card. */
+.md-typeset .highlighttable {
+  overflow: hidden;
+  border: 1px solid var(--pgrr-card-border);
+  border-radius: 16px;
+}
+
+.md-typeset .highlighttable .highlight {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+/* ---- Callouts (admonitions): the code blocks' card look ----
+   `!!! note`, `!!! warning "Title"` and friends become a rounded, tinted card
+   with the type's icon on the left and no title bar. One palette per family
+   of types (blue: note/info, green: tip/success, amber: warning/question,
+   red: danger/failure, violet: example, gray: quote), in both color schemes.
+   A callout whose title is just its type ("Note") hides that title
+   (docs/javascripts/callouts.js marks it); a custom title stays, as a bold
+   first line. Without the script the default title simply shows.
+   Only `details` that carry a type class are callouts: the roadmap's own
+   native <details> (no class, or .rm-notes) keep roadmap.css's look. */
+.md-typeset .admonition,
+.md-typeset details:where([class]:not(.rm-notes)) {
+  --pgrr-adm-bg: #141e37;
+  --pgrr-adm-border: #253985;
+  --pgrr-adm-fg: #9dc4f8;
+  --pgrr-adm-code-bg: rgba(255, 255, 255, 0.07);
+  --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229.25%22%2F%3E%3Cpath%20d%3D%22M12%207.5v5.5%22%2F%3E%3Cpath%20d%3D%22M12%2016.4v.1%22%2F%3E%3C%2Fsvg%3E");
+
+  position: relative;
+  margin: 1.25em 0;
+  padding: 16px 16px 16px 48px;
+  overflow: visible;
+  border: 1px solid var(--pgrr-adm-border);
+  border-radius: 16px;
+  background-color: var(--pgrr-adm-bg);
+  box-shadow: none;
+  color: var(--pgrr-adm-fg);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes)))::before {
+  content: "";
+  position: absolute;
+  top: 17px;
+  left: 17px;
+  width: 20px;
+  height: 20px;
+  background-color: currentcolor;
+  -webkit-mask: var(--pgrr-adm-icon) center / contain no-repeat;
+  mask: var(--pgrr-adm-icon) center / contain no-repeat;
+}
+
+/* Material's own title bar and icon, replaced by the card's. */
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > :is(.admonition-title, summary) {
+  margin: 0 0 0.3em;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 650;
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > :is(.admonition-title, summary)::before {
+  display: none;
+}
+
+.md-typeset .admonition > .admonition-title.pgrr-default {
+  display: none;
+}
+
+.md-typeset details:where([class]:not(.rm-notes)) > summary {
+  padding-right: 1.6em;
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > :nth-child(2) {
+  margin-top: 0;
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > :last-child {
+  margin-bottom: 0;
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) p {
+  margin: 0.6em 0;
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > p:first-of-type {
+  margin-top: 0;
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) > p:last-child {
+  margin-bottom: 0;
+}
+
+/* Inline code and links take the callout's color. */
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) code {
+  background-color: var(--pgrr-adm-code-bg);
+  color: inherit;
+  border-radius: 6px;
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) a {
+  color: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).note,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).info,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).abstract,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).summary,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tldr {
+  --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229.25%22%2F%3E%3Cpath%20d%3D%22M12%207.5v5.5%22%2F%3E%3Cpath%20d%3D%22M12%2016.4v.1%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).todo,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).success,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).check,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).done {
+  --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229.25%22%2F%3E%3Cpath%20d%3D%22M8.2%2012.4l2.7%202.7%205-5.4%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tip,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).hint,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).important {
+  --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%2018.5h5%22%2F%3E%3Cpath%20d%3D%22M10.2%2021h3.6%22%2F%3E%3Cpath%20d%3D%22M12%203a6%206%200%200%200-3.7%2010.7c.6.5%201%201.3%201.1%202.1h5.2c.1-.8.5-1.6%201.1-2.1A6%206%200%200%200%2012%203z%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).warning,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).caution,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).attention {
+  --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%203.6%202.9%2019.4h18.2L12%203.6z%22%2F%3E%3Cpath%20d%3D%22M12%2010v4.4%22%2F%3E%3Cpath%20d%3D%22M12%2017.2v.1%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).question,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).help,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).faq {
+  --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229.25%22%2F%3E%3Cpath%20d%3D%22M9.5%209.6a2.6%202.6%200%201%201%203.7%202.3c-.8.4-1.2%201-1.2%201.8%22%2F%3E%3Cpath%20d%3D%22M12%2017v.1%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).failure,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).fail,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).missing,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).danger,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).error,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).bug {
+  --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229.25%22%2F%3E%3Cpath%20d%3D%22M9%209l6%206M15%209l-6%206%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).example {
+  --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%207h14M5%2012h14M5%2017h9%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).quote,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).cite {
+  --pgrr-adm-icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%208H6.5v5h3.5c0%201.6-.8%202.6-2.4%203%22%2F%3E%3Cpath%20d%3D%22M17.5%208h-3v5H18c0%201.6-.8%202.6-2.4%203%22%2F%3E%3C%2Fsvg%3E");
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).note,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).info,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).abstract,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).summary,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tldr,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).todo {
+  --pgrr-adm-bg: #141e37;
+  --pgrr-adm-border: #253985;
+  --pgrr-adm-fg: #9dc4f8;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tip,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).hint,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).important,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).success,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).check,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).done {
+  --pgrr-adm-bg: #182a1b;
+  --pgrr-adm-border: #285231;
+  --pgrr-adm-fg: #a0ecb1;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).warning,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).caution,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).attention,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).question,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).help,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).faq {
+  --pgrr-adm-bg: #2b2210;
+  --pgrr-adm-border: #6b4e12;
+  --pgrr-adm-fg: #f5d98a;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).failure,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).fail,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).missing,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).danger,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).error,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).bug {
+  --pgrr-adm-bg: #2e1417;
+  --pgrr-adm-border: #7a2530;
+  --pgrr-adm-fg: #f6a5ae;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).example {
+  --pgrr-adm-bg: #1c1733;
+  --pgrr-adm-border: #4b3a8c;
+  --pgrr-adm-fg: #cdbdff;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).quote,
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).cite {
+  --pgrr-adm-bg: #1d1f1f;
+  --pgrr-adm-border: #3a3d3d;
+  --pgrr-adm-fg: #d4d6d4;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+/* Light scheme */
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) {
+  --pgrr-adm-code-bg: rgba(0, 0, 0, 0.06);
+}
+
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).note,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).info,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).abstract,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).summary,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tldr,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).todo {
+  --pgrr-adm-bg: #eef4ff;
+  --pgrr-adm-border: #bcd0fb;
+  --pgrr-adm-fg: #1d3f91;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).tip,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).hint,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).important,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).success,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).check,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).done {
+  --pgrr-adm-bg: #edf9f0;
+  --pgrr-adm-border: #b5e0c0;
+  --pgrr-adm-fg: #1b5e2f;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).warning,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).caution,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).attention,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).question,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).help,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).faq {
+  --pgrr-adm-bg: #fff8e6;
+  --pgrr-adm-border: #f0d68a;
+  --pgrr-adm-fg: #7a5200;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).failure,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).fail,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).missing,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).danger,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).error,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).bug {
+  --pgrr-adm-bg: #fff0f1;
+  --pgrr-adm-border: #f4b6bc;
+  --pgrr-adm-fg: #8f1d2a;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).example {
+  --pgrr-adm-bg: #f3f0ff;
+  --pgrr-adm-border: #cfc5f5;
+  --pgrr-adm-fg: #4b3a8c;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).quote,
+[data-md-color-scheme="default"] .md-typeset :is(.admonition, details:where([class]:not(.rm-notes))).cite {
+  --pgrr-adm-bg: #f1f2f2;
+  --pgrr-adm-border: #d4d8d8;
+  --pgrr-adm-fg: #2c3030;
+  /* beats the theme's per-type border colors */
+  border-color: var(--pgrr-adm-border);
+}
+
+/* ---- Numbered lists as steps ----
+   An ordered list becomes a sequence of steps: a numbered circle per item,
+   joined by a thin line that stops short of the next circle and fades out
+   after the last item. Nested ordered lists and footnotes keep plain
+   numbering. The number comes from the list's own counter, so `start="3"`
+   and lists continued by Markdown keep working. */
+.md-typeset ol {
+  --pgrr-step-bg: #242525;
+  --pgrr-step-fg: #f4f6f4;
+  --pgrr-step-line: #242525;
+
+  margin: 1.25em 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-md-color-scheme="default"] .md-typeset ol {
+  --pgrr-step-bg: #eceeee;
+  --pgrr-step-fg: #2c3030;
+  --pgrr-step-line: #dfe2e2;
+}
+
+.md-typeset ol > li {
+  position: relative;
+  margin: 0;
+  padding: 0 0 28px 44px;
+}
+
+.md-typeset ol > li:last-child {
+  padding-bottom: 8px;
+}
+
+.md-typeset ol > li::before {
+  content: counter(list-item);
+  position: absolute;
+  top: -1px;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--pgrr-step-bg);
+  color: var(--pgrr-step-fg);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.md-typeset ol > li::after {
+  content: "";
+  position: absolute;
+  top: 36px;
+  bottom: 8px;
+  left: 13px;
+  width: 1px;
+  background-color: var(--pgrr-step-line);
+}
+
+/* After the last item the line fades out instead of ending. */
+.md-typeset ol > li:last-child::after {
+  bottom: -20px;
+  background: linear-gradient(to bottom, var(--pgrr-step-line), transparent);
+}
+
+.md-typeset ol > li > :first-child {
+  margin-top: 0;
+}
+
+.md-typeset ol > li > :last-child {
+  margin-bottom: 0;
+}
+
+/* Nested lists, lists inside a heading step, and footnotes: ordinary numbering. */
+.md-typeset ol ol,
+.md-typeset .pgrr-step ol,
+.md-typeset .footnote ol {
+  margin: 0.5em 0 0.5em 1.4em;
+  list-style: decimal;
+}
+
+.md-typeset ol ol > li,
+.md-typeset .pgrr-step ol > li,
+.md-typeset .footnote ol > li {
+  padding: 0;
+  margin-bottom: 0.4em;
+}
+
+.md-typeset ol ol > li::before,
+.md-typeset ol ol > li::after,
+.md-typeset .pgrr-step ol > li::before,
+.md-typeset .pgrr-step ol > li::after,
+.md-typeset .footnote ol > li::before,
+.md-typeset .footnote ol > li::after {
+  content: none;
+}
+
+/* ---- Tables: the cards' look ----
+   A rounded, thinly bordered table with a tinted header row and soft row
+   dividers, in both color schemes. */
+.md-typeset table:not([class]) {
+  --pgrr-tbl-border: #3a3d3d;
+  --pgrr-tbl-head: #1d1f1f;
+  --pgrr-tbl-line: #2a2c2c;
+  --pgrr-tbl-hover: rgba(255, 255, 255, 0.035);
+
+  border: 1px solid var(--pgrr-tbl-border);
+  border-radius: 16px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: transparent;
+  box-shadow: none;
+  font-size: 0.7rem;
+}
+
+[data-md-color-scheme="default"] .md-typeset table:not([class]) {
+  --pgrr-tbl-border: #d4d8d8;
+  --pgrr-tbl-head: #f1f2f2;
+  --pgrr-tbl-line: #e6e8e8;
+  --pgrr-tbl-hover: rgba(0, 0, 0, 0.03);
+}
+
+.md-typeset table:not([class]) th {
+  padding: 0.75em 1.1em;
+  border-bottom: 1px solid var(--pgrr-tbl-border);
+  background-color: var(--pgrr-tbl-head);
+  font-weight: 600;
+}
+
+.md-typeset table:not([class]) td {
+  padding: 0.75em 1.1em;
+  border-top: 1px solid var(--pgrr-tbl-line);
+}
+
+.md-typeset table:not([class]) tbody tr:first-child td {
+  border-top: 0;
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: var(--pgrr-tbl-hover);
+  box-shadow: none;
+}
+
+.md-typeset table:not([class]) thead tr:first-child th:first-child {
+  border-top-left-radius: 15px;
+}
+
+.md-typeset table:not([class]) thead tr:first-child th:last-child {
+  border-top-right-radius: 15px;
+}
+
+.md-typeset table:not([class]) tbody tr:last-child td:first-child {
+  border-bottom-left-radius: 15px;
+}
+
+.md-typeset table:not([class]) tbody tr:last-child td:last-child {
+  border-bottom-right-radius: 15px;
+}
+
+/* ---- Numbered section headings as steps (docs/javascripts/steps.js) ----
+   The same circles and connecting line as numbered lists, for a run of
+   "1) ...", "2) ..." section headings: the heading is the step's title and
+   the content under it is the step's body. */
+.md-typeset .pgrr-step {
+  --pgrr-step-bg: #242525;
+  --pgrr-step-fg: #f4f6f4;
+  --pgrr-step-line: #242525;
+
+  position: relative;
+  padding: 0 0 36px 44px;
+}
+
+[data-md-color-scheme="default"] .md-typeset .pgrr-step {
+  --pgrr-step-bg: #eceeee;
+  --pgrr-step-fg: #2c3030;
+  --pgrr-step-line: #dfe2e2;
+}
+
+.md-typeset .pgrr-step:last-of-type {
+  padding-bottom: 8px;
+}
+
+.md-typeset .pgrr-step::before {
+  content: attr(data-step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--pgrr-step-bg);
+  color: var(--pgrr-step-fg);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.md-typeset .pgrr-step::after {
+  content: "";
+  position: absolute;
+  top: 36px;
+  bottom: 8px;
+  left: 13px;
+  width: 1px;
+  background-color: var(--pgrr-step-line);
+}
+
+.md-typeset .pgrr-step:last-of-type::after {
+  bottom: -20px;
+  background: linear-gradient(to bottom, var(--pgrr-step-line), transparent);
+}
+
+.md-typeset .pgrr-step > h2 {
+  margin: 0 0 0.7em;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 28px;
+}
+
+.md-typeset .pgrr-step > :nth-child(2) {
+  margin-top: 0;
+}
+
+.md-typeset .pgrr-step > :last-child {
+  margin-bottom: 0;
+}
+
+/* ---- Table of contents (right sidebar): a moving active dot ----
+   More air between the entries and a dot in the left margin that follows
+   the active entry. docs/javascripts/toc-indicator.js moves the
+   dot: it stretches toward the new entry, then the trailing end catches up.
+   Without the script (or with reduced motion) the active entry is simply
+   bold, and the dot jumps or is absent. */
+.md-sidebar--secondary .md-nav--secondary {
+  --pgrr-toc-dot: var(--pgrr-accent);
+}
+
+.md-sidebar--secondary .md-nav--secondary > .md-nav__list {
+  position: relative;
+  padding-left: 18px;
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav__link {
+  margin-top: 0;
+  padding: 0.5em 0;
+  line-height: 1.4;
+  color: var(--md-default-fg-color--light);
+  transition: color 0.2s;
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav__link:hover {
+  color: var(--md-default-fg-color);
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav__link--active {
+  color: var(--md-default-fg-color);
+  font-weight: 650;
+}
+
+/* Sub-headings: indented, a little quieter. */
+.md-sidebar--secondary .md-nav--secondary .md-nav .md-nav__list {
+  padding-left: 0.8em;
+}
+
+.md-sidebar--secondary .md-nav--secondary .md-nav .md-nav__link {
+  padding: 0.4em 0;
+  font-size: 0.62rem;
+}
+
+.pgrr-toc-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--pgrr-toc-dot);
+  opacity: 0;
+  pointer-events: none;
+  transition-property: top, height, opacity;
+  transition-duration: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-toc-dot {
+    transition: none !important;
+  }
+}
+
+/* ---- Inline code: a chip in the same card colors ----
+   More contrast than Material's flat tint: a lighter fill, a thin border and
+   brighter text, in both color schemes. Only inline code (not inside a `pre`);
+   callouts, the roadmap and the home page set their own and win by
+   specificity (this selector is kept low with :where). */
+[data-md-color-scheme="slate"] {
+  --pgrr-chip-bg: #1f2222;
+  --pgrr-chip-border: #3f4343;
+  --pgrr-chip-fg: #f4f6f4;
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-chip-bg: #eceeee;
+  --pgrr-chip-border: #d0d5d5;
+  --pgrr-chip-fg: #14181a;
+}
+
+.md-typeset code:where(:not(pre) > code) {
+  padding: 0.1em 0.42em;
+  border: 1px solid var(--pgrr-chip-border);
+  border-radius: 6px;
+  background-color: var(--pgrr-chip-bg);
+  color: var(--pgrr-chip-fg);
+  font-size: 0.84em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* In a callout the chip borrows the callout's own border color. */
+.md-typeset :is(.admonition, details:where([class]:not(.rm-notes))) code {
+  border-color: var(--pgrr-adm-border);
+}
+
+/* ---- Header, search, "Back to top" and the copy toast: the card look ----
+   The same surface and border as the code blocks and cards (--pgrr-ui-*), the
+   theme color for the accents. */
+[data-md-color-scheme="slate"] {
+  --pgrr-ui-bg: #1d1f1f;
+  --pgrr-ui-border: #3a3d3d;
+  --pgrr-ui-fg: #f1f3f1;
+  --pgrr-ui-line: rgba(255, 255, 255, 0.1);
+  --pgrr-ui-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.75);
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-ui-bg: #f1f2f2;
+  --pgrr-ui-border: #d4d8d8;
+  --pgrr-ui-fg: #1a1c1c;
+  --pgrr-ui-line: rgba(0, 0, 0, 0.1);
+  --pgrr-ui-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.28);
+}
+
+/* Header: a hairline under the frosted bar. */
+.md-header {
+  border-bottom: 1px solid var(--pgrr-ui-line);
+}
+
+/* Search box: a card-colored pill (like the home page's buttons) instead of Material's flat tint. */
+.md-search__form {
+  border: 1px solid var(--pgrr-ui-border);
+  border-radius: 999px;
+  background-color: var(--pgrr-ui-bg);
+  box-shadow: none;
+  transition: border-color 0.15s;
+}
+
+.md-search__form:hover {
+  border-color: var(--pgrr-accent);
+  background-color: var(--pgrr-ui-bg);
+}
+
+.md-search__input {
+  color: var(--pgrr-ui-fg);
+}
+
+[data-md-toggle="search"]:checked ~ .md-header .md-search__form {
+  border-color: var(--pgrr-accent);
+  border-radius: 18px 18px 0 0;
+  background-color: var(--pgrr-ui-bg);
+  box-shadow: none;
+}
+
+.md-search__output {
+  border: 1px solid var(--pgrr-ui-border);
+  border-top: 0;
+  border-radius: 0 0 16px 16px;
+  background-color: var(--pgrr-ui-bg);
+}
+
+/* "Back to top": a pill in the card colors with the arrow in the theme color. */
+.md-top {
+  border: 1px solid var(--pgrr-ui-border);
+  background-color: var(--pgrr-ui-bg);
+  box-shadow: var(--pgrr-ui-shadow);
+  color: var(--pgrr-ui-fg);
+  font-weight: 600;
+  transition: border-color 0.15s, opacity 0.2s, transform 0.2s;
+}
+
+.md-top:hover {
+  border-color: var(--pgrr-accent);
+  background-color: var(--pgrr-ui-bg);
+  color: var(--pgrr-ui-fg);
+}
+
+.md-top svg {
+  color: var(--pgrr-accent);
+}
+
+/* "Copied to clipboard": a card with a check in the theme color, replacing
+   Material's inverted box. */
+.md-dialog {
+  border: 1px solid var(--pgrr-ui-border);
+  border-radius: 12px;
+  background-color: var(--pgrr-ui-bg);
+  box-shadow: var(--pgrr-ui-shadow);
+  color: var(--pgrr-ui-fg);
+}
+
+.md-dialog__inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.85rem 0.5rem 0.7rem;
+  font-weight: 600;
+}
+
+.md-dialog__inner::before {
+  content: "";
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background-color: var(--pgrr-accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4.5%2012.5l5%205L19.5%207%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4.5%2012.5l5%205L19.5%207%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+}
+
+.md-dialog__inner {
+  color: var(--pgrr-ui-fg);
+}
+
+/* Search results: the same surface; the "N matching documents" bar loses its
+   flat gray. */
+.md-search-result__meta {
+  border-bottom: 1px solid var(--pgrr-ui-line);
+  background-color: transparent;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-search-result__item {
+  box-shadow: 0 -1px 0 0 var(--pgrr-ui-line);
+}
+
+/* Header logo (the pixel mark): a little larger than Material's default 1.2rem
+   so the 5x5 matrix stays readable. */
+.md-header__button.md-logo svg,
+.md-header__button.md-logo img {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+/* Keep the site title close to the logo. */
+.md-header__title {
+  margin-left: 0.1rem;
+}
+
+/* ---- Header controls: centered search; repo link and theme toggle on the right ----
+   Desktop only (Material's drawer layout takes over below 76.25em). The site
+   name on the left and the repo link on the right take equal shares of the
+   row, so the search box sits in the middle of the page, wider than
+   Material's default. Everything is a pill, like the home page's buttons:
+   the search field, the repo link and the (round) theme toggle. */
+@media screen and (min-width: 76.25em) {
+  .md-header__inner .md-header__title {
+    flex: 1 1 0;
+    min-width: 0;
+    margin-left: 0.12rem;
+    /* balances the theme button on the other side of the search box */
+    margin-right: var(--pgrr-title-balance, 2.2rem);
+  }
+
+  .md-search {
+    flex: 0 0 24rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* the version selector shares the name's column on versioned pages */
+  .md-version__current {
+    margin-left: 0.5rem;
+  }
+
+  .md-search__inner {
+    width: 100%;
+  }
+
+  .md-header__source {
+    flex: 1 1 0;
+    order: 4;
+    display: flex;
+    justify-content: flex-end;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    margin: 0;
+  }
+
+  /* the theme toggle is the last control of the row */
+  .md-header__option {
+    order: 5;
+    margin: 0 0 0 0.5rem;
+    max-width: none;
+  }
+}
+
+/* The right-hand controls are quiet, borderless icon buttons, the way
+   shadcn/ui and Starlight do it: no frame at rest, a soft round highlight on
+   hover. Only the search field keeps its outline, as the one real input. */
+.md-header__button[for^="__palette"],
+.md-header__source .md-source {
+  --pgrr-ghost: color-mix(in srgb, var(--md-default-fg-color) 9%, transparent);
+  box-sizing: border-box;
+  height: 1.9rem;
+  border: 0;
+  border-radius: 999px;
+  background-color: transparent;
+  color: var(--md-default-fg-color--light);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.md-header__button[for^="__palette"]:hover,
+.md-header__source .md-source:hover,
+.md-header__source .md-source:focus-visible {
+  background-color: var(--pgrr-ghost);
+  color: var(--md-default-fg-color);
+  opacity: 1;
+}
+
+/* Theme toggle: a round icon button; the icon spins in when it swaps. */
+/* The extra selector parts out-rank Material's per-scheme rules, which reset
+   the visible label to `display: block` after a swap and left the icon
+   stuck in the corner of its button. */
+.md-header__option label.md-header__button[for^="__palette"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  margin: 0;
+  padding: 0;
+}
+
+.md-header__option label.md-header__button[for^="__palette"][hidden] {
+  display: none;
+}
+
+.md-header__button[for^="__palette"] svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  fill: currentcolor;
+}
+
+.pgrr-theme-swap .md-header__option svg {
+  animation: pgrr-icon-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes pgrr-icon-in {
+  from {
+    opacity: 0;
+    transform: rotate(-110deg) scale(0.5);
+  }
+}
+
+/* A hairline divides the repo link from the theme toggle. */
+@media screen and (min-width: 76.25em) {
+  .md-header__option {
+    position: relative;
+    margin-left: 0.7rem;
+  }
+
+  .md-header__option::before {
+    content: "";
+    position: absolute;
+    left: -0.4rem;
+    top: 50%;
+    height: 1rem;
+    border-left: 1px solid var(--pgrr-ui-border);
+    transform: translateY(-50%);
+  }
+}
+
+/* Repo link: the GitHub mark and the star count, nothing else. The name is
+   the site's title context; version and forks live on the repo page. */
+.md-header__source .md-source {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  padding: 0 0.7rem 0 0.6rem;
+}
+
+[dir] .md-source__icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  fill: currentcolor;
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.md-source:hover .md-source__icon svg,
+.md-source:focus-visible .md-source__icon svg {
+  transform: rotate(-12deg) scale(1.08);
+}
+
+.md-source__icon {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  height: auto;
+}
+
+[dir] .md-source__icon + .md-source__repository {
+  display: flex;
+  align-items: center;
+  max-width: none;
+  margin-left: 0.4rem;
+  padding-left: 0;
+  font-size: 0; /* hides the long repo name */
+  line-height: 1;
+}
+
+.md-source__facts {
+  display: inline-flex;
+  margin: 0;
+  padding: 0;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+/* only the stars */
+.md-source__fact:not(.md-source__fact--stars) {
+  display: none;
+}
+
+.md-source__fact--stars {
+  display: inline-flex;
+  align-items: center;
+}
+
+.md-source__fact--stars::before {
+  transition: background-color 0.2s;
+}
+
+.md-source:hover .md-source__fact--stars::before {
+  background-color: var(--pgrr-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-theme-swap .md-header__option svg {
+    animation: none;
+  }
+
+  .md-source__icon svg {
+    transition: none;
+  }
+}
+
+/* On a narrow screen the theme toggle stays a plain icon, like the search one. */
+@media screen and (max-width: 76.1875em) {
+  .md-header__button[for^="__palette"] {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0;
+    color: var(--md-default-fg-color);
+  }
+}
+
+/* ---- Site name: a lockup with the mark ----
+   The mark is a grid of small square dots. The name is set the way the home
+   page sets its labels: the code font in small, widely tracked capitals, so the
+   letters repeat the grid's even rhythm and the two read as one unit. The mark
+   sits on the text's baseline (its solid bottom row is the line the letters
+   stand on), and its height is trimmed to the type's scale. */
+@media screen and (min-width: 76.25em) {
+  .md-header__button.md-logo svg {
+    height: 1.1rem;
+    width: 1.1rem;
+  }
+
+  /* about one x-height between the mark and the first letter */
+  .md-header__button.md-logo {
+    margin-right: 0;
+    padding-right: 0;
+  }
+}
+
+.md-header__title .md-header__topic .md-ellipsis {
+  font-family: var(--md-code-font-family);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  position: relative;
+  top: var(--pgrr-name-drop, -0.04rem);
+}
+
+/* ---- "Our math", written with math symbols ----
+   The page's own name in the header, and its tab in the menu on every page
+   (docs/javascripts/theme-toggle.js), are set letter by letter in math symbols
+   (Our math -> ουг mατℏ). The real words stay for screen readers and as the
+   link's title. The font is the
+   unversioned site's copy, by absolute URL so the versioned docs reach it too;
+   without it the stack falls back to any installed math font. */
+@font-face {
+  font-family: "PGRR Math";
+  src: url("https://joao00001.github.io/pg-regression-radar/assets/math/fonts/noto-sans-math.woff2") format("woff2");
+  font-display: swap;
+}
+
+.pgrr-sym {
+  font-family: "PGRR Math", "STIX Two Math", "Cambria Math", "Apple Symbols", serif;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: none;
+}
+
+.md-tabs__link .pgrr-sym {
+  font-size: 0.75rem;
+  letter-spacing: 0;
+}
+
+.pgrr-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

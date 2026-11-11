@@ -1,0 +1,1395 @@
+/*
+ * Home page (docs/index.md): hero, architecture diagram, step and link cards.
+ *
+ * Loaded only by the unversioned build (mkdocs-unversioned.yml), like
+ * roadmap.css. Everything is scoped under .pgrr-home and uses the same two
+ * layers as the code blocks and callouts (a card with a thin border, and a
+ * darker inset panel) plus the theme accent (extra.css), in both color schemes.
+ */
+
+.pgrr-home {
+  --h-card: #1d1f1f;
+  --h-border: #3a3d3d;
+  --h-panel: #0b0c0e;
+  --h-fg: #f4f6f4;
+  --h-muted: #a3a8a7;
+  --h-icon: #aeb2b1;
+  --h-chip: #242525;
+  --h-accent: var(--pgrr-accent);
+  --h-accent-bg: var(--pgrr-accent-bg);
+  --h-accent-border: var(--pgrr-accent-border);
+  --h-accent-solid: var(--pgrr-accent-solid);
+  --h-bad: #f6a5ae;
+  --h-bad-bg: #2e1417;
+  --h-bad-border: #7a2530;
+  --h-dots: rgba(255, 255, 255, 0.09);
+  --h-glow: var(--pgrr-accent-glow);
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-card: #f1f2f2;
+  --h-border: #d4d8d8;
+  --h-panel: #ffffff;
+  --h-fg: #1a1c1c;
+  --h-muted: #5d6362;
+  --h-icon: #646a6a;
+  --h-chip: #e3e6e6;
+  --h-accent: var(--pgrr-accent);
+  --h-accent-bg: var(--pgrr-accent-bg);
+  --h-accent-border: var(--pgrr-accent-border);
+  --h-accent-solid: var(--pgrr-accent-solid);
+  --h-bad: #8f1d2a;
+  --h-bad-bg: #fff0f1;
+  --h-bad-border: #f4b6bc;
+  --h-dots: rgba(0, 0, 0, 0.09);
+  --h-glow: var(--pgrr-accent-glow);
+}
+
+/* The page has no table of contents; let the text use the width. */
+.md-content:has(.pgrr-home) .md-content__button {
+  display: none;
+}
+
+/* ---- Hero ---- */
+.pgrr-home .pgrr-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: 28px 36px;
+  align-items: center;
+  margin: 8px 0 44px;
+  padding: 36px 32px;
+  border: 1px solid var(--h-border);
+  border-radius: 20px;
+  background:
+    radial-gradient(60% 90% at 0% 0%, var(--h-glow), transparent 70%),
+    radial-gradient(var(--h-dots) 1px, transparent 1.2px) 0 0 / 18px 18px,
+    var(--h-card);
+  overflow: hidden;
+}
+
+.pgrr-home .pgrr-hero h1 {
+  margin: 14px 0 12px;
+  color: var(--h-fg);
+  font-size: 2.1rem;
+  font-weight: 750;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+
+.pgrr-home .pgrr-lead {
+  max-width: 30em;
+  margin: 0 0 22px;
+  color: var(--h-muted);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+/* The example alert: the code-block card, with a message inside. */
+
+/* ---- Section headings ---- */
+.pgrr-home h2 {
+  margin: 2.2em 0 0.6em;
+  color: var(--h-fg);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.pgrr-home h2 .headerlink {
+  display: none;
+}
+
+/* ---- The question ---- */
+.pgrr-home .pgrr-question {
+  margin: 0.9em 0 1em;
+  padding: 2px 0 2px 18px;
+  border-left: 3px solid var(--h-accent-solid);
+  color: var(--h-fg);
+  font-size: 1.35rem;
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+/* ---- Architecture diagram ---- */
+.pgrr-home .pgrr-diagram {
+  margin: 1.2em 0 1.4em;
+  padding: 18px 14px;
+  border: 1px solid var(--h-border);
+  border-radius: 20px;
+  background: radial-gradient(var(--h-dots) 1px, transparent 1.2px) 0 0 / 18px 18px, var(--h-card);
+  overflow-x: auto;
+}
+
+.pgrr-home .pgrr-diagram svg {
+  display: block;
+  width: 100%;
+  min-width: 760px;
+  height: auto;
+}
+
+.pgrr-home .pgrr-node {
+  fill: var(--h-panel);
+  stroke: var(--h-border);
+  stroke-width: 1.5;
+}
+
+.pgrr-home .pgrr-node--engine {
+  fill: var(--h-accent-bg);
+  stroke: var(--h-accent-solid);
+  stroke-width: 2;
+}
+
+.pgrr-home .pgrr-node--idle {
+  fill: none;
+  stroke-dasharray: 5 5;
+}
+
+.pgrr-home .pgrr-t {
+  fill: var(--h-fg);
+  font-size: 17px;
+  font-weight: 650;
+  text-anchor: middle;
+}
+
+.pgrr-home .pgrr-t--engine {
+  fill: var(--h-accent);
+  font-size: 20px;
+  font-weight: 750;
+}
+
+.pgrr-home .pgrr-s {
+  fill: var(--h-muted);
+  font-size: 13.5px;
+  text-anchor: middle;
+}
+
+.pgrr-home .pgrr-t--idle,
+.pgrr-home .pgrr-s--idle {
+  opacity: 0.75;
+}
+
+.pgrr-home .pgrr-l {
+  fill: var(--h-muted);
+  font-size: 13.5px;
+  text-anchor: middle;
+}
+
+.pgrr-home .pgrr-l--idle {
+  font-style: italic;
+  text-anchor: start;
+  opacity: 0.8;
+}
+
+.pgrr-home .pgrr-ic {
+  fill: none;
+  stroke: var(--h-icon);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pgrr-home .pgrr-ic--engine {
+  stroke: var(--h-accent);
+}
+
+.pgrr-home .pgrr-edge {
+  fill: none;
+  stroke: var(--h-border);
+  stroke-width: 1.5;
+}
+
+.pgrr-home .pgrr-edge--accent {
+  stroke: var(--h-accent-border);
+}
+
+.pgrr-home .pgrr-edge--idle {
+  stroke-dasharray: 4 6;
+}
+
+.pgrr-home .pgrr-arrowhead {
+  fill: var(--h-border);
+}
+
+.pgrr-home .pgrr-arrowhead--accent {
+  fill: var(--h-accent-border);
+}
+
+/* Beams (home-flow.js): a soft gradient light travels along an edge. Only opacity
+   and gradient positions change, never fills, so nothing repaints a card. */
+.pgrr-home .pgrr-beam {
+  fill: none;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-beam--core {
+  stroke-width: 2.2;
+}
+
+.pgrr-home .pgrr-beam--glow {
+  stroke-width: 7;
+}
+
+.pgrr-home .pgrr-beam-stop {
+  stop-color: var(--h-fg);
+}
+
+.pgrr-home .pgrr-beam-stop--accent {
+  stop-color: var(--h-accent);
+}
+
+/* Nodes only brighten their outline and icon as the light arrives. */
+.pgrr-home .pgrr-node {
+  transition: stroke 1s ease-out;
+}
+
+.pgrr-home .pgrr-node.pgrr-hit {
+  stroke: color-mix(in srgb, var(--h-fg) 55%, var(--h-border));
+  transition-duration: 0s;
+}
+
+.pgrr-home .pgrr-ic {
+  transition: stroke 1s ease-out;
+}
+
+.pgrr-home .pgrr-ic.pgrr-hit {
+  stroke: var(--h-fg);
+  transition-duration: 0s;
+}
+
+/* Live data above each card: slides up and fades in as the light arrives, holds,
+   then lifts away. Opacity and transform only. */
+.pgrr-home .pgrr-data {
+  opacity: 0;
+  filter: blur(6px);
+  transform: translateY(9px);
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-data.is-on {
+  opacity: 1;
+  filter: blur(0);
+  transform: none;
+  transition: opacity 0.5s ease-out, filter 0.8s ease-out, transform 0.9s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+
+.pgrr-home .pgrr-data.is-out {
+  opacity: 0;
+  filter: blur(5px);
+  transform: translateY(-9px);
+  transition: opacity 0.55s ease-in 0.1s, filter 0.65s ease-in, transform 0.7s cubic-bezier(0.5, 0, 0.9, 0.4);
+}
+
+.pgrr-home .pgrr-d {
+  fill: var(--h-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  text-anchor: middle;
+  white-space: pre;
+}
+
+.pgrr-home .pgrr-d--end {
+  text-anchor: end;
+}
+
+.pgrr-home .pgrr-dv {
+  fill: var(--h-fg);
+}
+
+.pgrr-home .pgrr-dv--a {
+  fill: var(--h-accent);
+}
+
+/* The engine "works" for a moment: a short light runs once around its border. */
+.pgrr-home .pgrr-bbeam-rect {
+  fill: none;
+  stroke: var(--h-accent);
+  stroke-linecap: round;
+  pointer-events: none;
+  stroke-dasharray: 22 78;
+  animation: pgrr-bbeam 1.7s cubic-bezier(0.45, 0, 0.35, 1) forwards;
+}
+
+.pgrr-home .pgrr-bbeam-rect--core {
+  stroke-width: 1.8;
+}
+
+.pgrr-home .pgrr-bbeam-rect--glow {
+  stroke-width: 5;
+  opacity: 0.22;
+}
+
+@keyframes pgrr-bbeam {
+  0% {
+    stroke-dashoffset: 8;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: -92;
+    opacity: 0;
+  }
+}
+
+/* ---- Cards (steps and links) ---- */
+.pgrr-home .pgrr-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 12px;
+  margin: 1.1em 0;
+}
+
+.pgrr-home .pgrr-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px 15px;
+  border: 1px solid var(--h-border);
+  border-radius: 16px;
+  background: var(--h-card);
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.pgrr-home .pgrr-card p {
+  margin: 0;
+}
+
+.pgrr-home .pgrr-card:hover,
+.pgrr-home .pgrr-card:focus-within {
+  border-color: var(--h-accent-solid);
+}
+
+/* Step marker: "01 ———— collect". It echoes the mono numerals on the diagram's
+   nodes and the page's section markers, and links to the matching node on hover. */
+.pgrr-home .pgrr-num {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: var(--h-accent);
+  font: 600 0.58rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+}
+
+.pgrr-home .pgrr-num::before {
+  content: "";
+  order: 1;
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(90deg, var(--h-accent-border), var(--h-border) 55%, transparent);
+  opacity: 0.9;
+  transform-origin: left;
+  transition: transform 0.45s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+
+.pgrr-home .pgrr-num::after {
+  content: attr(data-stage);
+  order: 2;
+  color: var(--h-muted);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: color 0.25s;
+}
+
+.pgrr-home .pgrr-card:hover .pgrr-num::after,
+.pgrr-home .pgrr-card:focus-within .pgrr-num::after {
+  color: var(--h-accent);
+}
+
+/* hovering a step lights its node on the diagram */
+.pgrr-home .pgrr-n {
+  fill: var(--h-muted);
+  font: 600 12px var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.08em;
+  transition: fill 0.9s ease-out;
+}
+
+.pgrr-home .pgrr-n.pgrr-hit {
+  fill: var(--h-fg);
+  transition-duration: 0s;
+}
+
+.pgrr-home .pgrr-n[data-step="3"] {
+  fill: var(--h-accent);
+}
+
+@supports selector(:has(a)) {
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(1):is(:hover, :focus-within)) .pgrr-node[data-step="1"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(2):is(:hover, :focus-within)) .pgrr-node[data-step="2"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(3):is(:hover, :focus-within)) .pgrr-node[data-step="3"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(4):is(:hover, :focus-within)) .pgrr-node[data-step="4"] {
+    stroke: var(--h-accent-solid);
+    transition-duration: 0.2s;
+  }
+
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(1):is(:hover, :focus-within)) .pgrr-n[data-step="1"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(2):is(:hover, :focus-within)) .pgrr-n[data-step="2"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(3):is(:hover, :focus-within)) .pgrr-n[data-step="3"],
+  .pgrr-home:has(.pgrr-cards--steps .pgrr-card:nth-child(4):is(:hover, :focus-within)) .pgrr-n[data-step="4"] {
+    fill: var(--h-accent);
+    transition-duration: 0.2s;
+  }
+}
+
+.pgrr-home .pgrr-card-title {
+  color: var(--h-fg);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.pgrr-home .pgrr-card-desc {
+  color: var(--h-muted);
+  font-size: 0.64rem;
+  line-height: 1.55;
+}
+
+.pgrr-home .pgrr-card-desc code {
+  border-color: var(--h-border);
+  background-color: var(--h-panel);
+  font-size: 0.58rem;
+}
+
+.pgrr-home .pgrr-card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+
+.pgrr-home .pgrr-card-links a::after {
+  content: " \2192";
+}
+
+/* Four steps: two by two, never three and one. */
+.pgrr-home .pgrr-cards--steps {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 34em) {
+  .pgrr-home .pgrr-cards--steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pgrr-home .pgrr-card-links a {
+  color: var(--h-accent);
+}
+
+.pgrr-home .pgrr-foot {
+  margin-top: 2.4em;
+  color: var(--h-muted);
+  font-size: 0.62rem;
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-home .pgrr-hero {
+    padding: 24px 18px;
+  }
+
+  .pgrr-home .pgrr-hero h1 {
+    font-size: 1.7rem;
+  }
+}
+
+/* ======================================================================
+ * Grid layout
+ *
+ * The page is one framed sheet cut into cells by hairlines, like a ruled
+ * blueprint: the hero, diagram and cards are cells that touch, and each
+ * section is a band with a rule above it. Same content and colors as above,
+ * only the containers change (no floating rounded cards).
+ * ==================================================================== */
+.pgrr-home {
+  --h-grid: rgba(255, 255, 255, 0.045);
+  --h-pad: 28px;
+  position: relative;
+  margin: 0 0 8px;
+  background: transparent;
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-grid: rgba(0, 0, 0, 0.05);
+}
+
+/* Text sits inside the frame with a gutter; cells below go edge to edge. */
+.pgrr-home > p,
+.pgrr-home > ul,
+.pgrr-home > ol {
+  margin-inline: var(--h-pad);
+}
+
+/* Section bands */
+.pgrr-home h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 18px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: var(--h-card);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* Hero: two cells split by a rule, over a faint ruled grid */
+.pgrr-home .pgrr-hero {
+  gap: 0;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    radial-gradient(70% 100% at 0% 0%, var(--h-glow), transparent 70%),
+    var(--h-panel);
+}
+
+.pgrr-home .pgrr-hero > div:first-child {
+  padding: 40px var(--h-pad) 34px;
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-home .pgrr-hero > div:first-child {
+    padding: 28px var(--h-pad) 24px;
+  }
+}
+
+/* The question: its own full-width cell */
+.pgrr-home .pgrr-question {
+  margin: 1.1em var(--h-pad) 1.1em;
+}
+
+/* Diagram: a cell on the ruled grid */
+.pgrr-home .pgrr-diagram {
+  margin: 0;
+  padding: 22px 16px;
+  border: 0;
+  border-top: 1px solid var(--h-border);
+  border-radius: 0;
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    var(--h-panel);
+}
+
+/* Cards: touching cells; the container color shows through as the rules */
+.pgrr-home .pgrr-cards {
+  gap: 1px;
+  margin: 0;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-border);
+}
+
+.pgrr-home .pgrr-card {
+  gap: 6px;
+  padding: 22px var(--h-pad) 20px;
+  border: 0;
+  border-radius: 0;
+  background: var(--h-panel);
+  transition: background-color 0.15s;
+}
+
+.pgrr-home .pgrr-card:hover,
+.pgrr-home .pgrr-card:focus-within {
+  background: var(--h-card);
+}
+
+/* Where to go next: ruled rows (doubled class beats Material's list margins) */
+.pgrr-home.pgrr-home > ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pgrr-home.pgrr-home > ul > li {
+  margin: 0;
+  padding: 12px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  font-size: 0.68rem;
+}
+
+.pgrr-home.pgrr-home > ul > li:first-child {
+  border-top: 0;
+}
+
+/* Footer band */
+.pgrr-home .pgrr-foot {
+  margin: 0;
+  padding: 14px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: var(--h-card);
+}
+
+/* ----------------------------------------------------------------------
+ * Infinite rules
+ *
+ * The lines are not a card border: each rule runs out to the edge of the
+ * window and the content column sits between two vertical lines that run the
+ * full height of the page body. Where the left navigation is visible the
+ * horizontal rules start exactly on the left column line (so they never strike
+ * through the menu text, and each junction is clean) and keep going right; below that width there is no sidebar and
+ * they run both ways. The extra length is clipped by .md-main so it never
+ * causes a scrollbar or crosses the header/footer.
+ * -------------------------------------------------------------------- */
+.pgrr-home {
+  --h-rule-left: -100vw;
+  --h-rule-width: 200vw;
+}
+
+@media (min-width: 76.25em) {
+  .pgrr-home {
+    --h-rule-left: 0;
+    --h-rule-width: 100vw;
+  }
+}
+
+.md-main:has(.pgrr-home) {
+  overflow: clip;
+}
+
+/* the two column lines */
+.pgrr-home::before,
+.pgrr-home::after {
+  content: "";
+  position: absolute;
+  top: -100vh;
+  bottom: -100vh;
+  width: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-home::before {
+  left: 0;
+}
+
+.pgrr-home::after {
+  right: 0;
+}
+
+/* Band marker as a background so the band's pseudo-elements stay free for
+   its top and bottom rules. */
+.pgrr-home h2 {
+  position: relative;
+  padding-left: calc(var(--h-pad) + 17px);
+  background:
+    linear-gradient(var(--h-accent-solid), var(--h-accent-solid)) var(--h-pad) 50% / 7px 7px no-repeat,
+    var(--h-card);
+}
+
+.pgrr-home h2::before,
+.pgrr-home h2::after {
+  content: "";
+  position: absolute;
+  left: var(--h-rule-left);
+  width: var(--h-rule-width);
+  height: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-home h2::before {
+  top: -1px;
+}
+
+/* Every band closes with a rule too: this is the top rule of the diagram and
+   of the first list row, drawn here because the diagram scrolls sideways on
+   small screens and would clip its own pseudo-elements. */
+.pgrr-home h2::after {
+  bottom: -1px;
+}
+
+/* full-width rules for the other ruled cells */
+.pgrr-home .pgrr-hero,
+.pgrr-home .pgrr-cards,
+.pgrr-home.pgrr-home > ul > li,
+.pgrr-home .pgrr-foot {
+  position: relative;
+}
+
+.pgrr-home .pgrr-hero::before,
+.pgrr-home .pgrr-cards::before,
+.pgrr-home.pgrr-home > ul > li::before,
+.pgrr-home .pgrr-foot::before,
+.pgrr-home .pgrr-foot::after {
+  content: "";
+  position: absolute;
+  left: var(--h-rule-left);
+  width: var(--h-rule-width);
+  height: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-home .pgrr-hero::before {
+  top: 0;
+}
+
+.pgrr-home .pgrr-cards::before,
+.pgrr-home.pgrr-home > ul > li::before,
+.pgrr-home .pgrr-foot::before {
+  top: -1px;
+}
+
+.pgrr-home .pgrr-foot::after {
+  bottom: 0;
+}
+
+.pgrr-home.pgrr-home > ul > li:first-child::before {
+  display: none;
+}
+
+/* ======================================================================
+ * Regression capture (docs/javascripts/home-radar.js)
+ *
+ * A toolbar cell (status and button) above a chart cell
+ * on the same ruled grid. The chart itself is drawn on a canvas by the script,
+ * using the --h-* tokens of the page, so it follows the color scheme.
+ * ==================================================================== */
+.pgrr-radar {
+  position: relative;
+}
+
+.pgrr-radar-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px var(--h-pad);
+  border-bottom: 1px solid var(--h-border);
+  background: var(--h-panel);
+}
+
+.pgrr-radar-bar::after,
+.pgrr-radar-note::before {
+  content: "";
+  position: absolute;
+  left: var(--h-rule-left);
+  width: var(--h-rule-width);
+  height: 1px;
+  background: var(--h-border);
+  pointer-events: none;
+}
+
+.pgrr-radar-bar::after {
+  bottom: -1px;
+}
+
+.pgrr-radar-status {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--h-muted);
+  font: 500 0.58rem/1.3 var(--md-code-font-family, ui-monospace, monospace);
+  transition: color 0.25s;
+}
+
+.pgrr-radar-status.is-alert {
+  color: var(--h-accent);
+}
+
+/* "Inject deploy": a quiet outlined control (hairline, mono, small radius) with a
+   plus that turns on hover. No fill, no glow. */
+.pgrr-radar-inject {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: auto;
+  padding: 0.55em 0.95em 0.55em 0.8em;
+  border: 1px solid var(--h-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--h-fg);
+  font: 500 0.58rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s, color 0.2s, background-color 0.2s, transform 0.1s;
+}
+
+.pgrr-radar-inject::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  flex: none;
+  background:
+    linear-gradient(currentColor, currentColor) center / 100% 1px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 1px 100% no-repeat;
+  color: var(--h-accent);
+  transition: transform 0.35s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+
+.pgrr-radar-inject:hover {
+  border-color: var(--h-accent-border);
+  color: var(--h-accent);
+  background-color: color-mix(in srgb, var(--h-accent) 6%, transparent);
+}
+
+.pgrr-radar-inject:hover::before {
+  transform: rotate(90deg);
+}
+
+.pgrr-radar-inject:focus-visible {
+  outline: 2px solid var(--h-accent);
+  outline-offset: 2px;
+}
+
+.pgrr-radar-inject:active {
+  transform: scale(0.97);
+}
+
+.pgrr-radar-inject.is-pressed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--h-accent) 28%, transparent), transparent);
+  animation: pgrr-radar-flash 0.7s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes pgrr-radar-flash {
+  from { opacity: 1; transform: translateX(-100%); }
+  to { opacity: 0; transform: translateX(100%); }
+}
+
+.pgrr-radar-stage {
+  position: relative;
+  height: 320px;
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    radial-gradient(60% 80% at 100% 100%, var(--h-glow), transparent 70%),
+    var(--h-panel);
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+
+.pgrr-radar-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pgrr-radar-tip {
+  position: absolute;
+  z-index: 2;
+  min-width: 11.5em;
+  padding: 10px 12px 9px;
+  border: 1px solid var(--h-border);
+  border-radius: 10px;
+  background: var(--h-card);
+  box-shadow: 0 14px 30px -14px rgba(0, 0, 0, 0.6);
+  color: var(--h-fg);
+  font-size: 0.58rem;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.pgrr-radar-tip[hidden] {
+  display: none;
+}
+
+.pgrr-tip-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--h-border);
+  font: 650 0.6rem/1.3 var(--md-code-font-family, ui-monospace, monospace);
+}
+
+.pgrr-tip-head span {
+  color: var(--h-muted);
+  font-weight: 500;
+}
+
+.pgrr-tip-row {
+  display: grid;
+  grid-template-columns: 1fr auto 3.6em;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.pgrr-tip-row span {
+  color: var(--h-muted);
+}
+
+.pgrr-tip-row b {
+  font: 650 0.58rem/1.4 var(--md-code-font-family, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+.pgrr-tip-row em {
+  color: var(--h-accent);
+  font: normal 650 0.56rem/1.4 var(--md-code-font-family, ui-monospace, monospace);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pgrr-tip-row.is-hot span,
+.pgrr-tip-row.is-hot b {
+  color: var(--h-accent);
+}
+
+.pgrr-radar-note {
+  position: relative;
+  margin: 0;
+  padding: 10px var(--h-pad) 11px;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-card);
+  color: var(--h-muted);
+  font-size: 0.56rem;
+}
+
+.pgrr-radar-note::before {
+  top: -1px;
+}
+
+.pgrr-radar-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-radar-stage {
+    height: 260px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-radar-inject::before,
+  .pgrr-radar-inject.is-pressed::after,
+  .pgrr-home .pgrr-num::before {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ======================================================================
+ * Hero
+ *
+ * One surface for the title and the code block: absolute black (white in the
+ * light scheme) with the soft red fade in the top-left corner, and a drifting
+ * field of ASCII characters drawn by docs/javascripts/home-ascii.js on a canvas
+ * behind both, which keeps clear of the text; the code card floats over it.
+ * ==================================================================== */
+.pgrr-home {
+  --h-hero-bg: #000;
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-hero-bg: #fff;
+}
+
+.pgrr-home .pgrr-hero {
+  position: relative;
+  isolation: isolate;
+  background: var(--h-hero-bg);
+}
+
+.pgrr-hero-ascii {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ----------------------------------------------------------------------
+ * Rules above cells
+ *
+ * Cells with their own background (the hero's title cell, the chart stage,
+ * the step cards, the bands) are positioned and later in the document than
+ * the grid's pseudo-element rules, so they were painted over them and the
+ * left and top edges disappeared. Lift every rule above the cells.
+ * -------------------------------------------------------------------- */
+.pgrr-home::before,
+.pgrr-home::after,
+.pgrr-home .pgrr-hero::before,
+.pgrr-home h2::before,
+.pgrr-home h2::after,
+.pgrr-home .pgrr-cards::before,
+.pgrr-home.pgrr-home > ul > li::before,
+.pgrr-home .pgrr-foot::before,
+.pgrr-home .pgrr-foot::after,
+.pgrr-radar-bar::after,
+.pgrr-radar-note::before {
+  z-index: 3;
+}
+
+/* ----------------------------------------------------------------------
+ * One black for the content cells
+ *
+ * The step cards, the architecture diagram and the chart stage all sit on the
+ * same absolute black as the hero's title cell (white in the light scheme),
+ * instead of the slightly lifted --h-panel.
+ * -------------------------------------------------------------------- */
+.pgrr-home .pgrr-card {
+  background: var(--h-hero-bg);
+}
+
+.pgrr-home .pgrr-card:hover,
+.pgrr-home .pgrr-card:focus-within {
+  background: color-mix(in srgb, var(--h-accent) 5%, var(--h-hero-bg));
+}
+
+.pgrr-home .pgrr-diagram {
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    var(--h-hero-bg);
+}
+
+.pgrr-radar-stage {
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    radial-gradient(60% 80% at 100% 100%, var(--h-glow), transparent 70%),
+    var(--h-hero-bg);
+}
+
+/* ----------------------------------------------------------------------
+ * Hero code cell
+ *
+ * The right half of the hero shows a real code block from the API reference
+ * (a PerformanceRegression), in the site's normal code-block card: title bar,
+ * copy button, syntax colors.
+ * -------------------------------------------------------------------- */
+.pgrr-home .pgrr-hero .pgrr-hero-code {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 26px 22px 22px;
+}
+
+.pgrr-home .pgrr-hero-code .highlight,
+.pgrr-home .pgrr-hero-code pre {
+  margin: 0;
+}
+
+/* Frosted glass: the card and its inset panel are translucent and blur the
+   ASCII field behind them. Scoped to the home hero (.pgrr-hero-code only
+   exists there), so code blocks on the other pages are untouched. Browsers
+   without backdrop-filter keep the normal opaque card. */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .pgrr-home .pgrr-hero-code .highlight {
+    background-color: color-mix(in srgb, var(--pgrr-card-bg) 52%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    backdrop-filter: blur(14px) saturate(1.3);
+  }
+
+  .pgrr-home .pgrr-hero-code .highlight pre {
+    background-color: color-mix(in srgb, var(--pgrr-panel-bg) 55%, transparent);
+  }
+}
+
+.pgrr-home .pgrr-hero-code .highlight code,
+.pgrr-home .pgrr-hero-code pre code {
+  font-size: 0.5rem;
+  line-height: 1.7;
+}
+
+.pgrr-home .pgrr-hero-cap {
+  margin: 12px 0 0;
+  color: var(--h-muted);
+  font-size: 0.58rem;
+}
+
+.pgrr-home .pgrr-hero-cap a {
+  color: var(--h-accent);
+}
+
+/* Two columns (a little more room for the code than for the text) from 62em;
+   below that the title cell sits over the code cell. */
+@media (min-width: 62em) {
+  .pgrr-home .pgrr-hero {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  .pgrr-home .pgrr-hero h1 {
+    font-size: 1.95rem;
+  }
+}
+
+@media (max-width: 61.9375em) {
+  .pgrr-home .pgrr-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
+/* ----------------------------------------------------------------------
+ * Hero buttons
+ *
+ * Pill-shaped, in the same quiet style as the shadcn.io hero: one solid light
+ * pill and one outlined pill (inverted in the light scheme). The accent only
+ * shows up on focus.
+ * -------------------------------------------------------------------- */
+.pgrr-home {
+  --h-btn-bg: #ededed;
+  --h-btn-fg: #0a0a0a;
+  --h-btn-line: rgba(255, 255, 255, 0.16);
+  --h-btn-hover: rgba(255, 255, 255, 0.07);
+}
+
+[data-md-color-scheme="default"] .pgrr-home {
+  --h-btn-bg: #0a0a0a;
+  --h-btn-fg: #fafafa;
+  --h-btn-line: rgba(0, 0, 0, 0.18);
+  --h-btn-hover: rgba(0, 0, 0, 0.05);
+}
+
+.pgrr-home .pgrr-hero .md-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 10px 8px 0;
+  padding: 0 1.45em;
+  height: 2.5em;
+  border: 1px solid var(--h-btn-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--h-fg);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: background-color 0.15s, border-color 0.15s, filter 0.15s;
+}
+
+.pgrr-home .pgrr-hero .md-button:hover {
+  border-color: var(--h-btn-line);
+  background: var(--h-btn-hover);
+  color: var(--h-fg);
+}
+
+.pgrr-home .pgrr-hero .md-button--primary {
+  border-color: var(--h-btn-bg);
+  background: var(--h-btn-bg);
+  color: var(--h-btn-fg);
+}
+
+.pgrr-home .pgrr-hero .md-button--primary:hover {
+  border-color: var(--h-btn-bg);
+  background: var(--h-btn-bg);
+  color: var(--h-btn-fg);
+  filter: brightness(0.9);
+}
+
+.pgrr-home .pgrr-hero .md-button:focus-visible {
+  outline: 2px solid var(--h-accent);
+  outline-offset: 3px;
+}
+
+/* ======================================================================
+ * Title cells (chart and diagram) and the problem cell
+ * ==================================================================== */
+
+/* A centered display title: mono kicker, light headline with one heavy phrase,
+   short sub line. Replaces the small band heading for the two visual cells. */
+.pgrr-home h2.pgrr-title {
+  display: block;
+  padding: 52px var(--h-pad) 46px;
+  background: var(--h-hero-bg);
+  text-align: center;
+  font-size: clamp(1.45rem, 0.9rem + 2.4vw, 2.05rem);
+  font-weight: 300;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  color: var(--h-muted);
+}
+
+.pgrr-home h2.pgrr-title em {
+  color: var(--h-fg);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.pgrr-home h2.pgrr-title .pgrr-kick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  color: var(--h-accent);
+  font: 600 0.54rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.pgrr-home h2.pgrr-title .pgrr-kick::before,
+.pgrr-home h2.pgrr-title .pgrr-kick::after {
+  content: "";
+  width: 34px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--h-accent-border));
+}
+
+.pgrr-home h2.pgrr-title .pgrr-kick::after {
+  transform: scaleX(-1);
+}
+
+.pgrr-home h2.pgrr-title .pgrr-sub {
+  display: block;
+  max-width: 34em;
+  margin: 16px auto 0;
+  color: var(--h-muted);
+  font-size: 0.64rem;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+
+/* The problem: context and the question on one side, the manual loop on the
+   other, split by a rule like the hero. */
+.pgrr-home .pgrr-problem {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  background: var(--h-hero-bg);
+}
+
+.pgrr-home .pgrr-problem-lead {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 34px;
+  padding: 36px var(--h-pad) 38px;
+}
+
+.pgrr-home .pgrr-problem p {
+  margin: 0;
+}
+
+.pgrr-home .pgrr-problem-ctx {
+  color: var(--h-muted);
+  font-size: 0.68rem;
+  line-height: 1.7;
+}
+
+.pgrr-home .pgrr-problem .pgrr-question {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--h-muted);
+  font-size: clamp(1.7rem, 1rem + 2.6vw, 2.35rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.pgrr-home .pgrr-problem .pgrr-question em {
+  color: var(--h-fg);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.pgrr-home .pgrr-problem-today {
+  border-left: 1px solid var(--h-border);
+  padding: 36px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pgrr-home .pgrr-problem-label {
+  padding: 0 var(--h-pad) 14px;
+  color: var(--h-muted);
+  font: 600 0.54rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.pgrr-home .pgrr-manual {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: pgrr-manual;
+}
+
+.pgrr-home .pgrr-manual li {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 0;
+  padding: 13px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  color: var(--h-fg);
+  font-size: 0.68rem;
+  counter-increment: pgrr-manual;
+}
+
+.pgrr-home .pgrr-manual li::before {
+  content: "0" counter(pgrr-manual);
+  color: var(--h-muted);
+  font: 500 0.54rem/1 var(--md-code-font-family, ui-monospace, monospace);
+  letter-spacing: 0.1em;
+}
+
+.pgrr-home .pgrr-problem-note {
+  padding: 13px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  color: var(--h-muted);
+  font-size: 0.64rem;
+  font-style: italic;
+}
+
+.pgrr-home .pgrr-problem-answer {
+  margin-top: auto !important;
+  padding: 15px var(--h-pad);
+  border-top: 1px solid var(--h-border);
+  background: color-mix(in srgb, var(--h-accent) 6%, var(--h-hero-bg));
+  color: var(--h-accent);
+  font-size: 0.74rem;
+}
+
+.pgrr-home .pgrr-problem-answer strong {
+  font-weight: 700;
+}
+
+.pgrr-home .pgrr-problem-answer strong::before {
+  content: "\2192\00a0\00a0";
+}
+
+@media (max-width: 44.9375em) {
+  .pgrr-home .pgrr-problem {
+    grid-template-columns: 1fr;
+  }
+
+  .pgrr-home .pgrr-problem-today {
+    border-top: 1px solid var(--h-border);
+    border-left: 0;
+    padding-top: 28px;
+  }
+
+  .pgrr-home h2.pgrr-title {
+    padding: 38px var(--h-pad) 34px;
+  }
+}
