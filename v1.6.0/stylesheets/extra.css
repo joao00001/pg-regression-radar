@@ -1783,3 +1783,118 @@
   font-size: 0.7rem;
   color: var(--md-default-fg-color--light);
 }
+
+/* ---- Site footer ----
+   overrides/partials/footer.html. Sits on the page background with a hairline
+   on top, the way the header does, instead of Material's solid block. */
+.md-footer {
+  position: relative;
+  z-index: 1;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color--light);
+}
+
+.pgrr-footer {
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  font-size: 0.7rem;
+}
+
+.pgrr-footer__inner {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) 2fr;
+  gap: 2.5rem 3rem;
+  max-width: 61rem;
+  margin: 0 auto;
+  padding: 2.6rem 1.2rem 2rem;
+}
+
+.pgrr-footer__lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--md-default-fg-color);
+}
+
+.pgrr-footer__mark svg {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.pgrr-footer__word {
+  font-family: var(--md-code-font-family);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pgrr-footer__tag {
+  max-width: 18rem;
+  margin: 0.9rem 0 1.1rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color--light);
+}
+
+.pgrr-footer__social {
+  display: inline-flex;
+  color: var(--md-default-fg-color--light);
+  transition: color 0.15s ease;
+}
+
+.pgrr-footer__social svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: currentColor;
+}
+
+.pgrr-footer__cols {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.6rem 1.5rem;
+}
+
+.pgrr-footer__col h2 {
+  margin: 0 0 0.85rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--md-default-fg-color);
+}
+
+.pgrr-footer__col ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pgrr-footer__col li {
+  margin: 0 0 0.55rem;
+}
+
+.pgrr-footer a:not(.pgrr-footer__lockup) {
+  color: var(--md-default-fg-color--light);
+  transition: color 0.15s ease;
+}
+
+.pgrr-footer a:not(.pgrr-footer__lockup):hover,
+.pgrr-footer a:not(.pgrr-footer__lockup):focus-visible {
+  color: var(--pgrr-accent);
+}
+
+.pgrr-footer__bar {
+  max-width: 61rem;
+  margin: 0 auto;
+  padding: 1.1rem 1.2rem 1.6rem;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  color: var(--md-default-fg-color--light);
+}
+
+@media screen and (max-width: 59.9375em) {
+  .pgrr-footer__inner {
+    grid-template-columns: 1fr;
+  }
+  .pgrr-footer__cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
