@@ -204,7 +204,8 @@ Use these policy examples to ensure tenants cannot self-approve Secret access by
 
 ### Validate policy behavior with `kubectl --dry-run=server`
 
-> Replace `<ns>` with a namespace where your policy applies.
+!!! note
+    Replace `<ns>` with a namespace where your policy applies.
 
 Attempt without consent label (should be admitted; controller will still refuse to use it):
 
