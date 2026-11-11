@@ -153,6 +153,16 @@ nav:
           - CI/CD: ci-cd.md
           - Backporting: backporting.md
           - Branch protection: branch-protection.md
+      - Basic Kubernetes:
+          - Overview: kubernetes/overview.md
+          - Objects and namespaces: kubernetes/objects.md
+          - Pods and Deployments: kubernetes/workloads.md
+          - Config and Secrets: kubernetes/config-secrets.md
+          - Services and networking: kubernetes/networking.md
+          - CRDs and operators: kubernetes/crds-operators.md
+          - RBAC and access: kubernetes/rbac.md
+          - Helm basics: kubernetes/helm.md
+          - Troubleshooting toolkit: kubernetes/troubleshooting.md
           - Page template: TEMPLATE.md
           - Contributing guide ↗: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
       - Changelog: changelog.md
