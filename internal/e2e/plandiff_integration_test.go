@@ -37,7 +37,7 @@ import (
 // TestIntegration_FullPipeline_PlanDiffSummaryReflectsRealPlanChange proves
 // the GENERIC_PLAN plan-diff feature (feat: "add EXPLAIN (GENERIC_PLAN)
 // plan-diff correlation for regressions", internal/planner + Collector's
-// CapturePlan/PlansAround) end to end, with a REAL query plan change and a
+// CapturePlan/PlansForRegression) end to end, with a REAL query plan change and a
 // REAL, unsimulated latency regression caused by it — not two synthetic
 // query texts standing in for "the plan changed" (contrast with
 // internal/collector/collector_integration_test.go's
@@ -55,7 +55,7 @@ import (
 // this repo is the actual field this whole feature exists to populate:
 // v1alpha1.PerformanceRegression.PlanDiffSummary, as it would really be
 // filled in by a detected regression flowing through the full pipeline. That
-// wiring lives only in internal/cli.RunOperator's poll loop (col.PlansAround
+// wiring lives only in internal/cli.RunOperator's poll loop (col.PlansForRegression
 // + planner.Diff, gated on --capture-plans) — an unexported package this
 // test cannot call into directly — so this test reproduces that exact
 // two-line wiring itself against a real Collector and a real detected
@@ -152,18 +152,11 @@ func TestIntegration_FullPipeline_PlanDiffSummaryReflectsRealPlanChange(t *testi
 		// suite's other, heavier tests (e.g. the plan-diff test's own 300k-row
 		// table build) have already run in the same test binary beforehand.
 		preSamples = 8
-		// postSamples must stay UNDER collector.planHistorySize (5, see
-		// internal/collector/collector.go's appendPlanSnapshot): with
-		// CapturePlans enabled, every scrape in both phases below appends one
-		// plan snapshot to a small bounded ring for this queryid, evicting
-		// the oldest entry once full. Regardless of how large preSamples is,
-		// the LAST pre-deploy capture is always the one still standing after
-		// the ring evicts down to its last 5 entries as long as postSamples
-		// itself is < 5 — if it weren't, the ring would hold only
-		// post-deploy captures and PlansAround would never find a "before"
-		// snapshot, breaking this test's premise of a real before/after
-		// comparison.
-		postSamples = 4
+		// postSamples is deliberately larger than collector.planHistorySize (5):
+		// the plan history is change-based, so the pre-deploy plan must
+		// survive any number of post-deploy captures. A per-scrape ring would
+		// hold only post-deploy captures here and find no "before" plan.
+		postSamples = 8
 	)
 	query := `SELECT val FROM ` + tableName + ` WHERE id = 123456 /* ` + marker + ` */`
 
@@ -234,7 +227,7 @@ func TestIntegration_FullPipeline_PlanDiffSummaryReflectsRealPlanChange(t *testi
 		// postSamples this small, that formula could hit 0, which
 		// correlation.Config.defaults() would silently reinterpret as "use
 		// the default of 10" — defeating the small sample count chosen above
-		// for planHistorySize reasons.
+		// for plan-history reasons.
 		MinSamples:             2,
 		MinExecutions:          1,
 		LatencyChangeThreshold: 0.20,
@@ -284,11 +277,10 @@ func TestIntegration_FullPipeline_PlanDiffSummaryReflectsRealPlanChange(t *testi
 
 	// --- This is the actual feature under test: attach a plan-diff summary
 	// exactly as internal/cli.RunOperator's poll loop does when
-	// --capture-plans is set (col.PlansAround(queryID, DetectedChangeAt),
-	// then planner.Diff), and confirm the resulting
+	// --capture-plans is set (col.PlansForRegression, then planner.Diff), and confirm the resulting
 	// PerformanceRegression.PlanDiffSummary is both non-empty AND actually
 	// reflects a real change, not the "nothing changed" branch. ---
-	before, after := col.PlansAround(match.QueryID, match.DetectedChangeAt)
+	before, after := col.PlansForRegression(match.QueryID, match.DetectedChangeAt, deployEvent.Timestamp, engine.AnalysisWindow())
 	if before == nil || after == nil {
 		t.Fatalf("expected both a before and after plan snapshot from CapturePlans, got before=%+v after=%+v", before, after)
 	}

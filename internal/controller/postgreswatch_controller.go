@@ -794,7 +794,7 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 				// gate is an optimization (skip the lookup entirely), not
 				// a correctness requirement.
 				if rt.CapturePlans {
-					before, after := rt.Collector.PlansAround(res.QueryID, res.DetectedChangeAt)
+					before, after := rt.Collector.PlansForRegression(res.QueryID, res.DetectedChangeAt, tr.Event.Timestamp, rt.Engine.AnalysisWindow())
 					res.PlanDiffSummary = planner.Diff(before, after)
 				}
 
@@ -843,7 +843,7 @@ func (r *PostgresWatchReconciler) periodicPollLoop(ctx context.Context, key type
 				// nil-safe, but skipping the lookup entirely when
 				// CapturePlans was never enabled avoids the work.
 				if rt.CapturePlans {
-					before, after := rt.Collector.PlansAround(res.QueryID, res.DetectedChangeAt)
+					before, after := rt.Collector.PlansForRegression(res.QueryID, res.DetectedChangeAt, time.Time{}, rt.Engine.AnalysisWindow())
 					res.PlanDiffSummary = planner.Diff(before, after)
 				}
 

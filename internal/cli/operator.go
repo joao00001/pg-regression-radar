@@ -610,7 +610,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 					// planner.Diff's nil-safe handling leaves
 					// PlanDiffSummary at its empty default.
 					if *capturePlans {
-						before, after := col.PlansAround(r.QueryID, r.DetectedChangeAt)
+						before, after := col.PlansForRegression(r.QueryID, r.DetectedChangeAt, tr.Event.Timestamp, engine.AnalysisWindow())
 						r.PlanDiffSummary = planner.Diff(before, after)
 					}
 					notifier.ObserveDetectedRegression(r)
@@ -652,7 +652,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 				case <-ticker.C:
 					for _, r := range tracker.Tick(time.Now().UTC()) {
 						if *capturePlans {
-							before, after := col.PlansAround(r.QueryID, r.DetectedChangeAt)
+							before, after := col.PlansForRegression(r.QueryID, r.DetectedChangeAt, time.Time{}, engine.AnalysisWindow())
 							r.PlanDiffSummary = planner.Diff(before, after)
 						}
 						notifier.ObserveDetectedRegression(r)

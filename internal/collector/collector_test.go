@@ -604,3 +604,115 @@ func TestPing_UnreachableHost_ReturnsError(t *testing.T) {
 		t.Fatal("expected Ping to fail against an unreachable host, got nil")
 	}
 }
+
+// ----- change-based plan history / PlansForRegression -----
+
+func planSnap(qid int64, at time.Time, root string, cost float64) planner.PlanSnapshot {
+	return planner.PlanSnapshot{QueryID: qid, RecordedAt: at, RootNodeType: root, TotalCost: cost, Source: planner.SourceGenericPlan}
+}
+
+func TestCollector_AppendPlanSnapshot_SamePlanKeepsFirstSeenTime(t *testing.T) {
+	col := newTestCollector(t, Config{})
+	base := time.Now().UTC()
+
+	col.appendPlanSnapshot(planSnap(1, base, "Index Scan", 8.44))
+	col.appendPlanSnapshot(planSnap(1, base.Add(time.Minute), "Index Scan", 8.44))
+	col.appendPlanSnapshot(planSnap(1, base.Add(2*time.Minute), "Index Scan", 8.9)) // +5%: statistics drift
+
+	col.planMu.RLock()
+	hist := col.planHistory[1]
+	col.planMu.RUnlock()
+	if len(hist) != 1 || !hist[0].RecordedAt.Equal(base) {
+		t.Fatalf("expected one entry stamped with its first-seen time, got %+v", hist)
+	}
+}
+
+func TestCollector_AppendPlanSnapshot_RecordsRootChangeAndLargeCostShift(t *testing.T) {
+	col := newTestCollector(t, Config{})
+	base := time.Now().UTC()
+
+	col.appendPlanSnapshot(planSnap(1, base, "Index Scan", 8))
+	col.appendPlanSnapshot(planSnap(1, base.Add(time.Minute), "Index Scan", 80)) // same root, 10x cost
+	col.appendPlanSnapshot(planSnap(1, base.Add(2*time.Minute), "Seq Scan", 80)) // root changed
+
+	col.planMu.RLock()
+	n := len(col.planHistory[1])
+	col.planMu.RUnlock()
+	if n != 3 {
+		t.Fatalf("expected 3 distinct plans recorded, got %d", n)
+	}
+}
+
+// The default configuration needs 10 post-deploy scrapes before detection can
+// fire; the old per-scrape ring of 5 held only post-change captures by then.
+func TestCollector_PlansForRegression_SurvivesManyPostChangeScrapes(t *testing.T) {
+	interval := time.Minute
+	col := newTestCollector(t, Config{ScrapeInterval: interval})
+	base := time.Now().UTC()
+
+	for i := 0; i < 20; i++ { // 20 baseline scrapes: Index Scan
+		col.appendPlanSnapshot(planSnap(1, base.Add(time.Duration(i-20)*interval), "Index Scan", 8))
+	}
+	deployAt := base.Add(10 * time.Second)
+	for i := 1; i <= 12; i++ { // 12 post-flip scrapes: Seq Scan
+		col.appendPlanSnapshot(planSnap(1, base.Add(time.Duration(i)*interval), "Seq Scan", 15000))
+	}
+	changeAt := base.Add(2 * interval)
+
+	before, after := col.PlansForRegression(1, changeAt, deployAt, 30*time.Minute)
+	if before == nil || before.RootNodeType != "Index Scan" {
+		t.Fatalf("expected before=Index Scan, got %+v", before)
+	}
+	if after == nil || after.RootNodeType != "Seq Scan" {
+		t.Fatalf("expected after=Seq Scan, got %+v", after)
+	}
+}
+
+// With sourceType kubernetes the event is stamped when the rollout finishes,
+// which can be well after the migration that flipped the plan.
+func TestCollector_PlansForRegression_DeployStampedLongAfterTheFlip(t *testing.T) {
+	interval := 5 * time.Second
+	col := newTestCollector(t, Config{ScrapeInterval: interval})
+	base := time.Now().UTC()
+
+	col.appendPlanSnapshot(planSnap(1, base.Add(-30*time.Second), "Index Scan", 8))
+	col.appendPlanSnapshot(planSnap(1, base.Add(5*time.Second), "Seq Scan", 15000)) // flip first seen
+	deployAt := base.Add(40 * time.Second)                                          // rollout completes much later
+	changeAt := base.Add(10 * time.Second)
+
+	before, after := col.PlansForRegression(1, changeAt, deployAt, 5*time.Minute)
+	if before == nil || before.RootNodeType != "Index Scan" || after == nil || after.RootNodeType != "Seq Scan" {
+		t.Fatalf("expected Index Scan -> Seq Scan, got before=%+v after=%+v", before, after)
+	}
+}
+
+func TestCollector_PlansForRegression_StablePlanReadsAsUnchanged(t *testing.T) {
+	col := newTestCollector(t, Config{ScrapeInterval: time.Minute})
+	base := time.Now().UTC()
+
+	col.appendPlanSnapshot(planSnap(1, base.Add(-48*time.Hour), "Index Scan", 8))
+	before, after := col.PlansForRegression(1, base, base, 30*time.Minute)
+	if before == nil || after == nil || before.RootNodeType != "Index Scan" || after.RootNodeType != "Index Scan" {
+		t.Fatalf("expected unchanged Index Scan on both sides, got before=%+v after=%+v", before, after)
+	}
+}
+
+func TestCollector_PlansForRegression_FlipOlderThanLookbackIsNotAttributed(t *testing.T) {
+	col := newTestCollector(t, Config{ScrapeInterval: time.Minute})
+	base := time.Now().UTC()
+
+	col.appendPlanSnapshot(planSnap(1, base.Add(-3*time.Hour), "Index Scan", 8))
+	col.appendPlanSnapshot(planSnap(1, base.Add(-2*time.Hour), "Seq Scan", 15000)) // flipped hours ago
+	before, after := col.PlansForRegression(1, base, base, 30*time.Minute)
+	if before == nil || after == nil || before.RootNodeType != "Seq Scan" || after.RootNodeType != "Seq Scan" {
+		t.Fatalf("an old flip must not be blamed for a recent regression, got before=%+v after=%+v", before, after)
+	}
+}
+
+func TestCollector_PlansForRegression_NoHistoryReturnsNil(t *testing.T) {
+	col := newTestCollector(t, Config{})
+	before, after := col.PlansForRegression(999, time.Now(), time.Now(), time.Minute)
+	if before != nil || after != nil {
+		t.Fatalf("expected nil/nil without history, got before=%+v after=%+v", before, after)
+	}
+}

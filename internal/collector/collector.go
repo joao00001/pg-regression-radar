@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -36,14 +37,21 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/planner"
 )
 
-// planHistorySize bounds how many plan snapshots are retained per queryid
-// when CapturePlans is enabled (see Config.CapturePlans and PlansAround).
-// Plans change far less often than latency samples do, so this doesn't need
-// RetentionDuration's time-based mechanism — a small fixed-size ring per
-// queryid is enough to diff "the plan right before a detected change point"
-// against "the most recent plan", which is the only comparison
-// internal/planner.Diff is ever asked to make.
+// planHistorySize bounds how many distinct plans are retained per queryid
+// when CapturePlans is enabled (see Config.CapturePlans, appendPlanSnapshot
+// and PlansForRegression). The history is change-based: a capture that
+// matches the newest stored plan adds nothing, so the ring holds the last few
+// plans a query has had, each stamped with when it was first seen. It must
+// not be per-scrape: detection needs --min-samples observations after a deploy,
+// and a per-scrape ring of this size would by then hold only post-change
+// captures, leaving no "before" plan to diff against.
 const planHistorySize = 5
+
+// planCostChangeThreshold is the relative estimated-cost change beyond which
+// a capture with the same root node type counts as a different plan, so
+// ordinary statistics drift doesn't churn the history while a real
+// cost shift is still recorded.
+const planCostChangeThreshold = 0.10
 
 const defaultMaxQueryTextLen = 200
 
@@ -646,6 +654,10 @@ func (c *Collector) appendPlanSnapshot(snap planner.PlanSnapshot) {
 	defer c.planMu.Unlock()
 
 	hist := c.planHistory[snap.QueryID]
+	if n := len(hist); n > 0 && samePlan(hist[n-1], snap) {
+		// Same plan as the newest stored one: keep its first-seen time.
+		return
+	}
 	if len(hist) >= planHistorySize {
 		// Drop the oldest entry. A plain copy is fine at this size (at most
 		// planHistorySize elements) — no need for a circular index — and it
@@ -657,6 +669,22 @@ func (c *Collector) appendPlanSnapshot(snap planner.PlanSnapshot) {
 		hist = append(hist, snap)
 	}
 	c.planHistory[snap.QueryID] = hist
+}
+
+// samePlan reports whether b is, for history purposes, the same plan as a:
+// same capture source and root node type, and an estimated total cost within
+// planCostChangeThreshold of a's.
+func samePlan(a, b planner.PlanSnapshot) bool {
+	if a.Source != b.Source || a.RootNodeType != b.RootNodeType {
+		return false
+	}
+	if a.TotalCost == b.TotalCost {
+		return true
+	}
+	if a.TotalCost <= 0 {
+		return false
+	}
+	return math.Abs(b.TotalCost-a.TotalCost)/a.TotalCost <= planCostChangeThreshold
 }
 
 // PlansAround returns, from queryID's bounded plan-capture history, the
@@ -692,6 +720,44 @@ func (c *Collector) PlansAround(queryID int64, at time.Time) (before, after *pla
 		after = mostRecent
 	}
 	return before, after
+}
+
+// PlansForRegression returns the plans to compare for a regression whose
+// change point is changeAt and, for deploy-anchored detection, whose deploy
+// happened at deployAt (zero for deploy-independent detection). lookback is
+// how far before the earlier of the two a plan change still counts as related
+// (the analysis window).
+//
+// The history is change-based (see appendPlanSnapshot), so its newest entry is
+// the current plan and its first-seen time is when that plan appeared. When it
+// appeared within lookback of the change, the plan before it is the answer;
+// when the plan has been stable for longer, the regression is not a plan
+// change and before is the current plan, which makes the diff read
+// "unchanged". PlansAround(changeAt) is not used for this: the change point
+// lands at least one scrape after a plan flip, so a snapshot taken at or
+// before it can already show the new plan.
+func (c *Collector) PlansForRegression(queryID int64, changeAt, deployAt time.Time, lookback time.Duration) (before, after *planner.PlanSnapshot) {
+	c.planMu.RLock()
+	hist := append([]planner.PlanSnapshot(nil), c.planHistory[queryID]...)
+	c.planMu.RUnlock()
+	if len(hist) == 0 {
+		return nil, nil
+	}
+
+	latest := hist[len(hist)-1]
+	after = &latest
+
+	from := changeAt
+	if !deployAt.IsZero() && deployAt.Before(from) {
+		from = deployAt
+	}
+	from = from.Add(-lookback).Add(-c.cfg.ScrapeInterval)
+
+	if len(hist) > 1 && !latest.RecordedAt.Before(from) {
+		prev := hist[len(hist)-2]
+		return &prev, after
+	}
+	return after, after
 }
 
 // ingestSample records one observation for qid at time now, without a
