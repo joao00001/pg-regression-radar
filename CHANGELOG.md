@@ -32,6 +32,23 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.8.0 - 2026-11-11
+
+### Features
+
+- Added OpenTelemetry as a pluggable analysis input: OTLP/HTTP trace spans can now be turned into deploy events with the new `otlp` source type, every detected regression can be exported as an OTLP log record, and the Prometheus sample source gained bearer-token auth, failure metrics and a validated worked Collector pipeline. (#182)
+- Separated the two data floors that `--min-executions` used to blur: the new `--min-samples` (default 10) counts latency observations per window, while `--min-executions` now counts real executions (default 100, was 10 samples), so rarely-called queries report InsufficientData until enough calls back the verdict. (#210)
+- Detected regressions now expose the raw Welch's t-test `pValue` in the PerformanceRegression status (and a P-Value kubectl column), the dashboard API, alerts and OTLP export; `confidenceScore` stays as `1 - pValue` and is documented as a significance score, not the probability that the regression is real. (#211)
+- Added a browser playground to the docs that runs the real detection engine, compiled to WebAssembly, against a real PostgreSQL with `pg_stat_statements` (PGlite): pick a scenario or write your own schema, workload and deploy, and see which queries are flagged, with no Postgres or Kubernetes to install. (#212)
+- Added opt-in false-discovery-rate control across queries (`--multiple-testing=bh|by`) and an autocorrelation adjustment for Welch's t-test (`--adjust-autocorrelation`), as operator flags and `PostgresWatch` fields, so a pass over hundreds of noisy queries reports fewer chance detections; both are off by default and change nothing until enabled. (#219)
+- Added a five-minute lab (`examples/lab`, documented on the "Try it in five minutes" page): three `kubectl apply` commands start a throwaway Postgres, a demo app and the radar in any Kubernetes cluster, ship a deploy whose migration drops an index, and show the radar detecting it, naming the deploy and reporting the `Index Scan -> Seq Scan` plan change. It needs no database, ArgoCD, Slack or Helm of your own. (#229)
+
+### Fixes
+
+- Fixed regressions being hidden by the cumulative average: the collector now measures each query from the change in calls and total time between scrapes, and recognises counter resets (including `stats_since` on PostgreSQL 17+) so they no longer look like latency changes. (#209)
+- Fixed the plan-diff summary on a detected regression, which with the default `--min-samples` almost never had a "before" plan and could read "root node type unchanged" after an index drop. The plan history now records one entry per distinct plan instead of one per scrape, so the plan from before the change is still there when detection fires. (#228)
+
+
 ## v1.7.0 - 2026-11-09
 
 ### Features
