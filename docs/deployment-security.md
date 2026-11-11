@@ -28,6 +28,23 @@ When enabled, the chart renders:
   - ingress for webhook and metrics ports
   - egress for PostgreSQL, API servers (manager mode), DNS, and alert relay CIDRs
 
+```mermaid
+flowchart LR
+  IN["Webhook senders<br/>and Prometheus"]:::ext
+  POD["radar pod<br/>default deny, plus allows"]:::radar
+  PG[("PostgreSQL<br/>5432")]:::ext
+  API["Kubernetes API server<br/>manager mode only"]:::ext
+  DNS["Cluster DNS<br/>53 TCP and UDP"]:::ext
+  AR["Alert relay<br/>and OTLP endpoint"]:::ext
+  IN -->|"ingress: webhook and metrics ports"| POD
+  POD -->|"egress"| PG
+  POD -->|"egress"| API
+  POD -->|"egress"| DNS
+  POD -->|"egress"| AR
+```
+
+*Everything not drawn is denied once the policy is enabled.*
+
 ### Notes
 
 - `networkPolicy.ingressCIDR` is optional. If empty, ingress rules allow from any source.

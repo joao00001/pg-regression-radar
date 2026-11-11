@@ -57,6 +57,7 @@ exclude_docs: |
   /our-math.md
   /assets/playground/
   /assets/math/
+  /javascripts/vendor/README.md
 
 # Declaring `plugins:` explicitly replaces MkDocs' implicit default plugin
 # list (which is just `search`) rather than adding to it — `search` is
@@ -97,7 +98,11 @@ markdown_extensions:
   - toc:
       permalink: true
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       pygments_lang_class: true
   - pymdownx.tabbed:
@@ -148,11 +153,6 @@ nav:
           - API versioning: api-versioning.md
           - Persistence: persistence.md
           - Support matrix: support-matrix.md
-      - Contribute:
-          - Testing: testing.md
-          - CI/CD: ci-cd.md
-          - Backporting: backporting.md
-          - Branch protection: branch-protection.md
       - Basic Kubernetes:
           - Overview: kubernetes/overview.md
           - Objects and namespaces: kubernetes/objects.md
@@ -163,6 +163,11 @@ nav:
           - RBAC and access: kubernetes/rbac.md
           - Helm basics: kubernetes/helm.md
           - Troubleshooting toolkit: kubernetes/troubleshooting.md
+      - Contribute:
+          - Testing: testing.md
+          - CI/CD: ci-cd.md
+          - Backporting: backporting.md
+          - Branch protection: branch-protection.md
           - Page template: TEMPLATE.md
           - Contributing guide ↗: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
       - Changelog: changelog.md

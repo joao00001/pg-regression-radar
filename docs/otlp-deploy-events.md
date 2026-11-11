@@ -18,6 +18,28 @@ Only the OTLP/HTTP trace encodings are implemented, at the wire level (no gRPC, 
 
 The [`X-Webhook-Token` shared secret](webhooks.md) applies exactly as for the other source types.
 
+```mermaid
+flowchart LR
+  CI["CI/CD pipeline or<br/>release script (OTel SDK)"]:::ext
+  subgraph OC["OpenTelemetry Collector"]
+    F["filter: keep spans<br/>named deploy"]:::ext
+    X["otlphttp exporter"]:::ext
+  end
+  subgraph RADAR["pg-regression-radar"]
+    R["DeploySource route<br/>sourceType: otlp"]:::radar
+    M["match spanNames or<br/>matchAttributes"]:::radar
+    E["DeployEvent"]:::out
+  end
+  CI -->|"OTLP traces"| F
+  F --> X
+  X -->|"POST /webhook, OTLP/HTTP"| R
+  CI -.->|"or straight to the radar"| R
+  R --> M
+  M -->|"one event per matching span"| E
+```
+
+*Only spans selected by `spanNames` or `matchAttributes` become deploys, so a full trace stream does not turn every span into one.*
+
 ## Selecting which spans are deploys
 
 An OTLP endpoint usually receives a whole trace stream, so the mapping must be explicit. A mapping with neither `spanNames` nor `matchAttributes` is rejected at configuration time (a CRD reports phase `Failed`, reason `InvalidSpec`; the CLI exits non-zero) — it would otherwise turn every span into a deploy.

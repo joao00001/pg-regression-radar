@@ -8,6 +8,35 @@ The Ingester (`internal/ingester`) normalises webhook payloads (or OTLP trace sp
 
 A fifth source, **OpenTelemetry spans**, reuses the same `/webhook` route to accept OTLP/HTTP traces instead of a tool-specific payload (see [OTLP Deploy Events](otlp-deploy-events.md)). A sixth, **Kubernetes-native watch**, doesn't send a webhook at all — see [below](#native-kubernetes-watch-no-webhook) — and is only available in `manager` mode (CRD-driven), not via the standalone `operator`/`ingester` binaries' `--source-type` flag. See [Configuration Reference: Source-type capabilities by mode](configuration.md#source-type-capabilities-by-mode) for the full accepted-values comparison.
 
+```mermaid
+flowchart LR
+  subgraph PUSH["Pushed to the radar"]
+    A1["ArgoCD<br/>on-sync-succeeded"]:::ext
+    A2["Argo Rollouts<br/>promotion"]:::ext
+    A3["Flux<br/>notification"]:::ext
+    A4["Custom CI<br/>generic JSON"]:::ext
+    A5["OpenTelemetry<br/>deploy span"]:::ext
+  end
+  R["Ingester route<br/>POST /webhook"]:::radar
+  subgraph PULL["Watched by the radar (manager mode)"]
+    K["Deployment or StatefulSet<br/>finishes a rollout"]:::k8s
+  end
+  W["Workload watch<br/>sourceType: kubernetes"]:::radar
+  E["DeployEvent<br/>app, revision, cluster"]:::out
+  ENG["Correlation Engine"]:::radar
+  A1 --> R
+  A2 --> R
+  A3 --> R
+  A4 --> R
+  A5 --> R
+  K --> W
+  R -->|"normalise"| E
+  W -->|"synthesise"| E
+  E --> ENG
+```
+
+*Five sources push a payload that the Ingester normalises; the Kubernetes-native source needs no sender, because the radar watches the workload itself.*
+
 ## Supported sources
 
 | Source | Trigger | Notes |

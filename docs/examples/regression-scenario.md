@@ -11,6 +11,24 @@ The workflow is run-mode agnostic: `operator`, `manager`, and Helm all use the s
 !!! note "Timing (E-divisive requirement)"
     Detection needs a time series that spans multiple scrape windows, not a single burst of queries in one scrape cycle. Keep each traffic phase running for at least **3–4 scrape intervals**. For quick demos, start pg-regression-radar with `--scrape-interval 1s` and keep each phase running for ~20–30 seconds total.
 
+```mermaid
+sequenceDiagram
+  autonumber
+  participant You
+  participant P as Postgres
+  participant R as Radar
+  You->>P: 1 create test data and fast baseline traffic
+  P-->>R: scrapes show normal latency
+  You->>R: 2 deploy event v1 (baseline)
+  You->>P: 3 slow the same query
+  P-->>R: scrapes show higher latency
+  You->>R: 4 deploy event v2
+  R->>R: compare the windows around v2
+  R-->>You: 5 PerformanceRegression attributed to v2
+```
+
+*Each numbered step below matches a step in this sequence; the radar keeps scraping the whole time.*
+
 ## 1) Set up PostgreSQL and test data
 
 Start a local PostgreSQL for testing:

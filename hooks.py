@@ -117,6 +117,15 @@ def _unversioned_nav(items, config):
     return out
 
 
+class _NavLoader(yaml.SafeLoader):
+    """Reads mkdocs.yml for its `nav` only. The file also holds `!!python/name:`
+    tags (the Mermaid fence), which safe_load refuses; they are not needed
+    here, so they load as None."""
+
+
+_NavLoader.add_multi_constructor("tag:yaml.org,2002:python/", lambda loader, suffix, node: None)
+
+
 def on_config(config, **kwargs):
     """Give the unversioned build (home + roadmap) the same menu as the
     versioned docs instead of a hand-copied one that drifts.
@@ -128,7 +137,7 @@ def on_config(config, **kwargs):
         return config
     base = os.path.join(os.path.dirname(os.path.abspath(config["config_file_path"])), "mkdocs.yml")
     with open(base, encoding="utf-8") as f:
-        config["nav"] = _unversioned_nav(yaml.safe_load(f)["nav"], config)
+        config["nav"] = _unversioned_nav(yaml.load(f, Loader=_NavLoader)["nav"], config)
     return config
 
 

@@ -8,6 +8,19 @@ This page defines the security contract for `cmd/manager` mode: trust assumption
 
 The model applies to the Kubernetes/CRD deployment path (`PostgresWatch` + `DeploySource`), including fleet mode via `spec.remoteClusterRef` (and deprecated `spec.remoteClusterSecretRef` for backward compatibility) plus the optional `spec.cnpgClusterRef` remote CloudNativePG `Cluster` health check, which reuses the same kubeconfig and trust boundary. It does **not** cover host/OS hardening, cloud IAM design outside Kubernetes, or arbitrary third-party webhook endpoints beyond the controls listed here.
 
+```mermaid
+flowchart LR
+  T["Tenant<br/>creates a PostgresWatch"]:::ext
+  M["manager<br/>broad Secret read"]:::radar
+  SP["Spoke cluster<br/>Kubernetes API"]:::ext
+  AE["Alert endpoint"]:::ext
+  T -->|"consent label required on the Secret"| M
+  M -->|"kubeconfig auth restrictions"| SP
+  M -->|"URL validation and optional allowlist"| AE
+```
+
+*Each arrow is a trust boundary and is labelled with the control that guards it.*
+
 ## Security profiles
 
 | Profile | Intended environment | Trust assumption | Tenancy model | Default recommendation |

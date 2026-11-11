@@ -16,6 +16,27 @@ This is opt-in at every level, on purpose:
 - Gated behind its own RBAC. See [RBAC](#rbac) below — a cluster that never sets `spec.autoAbort.enabled` doesn't need to grant this manager any access to Argo Rollouts at all.
 - A higher confidence bar than ordinary alerting. See [Confidence threshold](#confidence-threshold).
 
+```mermaid
+flowchart LR
+  D["Regression detected"]:::radar
+  A["Alert and<br/>PerformanceRegression"]:::out
+  G1["spec.autoAbort.enabled?"]:::gate
+  G2["Deploy event came from<br/>Argo Rollouts?"]:::gate
+  G3["Confidence at or above<br/>the threshold?"]:::gate
+  ABORT["Abort the canary<br/>patch rollouts/status"]:::k8s
+  ALONE["Alert only"]:::gate
+  D --> A
+  D --> G1
+  G1 -->|"yes"| G2
+  G1 -->|"no"| ALONE
+  G2 -->|"yes"| G3
+  G2 -->|"no"| ALONE
+  G3 -->|"yes"| ABORT
+  G3 -->|"no"| ALONE
+```
+
+*The alert is always sent. Aborting needs three conditions on top, and the manager also needs the optional Argo Rollouts RBAC.*
+
 ## Configuration
 
 ```yaml

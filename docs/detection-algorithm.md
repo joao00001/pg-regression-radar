@@ -6,6 +6,34 @@
 
 The Correlation Engine (`internal/correlation`) doesn't just compare a before/after mean — a naive comparison alone is prone to false positives whenever an unrelated latency shift happens to overlap the analysis window. This page explains the real two-stage pipeline it runs instead, inspired by [Hunter — DataStax Labs](https://github.com/datastax-labs/hunter) and the accompanying ICPE'23 paper, ["Hunter: Using Change Point Detection to Hunt for Performance Regressions"](https://arxiv.org/abs/2301.03034).
 
+```mermaid
+flowchart TB
+  A["Deploy event<br/>(or a periodic tick)"]:::radar
+  B["Enough samples and<br/>executions in both windows?"]:::gate
+  X["InsufficientData<br/>(retried until the window closes)"]:::gate
+  C["Stage 0, pre-filter:<br/>mean changed by the threshold or more?"]:::gate
+  D["Stage 1, E-divisive means:<br/>locate the change point"]:::radar
+  E["Change point within the<br/>tolerance of the deploy?"]:::gate
+  F["Stage 2, Welch t-test on the<br/>two real segments: significant?"]:::radar
+  M["Multiple-testing control<br/>(opt-in): survives?"]:::gate
+  Y["NoRegression"]:::gate
+  G["Detected<br/>alert + PerformanceRegression"]:::out
+  A --> B
+  B -->|"no"| X
+  B -->|"yes"| C
+  C -->|"no"| Y
+  C -->|"yes"| D
+  D --> E
+  E -->|"no"| Y
+  E -->|"yes"| F
+  F -->|"no"| Y
+  F -->|"yes"| M
+  M -->|"no"| Y
+  M -->|"yes"| G
+```
+
+*A query is reported only when every gate agrees: precision over recall.*
+
 ## What a latency sample is
 
 `pg_stat_statements` does not report the latency of the last scrape interval. `calls` and `total_exec_time` are counters that accumulate from the last reset, and `mean_exec_time` is their ratio, an average over the query's whole history. Feeding that value to a change-point test hides regressions: after a million calls at 10 ms, a query that becomes 5x slower for fifteen minutes moves the all-time mean from 10.0 ms to about 10.4 ms. A reset has the opposite effect and shows up as a step in the series that looks like a latency change.

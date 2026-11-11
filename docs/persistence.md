@@ -6,6 +6,21 @@
 
 By default (`--state-backend=memory`) all state lives only in process memory: the Collector keeps its per-`queryid` samples in an in-memory map, and the Ingester keeps deploy events in an in-memory slice. That means a pod restart loses all history, and running multiple replicas gives each one an inconsistent, independent view of the world. Setting `--state-backend=postgres` additionally persists both to Postgres, so history survives restarts and can be inspected/shared across replicas.
 
+```mermaid
+flowchart LR
+  subgraph PROC["operator process"]
+    COL["Collector<br/>samples per queryid"]:::radar
+    ING["Ingester<br/>deploy events"]:::radar
+  end
+  ST[("Postgres schema<br/>regression_radar")]:::ext
+  COL -.->|"writes, with --state-backend=postgres"| ST
+  ING -.->|"writes"| ST
+  ST -.->|"Backfill on startup"| COL
+  ST -.->|"Backfill on startup"| ING
+```
+
+*With the default memory backend nothing is persisted and a restart starts cold; with the Postgres backend history survives restarts.*
+
 ## Configuring it
 
 ```bash

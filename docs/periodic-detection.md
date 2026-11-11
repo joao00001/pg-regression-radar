@@ -14,6 +14,24 @@ This is opt-in, on purpose:
 - Per-watch/per-process. Enabling it for one `PostgresWatch`, or one `cmd/operator` process, doesn't affect any other.
 - Available in both run modes at once (see [Architecture Overview](architecture.md)) — this was a deliberate scope decision (see ADR-0001), not staged.
 
+```mermaid
+flowchart LR
+  T["Every tick"]:::radar
+  W["Window of 2 x windowMinutes<br/>ending now"]:::gate
+  O["Older half<br/>baseline"]:::gate
+  N["Newer half<br/>compared with it"]:::gate
+  S["Same statistics<br/>as deploy-triggered"]:::radar
+  R["Detected,<br/>if not already flagged"]:::out
+  T --> W
+  W --> O
+  W --> N
+  O --> S
+  N --> S
+  S --> R
+```
+
+*With no deploy to anchor on, the engine splits a window in half and compares the two halves.*
+
 ## How the window works
 
 Each tick, the engine looks at a window of `2 * windowMinutes` ending now, and splits it in half: the *older* half is the baseline, the *newer* half is what gets compared against it. There is no deploy timestamp to anchor the split on, so `windowMinutes` defaults to `60` — double the deploy-triggered default of `30` — since a shorter window would be noisier with nothing narrowing down where to look.

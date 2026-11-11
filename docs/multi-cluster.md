@@ -15,6 +15,27 @@ Two approaches are supported:
 
 On top of resolving a DSN across clusters, fleet mode also covers two related concerns, each with its own section below: validating that a referenced CloudNativePG `Cluster` actually exists and is healthy ([`spec.cnpgClusterRef`](#remote-cloudnativepg-cluster-validation)), and continuously verifying that a registered cluster's kubeconfig is still good ([cluster health checks](#cluster-health-checks)) — independent of whether any `PostgresWatch` currently references that cluster.
 
+```mermaid
+flowchart LR
+  subgraph HUB["Hub cluster"]
+    PW["PostgresWatch<br/>remoteClusterRef"]:::k8s
+    MGR["manager"]:::radar
+    PRC["PostgresRadarCluster<br/>(cluster-scoped)"]:::k8s
+    KS["kubeconfig Secret<br/>needs the consent label"]:::k8s
+  end
+  subgraph SPOKE["Spoke cluster"]
+    DS["DSN Secret<br/>read through the kubeconfig"]:::ext
+    PG[("PostgreSQL")]:::ext
+  end
+  PW -->|"1 reconcile"| MGR
+  MGR -->|"2 look up"| PRC
+  PRC -->|"3 kubeconfigSecretRef"| KS
+  MGR -->|"4 read the DSN"| DS
+  MGR -->|"5 scrape with the DSN"| PG
+```
+
+*The manager only ever reads one Secret from a spoke cluster; the connection to Postgres itself is a separate network path that you provide.*
+
 ## Cluster registry
 
 ### Registering a cluster

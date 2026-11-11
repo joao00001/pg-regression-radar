@@ -4,6 +4,28 @@
 
 Every artifact published by a release — container images, Helm chart, and attached SBOM/provenance attestations — is cryptographically signed and traceable back to the exact source commit and GitHub Actions run that produced it. This page explains the trust model and gives the exact commands to verify each artifact type.
 
+```mermaid
+flowchart LR
+  TAG["Git tag vX.Y.Z"]:::ext
+  subgraph REL["release.yml, GitHub Actions"]
+    B["Build images<br/>and chart"]:::radar
+    S["Trivy scan:<br/>fail on CRITICAL"]:::radar
+    SG["Sign keyless (Fulcio),<br/>SBOM and SLSA provenance"]:::radar
+  end
+  REG["ghcr.io<br/>image, chart, signatures"]:::out
+  LOG["Rekor<br/>transparency log"]:::ext
+  YOU["You: cosign verify<br/>against release.yml"]:::gate
+  TAG --> B
+  B --> S
+  S --> SG
+  SG --> REG
+  SG --> LOG
+  REG --> YOU
+  LOG --> YOU
+```
+
+*Verification checks that the artifact was signed by this repository's release workflow and that the signature is in the public log.*
+
 ## Trust model
 
 Signing uses [Cosign](https://github.com/sigstore/cosign) in **keyless mode**: instead of a stored private key (which can be stolen, rotated, or mis-scoped), the GitHub Actions runner exchanges its own OIDC token for a short-lived signing certificate from [Sigstore's public Fulcio CA](https://github.com/sigstore/fulcio). The certificate's Subject Alternative Name encodes the exact workflow URL and Git ref at build time. Every signature is recorded in [Rekor](https://github.com/sigstore/rekor), Sigstore's public, append-only transparency log, so it can be audited independently.
