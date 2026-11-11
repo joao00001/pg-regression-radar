@@ -6,14 +6,22 @@
 #   scripts/build_lab.sh            # rewrite the file
 #   scripts/build_lab.sh --check    # fail if the checked-in file is stale (CI)
 #
-# LAB_IMAGE_TAG picks the manager image tag baked into the file (default
-# "latest", the newest release).
+# The manager image tag baked into the file is, in order of preference:
+#   1. $LAB_IMAGE_TAG, if set (the release-prep workflow sets it to the version
+#      being released, so the manifest at every release tag pins that release);
+#   2. the tag already in the checked-in file, so a plain regeneration or a
+#      --check never silently moves the pin;
+#   3. "latest", for a first generation.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-TAG="${LAB_IMAGE_TAG:-latest}"
 OUT="examples/lab/00-radar.yaml"
+CURRENT_TAG=""
+if [ -f "$OUT" ]; then
+  CURRENT_TAG="$(grep -o 'pg-regression-radar/manager:[A-Za-z0-9._-]*' "$OUT" | head -n1 | cut -d: -f2 || true)"
+fi
+TAG="${LAB_IMAGE_TAG:-${CURRENT_TAG:-latest}}"
 MODE="${1:-write}"
 
 command -v helm >/dev/null || { echo "helm is required (https://helm.sh/docs/intro/install/)" >&2; exit 1; }
