@@ -1,10 +1,10 @@
 /*
  * A dot on the table of contents' track (the right sidebar) that follows the
- * active entry. Material marks the entry for the heading being read with
- * `md-nav__link--active` as the page scrolls; this watches that class and
- * moves the dot with a "pull": the leading end stretches to the new entry
- * first, then the trailing end catches up. Styles: docs/stylesheets/extra.css.
- * Without this script the active entry is just bold.
+ * active entry, the way mintlify.com/docs does: a small circle that slides to
+ * the entry being read. Material marks that entry with `md-nav__link--active`
+ * as the page scrolls; this watches the class and moves the dot. Styles
+ * (size, easing) live in docs/stylesheets/extra.css. Without this script the
+ * active entry is simply coloured.
  */
 (function () {
   "use strict";
@@ -14,17 +14,14 @@
   );
   if (!list) return;
 
-  var SIZE = 7;
-  var STRETCH_MS = 170;
-  var SETTLE_MS = 280;
+  var SIZE = 6;
   var dot = document.createElement("span");
   dot.className = "pgrr-toc-dot";
   dot.setAttribute("aria-hidden", "true");
   list.appendChild(dot);
 
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-  var target = null;
-  var timer = 0;
+  var placed = false;
   var frame = 0;
 
   function activeLink() {
@@ -42,41 +39,21 @@
     return y + pad + (line - SIZE) / 2;
   }
 
-  function place(top, height, ms, easing) {
-    dot.style.transitionDuration = ms + "ms";
-    if (easing) dot.style.transitionTimingFunction = easing;
-    dot.style.top = top + "px";
-    dot.style.height = height + "px";
-  }
-
   function moveTo(top) {
-    window.clearTimeout(timer);
-    var first = dot.style.opacity !== "1";
+    var first = !placed;
+    placed = true;
     dot.style.opacity = "1";
-    if (first || reduce.matches) {
-      place(top, SIZE, 0);
-      target = top;
-      return;
-    }
-    if (top === target) return;
-    var from = parseFloat(window.getComputedStyle(dot).top) || 0;
-    target = top;
-    var span = Math.abs(top - from);
-    // Stretch from where the dot is to the new entry (downwards the bottom
-    // end leads, upwards the top end does), then let the tail catch up.
-    place(Math.min(from, top), span + SIZE, STRETCH_MS, "cubic-bezier(.2,.7,.2,1)");
-    timer = window.setTimeout(function () {
-      place(top, SIZE, SETTLE_MS, "cubic-bezier(.5,0,.2,1)");
-    }, STRETCH_MS - 20);
+    // First placement (and reduced motion) jumps; later ones slide via CSS.
+    dot.style.transitionDuration = first || reduce.matches ? "0ms" : "";
+    dot.style.top = top + "px";
   }
 
   function update() {
     frame = 0;
     var link = activeLink();
     if (!link || !link.offsetParent) {
-      window.clearTimeout(timer);
       dot.style.opacity = "0";
-      target = null;
+      placed = false;
       return;
     }
     moveTo(topFor(link));
@@ -92,13 +69,11 @@
     subtree: true,
   });
   window.addEventListener("resize", function () {
-    target = null; // re-measure without animating
-    dot.style.opacity = "0";
+    placed = false; // re-measure without animating
     schedule();
   });
   window.addEventListener("load", function () {
-    target = null;
-    dot.style.opacity = "0";
+    placed = false;
     schedule();
   });
   schedule();
