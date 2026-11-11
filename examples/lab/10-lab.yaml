@@ -1,0 +1,359 @@
+# pg-regression-radar lab — step 2 of 3: the demo workload and the radar's watch.
+#
+# Apply it after 00-radar.yaml (see README.md in this directory). It creates,
+# in the pgrr-lab namespace:
+#
+#   postgres     PostgreSQL 16 with pg_stat_statements, seeded with 400k orders
+#                and a unique index on orders.order_ref
+#   orders-api   a stand-in application that runs the same lookup in a loop;
+#                its init container is a "migration" (version 1 makes sure the
+#                index exists)
+#   alert-sink   a tiny HTTP receiver that prints the alerts the radar sends,
+#                standing in for Slack/Teams
+#   orders       the PostgresWatch: scrape postgres every 5s, capture plans
+#   orders-api   the DeploySource: a rollout of the orders-api Deployment is a
+#                deploy event (sourceType: kubernetes, no webhook needed)
+#
+# Everything here is disposable: the lab's credentials are throwaway values
+# for a database that only exists inside the namespace.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: pgrr-lab
+  labels:
+    # The radar only reads a Secret its owner has opted in.
+    pg-regression-radar.io/allow-postgreswatch-access: "true"
+type: Opaque
+stringData:
+  password: lab-password
+  # Read by the PostgresWatch below (dsnSecretRef) and by orders-api.
+  dsn: postgres://postgres:lab-password@postgres.pgrr-lab.svc.cluster.local:5432/orders?sslmode=disable
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-seed
+  namespace: pgrr-lab
+data:
+  10-seed.sql: |
+    CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
+    CREATE TABLE orders (
+      id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      order_ref   bigint NOT NULL,
+      customer_id int    NOT NULL,
+      status      text   NOT NULL,
+      total       numeric(10,2) NOT NULL,
+      note        text   NOT NULL
+    );
+
+    INSERT INTO orders (order_ref, customer_id, status, total, note)
+    SELECT g::bigint * 7919,
+           (random() * 20000)::int,
+           (ARRAY['new','paid','shipped'])[1 + (random() * 2)::int],
+           (random() * 500)::numeric(10,2),
+           repeat('x', 60)
+    FROM generate_series(1, 400000) AS g;
+
+    -- order_ref is unique, so a lookup by it is a one-row Index Scan. Without
+    -- this index the same query is a sequential scan of the whole table.
+    CREATE UNIQUE INDEX orders_order_ref_idx ON orders (order_ref);
+
+    VACUUM ANALYZE orders;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: pgrr-lab
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: pgrr-lab
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/part-of: pgrr-lab
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          # pg_stat_statements must be preloaded. Parallel query is turned off
+          # so the plan without the index is a plain "Seq Scan" instead of a
+          # parallel "Gather", which keeps the plan-diff in the alert readable.
+          args:
+            - -c
+            - shared_preload_libraries=pg_stat_statements
+            - -c
+            - pg_stat_statements.track=all
+            - -c
+            - max_parallel_workers_per_gather=0
+          env:
+            - name: POSTGRES_DB
+              value: orders
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            # TCP (-h), not the unix socket: while the image runs the seed
+            # script it listens on the socket only, and the pod must not be
+            # Ready until seeding has finished.
+            exec:
+              command: ["pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "orders"]
+            periodSeconds: 2
+            failureThreshold: 90
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: seed
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: seed
+          configMap:
+            name: postgres-seed
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: pgrr-lab
+spec:
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-api-script
+  namespace: pgrr-lab
+data:
+  # Runs the same two statements about ten times a second. The literals change
+  # on every call and pg_stat_statements normalises them, so the radar sees one
+  # stable "lookup" query before and after a deploy.
+  run.sh: |
+    #!/bin/bash
+    export PGCONNECT_TIMEOUT=5
+    while true; do
+      {
+        while true; do
+          echo "SELECT id, total FROM orders WHERE order_ref = $((7919 * (RANDOM % 400000 + 1)));"
+          echo "SELECT status, count(*) FROM orders WHERE id < 2000 GROUP BY status;"
+          sleep 0.1
+        done
+      } | psql "$DSN" -X -q -o /dev/null
+      echo "lost the database connection, retrying" >&2
+      sleep 1
+    done
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-api
+  namespace: pgrr-lab
+  labels:
+    app.kubernetes.io/name: orders-api
+    app.kubernetes.io/part-of: pgrr-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orders-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orders-api
+        app.kubernetes.io/part-of: pgrr-lab
+      annotations:
+        pgrr-lab/version: v1
+    spec:
+      terminationGracePeriodSeconds: 1
+      initContainers:
+        # The "migration". Version 1 only makes sure the index exists.
+        - name: migrate
+          image: postgres:16
+          command:
+            - bash
+            - -c
+            - |
+              until psql "$DSN" -X -q -c "SELECT 1 FROM orders LIMIT 1" >/dev/null 2>&1; do
+                echo "waiting for the orders table"; sleep 2
+              done
+              psql "$DSN" -X -q -v ON_ERROR_STOP=1 \
+                -c "CREATE UNIQUE INDEX IF NOT EXISTS orders_order_ref_idx ON orders (order_ref)"
+          env:
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: dsn
+      containers:
+        - name: app
+          image: postgres:16
+          command: ["bash", "/script/run.sh"]
+          env:
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: dsn
+          volumeMounts:
+            - name: script
+              mountPath: /script
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+      volumes:
+        - name: script
+          configMap:
+            name: orders-api-script
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alert-sink-script
+  namespace: pgrr-lab
+data:
+  sink.py: |
+    import http.server, json, sys
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers.get("content-length", 0))).decode()
+            try:
+                msg = json.loads(body)
+                print("=" * 64, flush=True)
+                print(msg.get("text", ""), flush=True)
+                for att in msg.get("attachments", []):
+                    for f in att.get("fields", []):
+                        value = str(f.get("value", "")).replace("\n", "\n    ")
+                        print("  %-16s %s" % (f.get("title", ""), value), flush=True)
+            except Exception:
+                print("alert (raw):", body, flush=True)
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def log_message(self, *args):
+            pass
+
+    http.server.HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alert-sink
+  namespace: pgrr-lab
+  labels:
+    app.kubernetes.io/name: alert-sink
+    app.kubernetes.io/part-of: pgrr-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alert-sink
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alert-sink
+        app.kubernetes.io/part-of: pgrr-lab
+    spec:
+      containers:
+        - name: sink
+          image: python:3.12-alpine
+          command: ["python", "-u", "/script/sink.py"]
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 2
+          volumeMounts:
+            - name: script
+              mountPath: /script
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+      volumes:
+        - name: script
+          configMap:
+            name: alert-sink-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alert-sink
+  namespace: pgrr-lab
+spec:
+  selector:
+    app.kubernetes.io/name: alert-sink
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: PostgresWatch
+metadata:
+  name: orders
+  namespace: pgrr-lab
+spec:
+  clusterName: orders
+  dsnSecretRef:
+    name: postgres-credentials
+    key: dsn
+  # Lab-sized settings: the defaults (60s scrape, 10 samples, 100 executions,
+  # 30 minute window) are right for production and would make this demo slow.
+  scrapeIntervalSeconds: 5
+  windowMinutes: 5
+  minSamples: 3
+  minExecutions: 1
+  latencyChangeThreshold: "0.20"
+  pValueThreshold: "0.05"
+  # Compare the query plan before and after: the alert will say
+  # "Index Scan -> Seq Scan". Needs PostgreSQL 16 or newer.
+  capturePlans: true
+  alerting:
+    format: slack
+    url: http://alert-sink.pgrr-lab.svc.cluster.local:8080/
+---
+apiVersion: radar.pgregressionradar.io/v1alpha1
+kind: DeploySource
+metadata:
+  name: orders-api
+  namespace: pgrr-lab
+spec:
+  postgresWatchRef: orders
+  # No webhook and no GitOps tool: the radar watches the Deployment itself and
+  # records a deploy each time a rollout completes on a new revision.
+  sourceType: kubernetes
+  workloadKind: Deployment
+  appName: orders-api

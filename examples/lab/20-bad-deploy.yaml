@@ -1,0 +1,75 @@
+# pg-regression-radar lab — step 3 of 3: the bad deploy.
+#
+# Version 2 of orders-api ships a "migration" that drops the index on
+# orders.order_ref (think of an index that looked unused in a cleanup). The
+# application's queries are unchanged, but every lookup now scans the whole
+# table. Applying this file is an ordinary rollout, so the radar records a
+# deploy, notices the slowdown, and ties it to this revision.
+#
+# To undo it (this recreates the index through version 1's migration):
+#
+#   kubectl -n pgrr-lab rollout undo deployment/orders-api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-api
+  namespace: pgrr-lab
+  labels:
+    app.kubernetes.io/name: orders-api
+    app.kubernetes.io/part-of: pgrr-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orders-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orders-api
+        app.kubernetes.io/part-of: pgrr-lab
+      annotations:
+        pgrr-lab/version: v2
+    spec:
+      terminationGracePeriodSeconds: 1
+      initContainers:
+        # The "migration". Version 2 drops the index. Nothing else changes: the
+        # application still runs the exact same queries.
+        - name: migrate
+          image: postgres:16
+          command:
+            - bash
+            - -c
+            - |
+              until psql "$DSN" -X -q -c "SELECT 1 FROM orders LIMIT 1" >/dev/null 2>&1; do
+                echo "waiting for the orders table"; sleep 2
+              done
+              psql "$DSN" -X -q -v ON_ERROR_STOP=1 \
+                -c "DROP INDEX IF EXISTS orders_order_ref_idx"
+          env:
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: dsn
+      containers:
+        - name: app
+          image: postgres:16
+          command: ["bash", "/script/run.sh"]
+          env:
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: dsn
+          volumeMounts:
+            - name: script
+              mountPath: /script
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+      volumes:
+        - name: script
+          configMap:
+            name: orders-api-script

@@ -117,6 +117,7 @@ nav:
   - Our math: https://joao00001.github.io/pg-regression-radar/our-math/
   - Docs:
       - Get Started:
+          - Try it in five minutes (lab): lab.md
           - Installation: installation.md
           - Getting Started: getting-started.md
           - Quickstart Validation: quickstart-validation.md
