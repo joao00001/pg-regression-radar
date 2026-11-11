@@ -136,6 +136,27 @@ A broken template (bad `text/template` syntax) is rejected at construction time 
 
 By default any webhook URL that passes the static SSRF blocklist (no loopback, no link-local, no cloud-metadata hostnames) is accepted. Two additional, opt-in policies let operators lock down where alerts can be sent — useful in shared or multi-tenant clusters.
 
+```mermaid
+flowchart TB
+  U["Alert destination URL"]:::radar
+  B["Passes the SSRF blocklist?<br/>no loopback, link-local or metadata"]:::gate
+  P["destinationPolicy"]:::gate
+  AL["Host in the<br/>allowed destinations?"]:::gate
+  REL["Send to the relay URL<br/>(spec.alerting.url ignored)"]:::out
+  SEND["Send to the configured URL"]:::out
+  NO["Rejected: the watch<br/>fails to reconcile"]:::gate
+  U --> B
+  B -->|"no"| NO
+  B -->|"yes"| P
+  P -->|"permissive"| SEND
+  P -->|"allowlist"| AL
+  P -->|"relay-only"| REL
+  AL -->|"yes"| SEND
+  AL -->|"no"| NO
+```
+
+*What each policy decides before an alert is sent.*
+
 ### `permissive` (default)
 
 The URL configured in `spec.alerting.url` (or via `--alert-url` / `--slack-url` in the standalone operator) must only clear the built-in SSRF blocklist. No other restriction applies. This is the default and is fully backward-compatible.

@@ -1747,3 +1747,39 @@
   @keyframes pgrr-page-out { to { opacity: 0; } }
   @keyframes pgrr-page-in { from { opacity: 0; transform: translateY(6px); } }
 }
+
+/* ---- Diagrams (Mermaid) ----
+   Tokens for docs/javascripts/mermaid-theme.js, which turns them into node
+   styles. See the class list there. */
+[data-md-color-scheme="slate"] {
+  --pgrr-dg-card: #1d1f1f;
+  --pgrr-dg-line: #3a3d3d;
+  --pgrr-dg-k8s: #6ea8ff;
+  --pgrr-dg-k8s-bg: #121c2e;
+}
+
+[data-md-color-scheme="default"] {
+  --pgrr-dg-card: #f1f2f2;
+  --pgrr-dg-line: #c9cece;
+  --pgrr-dg-k8s: #2f6fdb;
+  --pgrr-dg-k8s-bg: #eaf2ff;
+}
+
+[data-md-color-scheme] {
+  --md-mermaid-font-family: var(--md-text-font-family), sans-serif;
+  --md-mermaid-label-bg-color: var(--md-default-bg-color);
+  --md-mermaid-label-fg-color: var(--md-default-fg-color--light);
+  --md-mermaid-edge-color: var(--md-default-fg-color--light);
+  --md-mermaid-node-bg-color: var(--pgrr-dg-card);
+  --md-mermaid-node-fg-color: var(--pgrr-dg-line);
+}
+
+.md-typeset .mermaid {
+  margin: 1.2em 0 0.4em;
+}
+
+/* The line under a diagram says what to look at. */
+.md-typeset .mermaid + p > em:only-child {
+  font-size: 0.7rem;
+  color: var(--md-default-fg-color--light);
+}

@@ -6,6 +6,25 @@
 
 Every tagged release (`git tag vX.Y.Z`, matching [CI/CD](ci-cd.md#releaseyml-on-pushing-a-v-tag)'s `release.yml` workflow) publishes five container images and one Helm chart to `ghcr.io/joao00001` — see [Option 3](#option-3-pull-or-build-the-container-image) and [Option 4](#option-4-install-the-helm-chart) below. Building from source (cloning the repo, or `go install` directly from the module proxy) still works exactly as before and is the only option for anything unreleased. This page covers *obtaining* pg-regression-radar; see [Getting Started](getting-started.md) for actually running it once installed.
 
+```mermaid
+flowchart TB
+  Q1["Running in Kubernetes?"]:::gate
+  Q2["Need a container image?"]:::gate
+  Q3["Need unreleased code?"]:::gate
+  H["Option 4: Helm chart"]:::out
+  I["Option 3: container image"]:::out
+  S["Option 2: build from source"]:::out
+  G["Option 1: go install"]:::out
+  Q1 -->|"yes"| H
+  Q1 -->|"no"| Q2
+  Q2 -->|"yes"| I
+  Q2 -->|"no"| Q3
+  Q3 -->|"yes"| S
+  Q3 -->|"no"| G
+```
+
+*Pick the first option that fits; `go install` is the simplest when none of the others applies.*
+
 ## Prerequisites
 
 - Go 1.22+ (to build from source)

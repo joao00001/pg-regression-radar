@@ -10,6 +10,28 @@ The story it plays out:
 
 Everything lives in the `pgrr-lab` namespace and is deleted with it. The manifests are in [`examples/lab`](https://github.com/joao00001/pg-regression-radar/tree/main/examples/lab).
 
+```mermaid
+sequenceDiagram
+  autonumber
+  participant You
+  participant K as Kubernetes
+  participant R as Radar
+  participant P as Postgres
+  participant S as alert-sink
+  loop every 5 s, about 3 minutes
+    R->>P: scrape pg_stat_statements
+  end
+  Note over R: baseline learned
+  You->>K: apply 20-bad-deploy.yaml
+  K-->>R: rollout finished on a new revision
+  R->>P: keep scraping
+  R->>R: compare latency before and after
+  R->>K: create PerformanceRegression
+  R->>S: alert with the plan diff
+```
+
+*The lab in time order: learn a baseline, ship the bad deploy, and the radar ties the slowdown to that rollout.*
+
 ## Before you start
 
 You need a cluster you can throw things at and `kubectl` pointed at it. If you have none, [kind](https://kind.sigs.k8s.io/) is the quickest:

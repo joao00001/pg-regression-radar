@@ -8,6 +8,21 @@ When a regression is detected — from either the deploy-triggered or the [perio
 
 Only OTLP/HTTP is implemented (binary protobuf or JSON, optional gzip), at the wire level — no gRPC and no OpenTelemetry SDK dependency. The export goes to the standard `POST <endpoint>/v1/logs` of any OpenTelemetry Collector or OTLP-capable backend.
 
+```mermaid
+flowchart LR
+  ENG["Correlation Engine<br/>regression detected"]:::radar
+  AL["Alert notifier"]:::radar
+  EXP["OTLP exporter"]:::radar
+  CH["Slack, Teams,<br/>PagerDuty, webhook"]:::out
+  OC["OpenTelemetry Collector<br/>or OTLP backend"]:::ext
+  ENG --> AL
+  ENG -.->|"when configured"| EXP
+  AL --> CH
+  EXP -->|"one log record, POST /v1/logs"| OC
+```
+
+*OTLP export is in addition to the alert, never instead of it.*
+
 ## Enabling it
 
 ### PostgresWatch (`cmd/manager`)

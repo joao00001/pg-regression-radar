@@ -6,6 +6,29 @@
 
 `internal/correlation.Engine` depends only on a two-method `SampleSource` interface (`SamplesInRange`, `AllQueryIDs` — `internal/correlation/engine.go`), not concretely on `internal/collector.Collector`. `internal/telemetry/promsource.Source` is a second implementation of that same interface, backed by PromQL queries against a Prometheus HTTP API instead of a direct database connection. This page covers what it does and, more importantly, what it currently cannot do without extra setup — that second part matters more here than for most pages.
 
+```mermaid
+flowchart LR
+  PG[("PostgreSQL<br/>pg_stat_statements")]:::ext
+  subgraph OTEL["OpenTelemetry Collector"]
+    RC["postgresqlreceiver<br/>top_query log records"]:::ext
+    TR["transform and<br/>signal_to_metrics"]:::ext
+    EX["prometheusexporter"]:::ext
+  end
+  PR["Prometheus<br/>recording rule"]:::ext
+  subgraph RADAR["pg-regression-radar"]
+    SRC["promsource.Source"]:::radar
+    ENG["Correlation Engine"]:::radar
+  end
+  PG --> RC
+  RC --> TR
+  TR -->|"calls and exec time per queryid"| EX
+  EX -->|"scraped"| PR
+  PR -->|"PromQL"| SRC
+  SRC -->|"samples"| ENG
+```
+
+*The radar reads latency from Prometheus instead of connecting to Postgres; the Collector pipeline has to produce a per-query metric first.*
+
 ## The real gap: per-query attribution isn't there yet, out of the box
 
 opentelemetry-collector-contrib's `postgresqlreceiver` scrapes `pg_stat_statements` and exposes `postgresql.query.execution.time` — but as of this writing that metric is a **cumulative Sum scoped to `db.namespace` (the database) only**. It carries no `queryid` and no query text. Per-query detail (`queryid`, calls, exec time, query text) exists only on the receiver's `db.server.top_query` **log record**, and a metrics-only Prometheus exporter never sees log records.
