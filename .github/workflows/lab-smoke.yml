@@ -1,0 +1,185 @@
+name: Lab
+
+# Guards the "try it in five minutes" lab under examples/lab, the first thing a
+# new user runs.
+#
+#   manifests  Cheap, on every PR that touches the lab or the chart: the
+#              generated examples/lab/00-radar.yaml must match what
+#              scripts/build_lab.sh renders from the chart right now.
+#
+#   smoke      A real kind cluster running the lab exactly as the README does
+#              (kubectl apply of the three manifests, nothing else), then
+#              asserting the whole story: the radar detects the slowdown that
+#              orders-api v2's migration causes, ties it to the rollout, reports
+#              Index Scan -> Seq Scan, and the alert reaches the sink. Slow, so
+#              it is opt-in: run it manually, add the `run-lab-smoke` label to a
+#              PR, or let the weekly schedule run it against the PUBLISHED
+#              image (a lab that stops working for users should be noticed
+#              even when nobody touched it).
+#
+# On a manual run or a labelled PR the manager image is built from the commit
+# under test and loaded into kind, so the lab is proven against the code being
+# changed. The scheduled run uses the image 00-radar.yaml references as-is.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "17 5 * * 1"
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - "examples/lab/**"
+      - "deploy/helm/deploylens/**"
+      - "scripts/build_lab.sh"
+      - ".github/workflows/lab-smoke.yml"
+
+permissions:
+  contents: read
+
+env:
+  NAMESPACE: pgrr-lab
+  LOCAL_IMAGE: pg-regression-radar/manager:lab-smoke
+
+jobs:
+  manifests:
+    name: Lab manifests are valid and up to date
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+        with:
+          version: v3.19.0
+      - name: examples/lab/00-radar.yaml matches the chart
+        run: scripts/build_lab.sh --check
+
+  smoke:
+    name: kind cluster, lab end to end
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      (github.event_name == 'pull_request' &&
+        (
+          (github.event.action == 'labeled' && github.event.label.name == 'run-lab-smoke') ||
+          (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'run-lab-smoke'))
+        )
+      )
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the manager image from this commit
+        if: github.event_name != 'schedule'
+        run: docker build --target manager -t "${LOCAL_IMAGE}" .
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          version: v0.31.0
+          cluster_name: pgrr-lab
+          wait: 90s
+
+      - name: Load the manager image into kind
+        if: github.event_name != 'schedule'
+        run: kind load docker-image "${LOCAL_IMAGE}" --name pgrr-lab
+
+      - name: "Step 1: install the radar"
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ]; then
+            kubectl apply -f examples/lab/00-radar.yaml
+          else
+            # Same file the README applies, with the image swapped for the one
+            # just built (its tag is not "latest", so IfNotPresent keeps it).
+            sed "s#ghcr.io/joao00001/pg-regression-radar/manager:[A-Za-z0-9._-]*#${LOCAL_IMAGE}#" \
+              examples/lab/00-radar.yaml | kubectl apply -f -
+          fi
+          kubectl wait --for=condition=Established --timeout=60s \
+            crd/postgreswatches.radar.pgregressionradar.io \
+            crd/deploysources.radar.pgregressionradar.io \
+            crd/performanceregressions.radar.pgregressionradar.io
+          kubectl -n "${NAMESPACE}" rollout status deployment/pgrr-manager --timeout=180s
+
+      - name: "Step 2: start the lab"
+        run: |
+          kubectl apply -f examples/lab/10-lab.yaml
+          kubectl -n "${NAMESPACE}" rollout status deployment/postgres --timeout=300s
+          kubectl -n "${NAMESPACE}" rollout status deployment/alert-sink --timeout=300s
+          kubectl -n "${NAMESPACE}" rollout status deployment/orders-api --timeout=300s
+          kubectl -n "${NAMESPACE}" wait postgreswatch/orders \
+            --for=jsonpath='{.status.phase}'=Running --timeout=180s
+          kubectl -n "${NAMESPACE}" wait deploysource/orders-api \
+            --for=jsonpath='{.status.phase}'=Ready --timeout=180s
+
+      - name: Let the radar learn the baseline (the README says to wait 3 minutes)
+        run: |
+          # Without this wait, the rollout event recorded when orders-api first
+          # started could still be inside its analysis window and be blamed for
+          # the slowdown below instead of the real deploy.
+          sleep 190
+          kubectl -n "${NAMESPACE}" get postgreswatch orders
+
+      - name: "Step 3: ship the bad deploy"
+        run: |
+          kubectl apply -f examples/lab/20-bad-deploy.yaml
+          kubectl -n "${NAMESPACE}" rollout status deployment/orders-api --timeout=180s
+
+      - name: The radar reports the regression, with the plan change
+        run: |
+          for i in $(seq 1 60); do
+            kubectl -n "${NAMESPACE}" get performanceregressions -o json > /tmp/regressions.json
+            jq -e '[.items[] | select(.status.status == "Detected" and (.spec.queryText | contains("order_ref")))] | length > 0' \
+              /tmp/regressions.json >/dev/null && break
+            sleep 5
+            if [ "$i" -eq 60 ]; then
+              echo "::error::No Detected PerformanceRegression for the order_ref lookup after 5 minutes."
+              kubectl -n "${NAMESPACE}" get performanceregressions -o yaml || true
+              exit 1
+            fi
+          done
+          kubectl -n "${NAMESPACE}" get performanceregressions
+          reg="$(jq -c '[.items[] | select(.status.status == "Detected" and (.spec.queryText | contains("order_ref")))][0]' /tmp/regressions.json)"
+          echo "$reg" | jq .
+
+          echo "$reg" | jq -e '.status.latencyChangeFactor | tonumber | . > 5' >/dev/null \
+            || { echo "::error::latencyChangeFactor is not a clear slowdown"; exit 1; }
+          echo "$reg" | jq -e '.status.planDiffSummary | contains("Index Scan") and contains("Seq Scan")' >/dev/null \
+            || { echo "::error::planDiffSummary does not show Index Scan -> Seq Scan"; exit 1; }
+          echo "$reg" | jq -e '.spec.deployEventId | startswith("k8s-Deployment-pgrr-lab-orders-api-")' >/dev/null \
+            || { echo "::error::the regression is not tied to an orders-api rollout"; exit 1; }
+
+      - name: The alert reached the sink
+        run: |
+          kubectl -n "${NAMESPACE}" logs deploy/alert-sink > /tmp/alert-sink.log
+          cat /tmp/alert-sink.log
+          grep -q "performance regression detected" /tmp/alert-sink.log
+          grep -q "Index Scan" /tmp/alert-sink.log
+
+      - name: Rolling back puts the index back
+        run: |
+          kubectl -n "${NAMESPACE}" rollout undo deployment/orders-api
+          kubectl -n "${NAMESPACE}" rollout status deployment/orders-api --timeout=180s
+          kubectl -n "${NAMESPACE}" exec deploy/postgres -- \
+            psql -U postgres -d orders -tAc "SELECT indexname FROM pg_indexes WHERE tablename = 'orders' AND indexname = 'orders_order_ref_idx'" \
+            | grep -q orders_order_ref_idx
+
+      - name: Collect diagnostics
+        if: always()
+        run: |
+          mkdir -p /tmp/diag
+          kubectl -n "${NAMESPACE}" get all,postgreswatch,deploysource,performanceregression -o wide > /tmp/diag/resources.txt 2>&1 || true
+          kubectl -n "${NAMESPACE}" get postgreswatch,deploysource,performanceregression -o yaml > /tmp/diag/resources.yaml 2>&1 || true
+          kubectl -n "${NAMESPACE}" get events --sort-by=.lastTimestamp > /tmp/diag/events.txt 2>&1 || true
+          for d in pgrr-manager postgres orders-api alert-sink; do
+            kubectl -n "${NAMESPACE}" logs "deploy/${d}" --all-containers --tail=1000 > "/tmp/diag/${d}.log" 2>&1 || true
+          done
+          [ -f /tmp/regressions.json ] && cp /tmp/regressions.json /tmp/diag/ || true
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lab-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/diag
+          retention-days: 14
+          if-no-files-found: warn

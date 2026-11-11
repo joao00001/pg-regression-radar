@@ -70,6 +70,8 @@ Full walkthrough: [Regression Scenario Example](https://joao00001.github.io/pg-r
 
 ## Quick start
 
+**Want to see it work first?** The [lab](https://joao00001.github.io/pg-regression-radar/lab/) runs in any Kubernetes cluster with three `kubectl apply` commands: no database, ArgoCD or Slack of your own. It ships a bad deploy and shows the radar catching it.
+
 Install the CLI and run it against a single cluster:
 
 ```bash
