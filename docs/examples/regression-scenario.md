@@ -8,7 +8,8 @@ This scenario gives external users a deterministic way to validate end-to-end be
 
 The workflow is run-mode agnostic: `operator`, `manager`, and Helm all use the same database workload and webhook payloads. Only where you read results differs by mode.
 
-> **Important timing note (E-divisive requirement):** detection needs a time series that spans multiple scrape windows, not a single burst of queries in one scrape cycle. Keep each traffic phase running for at least **3–4 scrape intervals**. For quick demos, start pg-regression-radar with `--scrape-interval 1s` and keep each phase running for ~20–30 seconds total.
+!!! note "Timing (E-divisive requirement)"
+    Detection needs a time series that spans multiple scrape windows, not a single burst of queries in one scrape cycle. Keep each traffic phase running for at least **3–4 scrape intervals**. For quick demos, start pg-regression-radar with `--scrape-interval 1s` and keep each phase running for ~20–30 seconds total.
 
 ## 1) Set up PostgreSQL and test data
 

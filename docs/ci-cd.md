@@ -75,7 +75,8 @@ Semantic SAST for Go via GitHub's own CodeQL engine — see the Security scannin
 
 Findings appear under Security -> Code scanning alerts, never as a failed check — see the Security scanning table above for why that's true of code scanning generically, not a severity threshold that could be tuned.
 
-**One-time manual note:** if this repo ever enables "Default setup" for code scanning in Settings -> Code security, GitHub manages its own CodeQL workflow and this file becomes redundant with it — the two should not both run. No such setup exists yet, so `codeql.yml` is the only CodeQL workflow.
+!!! note "One-time manual note"
+    If this repo ever enables "Default setup" for code scanning in Settings -> Code security, GitHub manages its own CodeQL workflow and this file becomes redundant with it — the two should not both run. No such setup exists yet, so `codeql.yml` is the only CodeQL workflow.
 
 ## `dco.yml` — on every PR to `main`
 
@@ -96,7 +97,8 @@ If another `feat`/`fix`/`perf` PR merges while the release-prep PR is still open
 
 This automates *building* the changelog, not *deciding when to release*: a person still reviews the compiled `CHANGELOG.md` diff like any other PR, merges it, and only then tags — see [CONTRIBUTING.md](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md#release-notes--changeset-fragments). Full auto-tagging (building the changelog *and* creating/pushing the `vX.Y.Z` tag with no review step) was deliberately not chosen: it would need CI to either force-push a moved tag or bypass this repo's own branch protection to push straight to `main`/`release-X.Y`, both of which trade away the review step for not much real benefit — the changelog-building half was the actual repetitive manual work, and this workflow already removes exactly that.
 
-**One-time manual prerequisite**, same shape as `release.yml`'s GHCR note: Settings → Actions → General → Workflow permissions must allow "Read and write permissions", **and** "Allow GitHub Actions to create and approve pull requests" must be checked — without the latter, `create-pull-request` fails to open the PR even though this workflow's own `permissions:` block is otherwise sufficient.
+!!! note "One-time manual prerequisite"
+    Same shape as `release.yml`'s GHCR note: Settings → Actions → General → Workflow permissions must allow "Read and write permissions", **and** "Allow GitHub Actions to create and approve pull requests" must be checked — without the latter, `create-pull-request` fails to open the PR even though this workflow's own `permissions:` block is otherwise sufficient.
 
 See [Backporting](backporting.md#cutting-a-patch-release-from-a-maintenance-branch) for the full walkthrough of cutting a patch release from a `release-X.Y` branch once one or more backport PRs have merged into it.
 
@@ -178,7 +180,8 @@ Publishes a release: builds, scans, signs, and pushes every artifact this repo s
 
 **Permissions:** `packages: write` (`images`, `manifests`, and `helm-chart`, to push to `ghcr.io`), `id-token: write` (`images`, `manifests`, and `helm-chart`, for cosign's OIDC-to-Fulcio exchange), and `contents: write` (`release-notes` only, for `softprops/action-gh-release` to create the Release). All three are satisfied entirely by the built-in `GITHUB_TOKEN` — no registry credential secret is configured or needed, since GHCR is free for public repositories and accepts `GITHUB_TOKEN` directly.
 
-**One-time manual prerequisite:** GHCR pushes need Settings → Actions → General → Workflow permissions set to "Read and write permissions" on this repository — that setting can't be applied from workflow YAML, and without it every push in this workflow fails with 403 regardless of the `permissions:` block above. See the workflow's own top comment.
+!!! note "One-time manual prerequisite"
+    GHCR pushes need Settings → Actions → General → Workflow permissions set to "Read and write permissions" on this repository — that setting can't be applied from workflow YAML, and without it every push in this workflow fails with 403 regardless of the `permissions:` block above. See the workflow's own top comment.
 
 **Chart versioning:** `deploy/helm/deploylens/Chart.yaml`'s checked-in `version`/`appVersion` are development-time placeholders only — `helm package --version --app-version` overrides both unconditionally from the pushed git tag at release time, so they never need editing in lockstep with a release. This is a deliberate design choice, not a gap.
 
@@ -200,7 +203,8 @@ This used to be one job that redeployed the live site on every push to `main` to
 
 **Stable vs. pre-release tags:** a tag containing a `-` (this repo's existing release-candidate convention, e.g. `v1.0.0-rc1`) is deployed as its own permanent, linkable version but never becomes the `latest` alias — only a tag with no `-` (a real `vX.Y.Z` release) moves `latest`, and with it, what a visitor sees at `/latest/`.
 
-**One-time manual prerequisite:** Settings → Pages → Source must be "Deploy from a branch", branch `gh-pages`, folder `/ (root)` — **not** "GitHub Actions". mike commits the built site directly to the `gh-pages` branch itself (see [mike's own "How It Works"](https://github.com/jimporter/mike#how-it-works)); there's no artifact-upload step here for the old "GitHub Actions" Pages source to serve.
+!!! note "One-time manual prerequisite"
+    Settings → Pages → Source must be "Deploy from a branch", branch `gh-pages`, folder `/ (root)` — **not** "GitHub Actions". mike commits the built site directly to the `gh-pages` branch itself (see [mike's own "How It Works"](https://github.com/jimporter/mike#how-it-works)); there's no artifact-upload step here for the old "GitHub Actions" Pages source to serve.
 
 ### Unversioned pages (home, roadmap, playground and our math)
 
