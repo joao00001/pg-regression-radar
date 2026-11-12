@@ -1393,3 +1393,240 @@
     padding: 38px var(--h-pad) 34px;
   }
 }
+
+/* ----------------------------------------------------------------------
+ * Real run (the recorded two-terminal demo)
+ *
+ * The video sits on the same ruled grid as the chart above it; its note
+ * reuses .pgrr-radar-note (and its rule). The terminals are always dark, so
+ * the player keeps a dark backdrop in both color schemes.
+ * ------------------------------------------------------------------- */
+.pgrr-demo {
+  position: relative;
+}
+
+.pgrr-demo-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  background: #0b0c0e;
+  object-fit: contain;
+}
+
+/* Automatic playback: the status line and the step segments follow the video
+   clock (docs/javascripts/home-demo.js). The player has no controls, so the
+   clip is not clickable. */
+.pgrr-demo.is-auto .pgrr-demo-video {
+  pointer-events: none;
+}
+
+.pgrr-demo-clock {
+  flex: 0 0 auto;
+  color: var(--h-muted);
+  font: 500 0.58rem/1.3 var(--md-code-font-family, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pgrr-demo-status.is-swap {
+  animation: pgrr-demo-swap 0.35s ease-out;
+}
+
+@keyframes pgrr-demo-swap {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pgrr-demo-steps {
+  display: flex;
+  gap: 4px;
+  padding: 10px var(--h-pad) 11px;
+  border-bottom: 1px solid var(--h-border);
+  background: var(--h-panel);
+}
+
+.pgrr-demo-steps:empty {
+  display: none;
+}
+
+.pgrr-demo-seg {
+  position: relative;
+  flex: 1 1 0;
+  height: 3px;
+  overflow: hidden;
+  background: var(--h-border);
+}
+
+.pgrr-demo-seg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #0f766e;
+  transform: scaleX(var(--p, 0));
+  transform-origin: left;
+}
+
+.pgrr-demo-seg.is-alert::after {
+  background: var(--h-accent-solid);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-demo-status.is-swap {
+    animation: none;
+  }
+}
+
+/* Pause / play: the stage is the control. A centered round button with a
+   blurred backdrop shows on hover (and stays while paused, with a soft blur
+   over the clip); nothing sits in the corners or the edges. */
+.pgrr-demo-note {
+  padding: 5px var(--h-pad) 6px;
+  font-size: 0.5rem;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
+.pgrr-demo-stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.pgrr-demo-toggle {
+  display: none;
+}
+
+.pgrr-demo.is-auto .pgrr-demo-stage {
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pgrr-demo.is-auto .pgrr-demo-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 9, 10, 0);
+  -webkit-backdrop-filter: blur(0);
+  backdrop-filter: blur(0);
+  transition: background 0.35s ease, backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease;
+  pointer-events: none;
+}
+
+.pgrr-demo.is-paused .pgrr-demo-stage::after {
+  background: rgba(8, 9, 10, 0.34);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+}
+
+.pgrr-demo.is-auto .pgrr-demo-toggle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 4.2rem;
+  height: 4.2rem;
+  margin: -2.1rem 0 0 -2.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  background: rgba(20, 22, 22, 0.42);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35);
+  color: #f4f6f4;
+  opacity: 0;
+  transform: scale(0.82);
+  transition: opacity 0.28s ease, transform 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.2), border-color 0.25s;
+  pointer-events: none;
+}
+
+.pgrr-demo.is-auto .pgrr-demo-stage:hover .pgrr-demo-toggle,
+.pgrr-demo.is-auto .pgrr-demo-stage:focus-visible .pgrr-demo-toggle,
+.pgrr-demo.is-paused .pgrr-demo-toggle {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pgrr-demo.is-auto .pgrr-demo-stage:hover .pgrr-demo-toggle {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.pgrr-demo-toggle::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.pgrr-demo.is-pop .pgrr-demo-toggle::before {
+  animation: pgrr-demo-ring 0.55s ease-out;
+}
+
+@keyframes pgrr-demo-ring {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+.pgrr-demo-i {
+  position: absolute;
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentColor;
+  transition: opacity 0.22s ease, transform 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.pgrr-demo-i--play {
+  opacity: 0;
+  transform: scale(0.6) rotate(-30deg);
+}
+
+.pgrr-demo.is-paused .pgrr-demo-i--play {
+  opacity: 1;
+  transform: none;
+}
+
+.pgrr-demo.is-paused .pgrr-demo-i--pause {
+  opacity: 0;
+  transform: scale(0.6) rotate(30deg);
+}
+
+.pgrr-demo.is-paused .pgrr-demo-status.is-swap {
+  animation-play-state: paused;
+}
+
+.pgrr-demo-seg::after {
+  transition: background 0.25s;
+}
+
+.pgrr-demo.is-paused .pgrr-demo-seg::after {
+  filter: saturate(0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-demo-toggle,
+  .pgrr-demo-i,
+  .pgrr-demo-stage::after {
+    transition: none !important;
+  }
+
+  .pgrr-demo.is-pop .pgrr-demo-toggle::before {
+    animation: none;
+  }
+}
