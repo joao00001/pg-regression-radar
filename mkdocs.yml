@@ -74,11 +74,12 @@ plugins:
 
 extra:
   pgrr_build: versioned
-  # The community chat, linked from the Contribute page and the footer. Replace
-  # the invite URL (and the name, if it differs) once the server exists.
+  # The community chat, linked from the Contribute page and the footer. The
+  # invite is permanent (no expiry, no use limit); if it is ever revoked,
+  # create a new one and replace the URL here.
   discord:
-    name: PG Regression Radar
-    url: https://discord.com/invite/CHANGE-ME
+    name: pg_regression_radar
+    url: https://discord.gg/ZShn8s3mh
   version:
     provider: mike
     # Show the alias (e.g. "latest") next to the version number in the
