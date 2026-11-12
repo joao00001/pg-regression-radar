@@ -34,6 +34,7 @@
           <li><a href="{{ root }}playground/">Playground</a></li>
           <li><a href="{{ root }}our-math/">Our math</a></li>
           <li><a href="{{ root }}roadmap/">Roadmap</a></li>
+          <li><a href="{{ root }}contribute/">Contribute</a></li>
         </ul>
       </div>
       <div class="pgrr-footer__col">
@@ -60,6 +61,9 @@
         <h2>Community</h2>
         <ul>
           <li><a href="{{ repo }}/blob/main/CONTRIBUTING.md">Contributing</a></li>
+          {%- if config.extra.discord and config.extra.discord.url %}
+          <li><a href="{{ config.extra.discord.url }}">Discord</a></li>
+          {%- endif %}
           <li><a href="{{ repo }}/blob/main/CODE_OF_CONDUCT.md">Code of conduct</a></li>
           <li><a href="{{ docs }}security-model/">Security model</a></li>
           <li><a href="{{ repo }}/blob/main/LICENSE">License</a></li>

@@ -282,6 +282,5 @@ hide:
 <li id="ref-7"><span class="pgrr-rn">[7]</span>D. Daly et al., “The use of change point detection to identify software performance regressions in a continuous integration system”, <em>ICPE</em> 2020. <a href="https://arxiv.org/abs/2003.00584">arXiv:2003.00584</a></li>
 </ul>
 
-<p class="pgrr-foot" markdown="1">Licensed under Apache 2.0 — see [LICENSE](https://github.com/joao00001/pg-regression-radar/blob/main/LICENSE).</p>
 
 </div>

@@ -55,6 +55,7 @@ exclude_docs: |
   /roadmap.md
   /playground.md
   /our-math.md
+  /contribute.md
   /assets/playground/
   /assets/math/
   /javascripts/vendor/README.md
@@ -73,6 +74,11 @@ plugins:
 
 extra:
   pgrr_build: versioned
+  # The community chat, linked from the Contribute page and the footer. Replace
+  # the invite URL (and the name, if it differs) once the server exists.
+  discord:
+    name: PG Regression Radar
+    url: https://discord.com/invite/CHANGE-ME
   version:
     provider: mike
     # Show the alias (e.g. "latest") next to the version number in the
@@ -165,7 +171,7 @@ nav:
           - RBAC and access: kubernetes/rbac.md
           - Helm basics: kubernetes/helm.md
           - Troubleshooting toolkit: kubernetes/troubleshooting.md
-      - Contribute:
+      - Developer guides:
           - Testing: testing.md
           - CI/CD: ci-cd.md
           - Backporting: backporting.md
@@ -174,3 +180,4 @@ nav:
           - Contributing guide ↗: https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md
       - Changelog: changelog.md
   - Roadmap: https://joao00001.github.io/pg-regression-radar/roadmap/
+  - Contribute: https://joao00001.github.io/pg-regression-radar/contribute/

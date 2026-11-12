@@ -20,6 +20,7 @@ exclude_docs: |
   !/roadmap.md
   !/playground.md
   !/our-math.md
+  !/contribute.md
   /adr/
   /examples/
   /policies/
@@ -38,10 +39,12 @@ extra_css:
   - stylesheets/extra.css
   - stylesheets/roadmap.css
   - stylesheets/home.css
+  - stylesheets/contribute.css
   - assets/math/math.css
 
 extra_javascript:
   - javascripts/roadmap.js
+  - javascripts/contribute.js
   - javascripts/code-header.js
   - javascripts/theme-toggle.js
   - javascripts/callouts.js

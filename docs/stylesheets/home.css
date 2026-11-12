@@ -641,25 +641,20 @@
  * Infinite rules
  *
  * The lines are not a card border: each rule runs out to the edge of the
- * window and the content column sits between two vertical lines that run the
- * full height of the page body. Where the left navigation is visible the
- * horizontal rules start exactly on the left column line (so they never strike
- * through the menu text, and each junction is clean) and keep going right; below that width there is no sidebar and
- * they run both ways. The extra length is clipped by .md-main so it never
- * causes a scrollbar or crosses the header/footer.
+ * window on both sides of the content column, which sits between two vertical
+ * lines that run the full height of the page body. Every page that uses this
+ * sheet (home, roadmap, playground, our math, contribute) hides the left
+ * navigation, so there is no menu text for a rule to strike through. The extra
+ * length is clipped by .md-main so it never causes a scrollbar or crosses the
+ * header/footer.
  * -------------------------------------------------------------------- */
 .pgrr-home {
   --h-rule-left: -100vw;
   --h-rule-width: 200vw;
 }
 
-@media (min-width: 76.25em) {
-  .pgrr-home {
-    --h-rule-left: 0;
-    --h-rule-width: 100vw;
-  }
-}
-
+/* The rules overshoot the content on purpose; .md-main clips them so they
+   stop at the header and the footer and never add scroll height below it. */
 .md-main:has(.pgrr-home) {
   overflow: clip;
 }

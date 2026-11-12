@@ -1,0 +1,717 @@
+/*
+ * Contribute page (docs/contribute.md) -- the home page's ruled grid.
+ *
+ * Loaded only by the unversioned build (mkdocs-unversioned.yml). The page is a
+ * `.pgrr-home` sheet (home.css): the section bands, the two column lines and the
+ * full-width rules come from there, so this file only supplies the cells: the
+ * title block (with a drifting git graph behind it, contribute.js), the ways to
+ * help, the first-pull-request steps, the chat cells and the contributors'
+ * photos. Cells touch and are cut by hairlines, like the roadmap's.
+ */
+
+.pgrr-contribute {
+  --ct-mono: var(--md-code-font-family, ui-monospace, monospace);
+  --ct-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ct-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.md-typeset .ct-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* ---- Title block ---- */
+.md-typeset .pgrr-contribute .ct-head {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 52px var(--h-pad) 44px;
+  background: transparent;
+}
+
+/* the git graph (contribute.js): lanes on the right, away from the text */
+.md-typeset .ct-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(100deg, transparent 56%, #000 82%);
+  mask-image: linear-gradient(100deg, transparent 56%, #000 82%);
+}
+
+.md-typeset .ct-bg canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.md-typeset .pgrr-contribute .ct-head h1 {
+  margin: 0 0 14px;
+  color: var(--h-muted);
+  font-size: clamp(2rem, 1.2rem + 3vw, 2.9rem);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+}
+
+.md-typeset .pgrr-contribute .ct-head h1 em {
+  color: var(--h-fg);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.md-typeset .ct-lead {
+  max-width: 31rem;
+  margin: 0;
+  color: var(--h-muted);
+  font-size: 0.74rem;
+  line-height: 1.7;
+}
+
+.md-typeset .ct-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 22px 0 0;
+}
+
+.md-typeset .pgrr-contribute .ct-actions .md-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 1.45em;
+  height: 2.5em;
+  border: 1px solid var(--h-btn-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--h-fg);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  transition: background-color 0.15s, border-color 0.15s, filter 0.15s, transform 0.3s var(--ct-spring);
+}
+
+.md-typeset .pgrr-contribute .ct-actions .md-button:hover {
+  border-color: var(--h-btn-line);
+  background: var(--h-btn-hover);
+  color: var(--h-fg);
+  transform: translateY(-2px);
+}
+
+.md-typeset .pgrr-contribute .ct-actions .md-button--primary {
+  border-color: var(--h-btn-bg);
+  background: var(--h-btn-bg);
+  color: var(--h-btn-fg);
+}
+
+.md-typeset .pgrr-contribute .ct-actions .md-button--primary:hover {
+  border-color: var(--h-btn-bg);
+  background: var(--h-btn-bg);
+  color: var(--h-btn-fg);
+  filter: brightness(0.9);
+}
+
+.md-typeset .pgrr-contribute .ct-actions .md-button:focus-visible {
+  outline: 2px solid var(--h-accent);
+  outline-offset: 3px;
+}
+
+/* ---- Shared cell bits ---- */
+.md-typeset .ct-tag {
+  color: var(--h-accent);
+  font: 600 0.54rem/1 var(--ct-mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.md-typeset .ct-cta {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  color: var(--h-accent);
+  font-size: 0.68rem;
+  font-weight: 600;
+  transition: transform 0.25s var(--ct-ease);
+}
+
+/* ---- Ways to help: touching cells ---- */
+.md-typeset .ct-ways {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  gap: 1px;
+  margin: 0;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-border);
+}
+
+.md-typeset a.ct-way {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 22px var(--h-pad) 20px;
+  background: var(--h-hero-bg);
+  color: var(--h-fg);
+  text-decoration: none;
+  overflow: hidden;
+  transition: background-color 0.2s;
+}
+
+/* a soft red light that follows the pointer (contribute.js sets --mx / --my) */
+.md-typeset a.ct-way::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(14rem circle at var(--mx, 50%) var(--my, 0%), var(--h-glow), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.md-typeset a.ct-way:hover,
+.md-typeset a.ct-way:focus-visible {
+  background: color-mix(in srgb, var(--h-fg) 3%, var(--h-hero-bg));
+}
+
+.md-typeset a.ct-way:hover::before,
+.md-typeset a.ct-way:focus-visible::before {
+  opacity: 1;
+}
+
+.md-typeset .ct-icon {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: 0.35rem;
+  fill: none;
+  stroke: var(--h-icon);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 0.2s, transform 0.35s var(--ct-spring);
+}
+
+.md-typeset a.ct-way:hover .ct-icon,
+.md-typeset a.ct-way:focus-visible .ct-icon {
+  stroke: var(--h-accent);
+  transform: translateY(-2px) scale(1.12);
+}
+
+.md-typeset .ct-way-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.md-typeset .ct-way-desc {
+  color: var(--h-muted);
+  font-size: 0.68rem;
+  line-height: 1.65;
+}
+
+.md-typeset a.ct-way:hover .ct-cta,
+.md-typeset a.ct-way:focus-visible .ct-cta,
+.md-typeset a.ct-chat:hover .ct-cta,
+.md-typeset a.ct-chat:focus-visible .ct-cta {
+  transform: translateX(4px);
+}
+
+/* ---- First pull request: four cells ---- */
+.md-typeset .ct-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  gap: 1px;
+  margin: 0;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-border);
+}
+
+.md-typeset .ct-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 22px var(--h-pad) 22px;
+  background: var(--h-hero-bg);
+}
+
+.md-typeset .ct-num {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--h-muted);
+  font: 600 0.58rem/1 var(--ct-mono);
+  letter-spacing: 0.18em;
+}
+
+.md-typeset .ct-num::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, var(--h-accent-solid), transparent);
+  transform-origin: left;
+  transform: scaleX(0.25);
+  transition: transform 0.9s var(--ct-ease);
+}
+
+.md-typeset .ct-reveal.is-in .ct-num::after {
+  transform: scaleX(1);
+}
+
+.md-typeset .ct-step-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.md-typeset .ct-step-desc {
+  color: var(--h-muted);
+  font-size: 0.68rem;
+  line-height: 1.65;
+}
+
+.md-typeset .ct-step .highlight {
+  margin: auto 0 0;
+  padding-top: 0.5rem;
+}
+
+.md-typeset .ct-step .highlight pre {
+  margin: 0;
+}
+
+.md-typeset .ct-step .highlight code {
+  font-size: 0.58rem;
+}
+
+.md-typeset .ct-note {
+  padding: 18px var(--h-pad) 20px;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-hero-bg);
+}
+
+.md-typeset .ct-note p {
+  max-width: 54rem;
+  margin: 0;
+  color: var(--h-muted);
+  font-size: 0.7rem;
+  line-height: 1.75;
+}
+
+.md-typeset .ct-note strong {
+  color: var(--h-fg);
+}
+
+/* ---- What to expect ---- */
+.md-typeset .ct-expect {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr));
+  gap: 1px;
+  margin: 0;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-border);
+}
+
+.md-typeset .ct-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 22px var(--h-pad) 22px;
+  background: var(--h-hero-bg);
+}
+
+.md-typeset .ct-cell-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.md-typeset .ct-cell-title::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: none;
+  background: var(--h-accent-solid);
+}
+
+.md-typeset .ct-cell-desc {
+  color: var(--h-muted);
+  font-size: 0.68rem;
+  line-height: 1.65;
+}
+
+/* ---- Chat ---- */
+.md-typeset .ct-talk {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  gap: 1px;
+  margin: 0;
+  border-top: 1px solid var(--h-border);
+  background: var(--h-border);
+}
+
+.md-typeset a.ct-chat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 26px var(--h-pad) 24px;
+  background: var(--h-hero-bg);
+  color: var(--h-fg);
+  text-decoration: none;
+  overflow: hidden;
+  transition: background-color 0.2s;
+}
+
+.md-typeset a.ct-chat:hover,
+.md-typeset a.ct-chat:focus-visible {
+  background-color: color-mix(in srgb, var(--h-fg) 3%, var(--h-hero-bg));
+}
+
+.md-typeset .ct-chat-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+.md-typeset .ct-chat-desc {
+  max-width: 28rem;
+  color: var(--h-muted);
+  font-size: 0.68rem;
+  line-height: 1.65;
+}
+
+/* ---- Contributors: photos only ---- */
+.md-typeset .ct-people-wrap {
+  padding: 22px var(--h-pad) 30px;
+  border-top: 1px solid var(--h-border);
+  background:
+    linear-gradient(var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    linear-gradient(90deg, var(--h-grid) 1px, transparent 1px) 0 0 / 36px 36px,
+    var(--h-hero-bg);
+}
+
+.md-typeset .ct-people-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.9rem;
+  margin: 0 0 22px;
+  color: var(--h-muted);
+  font-size: 0.68rem;
+}
+
+.md-typeset .ct-people-count {
+  color: var(--h-fg);
+  font: 600 0.58rem/1 var(--ct-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.md-typeset .ct-people-count:empty {
+  display: none;
+}
+
+.md-typeset .ct-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.md-typeset a.ct-person,
+.md-typeset a.ct-you {
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 50%;
+  color: var(--h-fg);
+  text-decoration: none;
+  z-index: 0;
+  transform: perspective(260px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  translate: 0 var(--ty, 0);
+  scale: var(--sc, 1);
+  transition:
+    transform 0.2s ease-out,
+    translate 0.5s var(--ct-spring),
+    scale 0.5s var(--ct-spring),
+    opacity 0.45s ease,
+    filter 0.45s ease,
+    z-index 0s linear 0.5s;
+}
+
+.md-typeset a.ct-person img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border: 1px solid var(--h-border);
+  border-radius: 50%;
+  background: var(--h-card);
+  object-fit: cover;
+  transition: border-color 0.25s, box-shadow 0.35s;
+}
+
+/* the ring that springs out around the photo */
+.md-typeset a.ct-person::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 1.5px solid var(--h-accent-solid);
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.82);
+  transition: opacity 0.25s, transform 0.45s var(--ct-spring);
+  pointer-events: none;
+}
+
+.md-typeset a.ct-person:hover,
+.md-typeset a.ct-person:focus-visible {
+  --ty: -6px;
+  --sc: 1.22;
+  z-index: 2;
+  transition-delay: 0s, 0s, 0s, 0s, 0s, 0s;
+}
+
+.md-typeset a.ct-person:hover img,
+.md-typeset a.ct-person:focus-visible img {
+  border-color: transparent;
+  box-shadow: 0 14px 30px -10px var(--h-glow), 0 8px 18px -8px rgba(0, 0, 0, 0.5);
+}
+
+.md-typeset a.ct-person:hover::after,
+.md-typeset a.ct-person:focus-visible::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* the others step back while one is held */
+.md-typeset .ct-people:has(.ct-person:hover) .ct-person:not(:hover),
+.md-typeset .ct-people:has(.ct-person:focus-visible) .ct-person:not(:focus-visible) {
+  opacity: 0.7;
+  filter: grayscale(1);
+}
+
+.md-typeset a.ct-person:focus-visible,
+.md-typeset a.ct-you:focus-visible {
+  outline: 2px solid var(--h-accent-solid);
+  outline-offset: 6px;
+}
+
+/* "you": a dashed circle that invites the next contributor */
+.md-typeset a.ct-you {
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--h-border);
+  color: var(--h-muted);
+  order: 99;
+  transition:
+    transform 0.2s ease-out,
+    translate 0.5s var(--ct-spring),
+    scale 0.5s var(--ct-spring),
+    opacity 0.45s ease,
+    filter 0.45s ease,
+    border-color 0.25s,
+    color 0.25s;
+}
+
+.md-typeset a.ct-you svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  transition: transform 0.5s var(--ct-spring);
+}
+
+.md-typeset a.ct-you:hover,
+.md-typeset a.ct-you:focus-visible {
+  --sc: 1.12;
+  border-color: var(--h-accent-solid);
+  color: var(--h-accent);
+}
+
+.md-typeset a.ct-you:hover svg,
+.md-typeset a.ct-you:focus-visible svg {
+  transform: rotate(90deg);
+}
+
+/* photos pop in one after another once the list is loaded */
+.md-typeset .ct-people[data-state="ready"] a.ct-person {
+  /* `backwards`, not `both`: a fill that stays after the entrance would keep
+     overriding transform and opacity, so the hover transitions below would be
+     skipped when the other photos return from their dimmed state. */
+  animation: ct-pop 0.55s var(--ct-spring) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+@keyframes ct-pop {
+  from {
+    opacity: 0;
+    scale: 0.55;
+    translate: 0 8px;
+  }
+}
+
+/* placeholders while the list loads */
+.md-typeset .ct-skel {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(100deg, var(--h-card) 30%, color-mix(in srgb, var(--h-fg) 9%, var(--h-card)) 50%, var(--h-card) 70%) 0 0 / 220% 100%;
+  animation: ct-shimmer 1.4s linear infinite;
+}
+
+@keyframes ct-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+
+.md-typeset .ct-people-fallback {
+  margin: 16px 0 0;
+  color: var(--h-muted);
+  font-size: 0.68rem;
+}
+
+/* ---- Reveal on scroll (only with JavaScript, see contribute.js) ---- */
+.pgrr-contribute.ct-js .ct-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s var(--ct-ease),
+    transform 0.8s var(--ct-ease);
+}
+
+.pgrr-contribute.ct-js .ct-reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---- More motion (skipped entirely under prefers-reduced-motion) ---- */
+@media (prefers-reduced-motion: no-preference) {
+  /* the title block rises in, one piece after another */
+  .pgrr-contribute.ct-js .ct-head h1,
+  .pgrr-contribute.ct-js .ct-head .ct-lead,
+  .pgrr-contribute.ct-js .ct-head .ct-actions {
+    animation: ct-rise 0.9s var(--ct-ease) backwards;
+  }
+
+  .pgrr-contribute.ct-js .ct-head .ct-lead {
+    animation-delay: 0.12s;
+  }
+
+  .pgrr-contribute.ct-js .ct-head .ct-actions {
+    animation-delay: 0.24s;
+  }
+
+  /* a slow sheen crosses "with us" */
+  .md-typeset .pgrr-contribute .ct-head h1 em {
+    background: linear-gradient(
+        100deg,
+        var(--h-fg) 38%,
+        color-mix(in srgb, var(--h-accent-solid) 78%, var(--h-fg)) 50%,
+        var(--h-fg) 62%
+      )
+      0 0 / 260% 100% no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: ct-sheen 7s ease-in-out 1.2s infinite;
+  }
+
+  /* the icons float, each on its own beat */
+  .md-typeset .ct-icon {
+    animation: ct-bob 4.5s ease-in-out infinite;
+  }
+
+  .md-typeset .ct-ways a.ct-way:nth-child(2n) .ct-icon {
+    animation-delay: -1.5s;
+  }
+
+  .md-typeset .ct-ways a.ct-way:nth-child(3n) .ct-icon {
+    animation-delay: -3s;
+  }
+
+  /* the "+" tile sends out a ring now and then */
+  .md-typeset a.ct-you {
+    animation: ct-beacon 3.2s ease-out infinite;
+  }
+}
+
+@keyframes ct-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes ct-sheen {
+  0%,
+  35% {
+    background-position: 100% 0;
+  }
+  70%,
+  100% {
+    background-position: 0 0;
+  }
+}
+
+@keyframes ct-bob {
+  50% {
+    translate: 0 -3px;
+  }
+}
+
+@keyframes ct-beacon {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--h-accent-solid) 38%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+
+/* ---- Small screens ---- */
+@media (max-width: 44.9375em) {
+  .md-typeset .pgrr-contribute .ct-head {
+    padding: 36px var(--h-pad) 32px;
+  }
+
+  /* the graph sits behind the lead here: keep it faint so the text stays easy to read */
+  .md-typeset .ct-bg {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgrr-contribute.ct-js .ct-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .md-typeset .ct-people[data-state="ready"] a.ct-person,
+  .md-typeset .ct-skel {
+    animation: none;
+  }
+
+  .md-typeset a.ct-person,
+  .md-typeset a.ct-you,
+  .md-typeset a.ct-person::after,
+  .md-typeset .ct-icon,
+  .md-typeset .ct-cta {
+    transition: none;
+  }
+}

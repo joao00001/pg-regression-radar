@@ -208,8 +208,7 @@ hide:
 - New to the project? Start with [Installation](installation.md), then [Getting Started](getting-started.md).
 - Deciding between the two ways to run it? See [Architecture Overview](architecture.md).
 - Looking for a specific flag or CRD field? See [Configuration Reference](configuration.md).
-- Want to contribute? See [CONTRIBUTING.md](https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md) in the repo root.
+- Want to help? See [how to contribute](contribute.md): good first issues, a first pull request in four steps, and the chat.
 
-<p class="pgrr-foot" markdown="1">Licensed under Apache 2.0 — see [LICENSE](https://github.com/joao00001/pg-regression-radar/blob/main/LICENSE).</p>
 
 </div>

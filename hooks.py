@@ -38,6 +38,7 @@ UNVERSIONED_PAGES = {
     "roadmap.md": "roadmap/",
     "playground.md": "playground/",
     "our-math.md": "our-math/",
+    "contribute.md": "contribute/",
 }
 
 # Matches either an inline code span (returned untouched) or the
@@ -260,6 +261,11 @@ def on_page_markdown(markdown, page, config, files):
     placeholders (see _release_tag), code blocks included."""
     tag = _release_tag()
     markdown = markdown.replace("{{ release_tag }}", tag).replace("{{ release_version }}", tag[1:])
+    # The chat server is set once, in mkdocs.yml's `extra.discord`.
+    discord = (config.get("extra") or {}).get("discord") or {}
+    markdown = markdown.replace("{{ discord_url }}", str(discord.get("url", ""))).replace(
+        "{{ discord_name }}", str(discord.get("name", "Discord"))
+    )
 
     def sub(match):
         if match.group("code"):
