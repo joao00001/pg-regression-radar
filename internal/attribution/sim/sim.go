@@ -143,7 +143,6 @@ type query struct {
 	baseMs    float64
 	rate      float64
 	elastic   float64 // sensitivity of latency to shared load
-	drift     float64
 	affected  bool
 	conc      bool
 	stats     bool
@@ -154,7 +153,7 @@ type query struct {
 // ground truth.
 func (w World) Generate() ([]attribution.Unit, []attribution.Event, attribution.Deploy, Truth) {
 	w.defaults()
-	r := rand.New(rand.NewPCG(w.Seed, w.Seed*0x9e3779b97f4a7c15+1))
+	r := rand.New(rand.NewPCG(w.Seed, w.Seed*0x9e3779b97f4a7c15+1)) // #nosec G404 -- deterministic simulator seed, not security-relevant
 	nPre := int(w.Pre / w.Step)
 	nPost := int(w.Post / w.Step)
 	n := nPre + nPost
