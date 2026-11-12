@@ -694,16 +694,17 @@ func partitionAt(samples []pgstat.QuerySample, split time.Time) (pre, post []pgs
 // Samples produced by the Collector carry the latency of just the calls made
 // during each scrape interval (QuerySample.IntervalMeanMs, derived from the
 // delta of the cumulative pg_stat_statements counters). When any sample in
-// either window has it, only samples with a known interval and at least one
-// call in it are kept: an interval with no calls says nothing about latency,
-// and the first sample of a queryid has no predecessor to subtract.
+// either window comes from that interval calculation, only samples with a
+// known interval and at least one call in it are kept. This also applies when
+// every interval is unknown because the source rows changed: falling back to
+// their cumulative means would turn missing interval evidence into a signal.
 //
 // Samples without interval data (a source that only exposes a mean, such as
 // the OTel/Prometheus source) are returned unchanged, with intervals=false,
 // and are analysed on MeanExecTimeMs, as before. Their execution counts are
 // unknown, so only the sample floor applies to them.
 func intervalSamples(pre, post []pgstat.QuerySample) (_, _ []pgstat.QuerySample, intervals bool) {
-	if !anyIntervalKnown(pre) && !anyIntervalKnown(post) {
+	if !hasIntervalData(pre) && !hasIntervalData(post) {
 		return pre, post, false
 	}
 	return keepIntervals(pre), keepIntervals(post), true
@@ -720,9 +721,9 @@ func executions(samples []pgstat.QuerySample) int64 {
 	return n
 }
 
-func anyIntervalKnown(samples []pgstat.QuerySample) bool {
+func hasIntervalData(samples []pgstat.QuerySample) bool {
 	for _, s := range samples {
-		if s.IntervalKnown {
+		if s.IntervalComputed || s.IntervalKnown {
 			return true
 		}
 	}

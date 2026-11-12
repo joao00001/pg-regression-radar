@@ -37,8 +37,10 @@ func NewSampleStore(db *sql.DB) *SampleStore {
 func (s *SampleStore) Append(ctx context.Context, sample collector.QuerySample) error {
 	const q = `
 		INSERT INTO ` + SchemaName + `.query_samples
-			(query_id, query_text, calls, total_exec_time_ms, mean_exec_time_ms, recorded_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+			(query_id, query_text, calls, total_exec_time_ms, mean_exec_time_ms, recorded_at,
+			 interval_computed, interval_known, interval_calls, interval_total_ms,
+			 interval_mean_ms, reset_detected)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
 	_, err := s.db.ExecContext(ctx, q,
 		sample.QueryID,
@@ -47,6 +49,12 @@ func (s *SampleStore) Append(ctx context.Context, sample collector.QuerySample) 
 		sample.TotalExecTimeMs,
 		sample.MeanExecTimeMs,
 		sample.RecordedAt.UTC(),
+		sample.IntervalComputed,
+		sample.IntervalKnown,
+		sample.IntervalCalls,
+		sample.IntervalTotalMs,
+		sample.IntervalMeanMs,
+		sample.ResetDetected,
 	)
 	if err != nil {
 		return fmt.Errorf("storage/postgres: append sample (query_id=%d): %w", sample.QueryID, err)
@@ -57,7 +65,9 @@ func (s *SampleStore) Append(ctx context.Context, sample collector.QuerySample) 
 // SamplesInRange implements storage.SampleStore.
 func (s *SampleStore) SamplesInRange(ctx context.Context, queryID int64, from, to time.Time) ([]collector.QuerySample, error) {
 	const q = `
-		SELECT query_id, query_text, calls, total_exec_time_ms, mean_exec_time_ms, recorded_at
+		SELECT query_id, query_text, calls, total_exec_time_ms, mean_exec_time_ms, recorded_at,
+		       interval_computed, interval_known, interval_calls, interval_total_ms,
+		       interval_mean_ms, reset_detected
 		FROM ` + SchemaName + `.query_samples
 		WHERE query_id = $1 AND recorded_at >= $2 AND recorded_at <= $3
 		ORDER BY recorded_at ASC`
@@ -78,6 +88,12 @@ func (s *SampleStore) SamplesInRange(ctx context.Context, queryID int64, from, t
 			&sample.TotalExecTimeMs,
 			&sample.MeanExecTimeMs,
 			&sample.RecordedAt,
+			&sample.IntervalComputed,
+			&sample.IntervalKnown,
+			&sample.IntervalCalls,
+			&sample.IntervalTotalMs,
+			&sample.IntervalMeanMs,
+			&sample.ResetDetected,
 		); err != nil {
 			return nil, fmt.Errorf("storage/postgres: scan sample row: %w", err)
 		}

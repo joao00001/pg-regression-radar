@@ -34,17 +34,26 @@ type QuerySample struct {
 	// (PostgreSQL 17+; zero on older servers). It changes whenever the entry
 	// is reset or evicted and recreated, which lets the Collector detect a
 	// reset even when the counters have already climbed past their old values
-	// by the next scrape.
+	// by the next scrape. Aggregate samples leave it zero because their
+	// constituent rows can have different reset times.
 	StatsSince time.Time
 
+	// IntervalComputed distinguishes collector observations whose interval
+	// status was evaluated from legacy or mean-only samples. It is true even
+	// when IntervalKnown is false, for example when a row has no predecessor
+	// or the set of rows contributing to a queryid changed. Such samples must
+	// not fall back to cumulative means or have intervals rebuilt on restore.
+	IntervalComputed bool
+
 	// IntervalKnown reports whether the Interval* fields below are
-	// meaningful. It is false for the first observation of a queryid (there
-	// is no earlier snapshot to subtract) and for samples that did not come
-	// from this Collector (for example the OTel/Prometheus source).
+	// meaningful. It is false when a constituent row has no predecessor or
+	// the contributing row set changed, and for mean-only sources such as
+	// the OTel/Prometheus source.
 	IntervalKnown bool
 	// IntervalCalls and IntervalTotalMs are the executions and total
 	// execution time (ms) that accrued since the previous snapshot of this
-	// queryid, that is, the delta of the cumulative counters.
+	// queryid. Each constituent row's delta is derived independently before
+	// these values are summed, so one row's reset cannot corrupt another's.
 	IntervalCalls   int64
 	IntervalTotalMs float64
 	// IntervalMeanMs is IntervalTotalMs / IntervalCalls: the mean latency of
@@ -54,8 +63,8 @@ type QuerySample struct {
 	IntervalMeanMs float64
 	// ResetDetected is true when the counters were found to have restarted
 	// since the previous snapshot (pg_stat_statements_reset(), an eviction,
-	// or a crash). The Interval* fields then describe the activity since the
-	// reset rather than a difference against the previous snapshot.
+	// or a crash). Reset rows contribute their activity since the reset;
+	// other rows still contribute their normal counter deltas.
 	ResetDetected bool
 
 	// Fingerprint is the normalized-text hash produced by FingerprintQuery
@@ -68,7 +77,9 @@ type QuerySample struct {
 }
 
 // DeriveInterval fills cur's Interval* fields from the cumulative counters of
-// the previous snapshot prev of the same queryid, and returns cur.
+// the previous snapshot prev of the same pg_stat_statements row identity,
+// and returns cur. Callers must keep independent rows separate until after
+// deriving their intervals.
 //
 // pg_stat_statements' calls and total_exec_time only ever grow until the entry
 // is reset (pg_stat_statements_reset, a crash, or eviction once
@@ -99,6 +110,7 @@ func DeriveInterval(prev, cur QuerySample) QuerySample {
 		dCalls, dTotal = cur.Calls, cur.TotalExecTimeMs
 	}
 
+	cur.IntervalComputed = true
 	cur.IntervalKnown = true
 	cur.ResetDetected = reset
 	cur.IntervalCalls = dCalls

@@ -110,6 +110,18 @@ var migrationStatements = []string{
 	`CREATE INDEX IF NOT EXISTS idx_query_samples_recorded_at
 		ON ` + SchemaName + `.query_samples (recorded_at)`,
 
+	// A queryid sample can combine independently reset pg_stat_statements
+	// rows. Its interval cannot be reconstructed from the combined cumulative
+	// counters, so retain the interval calculated before aggregation. The
+	// false marker default identifies older rows without rewriting history.
+	`ALTER TABLE ` + SchemaName + `.query_samples
+		ADD COLUMN IF NOT EXISTS interval_computed BOOLEAN NOT NULL DEFAULT FALSE,
+		ADD COLUMN IF NOT EXISTS interval_known BOOLEAN NOT NULL DEFAULT FALSE,
+		ADD COLUMN IF NOT EXISTS interval_calls BIGINT NOT NULL DEFAULT 0,
+		ADD COLUMN IF NOT EXISTS interval_total_ms DOUBLE PRECISION NOT NULL DEFAULT 0,
+		ADD COLUMN IF NOT EXISTS interval_mean_ms DOUBLE PRECISION NOT NULL DEFAULT 0,
+		ADD COLUMN IF NOT EXISTS reset_detected BOOLEAN NOT NULL DEFAULT FALSE`,
+
 	// NOTE for future extension: if/when collector.QuerySample grows a
 	// Fingerprint field (tracked separately — pg_stat_statements' queryid is
 	// not stable across planner/statistics changes on some Postgres
