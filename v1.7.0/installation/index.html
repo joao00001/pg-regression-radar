@@ -2482,7 +2482,7 @@
 <h2 id="option-1-go-install-one-command-one-binary-recommended">Option 1: Go install — one command, one binary (recommended)<a class="headerlink" href="#option-1-go-install-one-command-one-binary-recommended" title="Permanent link">&para;</a></h2>
 <p>The simplest way to get pg-regression-radar: a single unified CLI, <code>pg-regression-radar</code>, with each run mode as a subcommand. No clone needed — <code>go install</code> resolves the tagged release directly from the repository's tags via the Go module proxy:</p>
 <div class="language-bash highlight"><pre><span></span><code>go<span class="w"> </span>install<span class="w"> </span>github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@latest
-<span class="c1"># or pin a release: @v0.1.0</span>
+<span class="c1"># or pin the release these docs describe: @v1.7.0</span>
 </code></pre></div>
 <p>This places a single <code>pg-regression-radar</code> binary in <code>$(go env GOPATH)/bin</code>. From there:</p>
 <div class="language-bash highlight"><pre><span></span><code>pg-regression-radar<span class="w"> </span>operator<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">"postgres://user:pass@host:5432/dbname?sslmode=disable"</span>
@@ -2519,22 +2519,22 @@ go<span class="w"> </span>build<span class="w"> </span>-o<span class="w"> </span
 <p>Useful if you want to build against an unreleased commit, or need the CRD manifests and Helm chart alongside the binaries (both live in the same clone — see options 3 and 4).</p>
 <h2 id="option-3-pull-or-build-the-container-image">Option 3: Pull or build the container image<a class="headerlink" href="#option-3-pull-or-build-the-container-image" title="Permanent link">&para;</a></h2>
 <p><strong>Pull a published release</strong> (every <code>vX.Y.Z</code> tag publishes all five images — see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a>):</p>
-<div class="language-bash highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0
-docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/manager:v0.3.0
-docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/collector:v0.3.0
-docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/ingester:v0.3.0
-docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/cli:v0.3.0
+<div class="language-bash highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.7.0
+docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/manager:v1.7.0
+docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/collector:v1.7.0
+docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/ingester:v1.7.0
+docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/cli:v1.7.0
 </code></pre></div>
-<p>Substitute the actual latest tag from the <a href="https://github.com/joao00001/pg-regression-radar/releases">Releases page</a>, or use <code>:latest</code> for the most recent release (there is no rolling/"edge" image — every published tag corresponds to a real <code>vX.Y.Z</code> release). <code>docker run ghcr.io/joao00001/pg-regression-radar/cli:v0.3.0 operator --dsn ...</code> runs the unified CLI image; the other four are single-mode images matching the Dockerfile's other <code>--target</code> values.</p>
+<p>These commands use the release this documentation describes (<code>v1.7.0</code>); use <code>:latest</code> for the most recent release instead (there is no rolling/"edge" image — every published tag corresponds to a real <code>vX.Y.Z</code> release). <code>docker run ghcr.io/joao00001/pg-regression-radar/cli:v1.7.0 operator --dsn ...</code> runs the unified CLI image; the other four are single-mode images matching the Dockerfile's other <code>--target</code> values.</p>
 <p><strong>Verify the signature and SBOM before trusting a pulled image.</strong> Every published image is keyless-signed with <a href="https://github.com/sigstore/cosign">cosign</a> using the publishing GitHub Actions run's own OIDC identity (no shared private key to leak or rotate), and carries an attached SBOM attestation:</p>
 <div class="language-bash highlight"><pre><span></span><code><span class="c1"># Verify the image was signed by this repo's release.yml workflow, specifically</span>
 <span class="c1"># (not just "signed by someone with a GitHub account").</span>
-cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0<span class="w"> </span><span class="se">\</span>
+cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.7.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
 
 <span class="c1"># Fetch and inspect the attached SPDX SBOM attestation.</span>
-cosign<span class="w"> </span>verify-attestation<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0<span class="w"> </span><span class="se">\</span>
+cosign<span class="w"> </span>verify-attestation<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.7.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--type<span class="w"> </span>spdxjson<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com<span class="w"> </span><span class="se">\</span>
@@ -2551,7 +2551,7 @@ docker<span class="w"> </span>build<span class="w"> </span>--target<span class="
 <h2 id="option-4-install-the-helm-chart">Option 4: Install the Helm chart<a class="headerlink" href="#option-4-install-the-helm-chart" title="Permanent link">&para;</a></h2>
 <p><strong>From the published OCI chart</strong> (published alongside the images by every release — see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a>):</p>
 <div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>install<span class="w"> </span>pg-regression-radar<span class="w"> </span>oci://ghcr.io/joao00001/charts/pg-regression-radar<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.3.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span><span class="m">1</span>.7.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.dsn<span class="o">=</span><span class="s2">"postgres://user:pass@cnpg-cluster-rw.production:5432/mydb?sslmode=disable"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>postgres.clusterName<span class="o">=</span>cnpg-cluster<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>alerting.slackWebhookUrl<span class="o">=</span>https://hooks.slack.com/services/XXX/YYY/ZZZ
@@ -2561,7 +2561,7 @@ docker<span class="w"> </span>build<span class="w"> </span>--target<span class="
 connection URI, for example <code>postgres://username:password@cnpg-cluster-rw.production:5432/mydb?sslmode=disable</code>.
 Redacted DSN examples are shown for documentation safety only and cannot be used as-is.</p>
 </blockquote>
-<p><code>--version</code> here is the chart's SemVer version (the release tag <em>without</em> its leading <code>v</code> — release <code>v0.3.0</code> publishes chart version <code>0.3.0</code>; see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a> for why the two differ by that one character). No <code>helm repo add</code> is needed for an OCI registry — <code>helm install</code>/<code>helm pull</code> reference <code>oci://</code> URLs directly. The chart's <code>image.tag</code> values default to the chart's own <code>appVersion</code> (the release tag <em>with</em> the <code>v</code>, e.g. <code>v0.3.0</code>), which already matches the images published in the same release, so you don't need to set <code>image.tag</code>/<code>manager.image.tag</code> explicitly unless you want to run a different image tag than the chart's own release.</p>
+<p><code>--version</code> here is the chart's SemVer version (the release tag <em>without</em> its leading <code>v</code> — release <code>v1.7.0</code> publishes chart version <code>1.7.0</code>; see <a href="../ci-cd/#releaseyml-on-pushing-a-v-tag">CI/CD</a> for why the two differ by that one character). No <code>helm repo add</code> is needed for an OCI registry — <code>helm install</code>/<code>helm pull</code> reference <code>oci://</code> URLs directly. The chart's <code>image.tag</code> values default to the chart's own <code>appVersion</code> (the release tag <em>with</em> the <code>v</code>, e.g. <code>v1.7.0</code>), which already matches the images published in the same release, so you don't need to set <code>image.tag</code>/<code>manager.image.tag</code> explicitly unless you want to run a different image tag than the chart's own release.</p>
 <p>The chart also exposes alert destination-policy controls used by both entrypoints:</p>
 <ul>
 <li><code>alerting.destinationPolicy</code>: <code>""</code> (default permissive), <code>allowlist</code>, or <code>relay-only</code></li>
@@ -2570,13 +2570,13 @@ Redacted DSN examples are shown for documentation safety only and cannot be used
 </ul>
 <p>Example (<code>mode=manager</code>, force all alerts through a relay):</p>
 <div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>pg-regression-radar<span class="w"> </span>oci://ghcr.io/joao00001/charts/pg-regression-radar<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--version<span class="w"> </span><span class="m">0</span>.3.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span><span class="m">1</span>.7.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span><span class="nv">mode</span><span class="o">=</span>manager<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>alerting.destinationPolicy<span class="o">=</span>relay-only<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--set<span class="w"> </span>alerting.destinationPolicyRelayUrl<span class="o">=</span>https://relay.example.com/webhook
 </code></pre></div>
 <p><strong>Verify the chart's signature before trusting it</strong>, the same way as the container images above — the published Helm OCI artifact is keyless-signed with cosign too, using the chart's SemVer version as the tag (same one <code>--version</code> above installs):</p>
-<div class="language-bash highlight"><pre><span></span><code>cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/charts/pg-regression-radar:0.3.0<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/charts/pg-regression-radar:1.7.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
 </code></pre></div>
