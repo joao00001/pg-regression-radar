@@ -128,6 +128,7 @@ nav:
           - Install: installation.md
           - Quickstart: getting-started.md
           - Validate your setup: quickstart-validation.md
+          - Troubleshooting and FAQ: troubleshooting.md
           - "Example: a regression": examples/regression-scenario.md
           - "Example: alerting": examples/alerting-example.md
       - Concepts:
@@ -152,6 +153,7 @@ nav:
           - API: api-reference.md
           - API versioning: api-versioning.md
           - Persistence: persistence.md
+          - Upgrading: upgrading.md
           - Support matrix: support-matrix.md
       - Basic Kubernetes:
           - Overview: kubernetes/overview.md
