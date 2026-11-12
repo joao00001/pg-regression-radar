@@ -590,7 +590,11 @@ jobs:
       contents: read
     continue-on-error: true
     steps:
+      # full history and tags: the contributor list is the commit range
+      # between the previous tag and this one
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/announce-discord
         with:
