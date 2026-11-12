@@ -13,6 +13,8 @@ pg-regression-radar is built from four engine packages (`internal/collector`, `i
 3. **Correlation Engine** (`internal/correlation`) — for every deploy event, extracts the pre/post latency windows and runs E-divisive change-point detection followed by Welch's t-test. See [Detection Algorithm](detection-algorithm.md).
 4. **Alerting** (`internal/alerting`) — fires a Slack-compatible webhook with the query text, latency before/after, change factor, and confidence score.
 
+An optional fifth package, **Attribution** (`internal/attribution`), judges each tracked deploy against a counterfactual control and records the action it would take. It reads the same collector samples, runs in shadow mode only (it never acts), and is off unless a `PostgresWatch` sets `spec.attribution.enabled`. See [Attribution engine](attribution-engine.md).
+
 ## Two ways to run pg-regression-radar
 
 Both entrypoints wire up the *same* engine packages in two different ways:

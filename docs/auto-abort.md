@@ -93,8 +93,13 @@ Leave this `false` (the default) on any cluster that doesn't use Argo Rollouts, 
 
 If `cmd/manager` can't build a Kubernetes dynamic client at startup for any reason, it logs the failure and continues with auto-abort unavailable — every `PostgresWatch.spec.autoAbort.enabled` is treated as `false` regardless of what the CR says, and everything else (detection, alerting, the webhook/native-watch ingestion paths) is unaffected.
 
+## Where this is heading
+
+Auto-abort acts on a confidence score from the detector, which says a query changed near the deploy, not that the deploy caused it. The [attribution engine](attribution-engine.md) is the groundwork for acting on stronger evidence: it grades each finding by how good its control is and only calls for a rollback at grade A (a concurrent control arm). It runs in shadow mode and does not change what auto-abort does today.
+
 ## See also
 
+- [Attribution engine](attribution-engine.md) — the evidence grades a future rollback decision would be keyed on.
 - [Deploy Sources & Webhooks](webhooks.md) — the `sourceType: argo-rollouts` `DeploySource` that must be feeding the target `PostgresWatch` for auto-abort to ever have anything to act on.
 - [Detection Algorithm](detection-algorithm.md) — how `confidenceScore`/`pValueThreshold` are computed.
 - [Configuration Reference](configuration.md) — the full `PostgresWatch` spec field table.

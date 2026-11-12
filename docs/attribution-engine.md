@@ -18,6 +18,25 @@ spec:
 
 Decisions appear in the manager log (`attribution (shadow): decision, not executed`) and in the metric `pg_regression_radar_attribution_shadow_decisions_total{action,grade}`. It requires the watch to scrape its own collector (not a Prometheus sample source).
 
+```mermaid
+flowchart TB
+  A["Tracked deploy<br/>(evaluated at +30, +35, +40 min)"]:::radar
+  B["Identify each query by the<br/>fingerprint of its text"]:::radar
+  C["Build the counterfactual:<br/>A canary arm, B synthetic control, C own history"]:::radar
+  D["Step test per query, then<br/>e-BH across queries"]:::radar
+  G["Guards: persistence, table-level cap,<br/>overlapping deploys, global shift"]:::gate
+  P["Policy by evidence grade"]:::gate
+  R["A: roll back"]:::out
+  H["B: hold promotion"]:::out
+  L["C: alert only"]:::out
+  N["D or immaterial: none"]:::gate
+  A --> B --> C --> D --> G --> P
+  P -->|"A"| R
+  P -->|"B"| H
+  P -->|"C"| L
+  P -->|"D"| N
+```
+
 ## How it works
 
 1. **Identity.** A query is identified by the fingerprint of its normalised text, never by `queryid`. A rewritten query is a new unit with no history, so it is never judged against a baseline.

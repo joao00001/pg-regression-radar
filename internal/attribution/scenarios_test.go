@@ -191,9 +191,7 @@ var scenarios = []scenario{
 }
 
 func TestScenarioReport(t *testing.T) {
-	if testing.Short() {
-		t.Skip("scenario report is long")
-	}
+	skipLong(t)
 	for _, sc := range scenarios {
 		outs := runSeeds(sc.build, 20, attribution.Config{})
 		t.Logf("%-52s %s", sc.name, score(outs, realRegression))

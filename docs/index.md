@@ -202,10 +202,44 @@ hide:
 
 </div>
 
+## <span class="pgrr-kick">Attribution</span>Was it *the deploy*?<span class="pgrr-sub">A query that slowed down near a deploy is a lead, not proof. The opt-in attribution engine asks what it would have done without the deploy.</span> { #attribution .pgrr-title data-toc-label="Attribution" }
+
+<div class="pgrr-cards pgrr-cards--steps" markdown="1">
+
+<div class="pgrr-card" markdown="1">
+<span class="pgrr-num">A</span>
+<span class="pgrr-card-title">Canary control</span>
+<p class="pgrr-card-desc" markdown="1">The same query on the replicas the deploy did not reach. The strongest evidence, and the only grade a rollback is based on.</p>
+</div>
+
+<div class="pgrr-card" markdown="1">
+<span class="pgrr-num">B</span>
+<span class="pgrr-card-title">Synthetic control</span>
+<p class="pgrr-card-desc" markdown="1">Built from queries the deploy did not touch, so load, statistics and cache state cancel out. Calls for holding promotion.</p>
+</div>
+
+<div class="pgrr-card" markdown="1">
+<span class="pgrr-num">C</span>
+<span class="pgrr-card-title">Own history</span>
+<p class="pgrr-card-desc" markdown="1">All that is left when nothing else can be compared. It alerts; it cannot tell a deploy from anything else that happened then.</p>
+</div>
+
+<div class="pgrr-card" markdown="1">
+<span class="pgrr-num">D</span>
+<span class="pgrr-card-title">Not enough data</span>
+<p class="pgrr-card-desc" markdown="1">Said plainly, and never a reason to block a deploy. A first deploy, with no history, lands here.</p>
+<p class="pgrr-card-links" markdown="1">[Attribution engine](attribution-engine.md) [The math](https://joao00001.github.io/pg-regression-radar/our-math/#attribution)</p>
+</div>
+
+</div>
+
+<p class="pgrr-radar-note">Shadow mode today: the engine records the action it would take and never executes it.</p>
+
 ## Where to go next
 
 - Want to see it work first? Open the [playground](playground.md): no install needed.
 - New to the project? Start with [Installation](installation.md), then [Getting Started](getting-started.md).
+- Want to know whether a deploy really caused a slowdown? See the [attribution engine](attribution-engine.md).
 - Deciding between the two ways to run it? See [Architecture Overview](architecture.md).
 - Looking for a specific flag or CRD field? See [Configuration Reference](configuration.md).
 - Want to help? See [how to contribute](contribute.md): good first issues, a first pull request in four steps, and the chat.

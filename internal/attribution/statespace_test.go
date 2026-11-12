@@ -16,6 +16,7 @@ package attribution
 
 import (
 	"math"
+	"os"
 	"testing"
 )
 
@@ -122,7 +123,11 @@ func (s sample) yw() ([]float64, []float64, [][]float64, int, StepOptions) {
 // level drift, missing ticks and varying call counts. This is the guarantee the
 // action policy relies on.
 func TestNullErrorRateAcrossRegimes(t *testing.T) {
-	const alpha, sims = 0.05, 1500
+	const alpha = 0.05
+	sims := 400
+	if os.Getenv("PGRR_LONG") != "" {
+		sims = 1500
+	}
 	for _, c := range []struct {
 		name string
 		w    world
@@ -138,7 +143,7 @@ func TestNullErrorRateAcrossRegimes(t *testing.T) {
 			s := c.w.draw(r)
 			return everCrossed(StepTest(s.y, s.w, nil, s.T, StepOptions{}), 0, 0.25, alpha)
 		})
-		if got > alpha+3*math.Sqrt(alpha*(1-alpha)/sims) {
+		if got > alpha+3*math.Sqrt(alpha*(1-alpha)/float64(sims)) {
 			t.Errorf("%s: type-I error %.4f exceeds %.2f", c.name, got, alpha)
 		}
 		t.Logf("%s: type-I error %.4f", c.name, got)
@@ -203,7 +208,7 @@ func TestSharedShockIsExplainedAwayByCovariates(t *testing.T) {
 	if without < 0.5 {
 		t.Errorf("the scenario should fool the history-only test (got %.3f)", without)
 	}
-	if with > alpha+3*math.Sqrt(alpha*(1-alpha)/sims) {
+	if with > alpha+3*math.Sqrt(alpha*(1-alpha)/float64(sims)) {
 		t.Errorf("covariates did not remove the shared shock: %.3f", with)
 	}
 }
