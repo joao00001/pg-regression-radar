@@ -177,7 +177,7 @@ When several deploys could explain a change, say so with an Ambiguous result ins
 `Engine.Analyse` evaluates one event at a time and every tracked query is a candidate for every event on the same watch — nothing links a `queryid` to an application, and `pg_stat_statements` does not record one. Two deploys inside one tolerance window therefore each produce their own regression for the same change point. A first step that needs no new data: when more than one event falls inside the window, mark the result `Ambiguous` and list the candidate events instead of presenting one as the cause. Further outcomes (`Unattributed` when no event is close enough, `InsufficientEvidence`) and candidate ranking by cluster, namespace, and workload can follow once that vocabulary exists.
 
 
-**Update.** The opt-in [attribution engine](attribution-engine.md) now covers the attribution probability among overlapping deploys in shadow mode, next to the detector. The detector's own behaviour and this item's scope are unchanged until the engine has been calibrated on real workloads.
+**Update.** The opt-in [attribution engine](attribution-engine.md) now covers the attribution probability among overlapping deploys next to the detector. The detector's own behaviour and this item's scope are unchanged until the engine has been calibrated on real workloads.
 </details>
 </div>
 
@@ -195,7 +195,7 @@ Report how many other queries shifted at the same moment, to tell a deploy-local
 Whether a regression is local to one query or shared by most tracked queries at the same moment is already computable from data the collector holds, and separates "this deploy changed this query" from "the database is saturated". Reporting the fraction of other tracked queries that shifted at the same change point is a cheap first control signal; richer workload context (CPU, connections, lock waits, I/O) is deliberately not planned until there is evidence the cheaper signal is not enough, since requiring it would raise the barrier to adoption.
 
 
-**Update.** The opt-in [attribution engine](attribution-engine.md) now covers the global-shift flag, which caps the evidence at grade C when no control arm exists in shadow mode, next to the detector. The detector's own behaviour and this item's scope are unchanged until the engine has been calibrated on real workloads.
+**Update.** The opt-in [attribution engine](attribution-engine.md) now covers the global-shift flag, which caps the evidence at grade C when no control arm exists next to the detector. The detector's own behaviour and this item's scope are unchanged until the engine has been calibrated on real workloads.
 </details>
 </div>
 

@@ -150,6 +150,19 @@ spec:
                     default: false
                     description: enabled turns the engine on for this watch.
                     type: boolean
+                  mode:
+                    default: shadow
+                    description: |-
+                      mode is "shadow" (the default) or "enforce". In shadow mode the
+                      verdict served to a rollout controller is always "pass" and the action
+                      the engine would have taken is only reported. In enforce mode the
+                      verdict is "inconclusive" (pause the rollout) for grade B evidence and
+                      "fail" (abort it) for grade A. Nothing is written to the cluster by this
+                      manager in either mode: the rollout controller acts on the verdict.
+                    enum:
+                    - shadow
+                    - enforce
+                    type: string
                 required:
                 - enabled
                 type: object

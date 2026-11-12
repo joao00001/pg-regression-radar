@@ -1,0 +1,1 @@
+Added `attribution.mode` and a read-only verdict endpoint (`--attribution-verdict-addr`) that an Argo Rollouts analysis can poll: `inconclusive` pauses a rollout on grade B evidence and `fail` aborts it on grade A, with shadow remaining the default.

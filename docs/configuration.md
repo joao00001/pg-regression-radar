@@ -180,7 +180,8 @@ All four binaries share two flags:
 | `capturePlans` | `false` | Enable plan-diff correlation — see [Detection Algorithm: Plan-diff correlation](detection-algorithm.md#plan-diff-correlation-optional). Populates the resulting `PerformanceRegression`'s `status.planDiffSummary` |
 | `autoAbort.enabled` | `false` | Automatically abort the Argo Rollouts canary behind a high-confidence detected regression instead of only alerting — see [Auto-Abort](auto-abort.md) |
 | `autoAbort.confidenceThreshold` | `"0.99"` | Minimum confidence required before auto-aborting; only meaningful alongside `autoAbort.enabled` — see [Auto-Abort: Confidence threshold](auto-abort.md#confidence-threshold) |
-| `attribution.enabled` | `false` | Run the counterfactual attribution engine in shadow mode: it records the action it would take for each tracked deploy and never executes it. Needs the watch's own collector (not a Prometheus sample source) — see [Attribution engine](attribution-engine.md) |
+| `attribution.enabled` | `false` | Run the counterfactual attribution engine on each tracked deploy. Needs the watch's own collector (not a Prometheus sample source) — see [Attribution engine](attribution-engine.md) |
+| `attribution.mode` | `shadow` | `shadow` records the action the engine would take and always serves a `pass` verdict; `enforce` serves `inconclusive` (pauses an Argo rollout) for grade B and `fail` (aborts it) for grade A. The manager never writes to a Rollout itself — see [Attribution engine](attribution-engine.md) |
 | `periodicDetection.enabled` | `false` | Also run regression detection on a rolling schedule, independent of any tracked deploy — see [Periodic Detection](periodic-detection.md) |
 | `periodicDetection.windowMinutes` | `60` | Split-window size for periodic detection; only meaningful alongside `periodicDetection.enabled` |
 | `periodicDetection.intervalMinutes` | `15` | How often a full periodic-detection pass runs; only meaningful alongside `periodicDetection.enabled` |
@@ -226,7 +227,7 @@ In short: if you're running the standalone `operator`/`ingester` binaries, `kube
 - [Persistence](persistence.md) — the `--state-*` flags in depth.
 - [Deploy Sources & Webhooks](webhooks.md) — `--source-type` and `sourceType` per webhook source.
 - [Auto-Abort (Argo Rollouts)](auto-abort.md) — `autoAbort.enabled`/`autoAbort.confidenceThreshold` in depth, including the RBAC gate.
-- [Attribution engine](attribution-engine.md) — `attribution.enabled`, the shadow decisions and the metric they feed.
+- [Attribution engine](attribution-engine.md) — `attribution.enabled`, `attribution.mode`, the verdict endpoint and the metric.
 - [Periodic (Deploy-Independent) Detection](periodic-detection.md) — `--periodic-detection`/`periodicDetection.*` in depth, including the false-positive caveat and re-arm suppression model.
 - [Multi-Cluster (Fleet) Mode](multi-cluster.md) — `remoteClusterRef`, `cnpgClusterRef`, and cluster health checks in depth, including the hub-spoke RBAC split.
 - [API Versioning & Compatibility](api-versioning.md) — what `v1alpha1` guarantees (and doesn't) for the CRDs documented above.

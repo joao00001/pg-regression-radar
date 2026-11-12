@@ -26,14 +26,20 @@ import (
 )
 
 // shadowEvaluations are the offsets after a deploy at which the attribution
-// engine judges it. The first is when the post-deploy window has filled; the
-// following ones confirm the verdict, which the policy needs before it would
-// act on anything above an alert.
-var shadowEvaluations = []time.Duration{30 * time.Minute, 35 * time.Minute, 40 * time.Minute}
+// engine judges it. Measured on simulated workloads, the engine cannot convict
+// before about 15 minutes (its persistence check needs a late window), so the
+// first evaluations only establish that nothing is wrong yet; from 15 minutes on,
+// each one can confirm the last, which the policy needs before it would act on
+// anything above an alert. The verdict endpoint serves the latest of them.
+var shadowEvaluations = []time.Duration{
+	10 * time.Minute, 15 * time.Minute, 20 * time.Minute, 25 * time.Minute,
+	30 * time.Minute, 35 * time.Minute, 40 * time.Minute, 45 * time.Minute,
+}
 
-// shadowTracker schedules the shadow evaluations of every drained deploy and
-// runs them off the poll goroutine, since one assessment can take a while on a
-// large workload. It only ever logs and counts; nothing it concludes is acted on.
+// shadowTracker schedules the attribution evaluations of every drained deploy
+// and runs them off the poll goroutine, since one assessment can take a while on
+// a large workload. It logs, counts, and keeps the result for the verdict
+// endpoint; this manager never writes to the cluster because of it.
 type shadowTracker struct {
 	ev     *shadow.Evaluator
 	logger *slog.Logger
@@ -62,8 +68,9 @@ func newShadowTracker(ev *shadow.Evaluator, logger *slog.Logger, reg prometheus.
 
 // add schedules the evaluations of a newly drained deploy.
 func (s *shadowTracker) add(e dto.DeployEvent) {
-	s.ev.NoteDeploy(e.ID, e.Timestamp)
-	j := &shadowJob{deploy: shadow.Deploy{ID: e.ID, At: e.Timestamp, HasRollbackTarget: true}}
+	d := shadow.Deploy{ID: e.ID, Namespace: e.Namespace, App: e.App, Revision: e.Revision, At: e.Timestamp, HasRollbackTarget: true}
+	s.ev.Register(d)
+	j := &shadowJob{deploy: d}
 	for _, o := range shadowEvaluations {
 		j.due = append(j.due, e.Timestamp.Add(o))
 	}
@@ -110,9 +117,13 @@ func (s *shadowTracker) tick(now time.Time) {
 			}
 			d := rec.Decision
 			s.count.WithLabelValues(string(d.Action), string(d.Grade)).Inc()
-			s.logger.Info("attribution (shadow): decision, not executed",
+			msg := "attribution (shadow): decision, not executed"
+			if d.Enforced {
+				msg = "attribution (enforce): verdict served to the rollout controller"
+			}
+			s.logger.Info(msg,
 				"deploy", w.d.ID, "health", string(rec.Assessment.Health),
-				"action", string(d.Action), "wanted", string(d.Wanted), "grade", string(d.Grade),
+				"action", string(d.Action), "verdict", string(d.Verdict()), "wanted", string(d.Wanted), "grade", string(d.Grade),
 				"impact", d.Impact, "attribution", rec.Assessment.Attribution, "reasons", d.Reasons)
 		}
 	}()

@@ -37,7 +37,10 @@ type Source interface {
 // Deploy is the deploy under judgement and what is known about it.
 type Deploy struct {
 	ID string
-	At time.Time
+	// Namespace, App and Revision say which workload and release this is, so a
+	// controller can ask for the verdict of the deploy it is rolling out.
+	Namespace, App, Revision string
+	At                       time.Time
 	// Tables the deploy declares it changes, if known.
 	Tables []string
 	// HasRollbackTarget is false for the first deploy of an application.
@@ -61,14 +64,58 @@ type Evaluator struct {
 	mu      sync.Mutex
 	others  []attribution.Event
 	records []Record
+	deploys []Deploy
 }
 
 // New returns an evaluator in shadow mode (the policy never enforces).
 func New(src Source, fp adapter.Fingerprint, cfg attribution.Config) *Evaluator {
-	return &Evaluator{
-		Source: src, Fingerprint: fp, Config: cfg,
-		Policy: attribution.NewPolicy(attribution.PolicyConfig{Enforce: false}),
+	return NewWithPolicy(src, fp, cfg, attribution.PolicyConfig{Enforce: false})
+}
+
+// NewWithPolicy returns an evaluator with an explicit policy configuration.
+// With Enforce set, its decisions carry verdicts a controller acts on.
+func NewWithPolicy(src Source, fp adapter.Fingerprint, cfg attribution.Config, pc attribution.PolicyConfig) *Evaluator {
+	return &Evaluator{Source: src, Fingerprint: fp, Config: cfg, Policy: attribution.NewPolicy(pc)}
+}
+
+// Register remembers a deploy so its latest evaluation can be looked up by
+// workload, and registers it as something that can move latency.
+func (e *Evaluator) Register(d Deploy) {
+	e.NoteDeploy(d.ID, d.At)
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, x := range e.deploys {
+		if x.ID == d.ID {
+			return
+		}
 	}
+	e.deploys = append(e.deploys, d)
+}
+
+// Latest returns the most recent evaluation of the newest deploy of app in
+// namespace (of the given revision, when revision is not empty). found is false
+// when no such deploy is known; ok is false when it is known but has not been
+// evaluated yet.
+func (e *Evaluator) Latest(namespace, app, revision string) (d Deploy, rec Record, found, ok bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, x := range e.deploys {
+		if x.Namespace != namespace || x.App != app || (revision != "" && x.Revision != revision) {
+			continue
+		}
+		if !found || x.At.After(d.At) {
+			d, found = x, true
+		}
+	}
+	if !found {
+		return
+	}
+	for i := len(e.records) - 1; i >= 0; i-- {
+		if e.records[i].Assessment.Deploy.ID == d.ID {
+			return d, e.records[i], true, true
+		}
+	}
+	return d, Record{}, true, false
 }
 
 // NoteDeploy registers a deploy as something that can move latency, so that

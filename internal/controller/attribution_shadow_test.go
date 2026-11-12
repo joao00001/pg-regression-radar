@@ -65,22 +65,22 @@ func TestShadowTrackerRunsDueEvaluationsOnce(t *testing.T) {
 		slog.New(slog.NewTextHandler(io.Discard, nil)), reg, "c")
 	tr.add(dto.DeployEvent{ID: dep.ID, Timestamp: dep.At})
 
-	tr.tick(dep.At.Add(10 * time.Minute)) // nothing due yet
+	tr.tick(dep.At.Add(5 * time.Minute)) // nothing due yet
 	if n := len(tr.ev.Records()); n != 0 {
 		t.Fatalf("evaluated early: %d", n)
 	}
-	tr.tick(dep.At.Add(41 * time.Minute)) // all three due
+	tr.tick(dep.At.Add(46 * time.Minute)) // all eight due
 	deadline := time.Now().Add(3 * time.Minute)
-	for len(tr.ev.Records()) < 3 && time.Now().Before(deadline) {
+	for len(tr.ev.Records()) < 8 && time.Now().Before(deadline) {
 		time.Sleep(50 * time.Millisecond)
 	}
-	if n := len(tr.ev.Records()); n != 3 {
-		t.Fatalf("records = %d, want 3", n)
+	if n := len(tr.ev.Records()); n != 8 {
+		t.Fatalf("records = %d, want 8", n)
 	}
 	tr.tick(dep.At.Add(2 * time.Hour)) // nothing left
 	time.Sleep(100 * time.Millisecond)
-	if n := len(tr.ev.Records()); n != 3 {
-		t.Fatalf("records = %d after the job finished, want 3", n)
+	if n := len(tr.ev.Records()); n != 8 {
+		t.Fatalf("records = %d after the job finished, want 8", n)
 	}
 	mfs, _ := reg.Gather()
 	var total float64
@@ -91,8 +91,8 @@ func TestShadowTrackerRunsDueEvaluationsOnce(t *testing.T) {
 			}
 		}
 	}
-	if total != 3 {
-		t.Fatalf("metric total = %v, want 3", total)
+	if total != 8 {
+		t.Fatalf("metric total = %v, want 8", total)
 	}
 }
 

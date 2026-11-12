@@ -233,7 +233,7 @@ hide:
 
 </div>
 
-<p class="pgrr-radar-note">Shadow mode today: the engine records the action it would take and never executes it.</p>
+<p class="pgrr-radar-note">Shadow by default: the engine records the action it would take. In enforce mode it serves a verdict, pause or abort, that your Argo Rollouts analysis acts on.</p>
 
 ## Where to go next
 

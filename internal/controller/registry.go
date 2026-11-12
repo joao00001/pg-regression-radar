@@ -119,7 +119,7 @@ type WatchRuntime struct {
 	// non-nil, not just a likelihood.
 	CapturePlans bool
 
-	// Shadow is the attribution engine's shadow-mode evaluator, set when the
+	// Shadow is the attribution evaluator (shadow or enforce, per the watch), set when the
 	// owning PostgresWatch has spec.attribution.enabled and the watch scrapes
 	// its own Collector. nil otherwise. It never acts.
 	Shadow *shadow.Evaluator
@@ -216,4 +216,17 @@ func (r *Registry) Gather() ([]*dto.MetricFamily, error) {
 	}
 	r.mu.RUnlock()
 	return gatherers.Gather()
+}
+
+// Shadows returns the attribution evaluator of every watch that has one.
+func (r *Registry) Shadows() []*shadow.Evaluator {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var out []*shadow.Evaluator
+	for _, rt := range r.runtimes {
+		if rt.Shadow != nil {
+			out = append(out, rt.Shadow)
+		}
+	}
+	return out
 }
