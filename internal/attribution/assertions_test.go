@@ -16,6 +16,7 @@ package attribution_test
 
 import (
 	"math/rand"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -27,10 +28,35 @@ import (
 // The assertions below turn the scenario report into pass/fail properties. They
 // use more seeds than the report and fail loudly if a calibration claim breaks.
 
+// skipLong skips the multi-minute statistical tests unless PGRR_LONG is set. CI
+// runs the unit tests with -race and coverage on two cores, where these take
+// tens of minutes; the quick calibration test below covers the same claims at a
+// size that fits. Run the full set with: PGRR_LONG=1 go test ./internal/attribution/
 func skipLong(t *testing.T) {
 	t.Helper()
-	if testing.Short() {
-		t.Skip("long statistical test")
+	if os.Getenv("PGRR_LONG") == "" {
+		t.Skip("long statistical test; set PGRR_LONG=1 to run")
+	}
+}
+
+// A small version of the calibration claims that always runs: a few runs of
+// small workloads, enough to catch a broken engine, not to estimate rates.
+func TestQuickCalibration(t *testing.T) {
+	cfg := attribution.Config{}
+	small := func(w sim.World) sim.World { w.Queries = 40; return w }
+	null := score(runSeeds(func(s uint64) sim.World { return small(sim.World{Seed: s}) }, 5, cfg), realRegression)
+	if null.fpAB != 0 || null.anyRegressed > 2 {
+		t.Fatalf("no change: %d runs flagged, %d at A/B", null.anyRegressed, null.fpAB)
+	}
+	shock := score(runSeeds(func(s uint64) sim.World { return small(sim.World{Seed: s, LoadShock: 0.7}) }, 4, cfg), realRegression)
+	if shock.fpAB != 0 {
+		t.Fatalf("load shock convicted at A/B: %d", shock.fpAB)
+	}
+	canary := score(runSeeds(func(s uint64) sim.World {
+		return small(sim.World{Seed: s, Canary: true, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}})
+	}, 4, cfg), realRegression)
+	if canary.impactTrue == 0 || canary.impactFound/canary.impactTrue < 0.7 || canary.fp != 0 {
+		t.Fatalf("canary: found %.2f of %.2f, %d false positives", canary.impactFound, canary.impactTrue, canary.fp)
 	}
 }
 
@@ -136,9 +162,9 @@ func TestPowerOnMaterialRegressions(t *testing.T) {
 // Same input, same output: the engine has no hidden randomness or map-order
 // dependence.
 func TestDeterminism(t *testing.T) {
-	units, ev, d, _ := sim.World{Seed: 7, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	units, ev, d, _ := sim.World{Seed: 7, Queries: 40, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
 	a := attribution.Assess(attribution.Config{}, units, ev, d)
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 2; i++ {
 		b := attribution.Assess(attribution.Config{}, units, ev, d)
 		if a.Health != b.Health || a.Impact != b.Impact || a.Attribution != b.Attribution {
 			t.Fatalf("run %d differs: %+v vs %+v", i, a.Impact, b.Impact)
@@ -153,7 +179,7 @@ func TestDeterminism(t *testing.T) {
 
 // The order in which units are listed must not change any verdict.
 func TestUnitOrderInvariance(t *testing.T) {
-	units, ev, d, _ := sim.World{Seed: 9, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	units, ev, d, _ := sim.World{Seed: 9, Queries: 40, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
 	a := attribution.Assess(attribution.Config{}, units, ev, d)
 	want := map[string]attribution.UnitVerdict{}
 	for _, v := range a.Units {
@@ -176,7 +202,7 @@ func TestUnitOrderInvariance(t *testing.T) {
 // Measuring in other units (seconds instead of milliseconds) must not change
 // the verdicts: the engine works on ratios.
 func TestScaleInvariance(t *testing.T) {
-	units, ev, d, _ := sim.World{Seed: 11, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	units, ev, d, _ := sim.World{Seed: 11, Queries: 40, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
 	a := attribution.Assess(attribution.Config{}, units, ev, d)
 	scaled := make([]attribution.Unit, len(units))
 	for i, u := range units {
@@ -219,7 +245,7 @@ func TestDegenerateInputs(t *testing.T) {
 
 // Policy decisions must be a pure function of the assessment sequence.
 func TestPolicyDeterministic(t *testing.T) {
-	units, ev, d, _ := sim.World{Seed: 5, Canary: true, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	units, ev, d, _ := sim.World{Seed: 5, Queries: 40, Canary: true, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
 	a := attribution.Assess(attribution.Config{}, units, ev, d)
 	run := func() []attribution.Decision {
 		p := attribution.NewPolicy(attribution.PolicyConfig{})

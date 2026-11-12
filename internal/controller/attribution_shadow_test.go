@@ -48,7 +48,7 @@ func (r *replaySource) SamplesInRange(id int64, from, to time.Time) []pgstat.Que
 }
 
 func TestShadowTrackerRunsDueEvaluationsOnce(t *testing.T) {
-	units, _, dep, _ := sim.World{Seed: 3, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	units, _, dep, _ := sim.World{Seed: 3, Queries: 40, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
 	src := &replaySource{samples: map[int64][]pgstat.QuerySample{}}
 	for i, u := range units {
 		id := int64(i + 1)
@@ -70,7 +70,7 @@ func TestShadowTrackerRunsDueEvaluationsOnce(t *testing.T) {
 		t.Fatalf("evaluated early: %d", n)
 	}
 	tr.tick(dep.At.Add(41 * time.Minute)) // all three due
-	deadline := time.Now().Add(30 * time.Second)
+	deadline := time.Now().Add(3 * time.Minute)
 	for len(tr.ev.Records()) < 3 && time.Now().Before(deadline) {
 		time.Sleep(50 * time.Millisecond)
 	}

@@ -173,6 +173,10 @@ A `PerformanceRegression` is only marked `Detected` when the change point is fou
 
 The change point's own timestamp is preserved on the result as `DetectedChangeAt`, so you can see exactly when the shift was located — which may differ slightly from the deploy event's timestamp, within the configured tolerance.
 
+## Detection and attribution are different questions
+
+The two stages above answer *did this query's latency change near this deploy?* They cannot answer *did the deploy cause it?*: a statistics refresh, a load shock, a cold cache or a concurrent deploy produces the same step, and a query whose text changed has a new `queryid` and no history. The opt-in [attribution engine](attribution-engine.md) asks the second question, by comparing each query with what a control built from untouched queries (or a canary arm) says it would have done without the deploy. It runs in shadow mode next to this detector: `Detected` and its alerts are unchanged, and nothing in the engine acts on its conclusions yet.
+
 ## Plan-diff correlation (optional)
 
 A `PerformanceRegression` says *that* a query got slower and roughly *when*, but not *why* on its own. Opt-in, default off, adds a short plan-diff hint by periodically capturing an execution plan for each tracked queryid and diffing the snapshot from just before the detected change point against the most recent one (`internal/planner.Diff`) — `--capture-plans` on the standalone `operator` CLI, or `spec.capturePlans: true` on a `PostgresWatch` in the CRD-driven (`cmd/manager`) mode. Both paths call the same `internal/planner`/`Collector.PlansAround` machinery and land the result in the same place: the standalone CLI's Slack notification gets a "Plan Diff" field, and a `PostgresWatch`'s resulting `PerformanceRegression` custom resource gets `status.planDiffSummary`.
@@ -228,6 +232,7 @@ This guarantees at most one `PerformanceRegression` per distinct query per `Anal
 
 ## See also
 
+- [Attribution engine](attribution-engine.md) — the counterfactual check on whether a detected shift was caused by the deploy (shadow mode).
 - [Architecture Overview](architecture.md) — where the Correlation Engine sits in the overall pipeline.
 - [Collector Internals](collector-internals.md) — how the samples this algorithm consumes are collected and retained.
 - [Configuration Reference](configuration.md) — `--window-minutes`, `--min-executions`, `--latency-threshold`, `--changepoint-tolerance`, `--multiple-testing`, `--adjust-autocorrelation`, `--capture-plans`, and the `PostgresWatch` equivalents.

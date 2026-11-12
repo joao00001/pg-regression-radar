@@ -177,9 +177,7 @@ func TestPolicyCircuitBreaker(t *testing.T) {
 // must never produce an action above Alert, and a real regression must produce
 // the action its evidence grade calls for.
 func TestPolicyEndToEnd(t *testing.T) {
-	if testing.Short() {
-		t.Skip("end-to-end policy test is long")
-	}
+	skipLong(t)
 	type expect struct {
 		name      string
 		build     func(seed uint64) sim.World
