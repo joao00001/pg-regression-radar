@@ -1717,7 +1717,7 @@
    the current page, as on kubernetes.io. A group is a bold label with a
    chevron; its pages hang off a thin rule, and the current page takes the
    accent on that rule. Desktop only: on a narrow screen the sidebar is the
-   drawer, which keeps Material's own look. */
+   drawer, styled further down. */
 @media screen and (min-width: 76.25em) {
   /* "Docs": a small eyebrow instead of a heading, so the groups lead. */
   .md-sidebar--primary .md-nav--lifted > .md-nav__list > .md-nav__item--active > .md-nav__link,
@@ -1800,6 +1800,240 @@
     color: var(--pgrr-accent);
     font-weight: 650;
     border-left-color: transparent;
+  }
+}
+
+/* ---- Menu on a narrow screen: the drawer ----
+   Below 76.25em the sidebar is a drawer that slides in from the left (it holds
+   the same entries as the tab row, which Material hides there). It had kept
+   Material's own look: an indigo header block, grey title bars and ruled rows.
+   Here it is set like the rest of the site: the page's own background, a quiet
+   lockup on top, plain rows, the current page in the accent, and the group
+   titles as the small eyebrows the desktop menu uses. */
+@media screen and (max-width: 76.234375em) {
+  :root {
+    --pgrr-drawer-w: min(16.5rem, 86vw);
+  }
+
+  /* The tab row's 4.3rem offset (set above for the desktop sidebar) must not
+     push the drawer down: it is fixed to the top of the window. */
+  .md-header--lifted ~ .md-container .md-sidebar.md-sidebar--primary {
+    top: 0;
+  }
+
+  [dir="ltr"] .md-sidebar--primary {
+    left: calc(-1 * var(--pgrr-drawer-w));
+  }
+
+  [dir="rtl"] .md-sidebar--primary {
+    right: calc(-1 * var(--pgrr-drawer-w));
+  }
+
+  .md-sidebar--primary {
+    width: var(--pgrr-drawer-w);
+    border-right: 1px solid var(--pgrr-ui-line);
+    background-color: var(--md-default-bg-color);
+    transition:
+      transform 0.38s cubic-bezier(0.22, 0.8, 0.26, 1),
+      box-shadow 0.38s;
+  }
+
+  [data-md-toggle="drawer"]:checked ~ .md-container .md-sidebar--primary {
+    transform: translateX(var(--pgrr-drawer-w));
+    box-shadow: 28px 0 60px -24px rgba(0, 0, 0, 0.45);
+  }
+
+  [dir="rtl"] [data-md-toggle="drawer"]:checked ~ .md-container .md-sidebar--primary {
+    transform: translateX(calc(-1 * var(--pgrr-drawer-w)));
+  }
+
+  /* The page behind: dimmed and a little out of focus. */
+  .md-overlay {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+
+  /* Lockup on top: the mark and the name, set like the header's. */
+  .md-nav--primary > .md-nav__title[for="__drawer"] {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    height: auto;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--pgrr-ui-line);
+    background: none;
+    color: var(--md-default-fg-color);
+    font-family: var(--md-code-font-family);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .md-nav--primary > .md-nav__title[for="__drawer"] .md-logo {
+    position: static;
+    display: block;
+    flex: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .md-nav--primary > .md-nav__title[for="__drawer"] .md-logo svg {
+    display: block;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  /* The repository, as a quiet row (it only shows below 60em). */
+  .md-nav__source {
+    border-bottom: 1px solid var(--pgrr-ui-line);
+    background: none;
+    color: var(--md-default-fg-color--light);
+  }
+
+  .md-nav__source .md-source {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    padding: 0.6rem 1rem;
+    font-size: 0.62rem;
+  }
+
+  /* Rows: no rules between them; the page's own text. */
+  .md-nav--primary .md-nav__title ~ .md-nav__list {
+    padding: 0.35rem 0;
+    box-shadow: none;
+    scroll-snap-type: none;
+  }
+
+  .md-nav--primary .md-nav__item {
+    border-top: 0;
+  }
+
+  .md-nav--primary .md-nav__link {
+    position: relative;
+    padding: 0.62rem 1rem;
+    font-size: 0.74rem;
+    font-weight: 500;
+    color: var(--md-default-fg-color);
+    transition: background-color 0.15s, color 0.15s;
+  }
+
+  .md-nav--primary .md-nav__link:hover,
+  .md-nav--primary .md-nav__link:focus-visible {
+    background-color: color-mix(in srgb, var(--md-default-fg-color) 5%, transparent);
+  }
+
+  /* The current page: the accent, and a short bar on the edge. */
+  .md-nav--primary .md-nav__item--active > .md-nav__link,
+  .md-nav--primary .md-nav__link--active {
+    color: var(--pgrr-accent);
+    font-weight: 650;
+  }
+
+  .md-nav--primary .md-nav__item--active > .md-nav__link:hover,
+  .md-nav--primary .md-nav__link--active:hover {
+    color: var(--pgrr-accent);
+  }
+
+  .md-nav--primary .md-nav__item:not(.md-nav__item--nested) > .md-nav__link--active::before {
+    content: "";
+    position: absolute;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    left: 0;
+    width: 2px;
+    border-radius: 0 2px 2px 0;
+    background: var(--pgrr-accent-solid);
+  }
+
+  /* Chevrons and the page's table-of-contents toggle: quiet. */
+  .md-nav--primary .md-nav__link .md-nav__icon {
+    width: 1rem;
+    height: 1rem;
+    font-size: 1rem;
+    opacity: 0.55;
+    transition: opacity 0.15s, transform 0.25s cubic-bezier(0.22, 0.8, 0.26, 1);
+  }
+
+  .md-nav--primary .md-nav__link:hover .md-nav__icon {
+    opacity: 1;
+  }
+
+  /* A group's own page: the title row above its entries, like the desktop
+     eyebrow, with the back arrow on the left. */
+  .md-nav--primary .md-nav .md-nav__title {
+    display: flex;
+    align-items: center;
+    height: auto;
+    min-height: 2.9rem;
+    padding: 0.7rem 1rem 0.7rem 2.6rem;
+    border-bottom: 1px solid var(--pgrr-ui-line);
+    background: none;
+    color: var(--md-default-fg-color--light);
+    font-size: 0.6rem;
+    font-weight: 650;
+    letter-spacing: 0.1em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .md-nav--primary .md-nav .md-nav__title .md-nav__icon {
+    top: 50%;
+    left: 0.8rem;
+    margin: 0;
+    transform: translateY(-50%);
+  }
+
+  [dir="ltr"] .md-nav--primary .md-nav .md-nav__title .md-nav__icon {
+    left: 0.8rem;
+  }
+
+  .md-nav--primary .md-nav--secondary .md-nav__title {
+    padding-left: 2.6rem;
+  }
+
+  /* The table of contents hangs off a thin rule, like the desktop menu's pages. */
+  [dir="ltr"] .md-nav--primary .md-nav--secondary .md-nav__link {
+    padding-left: 1.4rem;
+    font-size: 0.68rem;
+    font-weight: 450;
+    color: var(--md-default-fg-color--light);
+  }
+
+  .md-nav--primary .md-nav--secondary .md-nav__link:hover {
+    color: var(--md-default-fg-color);
+  }
+
+  .md-nav--primary .md-nav__list {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+@media screen and (max-width: 76.234375em) and (prefers-reduced-motion: no-preference) {
+  /* The entries slide in one after another as the drawer opens. It is the link
+     that moves, not the list item: a transform on the item would become the
+     containing block of the group page that slides over the drawer, and push
+     that page out of place. */
+  [data-md-toggle="drawer"]:checked ~ .md-container .md-nav--primary > .md-nav__list > .md-nav__item > .md-nav__link {
+    animation: pgrr-drawer-item 0.42s cubic-bezier(0.22, 0.8, 0.26, 1) both;
+    animation-delay: calc(0.08s + var(--pgrr-i, 0) * 0.035s);
+  }
+
+  .md-nav--primary > .md-nav__list > .md-nav__item:nth-child(1) { --pgrr-i: 0; }
+  .md-nav--primary > .md-nav__list > .md-nav__item:nth-child(2) { --pgrr-i: 1; }
+  .md-nav--primary > .md-nav__list > .md-nav__item:nth-child(3) { --pgrr-i: 2; }
+  .md-nav--primary > .md-nav__list > .md-nav__item:nth-child(4) { --pgrr-i: 3; }
+  .md-nav--primary > .md-nav__list > .md-nav__item:nth-child(5) { --pgrr-i: 4; }
+  .md-nav--primary > .md-nav__list > .md-nav__item:nth-child(n+6) { --pgrr-i: 5; }
+
+  @keyframes pgrr-drawer-item {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
   }
 }
 
