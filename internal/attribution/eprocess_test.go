@@ -22,18 +22,6 @@ import (
 
 func rng(seed uint64) *rand.Rand { return rand.New(rand.NewPCG(seed, seed^0x9e3779b97f4a7c15)) }
 
-// gaussShift builds the Shift of n i.i.d. N(theta, 1) observations as the
-// Kalman construction would (a=1, F=1, nu=y).
-func gaussShift(r *rand.Rand, n int, theta float64) []Shift {
-	out := make([]Shift, n)
-	var s Shift
-	for i := 0; i < n; i++ {
-		s.Add(1, theta+r.NormFloat64(), 1)
-		out[i] = s
-	}
-	return out
-}
-
 func TestLogEMatchesNumericalIntegration(t *testing.T) {
 	// Λ = ∫_{θ'>δ} exp((θ'-δ)·a − (θ'-δ)²·I/2) · 2φ((θ'-δ)/τ)/τ d(θ'-δ)
 	for _, c := range []struct{ score, info, delta, tau float64 }{
@@ -208,7 +196,7 @@ func TestEBHKnownCases(t *testing.T) {
 	}
 	// the k-th largest passing implies all larger pass: e=(30,30,30) -> k=3 needs 13.3
 	got = EBH([]float64{ln(30), ln(30), ln(30)}, 0.1, 4)
-	if !(got[0] && got[1] && got[2]) {
+	if !got[0] || !got[1] || !got[2] {
 		t.Errorf("EBH = %v, want all true", got)
 	}
 	// a larger family than the candidates tightens the bar

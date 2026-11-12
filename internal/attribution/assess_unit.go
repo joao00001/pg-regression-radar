@@ -602,7 +602,7 @@ func (r *run) assessUnit(i int) UnitVerdict {
 			v.flag(FlagLowData, rr.Reason)
 			return v
 		}
-		res, set = rr, true
+		res = rr
 		v.Grade, v.Method = GradeC, "history"
 	}
 
