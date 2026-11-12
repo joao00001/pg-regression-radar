@@ -1393,3 +1393,23 @@
     padding: 38px var(--h-pad) 34px;
   }
 }
+
+/* ----------------------------------------------------------------------
+ * Real run (the recorded two-terminal demo)
+ *
+ * The video sits on the same ruled grid as the chart above it; its note
+ * reuses .pgrr-radar-note (and its rule). The terminals are always dark, so
+ * the player keeps a dark backdrop in both color schemes.
+ * ------------------------------------------------------------------- */
+.pgrr-demo {
+  position: relative;
+}
+
+.pgrr-demo-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  background: #0b0c0e;
+  object-fit: contain;
+}
