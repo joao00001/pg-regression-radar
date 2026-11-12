@@ -80,7 +80,7 @@ The simplest way to get pg-regression-radar: a single unified CLI, `pg-regressio
 
 ```bash
 go install github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@latest
-# or pin a release, e.g. @v1.7.0 (see the releases page for the latest tag)
+# or pin the release these docs describe: @{{ release_tag }}
 ```
 
 This places a single `pg-regression-radar` binary in `$(go env GOPATH)/bin`. From there:
@@ -128,26 +128,26 @@ Useful if you want to build against an unreleased commit, or need the CRD manife
 **Pull a published release** (every `vX.Y.Z` tag publishes all five images — see [CI/CD](ci-cd.md#releaseyml-on-pushing-a-v-tag)):
 
 ```bash
-docker pull ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0
-docker pull ghcr.io/joao00001/pg-regression-radar/manager:v0.3.0
-docker pull ghcr.io/joao00001/pg-regression-radar/collector:v0.3.0
-docker pull ghcr.io/joao00001/pg-regression-radar/ingester:v0.3.0
-docker pull ghcr.io/joao00001/pg-regression-radar/cli:v0.3.0
+docker pull ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }}
+docker pull ghcr.io/joao00001/pg-regression-radar/manager:{{ release_tag }}
+docker pull ghcr.io/joao00001/pg-regression-radar/collector:{{ release_tag }}
+docker pull ghcr.io/joao00001/pg-regression-radar/ingester:{{ release_tag }}
+docker pull ghcr.io/joao00001/pg-regression-radar/cli:{{ release_tag }}
 ```
 
-Substitute the actual latest tag from the [Releases page](https://github.com/joao00001/pg-regression-radar/releases), or use `:latest` for the most recent release (there is no rolling/"edge" image — every published tag corresponds to a real `vX.Y.Z` release). `docker run ghcr.io/joao00001/pg-regression-radar/cli:v0.3.0 operator --dsn ...` runs the unified CLI image; the other four are single-mode images matching the Dockerfile's other `--target` values.
+These commands use the release this documentation describes (`{{ release_tag }}`); use `:latest` for the most recent release instead (there is no rolling/"edge" image — every published tag corresponds to a real `vX.Y.Z` release). `docker run ghcr.io/joao00001/pg-regression-radar/cli:{{ release_tag }} operator --dsn ...` runs the unified CLI image; the other four are single-mode images matching the Dockerfile's other `--target` values.
 
 **Verify the signature and SBOM before trusting a pulled image.** Every published image is keyless-signed with [cosign](https://github.com/sigstore/cosign) using the publishing GitHub Actions run's own OIDC identity (no shared private key to leak or rotate), and carries an attached SBOM attestation:
 
 ```bash
 # Verify the image was signed by this repo's release.yml workflow, specifically
 # (not just "signed by someone with a GitHub account").
-cosign verify ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0 \
+cosign verify ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }} \
   --certificate-identity-regexp "^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
 # Fetch and inspect the attached SPDX SBOM attestation.
-cosign verify-attestation ghcr.io/joao00001/pg-regression-radar/operator:v0.3.0 \
+cosign verify-attestation ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }} \
   --type spdxjson \
   --certificate-identity-regexp "^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
@@ -173,13 +173,13 @@ See the [Dockerfile](https://github.com/joao00001/pg-regression-radar/blob/main/
 
 ```bash
 helm install pg-regression-radar oci://ghcr.io/joao00001/charts/pg-regression-radar \
-  --version 0.3.0 \
+  --version {{ release_version }} \
   --set postgres.dsn="postgres://user:password@cnpg-cluster-rw.production:5432/mydb?sslmode=require" \
   --set postgres.clusterName=cnpg-cluster \
   --set alerting.slackWebhookUrl=https://hooks.slack.com/services/XXX/YYY/ZZZ
 ```
 
-`--version` here is the chart's SemVer version (the release tag *without* its leading `v` — release `v0.3.0` publishes chart version `0.3.0`; see [CI/CD](ci-cd.md#releaseyml-on-pushing-a-v-tag) for why the two differ by that one character). No `helm repo add` is needed for an OCI registry — `helm install`/`helm pull` reference `oci://` URLs directly. The chart's `image.tag` values default to the chart's own `appVersion` (the release tag *with* the `v`, e.g. `v0.3.0`), which already matches the images published in the same release, so you don't need to set `image.tag`/`manager.image.tag` explicitly unless you want to run a different image tag than the chart's own release.
+`--version` here is the chart's SemVer version (the release tag *without* its leading `v` — release `{{ release_tag }}` publishes chart version `{{ release_version }}`; see [CI/CD](ci-cd.md#releaseyml-on-pushing-a-v-tag) for why the two differ by that one character). No `helm repo add` is needed for an OCI registry — `helm install`/`helm pull` reference `oci://` URLs directly. The chart's `image.tag` values default to the chart's own `appVersion` (the release tag *with* the `v`, e.g. `{{ release_tag }}`), which already matches the images published in the same release, so you don't need to set `image.tag`/`manager.image.tag` explicitly unless you want to run a different image tag than the chart's own release.
 
 The chart also exposes alert destination-policy controls used by both entrypoints:
 
@@ -191,7 +191,7 @@ Example (`mode=manager`, force all alerts through a relay):
 
 ```bash
 helm upgrade --install pg-regression-radar oci://ghcr.io/joao00001/charts/pg-regression-radar \
-  --version 0.3.0 \
+  --version {{ release_version }} \
   --set mode=manager \
   --set alerting.destinationPolicy=relay-only \
   --set alerting.destinationPolicyRelayUrl=https://relay.example.com/webhook
@@ -200,7 +200,7 @@ helm upgrade --install pg-regression-radar oci://ghcr.io/joao00001/charts/pg-reg
 **Verify the chart's signature before trusting it**, the same way as the container images above — the published Helm OCI artifact is keyless-signed with cosign too, using the chart's SemVer version as the tag (same one `--version` above installs):
 
 ```bash
-cosign verify ghcr.io/joao00001/charts/pg-regression-radar:0.3.0 \
+cosign verify ghcr.io/joao00001/charts/pg-regression-radar:{{ release_version }} \
   --certificate-identity-regexp "^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@.*" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```

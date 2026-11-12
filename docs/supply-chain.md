@@ -52,9 +52,9 @@ What this does **not** guarantee:
 | `ingester` image (amd64 + arm64) | `ghcr.io/joao00001/pg-regression-radar/ingester:<tag>` | ✓ keyless | ✓ SPDX attached | ✓ SLSA attestation |
 | Helm chart (OCI) | `ghcr.io/joao00001/charts/pg-regression-radar:<chart-version>` | ✓ keyless | — | ✓ SLSA attestation |
 
-Per-architecture images (`:v1.2.3-amd64`, `:v1.2.3-arm64`) are signed individually during the build job. The multi-arch manifest lists (`:v1.2.3`, `:latest`) are additionally signed after assembly — so `cosign verify` works whether you pin the multi-arch tag or a specific arch digest.
+Per-architecture images (`:{{ release_tag }}-amd64`, `:{{ release_tag }}-arm64`) are signed individually during the build job. The multi-arch manifest lists (`:{{ release_tag }}`, `:latest`) are additionally signed after assembly — so `cosign verify` works whether you pin the multi-arch tag or a specific arch digest.
 
-Chart versions use SemVer without a leading `v` (e.g. `1.2.3`), matching what `helm install --version` accepts. The image tag (`:v1.2.3`) and chart version (`1.2.3`) are always derived from the same Git tag.
+Chart versions use SemVer without a leading `v` (e.g. `{{ release_version }}`), matching what `helm install --version` accepts. The image tag (`:{{ release_tag }}`) and chart version (`{{ release_version }}`) are always derived from the same Git tag.
 
 ## Finding the digest
 
@@ -63,26 +63,26 @@ Every GitHub Release page lists the pushed tag name and links to the Actions run
 ```bash
 # Print the digest for the multi-arch manifest list
 docker buildx imagetools inspect \
-  ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3 \
+  ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }} \
   --format '{{json .Manifest}}' | jq -r '.digest'
 
 # Or with crane (faster, no daemon needed)
-crane digest ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+crane digest ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }}
 ```
 
 For the Helm chart:
 
 ```bash
-helm show chart oci://ghcr.io/joao00001/charts/pg-regression-radar --version 1.2.3 \
+helm show chart oci://ghcr.io/joao00001/charts/pg-regression-radar --version {{ release_version }} \
   | grep -E '^(version|appVersion):'
 ```
 
 ## Verifying image signatures
 
-Replace `v1.2.3` with the release tag you are verifying. The `--certificate-identity-regexp` must match the release workflow path exactly; the `--certificate-oidc-issuer` must be GitHub's Actions token endpoint.
+These examples use `{{ release_tag }}`, the release this documentation describes; replace it with the release tag you are verifying. The `--certificate-identity-regexp` must match the release workflow path exactly; the `--certificate-oidc-issuer` must be GitHub's Actions token endpoint.
 
 ```bash
-IMAGE=ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+IMAGE=ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }}
 
 cosign verify "$IMAGE" \
   --certificate-identity-regexp \
@@ -96,7 +96,7 @@ Verify a per-arch image by digest instead of tag:
 
 ```bash
 DIGEST=$(docker buildx imagetools inspect \
-  ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3-amd64 \
+  ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }}-amd64 \
   --format '{{json .Manifest}}' | jq -r '.digest')
 
 cosign verify "ghcr.io/joao00001/pg-regression-radar/operator@${DIGEST}" \
@@ -110,7 +110,7 @@ cosign verify "ghcr.io/joao00001/pg-regression-radar/operator@${DIGEST}" \
 The Helm chart is published as an OCI artifact to `ghcr.io/joao00001/charts/pg-regression-radar`. Cosign signs any OCI artifact by digest, so `cosign verify` works identically to images:
 
 ```bash
-cosign verify ghcr.io/joao00001/charts/pg-regression-radar:1.2.3 \
+cosign verify ghcr.io/joao00001/charts/pg-regression-radar:{{ release_version }} \
   --certificate-identity-regexp \
     "^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
@@ -121,7 +121,7 @@ cosign verify ghcr.io/joao00001/charts/pg-regression-radar:1.2.3 \
 Each image digest has an SPDX-JSON SBOM attached as a signed in-toto attestation. Fetch and inspect it:
 
 ```bash
-IMAGE=ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+IMAGE=ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }}
 
 cosign verify-attestation "$IMAGE" \
   --type spdxjson \
@@ -149,7 +149,7 @@ SBOM files are also uploaded as GitHub Actions artifacts during the release run 
 Releases also publish provenance attestations via `actions/attest-build-provenance`. Verify them with:
 
 ```bash
-IMAGE=ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+IMAGE=ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }}
 
 gh attestation verify "$IMAGE" \
   --owner joao00001
@@ -158,7 +158,7 @@ gh attestation verify "$IMAGE" \
 For the Helm chart OCI artifact:
 
 ```bash
-CHART=ghcr.io/joao00001/charts/pg-regression-radar:1.2.3
+CHART=ghcr.io/joao00001/charts/pg-regression-radar:{{ release_version }}
 
 gh attestation verify "$CHART" \
   --owner joao00001
@@ -169,7 +169,7 @@ gh attestation verify "$CHART" \
 To check a released image for CVEs beyond those known at release date:
 
 ```bash
-trivy image ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+trivy image ghcr.io/joao00001/pg-regression-radar/operator:{{ release_tag }}
 ```
 
 The release pipeline already scans every image at build time and fails on any CRITICAL-severity finding, so the image was clean at release date. `trivy image` here gives you a current view (new CVE disclosures may have occurred since).
@@ -178,15 +178,15 @@ The release pipeline already scans every image at build time and fails on any CR
 
 Build arguments `VERSION`, `COMMIT`, and `DATE` are injected at build time (see the `Build` step in `.github/workflows/release.yml`):
 
-- `VERSION` — the pushed Git tag (e.g. `v1.2.3`)
+- `VERSION` — the pushed Git tag (e.g. `{{ release_tag }}`)
 - `COMMIT` — the full Git SHA of the tagged commit (`github.sha`)
 - `DATE` — RFC 3339 UTC timestamp of the build start
 
 These values are baked into each binary's `--version` output via `internal/buildinfo`. To confirm the binary in a pulled image was built from the commit you expect:
 
 ```bash
-docker run --rm ghcr.io/joao00001/pg-regression-radar/cli:v1.2.3 pg-regression-radar version
-# Expected output includes: version=v1.2.3  commit=<sha>  date=<timestamp>
+docker run --rm ghcr.io/joao00001/pg-regression-radar/cli:{{ release_tag }} pg-regression-radar version
+# Expected output includes: version={{ release_tag }}  commit=<sha>  date=<timestamp>
 ```
 
 Cross-reference `commit` with the GitHub Release's linked tag commit SHA to confirm they match.
@@ -196,7 +196,7 @@ Cross-reference `commit` with the GitHub Release's linked tag commit SHA to conf
 `scripts/verify-release.sh` automates the checks above. It requires `cosign` and `jq` to be installed:
 
 ```bash
-./scripts/verify-release.sh v1.2.3
+./scripts/verify-release.sh {{ release_tag }}
 ```
 
 The script verifies signatures for all five images (multi-arch manifest lists) and the Helm chart, then prints a summary. Pass `--help` for usage.
@@ -209,7 +209,7 @@ The image was either not pushed by `release.yml` (e.g. a local build), or the `-
 
 **`cosign verify-attestation` exits with "no matching attestations"**
 
-The SBOM attestation is attached to the per-arch digest, not the manifest-list tag. If you are verifying a manifest-list reference (`:v1.2.3`) and your registry/cosign version does not traverse the index, pin to a per-arch digest instead (`:v1.2.3-amd64` or `:v1.2.3-arm64`).
+The SBOM attestation is attached to the per-arch digest, not the manifest-list tag. If you are verifying a manifest-list reference (`:{{ release_tag }}`) and your registry/cosign version does not traverse the index, pin to a per-arch digest instead (`:{{ release_tag }}-amd64` or `:{{ release_tag }}-arm64`).
 
 **`helm push` digest not parseable (historic release gap)**
 

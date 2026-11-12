@@ -19,10 +19,12 @@ the two, giving the unversioned build the same menu as the versioned one, and
 giving each version's root a redirect in place of the home page.
 """
 
+import functools
 import json
 import os
 import posixpath
 import re
+import subprocess
 
 import yaml
 
@@ -212,10 +214,52 @@ def _rewrite_target(src_uri, path, frag, config):
     return None
 
 
+_RELEASE_TAG_RE = re.compile(r"^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)*$")
+
+
+@functools.lru_cache(maxsize=None)
+def _release_tag():
+    """The release the docs being built describe, as a tag (`v1.8.0`).
+
+    Pages write image tags, chart versions and `go install` pins with the
+    `release_tag` / `release_version` placeholders (double curly braces), so every
+    version of the docs shows its own release instead of a stale or generic
+    number. Where the value comes from, first match wins:
+
+    1. PGRR_DOCS_VERSION, which docs.yml sets to the tag it deploys (this is
+       what keeps a redeploy of an old tag from a newer ref correct);
+    2. the tag checked out (a build from a tag, as the propagation script does);
+    3. the most recent `v*` tag, so a local `mkdocs serve` of unreleased work
+       shows the latest release;
+    4. the literal `vX.Y.Z`, e.g. in a shallow clone with no tags.
+    """
+    env = os.environ.get("PGRR_DOCS_VERSION", "").strip()
+    if env:
+        env = env if env.startswith("v") else "v" + env
+        if not _RELEASE_TAG_RE.match(env):
+            raise ValueError(f"PGRR_DOCS_VERSION={env!r} is not a release tag like v1.8.0")
+        return env
+    root = os.path.dirname(os.path.abspath(__file__))
+    for args in (
+        ("describe", "--tags", "--exact-match", "HEAD"),
+        ("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*"),
+    ):
+        try:
+            out = subprocess.run(("git",) + args, cwd=root, capture_output=True, text=True, check=True).stdout.strip()
+        except (OSError, subprocess.CalledProcessError):
+            continue
+        if _RELEASE_TAG_RE.match(out):
+            return out
+    return "vX.Y.Z"
+
+
 def on_page_markdown(markdown, page, config, files):
     """Rewrite relative links that cross the versioned/unversioned boundary
     (see UNVERSIONED_PAGES), skipping fenced and inline code so documentation
-    that shows example Markdown isn't altered."""
+    that shows example Markdown isn't altered. Also fills in the release
+    placeholders (see _release_tag), code blocks included."""
+    tag = _release_tag()
+    markdown = markdown.replace("{{ release_tag }}", tag).replace("{{ release_version }}", tag[1:])
 
     def sub(match):
         if match.group("code"):
