@@ -85,6 +85,9 @@ go install github.com/joao00001/pg-regression-radar/cmd/pg-regression-radar@late
 
 This places a single `pg-regression-radar` binary in `$(go env GOPATH)/bin`. From there:
 
+!!! tip "`command not found`?"
+    `go install` puts the binary in `$(go env GOPATH)/bin` (or in `$GOBIN`, if you set it), and a fresh Go install doesn't have that directory on your `PATH`. Add it, for example `export PATH="$PATH:$(go env GOPATH)/bin"` in `~/.bashrc` or `~/.zshrc`, and open a new terminal.
+
 ```bash
 pg-regression-radar operator --dsn "postgres://user:password@host:5432/dbname?sslmode=disable"
 pg-regression-radar manager --leader-elect=true
@@ -94,6 +97,9 @@ pg-regression-radar version
 pg-regression-radar help
 ```
 
+
+!!! note "`version` says `dev`: that is expected"
+    A binary installed with `go install` prints `pg-regression-radar dev (commit none, built unknown)`, whichever release you installed. The version, commit and build date are stamped in at build time with `-ldflags`, which `go install` doesn't pass; the published container images ([Option 3](#option-3-pull-or-build-the-container-image)) are built with them. To check which release a `go install` binary came from, run `go version -m $(go env GOPATH)/bin/pg-regression-radar` and read its `mod` line.
 
 Every subcommand accepts its own `--help`, `--version`, and (except `manager`) `--dry-run` — see [Configuration Reference](configuration.md#versioning-dry-run).
 
