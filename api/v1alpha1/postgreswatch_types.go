@@ -236,6 +236,15 @@ type PostgresWatchSpec struct {
 	// +optional
 	AutoAbort *AutoAbortConfig `json:"autoAbort,omitempty"`
 
+	// attribution optionally runs the counterfactual attribution engine in
+	// shadow mode next to the existing detector: every tracked deploy is
+	// judged against a control built from queries the deploy did not touch,
+	// and the decision it would take (alert, hold, roll back) is logged and
+	// exported as a metric, but never executed. nil (the default) means
+	// disabled. See docs/attribution-engine.md.
+	// +optional
+	Attribution *AttributionConfig `json:"attribution,omitempty"`
+
 	// periodicDetection optionally runs regression detection on a rolling
 	// schedule, independent of any tracked deploy: no DeploySource or
 	// DeployEvent is required for it to fire. See
@@ -380,6 +389,15 @@ type PrometheusSampleSourceConfig struct {
 	// label.
 	// +optional
 	BearerTokenSecretRef *SecretKeySelector `json:"bearerTokenSecretRef,omitempty"`
+}
+
+// AttributionConfig controls the counterfactual attribution engine. In this
+// version it only ever runs in shadow mode: it records what it would do and
+// never acts.
+type AttributionConfig struct {
+	// enabled turns the engine on for this watch.
+	// +kubebuilder:default=false
+	Enabled bool `json:"enabled"`
 }
 
 // AutoAbortConfig controls automatic Argo Rollouts abortion. It only ever

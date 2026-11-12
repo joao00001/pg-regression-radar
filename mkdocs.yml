@@ -145,6 +145,7 @@ nav:
           - Periodic detection: periodic-detection.md
           - Multi-cluster: multi-cluster.md
           - Auto-abort: auto-abort.md
+          - Attribution engine: attribution-engine.md
       - Integrations:
           - Deploy sources: webhooks.md
           - Alerting: alerting.md
