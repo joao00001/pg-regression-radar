@@ -580,6 +580,9 @@ jobs:
     # post never turns a finished release red: the announcement is a
     # courtesy, not part of publishing.
     #
+    # The post itself lives in .github/actions/announce-discord, shared with
+    # the manual workflow announce-discord-test.yml.
+    #
     # One-time setup: in Discord, create a webhook on the announcements
     # channel (Edit Channel -> Integrations -> Webhooks), copy its URL and
     # store it as the repository secret DISCORD_RELEASE_WEBHOOK.
@@ -587,36 +590,9 @@ jobs:
       contents: read
     continue-on-error: true
     steps:
-      - name: Post to the announcements channel
-        env:
-          WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
-          TAG: ${{ github.ref_name }}
-          REPO: ${{ github.repository }}
-          SERVER_URL: ${{ github.server_url }}
-        run: |
-          if [ -z "${WEBHOOK_URL}" ]; then
-            echo "DISCORD_RELEASE_WEBHOOK is not set; skipping the Discord announcement."
-            exit 0
-          fi
+      - uses: actions/checkout@v7
 
-          RELEASE_URL="${SERVER_URL}/${REPO}/releases/tag/${TAG}"
-
-          # jq builds the JSON so the tag can never break out of the string.
-          jq -n \
-            --arg tag "${TAG}" \
-            --arg url "${RELEASE_URL}" \
-            '{
-              username: "pg-regression-radar releases",
-              allowed_mentions: { parse: [] },
-              embeds: [{
-                title: ("pg-regression-radar " + $tag + " is out"),
-                url: $url,
-                description: "Release notes, images and the Helm chart are on the release page.",
-                color: 14355000
-              }]
-            }' > /tmp/discord-payload.json
-
-          curl --fail --silent --show-error \
-            -H "Content-Type: application/json" \
-            -d @/tmp/discord-payload.json \
-            "${WEBHOOK_URL}"
+      - uses: ./.github/actions/announce-discord
+        with:
+          tag: ${{ github.ref_name }}
+          webhook-url: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
