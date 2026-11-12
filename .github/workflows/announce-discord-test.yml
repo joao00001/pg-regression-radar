@@ -1,0 +1,41 @@
+name: Announce release on Discord (manual)
+
+# Re-posts a release announcement to Discord without cutting a release. Use it
+# to check the webhook and the message after wiring the channel up, or to
+# repeat an announcement that failed. It only reads the release; it builds and
+# publishes nothing. Leave the tag empty to use the latest published release.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to announce (empty = latest release)
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve the tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          TAG="${INPUT_TAG}"
+          if [ -z "${TAG}" ]; then
+            TAG="$(gh release view --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName)"
+          fi
+          # the release must exist, or the link in the message would 404
+          gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" > /dev/null
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+
+      - uses: ./.github/actions/announce-discord
+        with:
+          tag: ${{ steps.tag.outputs.tag }}
+          webhook-url: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}

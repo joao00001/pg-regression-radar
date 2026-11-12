@@ -1,0 +1,51 @@
+name: Announce a release on Discord
+description: >-
+  Posts a release embed to a Discord channel through a webhook. Does nothing
+  when the webhook URL is empty (forks, or before the channel is wired up).
+
+inputs:
+  tag:
+    description: The release tag, e.g. v1.8.0.
+    required: true
+  webhook-url:
+    description: The Discord webhook URL (pass the repository secret).
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Post to the announcements channel
+      shell: bash
+      env:
+        WEBHOOK_URL: ${{ inputs.webhook-url }}
+        TAG: ${{ inputs.tag }}
+        REPO: ${{ github.repository }}
+        SERVER_URL: ${{ github.server_url }}
+      run: |
+        if [ -z "${WEBHOOK_URL}" ]; then
+          echo "DISCORD_RELEASE_WEBHOOK is not set; skipping the Discord announcement."
+          exit 0
+        fi
+
+        RELEASE_URL="${SERVER_URL}/${REPO}/releases/tag/${TAG}"
+
+        # jq builds the JSON so the tag can never break out of the string.
+        jq -n \
+          --arg tag "${TAG}" \
+          --arg url "${RELEASE_URL}" \
+          '{
+            username: "pg-regression-radar releases",
+            allowed_mentions: { parse: [] },
+            embeds: [{
+              title: ("pg-regression-radar " + $tag + " is out"),
+              url: $url,
+              description: "Release notes, images and the Helm chart are on the release page.",
+              color: 14355000
+            }]
+          }' > "${RUNNER_TEMP}/discord-payload.json"
+
+        curl --fail --silent --show-error \
+          -H "Content-Type: application/json" \
+          -d @"${RUNNER_TEMP}/discord-payload.json" \
+          "${WEBHOOK_URL}"
