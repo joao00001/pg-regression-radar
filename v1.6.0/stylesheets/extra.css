@@ -1234,56 +1234,185 @@
   background-color: var(--pgrr-ui-bg);
 }
 
-/* "Back to top": a pill in the card colors with the arrow in the theme color. */
-.md-top {
-  border: 1px solid var(--pgrr-ui-border);
-  background-color: var(--pgrr-ui-bg);
-  box-shadow: var(--pgrr-ui-shadow);
-  color: var(--pgrr-ui-fg);
-  font-weight: 600;
-  transition: border-color 0.15s, opacity 0.2s, transform 0.2s;
+/* "Back to top" and "Copied to clipboard": square cells cut by a hairline, a mono
+   uppercase label and the theme accent, like the home page and the roadmap.
+   Both sit above everything else on the page (the largest z-index there is). */
+@media screen {
+  .md-top {
+    z-index: 2147483647;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow: hidden;
+    padding: 0.55rem 0.95rem 0.55rem 0.8rem;
+    border: 1px solid var(--pgrr-ui-border);
+    border-radius: 0;
+    background-color: var(--pgrr-ui-bg);
+    box-shadow: var(--pgrr-ui-shadow);
+    color: var(--pgrr-ui-fg);
+    font-family: var(--md-code-font-family);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    transition:
+      border-color 0.15s,
+      color 0.15s,
+      opacity 0.25s ease,
+      transform 0.45s cubic-bezier(0.2, 0.9, 0.25, 1.15);
+  }
+
+  /* Leaving: slide down and fade instead of vanishing (Material's own hidden
+     state has a 0ms transition). */
+  .md-top[hidden] {
+    transform: translate(-50%, 0.9rem);
+    transition-duration: 0.25s, 0.25s, 0.25s, 0.25s;
+  }
+
+  .md-top:hover,
+  .md-top:focus {
+    border-color: var(--pgrr-accent);
+    background-color: var(--pgrr-ui-bg);
+    color: var(--pgrr-ui-fg);
+  }
+
+  .md-top:focus-visible {
+    outline: 2px solid var(--pgrr-accent);
+    outline-offset: 3px;
+  }
+
+  .md-top svg {
+    flex: none;
+    vertical-align: baseline;
+    color: var(--pgrr-accent);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .md-top:hover svg {
+    transform: translateY(-3px);
+  }
+
+  /* A hairline in the accent colour draws in under the label on hover. */
+  .md-top::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background-color: var(--pgrr-accent-solid);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .md-top:hover::after,
+  .md-top:focus-visible::after {
+    transform: scaleX(1);
+  }
+
+  .md-dialog {
+    z-index: 2147483647;
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--pgrr-ui-border);
+    border-radius: 0;
+    background-color: var(--pgrr-ui-bg);
+    box-shadow: var(--pgrr-ui-shadow);
+    color: var(--pgrr-ui-fg);
+    transform: translateY(0.8rem);
+    transition:
+      transform 0.3s ease,
+      opacity 0.25s ease;
+  }
+
+  .md-dialog--active {
+    transform: translateY(0);
+    transition:
+      transform 0.5s cubic-bezier(0.2, 0.9, 0.25, 1.15),
+      opacity 0.25s ease;
+  }
+
+  .md-dialog__inner {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.7rem 1.05rem 0.7rem 0.8rem;
+    color: var(--pgrr-ui-fg);
+    font-family: var(--md-code-font-family);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* The small red square the section headings use, with a check in it. */
+  .md-dialog__inner::before {
+    content: "";
+    flex: none;
+    width: 16px;
+    height: 16px;
+    background:
+      url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%223.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%2012.5l4.5%204.5L19%207.5%22%2F%3E%3C%2Fsvg%3E")
+        center / 72% no-repeat,
+      var(--pgrr-accent-solid);
+    -webkit-mask: none;
+    mask: none;
+  }
+
+  /* The time left before the toast hides: a line that runs out over the 2 s
+     Material keeps it on screen. */
+  .md-dialog::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background-color: var(--pgrr-accent-solid);
+    transform: scaleX(0);
+    transform-origin: left;
+  }
 }
 
-.md-top:hover {
-  border-color: var(--pgrr-accent);
-  background-color: var(--pgrr-ui-bg);
-  color: var(--pgrr-ui-fg);
+@media screen and (prefers-reduced-motion: no-preference) {
+  .md-dialog--active .md-dialog__inner::before {
+    animation: pgrr-toast-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4) 0.1s both;
+  }
+
+  .md-dialog--active::after {
+    animation: pgrr-toast-timer 2s linear both;
+  }
 }
 
-.md-top svg {
-  color: var(--pgrr-accent);
+@keyframes pgrr-toast-pop {
+  from {
+    transform: scale(0.3) rotate(-25deg);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
 }
 
-/* "Copied to clipboard": a card with a check in the theme color, replacing
-   Material's inverted box. */
-.md-dialog {
-  border: 1px solid var(--pgrr-ui-border);
-  border-radius: 12px;
-  background-color: var(--pgrr-ui-bg);
-  box-shadow: var(--pgrr-ui-shadow);
-  color: var(--pgrr-ui-fg);
+@keyframes pgrr-toast-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 
-.md-dialog__inner {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.85rem 0.5rem 0.7rem;
-  font-weight: 600;
-}
-
-.md-dialog__inner::before {
-  content: "";
-  flex: none;
-  width: 16px;
-  height: 16px;
-  background-color: var(--pgrr-accent);
-  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4.5%2012.5l5%205L19.5%207%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4.5%2012.5l5%205L19.5%207%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
-}
-
-.md-dialog__inner {
-  color: var(--pgrr-ui-fg);
+@media screen and (prefers-reduced-motion: reduce) {
+  .md-top,
+  .md-top svg,
+  .md-top::after,
+  .md-dialog {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Search results: the same surface; the "N matching documents" bar loses its
