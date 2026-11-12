@@ -84,6 +84,15 @@ hide:
 <p class="pgrr-radar-live" role="status"></p>
 </div>
 
+## <span class="pgrr-kick">Real run</span>The same thing, *for real*<span class="pgrr-sub">Commands on the left, the radar on the right. A deploy drops an index and the radar flags the query.</span> { #real-run .pgrr-title data-toc-label="Real run" }
+
+<div class="pgrr-demo">
+<video class="pgrr-demo-video" controls muted loop playsinline preload="metadata" poster="assets/demo/radar-demo-poster.jpg" aria-label="Two terminals recorded side by side. On the left, commands start steady query traffic, send two deploy events and drop an index. On the right, the radar logs the deploys and then reports a regression on the slowed query, about 400 times slower.">
+<source src="assets/demo/radar-demo.mp4" type="video/mp4">
+</video>
+<p class="pgrr-radar-note pgrr-demo-note">Recorded from a real run against PostgreSQL 16, with the waiting sped up; the timestamps in the right terminal are real. To run it yourself, see the [example regression scenario](examples/regression-scenario.md).</p>
+</div>
+
 ## <span class="pgrr-kick">Architecture</span>From scrape to *alert*<span class="pgrr-sub">Four components turn pg_stat_statements and deploy webhooks into a single answer.</span> { #how-it-works .pgrr-title data-toc-label="How it works" }
 
 <div class="pgrr-diagram">
