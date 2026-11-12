@@ -1,9 +1,2469 @@
+
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<title>Redirecting...</title>
-<link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/roadmap/">
-<meta name="robots" content="noindex">
-<meta http-equiv="refresh" content="0; url=https://joao00001.github.io/pg-regression-radar/roadmap/">
-<script>location.replace("https://joao00001.github.io/pg-regression-radar/roadmap/" + location.hash);</script>
-<!-- pgrr-redirect -->
-</head><body>Redirecting to <a href="https://joao00001.github.io/pg-regression-radar/roadmap/">https://joao00001.github.io/pg-regression-radar/roadmap/</a>...</body></html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/v1.7.0/roadmap/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/brand/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Roadmap - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#roadmap" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are not viewing the latest version of these docs.
+  <a href="../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Roadmap
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/playground/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Playground
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/our-math/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Our math
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../installation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/roadmap/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/playground/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Playground
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/our-math/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Our math
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Docs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate your setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting and FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: a regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-cluster
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-abort
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integrations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../otel-prometheus-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prometheus / OTel source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardening (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Basic Kubernetes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/objects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Objects and namespaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/workloads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pods and Deployments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/config-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config and Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Services and networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/crds-operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDs and operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBAC and access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/helm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Helm basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting toolkit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contribute
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backporting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backporting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#feature-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature roadmap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Feature roadmap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#opentelemetry-as-a-pluggable-analysis-input-in-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenTelemetry as a pluggable analysis input, in detail
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-robustness-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known robustness gaps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operational-follow-ups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operational follow-ups
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-step-security-and-robustness-checklist-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7-step security and robustness checklist status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/roadmap.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
+<p><em>What's still open — planned features, known gaps, and operational follow-ups. What's already shipped lives in <a href="../changelog/">CHANGELOG.md</a> and in each feature's own docs page, not repeated here.</em></p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>This page tracks only what's <em>not</em> done yet: planned features, known robustness gaps, and operational follow-ups that aren't code changes. It is not a running history of delivered work — once an item here ships, it's removed from this page, not reworded as "done"; its details live in <a href="../changelog/">CHANGELOG.md</a> (what shipped and when) and the relevant feature's own docs page (how it works today).</p>
+<h2 id="feature-roadmap">Feature roadmap<a class="headerlink" href="#feature-roadmap" title="Permanent link">&para;</a></h2>
+<p>This project does not commit features to specific version numbers — a version tag marks when something shipped, not a promise of what a future one will contain. What's below has no version committed yet:</p>
+<ul>
+<li>GitHub/GitLab PR comment on detected regression; Grafana annotation.</li>
+<li>An OLM bundle for OperatorHub.io.</li>
+<li>OpenTelemetry as an alternative, opt-in input to the Correlation Engine (Prometheus-backed <code>SampleSource</code> first) — see below for the phased plan and why this is additive, not a replacement for <code>internal/collector.Collector</code>.</li>
+</ul>
+<h3 id="opentelemetry-as-a-pluggable-analysis-input-in-detail">OpenTelemetry as a pluggable analysis input, in detail<a class="headerlink" href="#opentelemetry-as-a-pluggable-analysis-input-in-detail" title="Permanent link">&para;</a></h3>
+<p>The OpenTelemetry Collector's <code>postgresqlreceiver</code> (opentelemetry-collector-contrib) now scrapes <code>pg_stat_statements</code> natively — per-query latency, call counts, and cache stats, exposed as a <code>postgresql.query.execution.time</code> metric plus a <code>db.server.top_query</code> log record. That means the "scrape <code>pg_stat_statements</code> and expose per-query stats" half of this project is being commoditized by the wider ecosystem. Nothing in OTel's core semantic conventions or collector-contrib, however, does deploy-correlated change-point detection (see <a href="../detection-algorithm/">Detection Algorithm</a>) or <code>EXPLAIN</code> plan-diff capture (see <a href="../detection-algorithm/#plan-diff-correlation-optional">Detection Algorithm: Plan-diff correlation</a>) — that pairing is this project's actual differentiated value, not the collection step.</p>
+<p>This is a low-risk pivot because the seam already exists and requires no changes to either: <code>correlation.Engine</code> depends only on a two-method <code>SampleSource</code> interface (<code>SamplesInRange</code>, <code>AllQueryIDs</code> — <code>internal/correlation/engine.go</code>), not on <code>internal/collector.Collector</code> concretely, and deploy events reach <code>Engine.Analyse</code> as a plain <code>v1alpha1.DeployEvent</code> value regardless of which webhook <code>DeploySource</code> produced it (see <a href="../webhooks/">Deploy Sources &amp; Webhooks</a>). A new input just has to satisfy the same interfaces.</p>
+<p>Phased plan:</p>
+<ol>
+<li><strong>Prometheus-backed <code>SampleSource</code> (additive, opt-in) — shipped, including wiring.</strong> <code>internal/telemetry/promsource</code> implements <code>correlation.SampleSource</code> via PromQL range queries against whatever a fleet's OTel Collector <code>prometheusexporter</code> is already serving — see <a href="../otel-prometheus-source/">OpenTelemetry / Prometheus Sample Source</a> for a real caveat found while building it: <code>postgresqlreceiver</code>'s stock <code>postgresql.query.execution.time</code> metric has no per-query attribution as of this writing (it's scoped to <code>db.namespace</code> only), so this source requires a custom recording rule or OTel pipeline to supply a per-queryid metric, rather than working out of the box against a bare OTel Collector install. It's plugged in as an alternative to <code>internal/collector.Collector</code> at the same injection point (<code>internal/controller/postgreswatch_controller.go</code>'s <code>startWatch</code>), selected declaratively via <code>spec.sampleSource.type: prometheus</code> on <code>PostgresWatch</code> — see <a href="../otel-prometheus-source/#using-it-from-a-postgreswatch-crd-cmdmanager">OpenTelemetry / Prometheus Sample Source § Using it from a PostgresWatch CRD</a>. <code>dsn</code>/<code>dsnSecretRef</code> aren't required in that mode, and <code>capturePlans: true</code> is rejected at reconcile time when combined with it (no direct database connection to <code>EXPLAIN</code> against). Default behavior is unchanged either way — <code>internal/collector.Collector</code>'s direct <code>pg_stat_statements</code> scraping remains the zero-extra-infrastructure default and is never removed; this is for fleets that already run an OTel Collector and would rather not run a second scraper against the same database. Still open: a full worked example <code>otel-collector.yaml</code> (the receiver → exporter → recording-rule pipeline end to end) — that's Phase 1c.</li>
+<li><strong>OTel-sourced deploy events (lower priority).</strong> Normalize an OTel span (e.g. an ArgoCD sync span) into a <code>v1alpha1.DeployEvent</code> through the same <code>EventStore.Add</code> path existing webhook <code>DeploySource</code>s already use. Deferred behind step 1 gaining real usage, since ArgoCD/Flux/GitHub/generic webhooks already cover this directly today.</li>
+<li><strong>Export <code>PerformanceRegression</code> as an OTLP-compatible signal.</strong> Once a regression is detected — regardless of which <code>SampleSource</code> fed it — emit it as an OTLP log record or span event too, so any OTel-native backend (Grafana, Datadog, etc.) can consume a detected regression without this project's own dashboard API. Complementary to, not a replacement for, existing Slack alerting.</li>
+</ol>
+<p>Deliberately staying out of scope for all of the above: <code>EXPLAIN</code>/plan-diff capture. No OTel component or semantic convention captures execution plans as of this writing — that stays <code>internal/planner</code>'s own logic regardless of which <code>SampleSource</code> is active.</p>
+<h2 id="known-robustness-gaps">Known robustness gaps<a class="headerlink" href="#known-robustness-gaps" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Real <code>auto_explain</code> log ingestion is not yet built.</strong> <code>internal/planner</code> captures a query's execution plan from either <code>pg_store_plans</code> (the real, previously-executed plan — see <a href="../testing/#real-pg_store_plans-extension">Testing</a> for how it's validated against a real install) or <code>EXPLAIN (FORMAT JSON, GENERIC_PLAN)</code> (an estimate, PostgreSQL 16+ only) and diffs two captures — see <a href="../detection-algorithm/#plan-diff-correlation-optional">Detection Algorithm</a>. A full <code>auto_explain</code> log-shipping pipeline remains a heavier, not-yet-started alternative for clusters that have neither <code>pg_store_plans</code> nor PostgreSQL 16 available — see the "Honest limitations" note on <a href="../detection-algorithm/#honest-limitations">Detection Algorithm</a>.</li>
+<li><strong>No real ArgoCD or <code>pg_store_plans</code> in the kind + CloudNativePG e2e.</strong> The <a href="../testing/#e2e-kind-cloudnativepg">kind + CloudNativePG e2e workflow</a> (<code>.github/workflows/e2e-kind.yml</code>) posts a <code>sourceType: generic</code> webhook directly to the DeploySource route rather than standing up ArgoCD's Application controller and Notifications engine (the part that actually emits a real <code>on-sync-succeeded</code> webhook — see <a href="../webhooks/">Deploy Sources &amp; Webhooks</a>); that's a second, mostly-orthogonal integration surface, a natural follow-up once someone needs to validate ArgoCD's own webhook delivery specifically. Separately, it doesn't run with <code>pg_store_plans</code> on the CloudNativePG instance: that C extension isn't compiled into CloudNativePG's default operand images, and building/maintaining a custom operand image just for this smoke test hasn't been judged worth it yet (narrower than "is <code>pg_store_plans</code> validated against a real server at all" — see <a href="../testing/#real-pg_store_plans-extension">Testing</a> for that validation, which runs outside of CloudNativePG specifically).</li>
+<li><strong>Neither kind-based e2e workflow has a real GitHub Actions run yet.</strong> <code>.github/workflows/e2e-kind.yml</code> and <code>.github/workflows/e2e-kind-multicluster.yml</code> were both authored, actionlint/YAML-checked, and validated against real clusters in a local sandbox that lacks GitHub Actions' kernel support for <code>kind</code>/Docker-in-Docker (see <a href="../multi-cluster/#operational-considerations">Multi-Cluster: Operational considerations</a> for the networking workaround that local validation needed) — but neither has actually executed as a real <code>workflow_dispatch</code>/labeled-PR run on an actual GitHub Actions runner. Treat each workflow's first real run as part of reviewing the change that introduces it, not as an already-passing check.</li>
+</ul>
+<h2 id="operational-follow-ups">Operational follow-ups<a class="headerlink" href="#operational-follow-ups" title="Permanent link">&para;</a></h2>
+<p>Shipped operational work (publishing signed release artifacts, per-release docs versioning, per-PR release-notes fragments) is documented where it actually lives — <a href="../ci-cd/">CI/CD</a> and <a href="../installation/">Installation</a> — and logged in <a href="../changelog/">CHANGELOG.md</a>, rather than listed again here once it's done. What's below is genuinely still open:</p>
+<ul>
+<li><strong>Branch protection review.</strong> See <a href="../branch-protection/">Branch Protection</a> — the CI checks in <a href="../ci-cd/">CI/CD</a> only have real effect once <code>main</code>'s ruleset actually requires each one by name.</li>
+<li><strong>GitHub Discussions link.</strong> <code>.github/ISSUE_TEMPLATE/config.yml</code> links to the repo's Discussions tab; whether Discussions is actually enabled on the repo hasn't been confirmed.</li>
+</ul>
+<h2 id="7-step-security-and-robustness-checklist-status">7-step security and robustness checklist status<a class="headerlink" href="#7-step-security-and-robustness-checklist-status" title="Permanent link">&para;</a></h2>
+<p>This repository's code/docs/workflow-addressable checklist has 6 of its 7 steps complete — security model and trust boundaries, secret-consent and policy controls, alert destination controls, Kubernetes hardening defaults, the tenant-safe remote cluster model, and supply-chain controls, in that order. Each is documented in full on its own page, not restated here: <a href="../security-model/">Security Model</a>, <a href="../multi-cluster/">Multi-Cluster (Fleet) Mode</a>, <a href="../deployment-security/">Deployment Security</a>, and <a href="../supply-chain/">Supply Chain</a> cover how; <a href="../changelog/">CHANGELOG.md</a> covers when.</p>
+<p>Step 7 remains intentionally <strong>operational</strong>, and genuinely open:</p>
+<ul>
+<li><strong>External-user quickstart validation is reproducibly documented but not auto-provable from code alone.</strong> The execution checklist exists in <a href="../quickstart-validation/">Quickstart Validation</a>, but completion still depends on a real human/operator run in an external environment.</li>
+</ul>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../changelog/">CHANGELOG.md</a> — what's already shipped, release by release; this page only tracks what's still open.</li>
+<li><a href="../ci-cd/">CI/CD</a> — the workflows referenced by the operational follow-ups above.</li>
+<li><a href="../persistence/">Persistence</a> and <a href="../collector-internals/">Collector Internals</a> — the two pages with the most detail on the robustness gaps above.</li>
+<li><a href="../support-matrix/">Support Matrix</a> — officially supported PostgreSQL versions and distributions, including real <code>kind</code> + CloudNativePG validation coverage (single- and two-cluster) and the remaining <code>pg_store_plans</code>-on-CloudNativePG-operand-image follow-up referenced above.</li>
+<li><a href="../otel-prometheus-source/">OpenTelemetry / Prometheus Sample Source</a> — Phase 1a of the OpenTelemetry plan above, already shipped.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        
+
+
+
+  
+
+
+
+
+<footer class="md-footer pgrr-footer" aria-label="Site footer">
+  <div class="pgrr-footer__inner">
+    <div class="pgrr-footer__brand">
+      <a class="pgrr-footer__lockup" href="https://joao00001.github.io/pg-regression-radar/" aria-label="pg-regression-radar, home">
+        <span class="pgrr-footer__mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg></span>
+        <span class="pgrr-footer__word">pg-regression-radar</span>
+      </a>
+      <p class="pgrr-footer__tag">Find the Postgres query that got slower, and the Kubernetes rollout behind it.</p>
+      <a class="pgrr-footer__social" href="https://github.com/joao00001/pg-regression-radar" aria-label="pg-regression-radar on GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg></a>
+    </div>
+
+    <nav class="pgrr-footer__cols" aria-label="Footer">
+      <div class="pgrr-footer__col">
+        <h2>Explore</h2>
+        <ul>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/">Home</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/playground/">Playground</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/our-math/">Our math</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/roadmap/">Roadmap</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Documentation</h2>
+        <ul>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/lab/">Try the lab</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/installation/">Install</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/getting-started/">Quickstart</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/">Detection algorithm</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/kubernetes/overview/">Basic Kubernetes</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/joao00001/pg-regression-radar">GitHub</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/releases">Releases</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">Changelog</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/issues">Issues</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/discussions">Discussions</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Community</h2>
+        <ul>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md">Contributing</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/security-model/">Security model</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/LICENSE">License</a></li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+
+  <div class="pgrr-footer__bar">
+    <span>Open source under the Apache License 2.0.</span>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+  
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
+      
+        <script src="../javascripts/callouts.js"></script>
+      
+        <script src="../javascripts/steps.js"></script>
+      
+        <script src="../javascripts/toc-indicator.js"></script>
+      
+        <script src="../javascripts/theme-toggle.js"></script>
+      
+    
+  
+
+  </body>
+</html>
