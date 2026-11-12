@@ -38,18 +38,22 @@ flowchart TB
 
 `pg_stat_statements` does not report the latency of the last scrape interval. `calls` and `total_exec_time` are counters that accumulate from the last reset, and `mean_exec_time` is their ratio, an average over the query's whole history. Feeding that value to a change-point test hides regressions: after a million calls at 10 ms, a query that becomes 5x slower for fifteen minutes moves the all-time mean from 10.0 ms to about 10.4 ms. A reset has the opposite effect and shows up as a step in the series that looks like a latency change.
 
-The Collector therefore stores, next to the cumulative counters, the latency of only the calls made since the previous snapshot of the same `queryid`:
+The Collector therefore calculates the activity since the previous snapshot of each `(dbid, userid, queryid, toplevel)` row, then combines those intervals per `queryid`:
 
 ```text
-interval mean = (total_exec_time_now - total_exec_time_prev) / (calls_now - calls_prev)
+row interval calls = calls_now - calls_prev
+row interval time  = total_exec_time_now - total_exec_time_prev
+query interval mean = sum(row interval time) / sum(row interval calls)
 ```
 
 The engine runs its statistics on this series:
 
 - **Interval means are the series.** Stage 1 and stage 2 read the per-interval mean. The reported `MeanLatencyBefore`/`MeanLatencyAfter` are total time over total calls in each window, so busy intervals weigh more than quiet ones.
-- **Intervals with no calls are dropped.** They carry no latency information. The first sample of a `queryid` (nothing to subtract) is dropped too. `--min-samples` and `--min-executions` are checked against what remains, see [Minimum samples and minimum executions](#minimum-samples-and-minimum-executions).
+- **Intervals with no calls are dropped.** They carry no latency information. The first scrape of a `queryid`, a changed set of constituent rows, or an expired predecessor leaves an unknown interval, which is dropped too. Unknown collector intervals never fall back to cumulative-mean analysis. `--min-samples` and `--min-executions` are checked against what remains, see [Minimum samples and minimum executions](#minimum-samples-and-minimum-executions).
 - **Resets are detected, not trusted.** The counters are considered restarted when `calls` or `total_exec_time` decreases (`pg_stat_statements_reset()`, a crash, or eviction once `pg_stat_statements.max` is exceeded), or, on PostgreSQL 17+, when `stats_since` changes. The second signal also catches a reset whose counters have already climbed past their old values by the next scrape. After a reset the counters start from zero, so the new values are the activity since the reset and are used as that interval. Each detection increments `pg_regression_radar_collector_stats_resets_detected_total`.
-- **History survives restarts.** Persisted rows hold only cumulative counters, so `Backfill` rebuilds the intervals from consecutive rows with the same rules.
+- **History survives restarts.** New persisted samples retain the calculated interval fields and their known/unknown state. `Backfill` preserves them instead of subtracting aggregate cumulative counters, which would mishandle independent row resets. Old cumulative-only records keep the legacy reconstruction behavior; missing row identities cannot be recovered retroactively. The first live scrape after restart establishes fresh row baselines.
+
+Reset detection happens per row before aggregation. The aggregate marks a reset if any constituent row reset; its other rows still contribute only their own increments. See [Collector Internals](collector-internals.md#row-identity-before-aggregation) for the 500-row selection limit and row-membership changes.
 
 The collector also exports the latest value as `pg_regression_radar_query_interval_mean_exec_time_ms{queryid}`.
 

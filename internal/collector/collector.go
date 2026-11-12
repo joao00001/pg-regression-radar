@@ -149,9 +149,15 @@ type Collector struct {
 	cfg    Config
 	db     *sql.DB
 	logger *slog.Logger
+	// Serialize complete reads so concurrent manual scrapes cannot commit
+	// snapshots out of order or change the version flags during a scan.
+	scrapeMu sync.Mutex
 
 	mu      sync.RWMutex
 	samples map[int64][]QuerySample // keyed by queryid
+	// Row counters have independent lifetimes even when queryid matches.
+	// Keep only the preceding successful scrape, never aggregate history.
+	previousRows map[statementRowID]QuerySample
 
 	// queryFingerprint and fingerprintIndex together let SamplesInRange
 	// reconnect a query across a queryid change without changing its public
@@ -164,10 +170,12 @@ type Collector struct {
 	queryFingerprint map[int64]string
 	fingerprintIndex map[string]map[int64]struct{}
 
-	// versionOnce/legacyTimingColumns implement the pg_stat_statements
-	// column-name detection described on queryStatStatementsFor.
-	versionOnce         sync.Once
+	// columnsResolved/legacyTimingColumns implement the pg_stat_statements
+	// column-name detection described on queryStatStatements.
+	columnsResolved     bool
 	legacyTimingColumns bool
+	// PostgreSQL 14 added toplevel to the row identity.
+	hasTopLevel bool
 	// hasStatsSince is true on PostgreSQL 17+, where pg_stat_statements
 	// exposes stats_since (when the entry's counters last started from zero).
 	hasStatsSince bool
@@ -241,7 +249,7 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 	}, []string{"queryid"})
 	intervalMeanExecTime := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "pg_regression_radar_query_interval_mean_exec_time_ms",
-		Help:        "Mean execution time in milliseconds of only the calls made since the previous scrape (delta of total_exec_time over delta of calls). Not updated for intervals with no calls.",
+		Help:        "Mean execution time in milliseconds of calls made since the previous scrape, combined from independent row intervals. Absent when the interval is unknown or has no calls.",
 		ConstLabels: labels,
 	}, []string{"queryid"})
 	statsResets := prometheus.NewCounter(prometheus.CounterOpts{
@@ -281,6 +289,7 @@ func New(cfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Collector
 		db:               db,
 		logger:           logger,
 		samples:          make(map[int64][]QuerySample),
+		previousRows:     make(map[statementRowID]QuerySample),
 		queryFingerprint: make(map[int64]string),
 		fingerprintIndex: make(map[string]map[int64]struct{}),
 		planHistory:      make(map[int64][]planner.PlanSnapshot),
@@ -400,15 +409,22 @@ func (c *Collector) Backfill(samples []QuerySample) {
 	for qid := range c.samples {
 		s := c.samples[qid]
 		sort.Slice(s, func(i, j int) bool { return s[i].RecordedAt.Before(s[j].RecordedAt) })
-		// Persisted rows only carry the cumulative counters, so rebuild the
-		// per-interval fields the same way the live path does. The first row
-		// of a queryid has no predecessor and stays IntervalKnown=false.
+		// New persisted samples carry intervals derived before aggregation.
+		// Never re-diff their aggregate counters: a reset of one constituent
+		// row can be hidden by growth in another. Legacy rows can still be
+		// reconstructed, but only against another legacy predecessor.
+		previousLegacy := false
 		for i := range s {
-			if i == 0 {
-				s[i].IntervalKnown, s[i].IntervalCalls, s[i].IntervalTotalMs, s[i].IntervalMeanMs, s[i].ResetDetected = false, 0, 0, 0, false
+			legacy := !s[i].IntervalComputed && !s[i].IntervalKnown
+			if !legacy {
+				previousLegacy = false
 				continue
 			}
-			s[i] = deriveInterval(s[i-1], s[i])
+			s[i].IntervalKnown, s[i].IntervalCalls, s[i].IntervalTotalMs, s[i].IntervalMeanMs, s[i].ResetDetected = false, 0, 0, 0, false
+			if i > 0 && previousLegacy {
+				s[i] = deriveInterval(s[i-1], s[i])
+			}
+			previousLegacy = legacy
 		}
 	}
 	now := time.Now().UTC()
@@ -513,9 +529,14 @@ func (c *Collector) LastScrapeTime() time.Time {
 	return time.Time{}
 }
 
-// scrape reads pg_stat_statements and stores a QuerySample for each row.
+// scrape reads pg_stat_statements and stores one QuerySample per queryid,
+// after deriving each row's interval against its own previous counters.
 func (c *Collector) scrape(ctx context.Context) error {
-	c.resolveColumns(ctx)
+	c.scrapeMu.Lock()
+	defer c.scrapeMu.Unlock()
+	if err := c.resolveColumns(ctx); err != nil {
+		return err
+	}
 
 	rows, err := c.db.QueryContext(ctx, c.queryStatStatements())
 	if err != nil {
@@ -526,20 +547,19 @@ func (c *Collector) scrape(ctx context.Context) error {
 	now := time.Now().UTC()
 	c.scrapeTotal.Inc()
 
-	// tracked accumulates this cycle's (queryid, query text) pairs so that,
-	// if CapturePlans is enabled, plan capture runs once per scrape cycle
-	// over the same top-500 query universe this scrape already read — not as
-	// a separate, unbounded pass over some other query set.
-	var tracked []trackedQuery
+	// Stage the bounded row set before committing it. Plan capture later
+	// visits each resulting queryid once, using this same top-500 row
+	// selection rather than making another unbounded query pass.
+	var observations []statementRow
 
 	for rows.Next() {
-		var qid int64
+		var identity statementRowID
 		var queryText string
 		var calls int64
 		var totalExecTime, meanExecTime float64
 		var statsSince sql.NullTime
 
-		dest := []any{&qid, &queryText, &calls, &totalExecTime, &meanExecTime}
+		dest := []any{&identity.dbID, &identity.userID, &identity.topLevel, &identity.queryID, &queryText, &calls, &totalExecTime, &meanExecTime}
 		if c.hasStatsSince {
 			dest = append(dest, &statsSince)
 		}
@@ -562,15 +582,18 @@ func (c *Collector) scrape(ctx context.Context) error {
 			continue
 		}
 
-		c.ingestSampleSince(now, qid, queryText, calls, totalExecTime, meanExecTime, statsSince.Time.UTC())
-		if c.cfg.CapturePlans {
-			tracked = append(tracked, trackedQuery{queryID: qid, queryText: queryText})
-		}
+		observations = append(observations, statementRow{id: identity, sample: QuerySample{
+			QueryID: identity.queryID, QueryText: queryText, Calls: calls,
+			TotalExecTimeMs: totalExecTime, MeanExecTimeMs: meanExecTime,
+			StatsSince: statsSince.Time.UTC(), RecordedAt: now,
+		}})
 	}
 
 	if err := rows.Err(); err != nil {
 		return err
 	}
+	// Do not advance any predecessor or sample on a partial/failed read.
+	tracked := c.ingestRows(now, observations)
 
 	c.lastScrapeTime.Store(now)
 	c.pruneAndUpdateMetrics(now)
@@ -580,6 +603,94 @@ func (c *Collector) scrape(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// statementRowID is pg_stat_statements' row identity. queryid alone is not
+// enough: roles, databases and top-level/nested execution have independent
+// cumulative counters. Older servers without toplevel use true uniformly.
+type statementRowID struct {
+	dbID, userID, queryID int64
+	topLevel              bool
+}
+
+type statementRow struct {
+	id     statementRowID
+	sample QuerySample
+}
+
+// ingestRows commits a complete scrape. Missing rows are deliberately forgotten:
+// when a row returns after eviction or falling out of the top-500 selection,
+// there is no baseline for the preceding scrape interval.
+func (c *Collector) ingestRows(now time.Time, rows []statementRow) []trackedQuery {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	previousCounts := make(map[int64]int)
+	for identity := range c.previousRows {
+		previousCounts[identity.queryID]++
+	}
+	nextRows := make(map[statementRowID]QuerySample, len(rows))
+	aggregates := make(map[int64]QuerySample)
+	queryTexts := make(map[int64]string)
+	counts := make(map[int64]int)
+	cutoff := now.Add(-c.cfg.RetentionDuration)
+	for _, row := range rows {
+		sample := row.sample
+		sample.IntervalComputed = true
+		if previous, ok := c.previousRows[row.id]; ok && !previous.RecordedAt.Before(cutoff) {
+			sample = deriveInterval(previous, sample)
+		}
+		nextRows[row.id] = row.sample
+
+		qid := row.id.queryID
+		aggregate, exists := aggregates[qid]
+		if !exists {
+			queryTexts[qid] = sample.QueryText
+			text := sample.QueryText
+			if len(text) > c.cfg.MaxQueryTextLen {
+				text = text[:c.cfg.MaxQueryTextLen] + "…"
+			}
+			aggregate = QuerySample{QueryID: qid, QueryText: text, RecordedAt: now,
+				Fingerprint: FingerprintQuery(text), IntervalComputed: true, IntervalKnown: true}
+		}
+		aggregate.Calls += sample.Calls
+		aggregate.TotalExecTimeMs += sample.TotalExecTimeMs
+		aggregate.IntervalKnown = aggregate.IntervalKnown && sample.IntervalKnown
+		aggregate.IntervalCalls += sample.IntervalCalls
+		aggregate.IntervalTotalMs += sample.IntervalTotalMs
+		aggregate.ResetDetected = aggregate.ResetDetected || sample.ResetDetected
+		aggregates[qid] = aggregate
+		counts[qid]++
+	}
+	c.previousRows = nextRows
+
+	ids := make([]int64, 0, len(aggregates))
+	for qid := range aggregates {
+		ids = append(ids, qid)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	tracked := make([]trackedQuery, 0, len(ids))
+	for _, qid := range ids {
+		sample := aggregates[qid]
+		// A vanished row also makes the interval incomplete. Do not publish
+		// a partial sum as if it described the same population as before.
+		if counts[qid] != previousCounts[qid] {
+			sample.IntervalKnown = false
+		}
+		if sample.Calls > 0 {
+			sample.MeanExecTimeMs = sample.TotalExecTimeMs / float64(sample.Calls)
+		}
+		if !sample.IntervalKnown {
+			sample.IntervalCalls, sample.IntervalTotalMs = 0, 0
+		} else if sample.IntervalCalls > 0 {
+			sample.IntervalMeanMs = sample.IntervalTotalMs / float64(sample.IntervalCalls)
+		}
+		c.samples[qid] = append(c.samples[qid], sample)
+		c.indexFingerprintLocked(qid, sample.Fingerprint)
+		c.updateSampleMetrics(sample)
+		tracked = append(tracked, trackedQuery{queryID: qid, queryText: queryTexts[qid]})
+	}
+	return tracked
 }
 
 // trackedQuery is one (queryid, query text) pair captured during a scrape
@@ -766,10 +877,9 @@ func (c *Collector) ingestSample(now time.Time, qid int64, queryText string, cal
 	c.ingestSampleSince(now, qid, queryText, calls, totalExecTime, meanExecTime, time.Time{})
 }
 
-// ingestSampleSince records one observation for qid at time now. It is
-// factored out of scrape's row loop so that both the real scrape path and
-// tests can drive the collector's storage/fingerprint bookkeeping one sample
-// at a time without needing a live pg_stat_statements connection.
+// ingestSampleSince lets synthetic single-series tests drive the collector's
+// storage/fingerprint bookkeeping without a pg_stat_statements connection.
+// Real scrapes use ingestRows, which separates each row's counters first.
 //
 // pg_stat_statements reports counters that accumulate from the last reset, so
 // the sample's per-interval fields are derived here by subtracting the
@@ -783,14 +893,15 @@ func (c *Collector) ingestSampleSince(now time.Time, qid int64, queryText string
 	fingerprint := FingerprintQuery(queryText)
 
 	sample := QuerySample{
-		QueryID:         qid,
-		QueryText:       queryText,
-		Calls:           calls,
-		TotalExecTimeMs: totalExecTime,
-		MeanExecTimeMs:  meanExecTime,
-		StatsSince:      statsSince,
-		RecordedAt:      now,
-		Fingerprint:     fingerprint,
+		QueryID:          qid,
+		QueryText:        queryText,
+		Calls:            calls,
+		TotalExecTimeMs:  totalExecTime,
+		MeanExecTimeMs:   meanExecTime,
+		StatsSince:       statsSince,
+		RecordedAt:       now,
+		Fingerprint:      fingerprint,
+		IntervalComputed: true,
 	}
 
 	c.mu.Lock()
@@ -801,17 +912,23 @@ func (c *Collector) ingestSampleSince(now time.Time, qid int64, queryText string
 	c.indexFingerprintLocked(qid, fingerprint)
 	c.mu.Unlock()
 
+	c.updateSampleMetrics(sample)
+}
+
+func (c *Collector) updateSampleMetrics(sample QuerySample) {
 	if sample.ResetDetected {
 		c.statsResets.Inc()
 		c.logger.Info("collector: pg_stat_statements counters restarted for query; using activity since the reset",
-			"query_id", qid, "calls", calls, "stats_since", statsSince)
+			"query_id", sample.QueryID, "calls", sample.Calls, "stats_since", sample.StatsSince)
 	}
 
-	qidStr := fmt.Sprintf("%d", qid)
-	c.meanExecTime.WithLabelValues(qidStr).Set(meanExecTime)
-	c.callsTotal.WithLabelValues(qidStr).Set(float64(calls))
+	qidStr := fmt.Sprintf("%d", sample.QueryID)
+	c.meanExecTime.WithLabelValues(qidStr).Set(sample.MeanExecTimeMs)
+	c.callsTotal.WithLabelValues(qidStr).Set(float64(sample.Calls))
 	if sample.IntervalKnown && sample.IntervalCalls > 0 {
 		c.intervalMeanExecTime.WithLabelValues(qidStr).Set(sample.IntervalMeanMs)
+	} else {
+		c.intervalMeanExecTime.DeleteLabelValues(qidStr)
 	}
 }
 
@@ -886,6 +1003,11 @@ func (c *Collector) forgetQueryLocked(qid int64) {
 // Caller must hold c.mu for writing.
 func (c *Collector) pruneLocked(now time.Time) {
 	cutoff := now.Add(-c.cfg.RetentionDuration)
+	for identity, sample := range c.previousRows {
+		if sample.RecordedAt.Before(cutoff) {
+			delete(c.previousRows, identity)
+		}
+	}
 
 	for qid, samples := range c.samples {
 		idx := sort.Search(len(samples), func(i int) bool {
@@ -956,8 +1078,8 @@ func (c *Collector) updateRetentionMetricsLocked() {
 // (older CloudNativePG installations may still run out-of-support Postgres
 // images) and so this collector can be pointed at a non-CloudNativePG,
 // self-managed Postgres instance running an older major version.
-func (c *Collector) resolveColumns(ctx context.Context) {
-	c.versionOnce.Do(func() {
+func (c *Collector) resolveColumns(ctx context.Context) error {
+	if !c.columnsResolved {
 		var versionNum int
 		// server_version_num is formatted MMmmpp (e.g. 140005 = 14.5) for
 		// PostgreSQL 10+, and Mmmpp for older releases (e.g. 90603 = 9.6.3);
@@ -965,18 +1087,21 @@ func (c *Collector) resolveColumns(ctx context.Context) {
 		// which is all the precision needed for the >=13 threshold below.
 		err := c.db.QueryRowContext(ctx, `SELECT current_setting('server_version_num')::int`).Scan(&versionNum)
 		if err != nil {
-			c.logger.Warn("collector: could not determine server_version_num; assuming PostgreSQL 13+ pg_stat_statements column names",
-				"err", err)
-			return
+			// Guessing would collapse top-level and nested rows on PG14+.
+			// Leave resolution pending so the next scrape can retry.
+			return fmt.Errorf("collector: determine pg_stat_statements columns: %w", err)
 		}
 		major := versionNum / 10000
+		c.hasTopLevel = major >= 14
 		c.hasStatsSince = major >= 17
 		if major < 13 {
 			c.legacyTimingColumns = true
 			c.logger.Info("collector: detected PostgreSQL older than 13; using legacy pg_stat_statements column names (total_time/mean_time)",
 				"server_version_num", versionNum)
 		}
-	})
+		c.columnsResolved = true
+	}
+	return nil
 }
 
 // queryStatStatements returns the SQL used to read pg_stat_statements, using
@@ -998,8 +1123,15 @@ func (c *Collector) queryStatStatements() string {
 	if c.hasStatsSince {
 		sinceCol = ",\n    stats_since"
 	}
+	topLevelCol := "true"
+	if c.hasTopLevel {
+		topLevelCol = "toplevel"
+	}
 	return fmt.Sprintf(`
 SELECT
+    dbid,
+    userid,
+    %s                        AS toplevel,
     queryid,
     LEFT(query, %d)           AS query,
     calls,
@@ -1010,5 +1142,5 @@ WHERE queryid IS NOT NULL
   AND query NOT LIKE '%%pg_stat_statements%%'
 ORDER BY %s DESC
 LIMIT 500
-`, maxQueryTextLen+1, execCol, meanCol, sinceCol, execCol)
+`, topLevelCol, maxQueryTextLen+1, execCol, meanCol, sinceCol, execCol)
 }

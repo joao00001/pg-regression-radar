@@ -47,7 +47,13 @@ CREATE TABLE regression_radar.query_samples (
     calls               BIGINT NOT NULL,
     total_exec_time_ms  DOUBLE PRECISION NOT NULL,
     mean_exec_time_ms   DOUBLE PRECISION NOT NULL,
-    recorded_at         TIMESTAMPTZ NOT NULL
+    recorded_at         TIMESTAMPTZ NOT NULL,
+    interval_computed   BOOLEAN NOT NULL DEFAULT FALSE,
+    interval_known      BOOLEAN NOT NULL DEFAULT FALSE,
+    interval_calls      BIGINT NOT NULL DEFAULT 0,
+    interval_total_ms   DOUBLE PRECISION NOT NULL DEFAULT 0,
+    interval_mean_ms    DOUBLE PRECISION NOT NULL DEFAULT 0,
+    reset_detected      BOOLEAN NOT NULL DEFAULT FALSE
 );
 CREATE INDEX idx_query_samples_queryid_recorded_at ON regression_radar.query_samples (query_id, recorded_at);
 CREATE INDEX idx_query_samples_recorded_at         ON regression_radar.query_samples (recorded_at);
@@ -87,6 +93,8 @@ When `--state-backend=postgres`, `RunOperator` loads recent history from the sto
 - `ingester.Store.Backfill` seeds deploy-event history the same way, and returns the resulting event count, which becomes the poll loop's initial `DrainSince` cursor. This matters for correctness, not just completeness: `DrainSince` treats anything past its cursor as newly-arrived work to analyse and potentially alert on. Backfilling events without also advancing the cursor past them would make every historical deploy event look brand new on restart, re-running correlation and potentially re-sending duplicate Slack alerts for regressions already reported in a previous process lifetime.
 
 Both backfills are best-effort: a failure to load either kind of history is logged at `Warn` and the process starts with a cold in-memory view for that piece, exactly like before this existed, rather than failing startup outright.
+
+New sample records preserve the per-row-derived interval after aggregation, including unknown intervals and reset detection. `interval_computed` distinguishes an intentionally unknown interval from a legacy record that never stored interval fields. Existing tables receive these columns additively; old rows and writes from older binaries retain the false/zero defaults. Legacy cumulative-only rows still use the old backfill reconstruction, but it cannot repair previously mixed row counters. Recorded intervals are never re-derived from aggregate totals. Row predecessor state is not persisted, so the first live scrape after restart establishes a new baseline before subsequent intervals can be calculated.
 
 ## See also
 

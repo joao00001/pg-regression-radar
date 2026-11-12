@@ -1,10 +1,18 @@
 # Collector Internals
 
-*Retention behaviour, `queryid` instability, and PostgreSQL version handling — the details worth knowing when tuning `--retention-minutes` or debugging a "missing data" report.*
+*Row identity, retention behaviour, `queryid` instability, and PostgreSQL version handling — the details worth knowing when tuning `--retention-minutes` or debugging a "missing data" report.*
 
 ## Overview
 
-The collector (`internal/collector`) keeps a bounded, in-memory time series of `pg_stat_statements` observations per `queryid`. Three properties of that design have real operational consequences, covered below: retention is bounded (not an unbounded log), `queryid` is not a stable identifier across a deploy, and `pg_stat_statements`'s column names vary by PostgreSQL major version.
+The collector (`internal/collector`) keeps a bounded, in-memory time series of `pg_stat_statements` observations per `queryid`. Before combining rows into that series, it calculates intervals independently for each statistics entry. Retention is bounded, `queryid` is not stable across every deploy, and column availability varies by PostgreSQL major version.
+
+## Row identity before aggregation
+
+`pg_stat_statements` keeps separate cumulative counters for `(dbid, userid, queryid, toplevel)`. Two roles running the same query can therefore return two rows with the same `queryid`. The collector subtracts each row's own previous counters first, then sums interval calls and execution time into one sample per `queryid` per scrape. Its interval mean is summed execution time divided by summed calls; it is not an unweighted average of the rows' means. A reset of one role does not restart another role's counters.
+
+The first scrape, a changed set of rows, or an expired predecessor leaves that query's interval unknown. Such samples are excluded from interval analysis even when every interval in a window is unknown. Missing rows are forgotten after a successful scrape, so a returning row establishes a new baseline. A failed or incomplete scrape does not advance any row's predecessor.
+
+The SQL still selects the **500 rows** with the greatest cumulative execution time, not 500 distinct query IDs. Several roles can occupy slots for one query; aggregation can therefore yield fewer than 500 samples. Changes at that selection boundary can leave an interval unknown. The row-predecessor cache holds only the last successful scrape and is bounded by the same row limit.
 
 ## Retention, not an unbounded log
 
@@ -36,6 +44,8 @@ PostgreSQL 13 split the old `total_time`/`mean_time` columns into `total_plan_ti
 CloudNativePG's currently supported releases only ship PostgreSQL 14+ (see [Supported releases](https://cloudnative-pg.io/docs/devel/supported_releases)), and PostgreSQL 13 itself reached community end-of-life on 2025-11-13, so a query hard-coded to the modern column names is already safe for every CloudNativePG-managed cluster in support today. The collector nonetheless detects `server_version_num` once at startup and falls back to the legacy column names below PostgreSQL 13, so it also works against older or self-managed Postgres instances.
 
 ## Counters, resets and interval latency
+
+Version detection enables `toplevel` on PostgreSQL 14+ and `stats_since` on PostgreSQL 17+. Before PostgreSQL 14, row identity uses the three available fields and a constant `toplevel=true`. If version lookup fails, the scrape fails and retries lookup on the next attempt rather than silently combining top-level and nested entries.
 
 `calls` and `total_exec_time` accumulate until the entry is reset or evicted, so the collector stores each scrape's cumulative values and derives the latency of the calls made since the previous scrape. On PostgreSQL 17+ it also reads `stats_since` to recognise a reset that the counters alone would not reveal. See [Detection Algorithm](detection-algorithm.md#what-a-latency-sample-is) for the formula, the reset rules and their limits.
 

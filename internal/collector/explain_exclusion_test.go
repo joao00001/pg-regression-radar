@@ -73,11 +73,11 @@ type statStatementsRow struct {
 func scriptStatStatements(rows []statStatementsRow) rule {
 	driverRows := make([][]driver.Value, len(rows))
 	for i, r := range rows {
-		driverRows[i] = []driver.Value{r.queryID, r.query, r.calls, r.total, r.mean}
+		driverRows[i] = []driver.Value{int64(1), int64(1), true, r.queryID, r.query, r.calls, r.total, r.mean}
 	}
 	return rule{
 		substr: "FROM pg_stat_statements",
-		cols:   []string{"queryid", "query", "calls", "total_exec_time", "mean_exec_time"},
+		cols:   []string{"dbid", "userid", "toplevel", "queryid", "query", "calls", "total_exec_time", "mean_exec_time"},
 		rows:   driverRows,
 	}
 }
