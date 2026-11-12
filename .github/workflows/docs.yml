@@ -217,6 +217,8 @@ jobs:
         id: deploy
         env:
           TAG: ${{ steps.tag.outputs.tag }}
+          # hooks.py shows this version in install commands and examples.
+          PGRR_DOCS_VERSION: ${{ steps.tag.outputs.tag }}
         run: |
           # SemVer prerelease convention this repo already uses for
           # release-candidate tags (v1.0.0-rc1, etc.): a hyphen after the
