@@ -48,6 +48,7 @@ extra_javascript:
   - javascripts/steps.js
   - javascripts/toc-indicator.js
   - javascripts/home-radar.js
+  - javascripts/home-demo.js
   - javascripts/home-ascii.js
   - javascripts/home-flow.js
   - assets/math/math-core.js

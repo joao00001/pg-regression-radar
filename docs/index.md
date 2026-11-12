@@ -87,10 +87,18 @@ hide:
 ## <span class="pgrr-kick">Real run</span>The same thing, *for real*<span class="pgrr-sub">Commands on the left, the radar on the right. A deploy drops an index and the radar flags the query.</span> { #real-run .pgrr-title data-toc-label="Real run" }
 
 <div class="pgrr-demo">
-<video class="pgrr-demo-video" controls muted loop playsinline preload="metadata" poster="assets/demo/radar-demo-poster.jpg" aria-label="Two terminals recorded side by side. On the left, commands start steady query traffic, send two deploy events and drop an index. On the right, the radar logs the deploys and then reports a regression on the slowed query, about 400 times slower.">
+<div class="pgrr-radar-bar pgrr-demo-bar">
+<span class="pgrr-radar-status pgrr-demo-status" aria-live="off">Recorded from a real run</span>
+<span class="pgrr-demo-clock" aria-hidden="true"></span>
+</div>
+<div class="pgrr-demo-steps" aria-hidden="true"></div>
+<div class="pgrr-demo-stage">
+<video class="pgrr-demo-video" controls muted loop playsinline preload="metadata" tabindex="-1" disablepictureinpicture controlslist="nodownload noplaybackrate" poster="assets/demo/radar-demo-poster.jpg" aria-label="Two terminals recorded side by side. On the left, commands start steady query traffic, send two deploy events and drop an index. On the right, the radar logs the deploys and then reports a regression on the slowed query, about 400 times slower.">
 <source src="assets/demo/radar-demo.mp4" type="video/mp4">
 </video>
-<p class="pgrr-radar-note pgrr-demo-note">Recorded from a real run against PostgreSQL 16, with the waiting sped up; the timestamps in the right terminal are real. To run it yourself, see the [example regression scenario](examples/regression-scenario.md).</p>
+<span class="pgrr-demo-toggle" aria-hidden="true"><svg class="pgrr-demo-i pgrr-demo-i--pause" viewBox="0 0 24 24"><rect x="6.5" y="5" width="3.6" height="14" rx="1.1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.1"/></svg><svg class="pgrr-demo-i pgrr-demo-i--play" viewBox="0 0 24 24"><path d="M8 5.4v13.2a.9.9 0 0 0 1.4.8l10.2-6.6a.9.9 0 0 0 0-1.5L9.4 4.6A.9.9 0 0 0 8 5.4z"/></svg></span>
+</div>
+<p class="pgrr-radar-note pgrr-demo-note">Captured on a real PostgreSQL. Waiting time sped up.</p>
 </div>
 
 ## <span class="pgrr-kick">Architecture</span>From scrape to *alert*<span class="pgrr-sub">Four components turn pg_stat_statements and deploy webhooks into a single answer.</span> { #how-it-works .pgrr-title data-toc-label="How it works" }
