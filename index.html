@@ -534,6 +534,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attribution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#where-to-go-next" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -965,6 +976,8 @@
       
         
       
+        
+      
     
     
     
@@ -1163,6 +1176,34 @@
     
   
     Auto-abort
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/attribution-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribution engine
   
 
     
@@ -2516,6 +2557,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attribution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#where-to-go-next" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2721,10 +2773,36 @@
 <p class="pgrr-card-links"><a href="https://joao00001.github.io/pg-regression-radar/latest/alerting/">Alerting</a></p>
 </div>
 </div>
+<h2 class="pgrr-title" id="attribution"><span class="pgrr-kick">Attribution</span>Was it <em>the deploy</em>?<span class="pgrr-sub">A query that slowed down near a deploy is a lead, not proof. The opt-in attribution engine asks what it would have done without the deploy.</span><a class="headerlink" href="#attribution" title="Permanent link">&para;</a></h2>
+<div class="pgrr-cards pgrr-cards--steps">
+<div class="pgrr-card">
+<p><span class="pgrr-num">A</span>
+<span class="pgrr-card-title">Canary control</span></p>
+<p class="pgrr-card-desc">The same query on the replicas the deploy did not reach. The strongest evidence, and the only grade a rollback is based on.</p>
+</div>
+<div class="pgrr-card">
+<p><span class="pgrr-num">B</span>
+<span class="pgrr-card-title">Synthetic control</span></p>
+<p class="pgrr-card-desc">Built from queries the deploy did not touch, so load, statistics and cache state cancel out. Calls for holding promotion.</p>
+</div>
+<div class="pgrr-card">
+<p><span class="pgrr-num">C</span>
+<span class="pgrr-card-title">Own history</span></p>
+<p class="pgrr-card-desc">All that is left when nothing else can be compared. It alerts; it cannot tell a deploy from anything else that happened then.</p>
+</div>
+<div class="pgrr-card">
+<p><span class="pgrr-num">D</span>
+<span class="pgrr-card-title">Not enough data</span></p>
+<p class="pgrr-card-desc">Said plainly, and never a reason to block a deploy. A first deploy, with no history, lands here.</p>
+<p class="pgrr-card-links"><a href="https://joao00001.github.io/pg-regression-radar/latest/attribution-engine/">Attribution engine</a> <a href="https://joao00001.github.io/pg-regression-radar/our-math/#attribution">The math</a></p>
+</div>
+</div>
+<p class="pgrr-radar-note">Shadow mode today: the engine records the action it would take and never executes it.</p>
 <h2 id="where-to-go-next">Where to go next<a class="headerlink" href="#where-to-go-next" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Want to see it work first? Open the <a href="playground/">playground</a>: no install needed.</li>
 <li>New to the project? Start with <a href="https://joao00001.github.io/pg-regression-radar/latest/installation/">Installation</a>, then <a href="https://joao00001.github.io/pg-regression-radar/latest/getting-started/">Getting Started</a>.</li>
+<li>Want to know whether a deploy really caused a slowdown? See the <a href="https://joao00001.github.io/pg-regression-radar/latest/attribution-engine/">attribution engine</a>.</li>
 <li>Deciding between the two ways to run it? See <a href="https://joao00001.github.io/pg-regression-radar/latest/architecture/">Architecture Overview</a>.</li>
 <li>Looking for a specific flag or CRD field? See <a href="https://joao00001.github.io/pg-regression-radar/latest/configuration/">Configuration Reference</a>.</li>
 <li>Want to help? See <a href="contribute/">how to contribute</a>: good first issues, a first pull request in four steps, and the chat.</li>

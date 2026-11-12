@@ -792,6 +792,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attribution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Attribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#9the-counterfactual-and-evidence-that-can-be-read-at-any-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §9The counterfactual, and evidence that can be read at any time
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#limits" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1191,6 +1219,8 @@
       
         
       
+        
+      
     
     
     
@@ -1389,6 +1419,34 @@
     
   
     Auto-abort
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/attribution-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribution engine
   
 
     
@@ -2944,6 +3002,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attribution
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Attribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#9the-counterfactual-and-evidence-that-can-be-read-at-any-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §9The counterfactual, and evidence that can be read at any time
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#limits" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3033,6 +3119,7 @@
 <a href="#confidence"><span>§6</span>Confidence</a>
 <a href="#selection"><span>§7</span>Selection</a>
 <a href="#power"><span>§8</span>Power</a>
+<a href="#attribution"><span>§9</span>Attribution</a>
 </nav>
 </header>
 <h2 class="pgrr-title" id="pipeline"><span class="pgrr-kick">Overview</span>Seven steps from a counter to a <em>verdict</em><span class="pgrr-sub">Each stage can stop the analysis. The lab below plays a new query every few seconds; the stage that stops it turns red.</span><a class="headerlink" href="#pipeline" title="Permanent link">&para;</a></h2>
@@ -3359,9 +3446,27 @@
 <dl class="pgrr-kv" data-r="kv"></dl>
 </div>
 </div>
+<h2 class="pgrr-title" id="attribution"><span class="pgrr-kick">Extension</span>From "it changed" to <em>"it caused"</em><span class="pgrr-sub">The seven steps say a query moved near a deploy. Attribution asks what it would have done without it.</span><a class="headerlink" href="#attribution" title="Permanent link">&para;</a></h2>
+<div class="pgrr-sec pgrr-sec--wide">
+<div class="pgrr-text">
+<h3 id="9the-counterfactual-and-evidence-that-can-be-read-at-any-time"><span class="pgrr-sn">§9</span>The counterfactual, and evidence that can be read at any time<a class="headerlink" href="#9the-counterfactual-and-evidence-that-can-be-read-at-any-time" title="Permanent link">&para;</a></h3>
+<p>The opt-in <a href="https://joao00001.github.io/pg-regression-radar/latest/attribution-engine/">attribution engine</a> models the log of each query's mean latency as a local level plus a regression on control series (queries the deploy did not touch, or the same query on a canary's stable arm) plus a step at the deploy time <math><msub><mi>t</mi><mi>d</mi></msub></math>:</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><msub><mi>y</mi><mi>t</mi></msub><mo>=</mo><msub><mi>μ</mi><mi>t</mi></msub><mo>+</mo><msup><mi>β</mi><mo>′</mo></msup><msub><mi>x</mi><mi>t</mi></msub><mo>+</mo><mi>θ</mi><mspace width="0.2em"></mspace><mn>1</mn><mo>[</mo><mi>t</mi><mo>≥</mo><msub><mi>t</mi><mi>d</mi></msub><mo>]</mo><mo>+</mo><msub><mi>ε</mi><mi>t</mi></msub><mo>,</mo><mspace width="1em"></mspace><msub><mi>μ</mi><mrow><mi>t</mi><mo>+</mo><mn>1</mn></mrow></msub><mo>=</mo><msub><mi>μ</mi><mi>t</mi></msub><mo>+</mo><msub><mi>η</mi><mi>t</mi></msub></mrow></math>
+</div>
+<p>The step <math><mi>θ</mi></math> is estimated inside the Kalman filter, and the filter's innovations accumulate a score <math><mi>S</mi></math> and an information <math><mi>I</mi></math> about it. What the engine tests is not <math><mrow><mi>θ</mi><mo>=</mo><mn>0</mn></mrow></math> but the composite null <math><mrow><mi>θ</mi><mo>≤</mo><mi>δ</mi></mrow></math>, with <math><mrow><mi>δ</mi><mo>=</mo><mi>ln</mi><mn>1.2</mn></mrow></math> (a 20% margin), so a small real change is not an alarm. A half-normal mixture over the effect gives an e-process in closed form, with <math><mrow><mi>a</mi><mo>=</mo><mi>S</mi><mo>−</mo><mi>δ</mi><mi>I</mi></mrow></math> and <math><mrow><mi>b</mi><mo>=</mo><mi>I</mi><mo>+</mo><mn>1</mn><mo>/</mo><msup><mi>τ</mi><mn>2</mn></msup></mrow></math>:</p>
+<div class="pgrr-eq">
+<math display="block"><mrow><mi>Λ</mi><mo>=</mo><mfrac><mn>2</mn><mrow><mi>τ</mi><msqrt><mi>b</mi></msqrt></mrow></mfrac><mspace width="0.2em"></mspace><mi>exp</mi><mo>(</mo><mfrac><msup><mi>a</mi><mn>2</mn></msup><mrow><mn>2</mn><mi>b</mi></mrow></mfrac><mo>)</mo><mspace width="0.2em"></mspace><mi>Φ</mi><mo>(</mo><mfrac><mi>a</mi><msqrt><mi>b</mi></msqrt></mfrac><mo>)</mo></mrow></math>
+</div>
+<p>Because <math><mi>Λ</mi></math> is a nonnegative supermartingale under the null, Ville's inequality gives <math><mrow><mi>P</mi><mo>(</mo><msub><mi>sup</mi><mi>t</mi></msub><msub><mi>Λ</mi><mi>t</mi></msub><mo>≥</mo><mn>1</mn><mo>/</mo><mi>α</mi><mo>)</mo><mo>≤</mo><mi>α</mi></mrow></math>: the evidence can be read after every scrape without the optional-stopping inflation that §7 describes for the split search. Across <math><mi>m</mi></math> queries, e-BH rejects the <math><msup><mi>k</mi><mo>*</mo></msup></math> largest e-values, where <math><msup><mi>k</mi><mo>*</mo></msup></math> is the largest <math><mi>k</mi></math> with <math><mrow><msub><mi>e</mi><mrow><mo>(</mo><mi>k</mi><mo>)</mo></mrow></msub><mo>≥</mo><mfrac><mi>m</mi><mrow><mi>α</mi><mi>k</mi></mrow></mfrac></mrow></math>. That controls the false discovery rate at <math><mi>α</mi></math> under arbitrary dependence between queries, which matters because queries share load.</p>
+<p>Where the control comes from sets the <em>grade</em>: A for a concurrent arm with parallel pre-trends, B for a synthetic control validated by in-time placebos, C for the query's own history, D for nothing. A rollback is only ever called for at grade A. A cold cache is told from a regression by a persistence test that compares the late post-deploy window with the forecast from the end of the pre-period, which keeps the evidence of a permanent change and shows a decayed transient as none.</p>
+<p>On simulated workloads (120 queries; load shocks, statistics refreshes, cold caches, rewrites, concurrent deploys) no scenario with a null deploy produced a grade A or B conviction, and with a control arm about 98% of the affected database time was found. These are simulations, not production traces, and this section has no live widget yet: the engine's tests, not this page, run its arithmetic.</p>
+</div>
+</div>
 <h2 class="pgrr-title" id="limits"><span class="pgrr-kick">Honesty</span>Where the math <em>stops</em><span class="pgrr-sub">The two assumptions that matter most, and what happens when they fail.</span><a class="headerlink" href="#limits" title="Permanent link">&para;</a></h2>
 <div class="pgrr-limits">
 <div><b>Independent intervals</b><p>The t-test and the permutation argument assume the interval means are independent. Serially correlated noise (a slow checkpoint, a cache warming) inflates the false-positive rate, as the selection lab shows with φ &gt; 0.</p></div>
+<div><b>Controls, not magic</b><p>Attribution is only as good as its control. <code>pg_stat_statements</code> cannot split a canary from the stable replicas, so without arm-labelled data the best evidence is a synthetic control, and a shift shared by every query is capped at an alert.</p></div>
 <div><b>Counters, not calls</b><p>The mean of an interval hides its composition: a shift in the mix of parameter values looks the same as a slower plan. That is why a detection carries a plan diff and an <code>externalCauseSuspected</code> flag.</p></div>
 </div>
 <h2 class="pgrr-title" id="reproduce"><span class="pgrr-kick">Reproducibility</span>The page runs the <em>engine's</em> math<span class="pgrr-sub">Not a re-implementation we hope is close.</span><a class="headerlink" href="#reproduce" title="Permanent link">&para;</a></h2>
@@ -3380,6 +3485,11 @@
 <li id="ref-5"><span class="pgrr-rn">[5]</span>T. Sellke, M. J. Bayarri and J. O. Berger, “Calibration of p values for testing precise null hypotheses”, <em>The American Statistician</em> 55(1), 2001.</li>
 <li id="ref-6"><span class="pgrr-rn">[6]</span>R. Miller and D. Siegmund, “Maximally selected chi square statistics”, <em>Biometrics</em> 38, 1982; B. Lausen and M. Schumacher, “Maximally selected rank statistics”, <em>Biometrics</em> 48, 1992.</li>
 <li id="ref-7"><span class="pgrr-rn">[7]</span>D. Daly et al., “The use of change point detection to identify software performance regressions in a continuous integration system”, <em>ICPE</em> 2020. <a href="https://arxiv.org/abs/2003.00584">arXiv:2003.00584</a></li>
+<li id="ref-8"><span class="pgrr-rn">[8]</span>K. H. Brodersen et al., “Inferring causal impact using Bayesian structural time-series models”, <em>Annals of Applied Statistics</em> 9(1), 2015.</li>
+<li id="ref-9"><span class="pgrr-rn">[9]</span>A. Abadie, A. Diamond and J. Hainmueller, “Synthetic control methods for comparative case studies”, <em>JASA</em> 105(490), 2010.</li>
+<li id="ref-10"><span class="pgrr-rn">[10]</span>A. Ramdas, P. Grünwald, V. Vovk and G. Shafer, “Game-theoretic statistics and safe anytime-valid inference”, <em>Statistical Science</em> 38(4), 2023.</li>
+<li id="ref-11"><span class="pgrr-rn">[11]</span>R. Wang and A. Ramdas, “False discovery rate control with e-values”, <em>JRSS B</em> 84(3), 2022.</li>
+<li id="ref-12"><span class="pgrr-rn">[12]</span>J. Durbin and S. J. Koopman, <em>Time Series Analysis by State Space Methods</em>, 2nd ed., Oxford University Press, 2012, §6.2.4.</li>
 </ul>
 </div>
 
