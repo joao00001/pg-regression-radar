@@ -2667,25 +2667,25 @@
 </tr>
 </tbody>
 </table>
-<p>Per-architecture images (<code>:v1.2.3-amd64</code>, <code>:v1.2.3-arm64</code>) are signed individually during the build job. The multi-arch manifest lists (<code>:v1.2.3</code>, <code>:latest</code>) are additionally signed after assembly — so <code>cosign verify</code> works whether you pin the multi-arch tag or a specific arch digest.</p>
-<p>Chart versions use SemVer without a leading <code>v</code> (e.g. <code>1.2.3</code>), matching what <code>helm install --version</code> accepts. The image tag (<code>:v1.2.3</code>) and chart version (<code>1.2.3</code>) are always derived from the same Git tag.</p>
+<p>Per-architecture images (<code>:v1.8.0-amd64</code>, <code>:v1.8.0-arm64</code>) are signed individually during the build job. The multi-arch manifest lists (<code>:v1.8.0</code>, <code>:latest</code>) are additionally signed after assembly — so <code>cosign verify</code> works whether you pin the multi-arch tag or a specific arch digest.</p>
+<p>Chart versions use SemVer without a leading <code>v</code> (e.g. <code>1.8.0</code>), matching what <code>helm install --version</code> accepts. The image tag (<code>:v1.8.0</code>) and chart version (<code>1.8.0</code>) are always derived from the same Git tag.</p>
 <h2 id="finding-the-digest">Finding the digest<a class="headerlink" href="#finding-the-digest" title="Permanent link">&para;</a></h2>
 <p>Every GitHub Release page lists the pushed tag name and links to the Actions run. To resolve the exact digest of any image:</p>
 <div class="language-bash highlight"><pre><span></span><code><span class="c1"># Print the digest for the multi-arch manifest list</span>
 docker<span class="w"> </span>buildx<span class="w"> </span>imagetools<span class="w"> </span>inspect<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.8.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--format<span class="w"> </span><span class="s1">'{{json .Manifest}}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.digest'</span>
 
 <span class="c1"># Or with crane (faster, no daemon needed)</span>
-crane<span class="w"> </span>digest<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+crane<span class="w"> </span>digest<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.8.0
 </code></pre></div>
 <p>For the Helm chart:</p>
-<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>show<span class="w"> </span>chart<span class="w"> </span>oci://ghcr.io/joao00001/charts/pg-regression-radar<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.2.3<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>helm<span class="w"> </span>show<span class="w"> </span>chart<span class="w"> </span>oci://ghcr.io/joao00001/charts/pg-regression-radar<span class="w"> </span>--version<span class="w"> </span><span class="m">1</span>.8.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^(version|appVersion):'</span>
 </code></pre></div>
 <h2 id="verifying-image-signatures">Verifying image signatures<a class="headerlink" href="#verifying-image-signatures" title="Permanent link">&para;</a></h2>
-<p>Replace <code>v1.2.3</code> with the release tag you are verifying. The <code>--certificate-identity-regexp</code> must match the release workflow path exactly; the <code>--certificate-oidc-issuer</code> must be GitHub's Actions token endpoint.</p>
-<div class="language-bash highlight"><pre><span></span><code><span class="nv">IMAGE</span><span class="o">=</span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+<p>These examples use <code>v1.8.0</code>, the release this documentation describes; replace it with the release tag you are verifying. The <code>--certificate-identity-regexp</code> must match the release workflow path exactly; the <code>--certificate-oidc-issuer</code> must be GitHub's Actions token endpoint.</p>
+<div class="language-bash highlight"><pre><span></span><code><span class="nv">IMAGE</span><span class="o">=</span>ghcr.io/joao00001/pg-regression-radar/operator:v1.8.0
 
 cosign<span class="w"> </span>verify<span class="w"> </span><span class="s2">"</span><span class="nv">$IMAGE</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="se">\</span>
@@ -2695,7 +2695,7 @@ cosign<span class="w"> </span>verify<span class="w"> </span><span class="s2">"</
 <p>A successful verification prints the JSON payload of each matching signature, which includes the workflow ref, run URL, and SHA. A failure (wrong issuer, wrong identity, or no recorded signature) exits non-zero and prints an error — there is no silent pass on mismatch.</p>
 <p>Verify a per-arch image by digest instead of tag:</p>
 <div class="language-bash highlight"><pre><span></span><code><span class="nv">DIGEST</span><span class="o">=</span><span class="k">$(</span>docker<span class="w"> </span>buildx<span class="w"> </span>imagetools<span class="w"> </span>inspect<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3-amd64<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.8.0-amd64<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--format<span class="w"> </span><span class="s1">'{{json .Manifest}}'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>jq<span class="w"> </span>-r<span class="w"> </span><span class="s1">'.digest'</span><span class="k">)</span>
 
 cosign<span class="w"> </span>verify<span class="w"> </span><span class="s2">"ghcr.io/joao00001/pg-regression-radar/operator@</span><span class="si">${</span><span class="nv">DIGEST</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
@@ -2705,14 +2705,14 @@ cosign<span class="w"> </span>verify<span class="w"> </span><span class="s2">"gh
 </code></pre></div>
 <h2 id="verifying-the-helm-chart-signature">Verifying the Helm chart signature<a class="headerlink" href="#verifying-the-helm-chart-signature" title="Permanent link">&para;</a></h2>
 <p>The Helm chart is published as an OCI artifact to <code>ghcr.io/joao00001/charts/pg-regression-radar</code>. Cosign signs any OCI artifact by digest, so <code>cosign verify</code> works identically to images:</p>
-<div class="language-bash highlight"><pre><span></span><code>cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/charts/pg-regression-radar:1.2.3<span class="w"> </span><span class="se">\</span>
+<div class="language-bash highlight"><pre><span></span><code>cosign<span class="w"> </span>verify<span class="w"> </span>ghcr.io/joao00001/charts/pg-regression-radar:1.8.0<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-identity-regexp<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span><span class="s2">"^https://github.com/joao00001/pg-regression-radar/.github/workflows/release.yml@refs/tags/v"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--certificate-oidc-issuer<span class="w"> </span>https://token.actions.githubusercontent.com
 </code></pre></div>
 <h2 id="inspecting-the-sbom">Inspecting the SBOM<a class="headerlink" href="#inspecting-the-sbom" title="Permanent link">&para;</a></h2>
 <p>Each image digest has an SPDX-JSON SBOM attached as a signed in-toto attestation. Fetch and inspect it:</p>
-<div class="language-bash highlight"><pre><span></span><code><span class="nv">IMAGE</span><span class="o">=</span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+<div class="language-bash highlight"><pre><span></span><code><span class="nv">IMAGE</span><span class="o">=</span>ghcr.io/joao00001/pg-regression-radar/operator:v1.8.0
 
 cosign<span class="w"> </span>verify-attestation<span class="w"> </span><span class="s2">"</span><span class="nv">$IMAGE</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--type<span class="w"> </span>spdxjson<span class="w"> </span><span class="se">\</span>
@@ -2732,44 +2732,44 @@ cosign<span class="w"> </span>verify-attestation<span class="w"> </span><span cl
 <p>SBOM files are also uploaded as GitHub Actions artifacts during the release run and attached to the GitHub Release for offline inspection (named <code>sbom-&lt;target&gt;-&lt;arch&gt;-&lt;version&gt;.spdx.json</code>).</p>
 <h2 id="verifying-provenance-attestations-slsa">Verifying provenance attestations (SLSA)<a class="headerlink" href="#verifying-provenance-attestations-slsa" title="Permanent link">&para;</a></h2>
 <p>Releases also publish provenance attestations via <code>actions/attest-build-provenance</code>. Verify them with:</p>
-<div class="language-bash highlight"><pre><span></span><code><span class="nv">IMAGE</span><span class="o">=</span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+<div class="language-bash highlight"><pre><span></span><code><span class="nv">IMAGE</span><span class="o">=</span>ghcr.io/joao00001/pg-regression-radar/operator:v1.8.0
 
 gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span><span class="s2">"</span><span class="nv">$IMAGE</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--owner<span class="w"> </span>joao00001
 </code></pre></div>
 <p>For the Helm chart OCI artifact:</p>
-<div class="language-bash highlight"><pre><span></span><code><span class="nv">CHART</span><span class="o">=</span>ghcr.io/joao00001/charts/pg-regression-radar:1.2.3
+<div class="language-bash highlight"><pre><span></span><code><span class="nv">CHART</span><span class="o">=</span>ghcr.io/joao00001/charts/pg-regression-radar:1.8.0
 
 gh<span class="w"> </span>attestation<span class="w"> </span>verify<span class="w"> </span><span class="s2">"</span><span class="nv">$CHART</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--owner<span class="w"> </span>joao00001
 </code></pre></div>
 <h2 id="scanning-locally-for-vulnerabilities">Scanning locally for vulnerabilities<a class="headerlink" href="#scanning-locally-for-vulnerabilities" title="Permanent link">&para;</a></h2>
 <p>To check a released image for CVEs beyond those known at release date:</p>
-<div class="language-bash highlight"><pre><span></span><code>trivy<span class="w"> </span>image<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.2.3
+<div class="language-bash highlight"><pre><span></span><code>trivy<span class="w"> </span>image<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/operator:v1.8.0
 </code></pre></div>
 <p>The release pipeline already scans every image at build time and fails on any CRITICAL-severity finding, so the image was clean at release date. <code>trivy image</code> here gives you a current view (new CVE disclosures may have occurred since).</p>
 <h2 id="provenance-connecting-source-commit-to-built-artifact">Provenance: connecting source commit to built artifact<a class="headerlink" href="#provenance-connecting-source-commit-to-built-artifact" title="Permanent link">&para;</a></h2>
 <p>Build arguments <code>VERSION</code>, <code>COMMIT</code>, and <code>DATE</code> are injected at build time (see the <code>Build</code> step in <code>.github/workflows/release.yml</code>):</p>
 <ul>
-<li><code>VERSION</code> — the pushed Git tag (e.g. <code>v1.2.3</code>)</li>
+<li><code>VERSION</code> — the pushed Git tag (e.g. <code>v1.8.0</code>)</li>
 <li><code>COMMIT</code> — the full Git SHA of the tagged commit (<code>github.sha</code>)</li>
 <li><code>DATE</code> — RFC 3339 UTC timestamp of the build start</li>
 </ul>
 <p>These values are baked into each binary's <code>--version</code> output via <code>internal/buildinfo</code>. To confirm the binary in a pulled image was built from the commit you expect:</p>
-<div class="language-bash highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/cli:v1.2.3<span class="w"> </span>pg-regression-radar<span class="w"> </span>version
-<span class="c1"># Expected output includes: version=v1.2.3  commit=&lt;sha&gt;  date=&lt;timestamp&gt;</span>
+<div class="language-bash highlight"><pre><span></span><code>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span>ghcr.io/joao00001/pg-regression-radar/cli:v1.8.0<span class="w"> </span>pg-regression-radar<span class="w"> </span>version
+<span class="c1"># Expected output includes: version=v1.8.0  commit=&lt;sha&gt;  date=&lt;timestamp&gt;</span>
 </code></pre></div>
 <p>Cross-reference <code>commit</code> with the GitHub Release's linked tag commit SHA to confirm they match.</p>
 <h2 id="automated-verification-script">Automated verification script<a class="headerlink" href="#automated-verification-script" title="Permanent link">&para;</a></h2>
 <p><code>scripts/verify-release.sh</code> automates the checks above. It requires <code>cosign</code> and <code>jq</code> to be installed:</p>
-<div class="language-bash highlight"><pre><span></span><code>./scripts/verify-release.sh<span class="w"> </span>v1.2.3
+<div class="language-bash highlight"><pre><span></span><code>./scripts/verify-release.sh<span class="w"> </span>v1.8.0
 </code></pre></div>
 <p>The script verifies signatures for all five images (multi-arch manifest lists) and the Helm chart, then prints a summary. Pass <code>--help</code> for usage.</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <p><strong><code>cosign verify</code> exits with "no matching signatures"</strong></p>
 <p>The image was either not pushed by <code>release.yml</code> (e.g. a local build), or the <code>--certificate-identity-regexp</code> does not match. Verify you are using the exact URL pattern shown above, including the trailing <code>/refs/tags/v</code> anchor. Signatures are not stored in the image itself — they live in the registry's referrers API and in the public Rekor log. If the image was re-tagged or mirrored to a different registry, signatures do not follow.</p>
 <p><strong><code>cosign verify-attestation</code> exits with "no matching attestations"</strong></p>
-<p>The SBOM attestation is attached to the per-arch digest, not the manifest-list tag. If you are verifying a manifest-list reference (<code>:v1.2.3</code>) and your registry/cosign version does not traverse the index, pin to a per-arch digest instead (<code>:v1.2.3-amd64</code> or <code>:v1.2.3-arm64</code>).</p>
+<p>The SBOM attestation is attached to the per-arch digest, not the manifest-list tag. If you are verifying a manifest-list reference (<code>:v1.8.0</code>) and your registry/cosign version does not traverse the index, pin to a per-arch digest instead (<code>:v1.8.0-amd64</code> or <code>:v1.8.0-arm64</code>).</p>
 <p><strong><code>helm push</code> digest not parseable (historic release gap)</strong></p>
 <p>Before <code>v1.0.1</code>, the Helm chart signing step was missing a separate Docker registry login for cosign, causing the sign step to fail with <code>UNAUTHORIZED</code>. The chart was pushed but unsigned. Starting with <code>v1.0.1</code>, <code>cosign verify</code> against the chart passes. Images were signed from the first release.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
