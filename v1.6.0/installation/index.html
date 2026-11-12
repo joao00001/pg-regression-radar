@@ -2412,6 +2412,10 @@
 <span class="c1"># or pin the release these docs describe: @v1.6.0</span>
 </code></pre></div>
 <p>This places a single <code>pg-regression-radar</code> binary in <code>$(go env GOPATH)/bin</code>. From there:</p>
+<div class="admonition tip">
+<p class="admonition-title"><code>command not found</code>?</p>
+<p><code>go install</code> puts the binary in <code>$(go env GOPATH)/bin</code> (or in <code>$GOBIN</code>, if you set it), and a fresh Go install doesn't have that directory on your <code>PATH</code>. Add it, for example <code>export PATH="$PATH:$(go env GOPATH)/bin"</code> in <code>~/.bashrc</code> or <code>~/.zshrc</code>, and open a new terminal.</p>
+</div>
 <div class="language-bash highlight"><pre><span></span><code>pg-regression-radar<span class="w"> </span>operator<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">"postgres://user:pass@host:5432/dbname?sslmode=disable"</span>
 pg-regression-radar<span class="w"> </span>manager<span class="w"> </span>--leader-elect<span class="o">=</span><span class="nb">true</span>
 pg-regression-radar<span class="w"> </span>collector<span class="w"> </span>--dsn<span class="w"> </span><span class="s2">"..."</span>
@@ -2425,6 +2429,10 @@ of the form <code>postgres://username:password@host:5432/dbname?sslmode=disable<
 Every example in this documentation that shows <code>******</code> in place of credentials is for
 documentation safety only and cannot be used as-is — supply your real connection string.</p>
 </blockquote>
+<div class="admonition note">
+<p class="admonition-title"><code>version</code> says <code>dev</code>: that is expected</p>
+<p>A binary installed with <code>go install</code> prints <code>pg-regression-radar dev (commit none, built unknown)</code>, whichever release you installed. The version, commit and build date are stamped in at build time with <code>-ldflags</code>, which <code>go install</code> doesn't pass; the published container images (<a href="#option-3-pull-or-build-the-container-image">Option 3</a>) are built with them. To check which release a <code>go install</code> binary came from, run <code>go version -m $(go env GOPATH)/bin/pg-regression-radar</code> and read its <code>mod</code> line.</p>
+</div>
 <p>Every subcommand accepts its own <code>--help</code>, <code>--version</code>, and (except <code>manager</code>) <code>--dry-run</code> — see <a href="../configuration/#versioning-dry-run">Configuration Reference</a>.</p>
 <p>If you'd rather have four separate binaries (e.g. to match the container images described in Option 3), the same code is also available as four standalone commands:</p>
 <div class="language-bash highlight"><pre><span></span><code>go<span class="w"> </span>install<span class="w"> </span>github.com/joao00001/pg-regression-radar/cmd/operator@latest
