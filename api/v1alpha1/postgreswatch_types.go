@@ -391,13 +391,24 @@ type PrometheusSampleSourceConfig struct {
 	BearerTokenSecretRef *SecretKeySelector `json:"bearerTokenSecretRef,omitempty"`
 }
 
-// AttributionConfig controls the counterfactual attribution engine. In this
-// version it only ever runs in shadow mode: it records what it would do and
-// never acts.
+// AttributionConfig controls the counterfactual attribution engine. By default
+// it runs in shadow mode: it records what it would do and never acts. In
+// enforce mode it serves verdicts a rollout controller can act on.
 type AttributionConfig struct {
 	// enabled turns the engine on for this watch.
 	// +kubebuilder:default=false
 	Enabled bool `json:"enabled"`
+
+	// mode is "shadow" (the default) or "enforce". In shadow mode the
+	// verdict served to a rollout controller is always "pass" and the action
+	// the engine would have taken is only reported. In enforce mode the
+	// verdict is "inconclusive" (pause the rollout) for grade B evidence and
+	// "fail" (abort it) for grade A. Nothing is written to the cluster by this
+	// manager in either mode: the rollout controller acts on the verdict.
+	// +kubebuilder:validation:Enum=shadow;enforce
+	// +kubebuilder:default=shadow
+	// +optional
+	Mode string `json:"mode,omitempty"`
 }
 
 // AutoAbortConfig controls automatic Argo Rollouts abortion. It only ever

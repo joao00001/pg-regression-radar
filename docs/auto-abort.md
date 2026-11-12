@@ -95,7 +95,7 @@ If `cmd/manager` can't build a Kubernetes dynamic client at startup for any reas
 
 ## Where this is heading
 
-Auto-abort acts on a confidence score from the detector, which says a query changed near the deploy, not that the deploy caused it. The [attribution engine](attribution-engine.md) is the groundwork for acting on stronger evidence: it grades each finding by how good its control is and only calls for a rollback at grade A (a concurrent control arm). It runs in shadow mode and does not change what auto-abort does today.
+Auto-abort acts on a confidence score from the detector, which says a query changed near the deploy, not that the deploy caused it. The [attribution engine](attribution-engine.md) is the groundwork for acting on stronger evidence: it grades each finding by how good its control is and only calls for a rollback at grade A (a concurrent control arm). It does not change what auto-abort does: in enforce mode it serves a verdict that an Argo Rollouts analysis acts on, pausing at grade B and aborting at grade A, and the manager itself writes nothing to the Rollout.
 
 ## See also
 

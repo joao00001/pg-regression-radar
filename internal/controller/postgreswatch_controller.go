@@ -715,7 +715,8 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		Cancel:                  cancel,
 	}
 	if col != nil && watch.Spec.Attribution != nil && watch.Spec.Attribution.Enabled {
-		rt.Shadow = shadow.New(col, collector.FingerprintQuery, attribution.Config{})
+		rt.Shadow = shadow.NewWithPolicy(col, collector.FingerprintQuery, attribution.Config{},
+			attribution.PolicyConfig{Enforce: watch.Spec.Attribution.Mode == "enforce"})
 	}
 
 	// col is nil precisely when sampleSrc came from promsource instead —

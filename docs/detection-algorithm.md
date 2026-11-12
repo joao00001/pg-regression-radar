@@ -175,7 +175,7 @@ The change point's own timestamp is preserved on the result as `DetectedChangeAt
 
 ## Detection and attribution are different questions
 
-The two stages above answer *did this query's latency change near this deploy?* They cannot answer *did the deploy cause it?*: a statistics refresh, a load shock, a cold cache or a concurrent deploy produces the same step, and a query whose text changed has a new `queryid` and no history. The opt-in [attribution engine](attribution-engine.md) asks the second question, by comparing each query with what a control built from untouched queries (or a canary arm) says it would have done without the deploy. It runs in shadow mode next to this detector: `Detected` and its alerts are unchanged, and nothing in the engine acts on its conclusions yet.
+The two stages above answer *did this query's latency change near this deploy?* They cannot answer *did the deploy cause it?*: a statistics refresh, a load shock, a cold cache or a concurrent deploy produces the same step, and a query whose text changed has a new `queryid` and no history. The opt-in [attribution engine](attribution-engine.md) asks the second question, by comparing each query with what a control built from untouched queries (or a canary arm) says it would have done without the deploy. It runs next to this detector: `Detected` and its alerts are unchanged, and the engine only ever acts through a verdict that a rollout controller chooses to read.
 
 ## Plan-diff correlation (optional)
 
@@ -232,7 +232,7 @@ This guarantees at most one `PerformanceRegression` per distinct query per `Anal
 
 ## See also
 
-- [Attribution engine](attribution-engine.md) — the counterfactual check on whether a detected shift was caused by the deploy (shadow mode).
+- [Attribution engine](attribution-engine.md) — the counterfactual check on whether a detected shift was caused by the deploy, and the verdict it can serve to a rollout.
 - [Architecture Overview](architecture.md) — where the Correlation Engine sits in the overall pipeline.
 - [Collector Internals](collector-internals.md) — how the samples this algorithm consumes are collected and retained.
 - [Configuration Reference](configuration.md) — `--window-minutes`, `--min-executions`, `--latency-threshold`, `--changepoint-tolerance`, `--multiple-testing`, `--adjust-autocorrelation`, `--capture-plans`, and the `PostgresWatch` equivalents.

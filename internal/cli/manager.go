@@ -39,6 +39,7 @@ import (
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/internal/actuation"
+	"github.com/joao00001/pg-regression-radar/internal/attribution/verdictapi"
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/controller"
 	"github.com/joao00001/pg-regression-radar/internal/dashboardapi"
@@ -78,6 +79,7 @@ func RunManager(args []string) int {
 	var pgMetricsAddr string
 	var webhookAddr string
 	var dashboardAddr string
+	var attributionVerdictAddr string
 	var enableLeaderElection bool
 	var leaderElectionNamespace string
 	var alertAllowedDestinations string
@@ -99,6 +101,10 @@ func RunManager(args []string) int {
 	fs.StringVar(&webhookAddr, "webhook-bind-address", ":8080",
 		"Address the deploy-event webhook listener (one route per DeploySource CR) binds to. "+
 			"Served only by the leader.")
+	fs.StringVar(&attributionVerdictAddr, "attribution-verdict-addr", "",
+		"address for the read-only attribution verdict endpoint (GET /api/v1/attribution/verdict), e.g. :8082, "+
+			"which a rollout controller's analysis can poll; disabled when empty. Only the leader serves it. "+
+			"See docs/attribution-engine.md")
 	fs.StringVar(&dashboardAddr, "dashboard-addr", "",
 		"Address the read-only dashboard API (see internal/dashboardapi) binds to. Empty (default) "+
 			"disables it. Serves GET /api/v1/regressions and /api/v1/watches, listing "+
@@ -330,6 +336,23 @@ func RunManager(args []string) int {
 			leaderElectionRequired: false,
 		}); err != nil {
 			managerSetupLog.Error(err, "unable to add dashboard API server")
+			return 1
+		}
+	}
+
+	// The verdict endpoint reads the leader's in-memory attribution state, so
+	// like pg-metrics it only runs on the leader. It is read-only.
+	if attributionVerdictAddr != "" {
+		verdictMux := http.NewServeMux()
+		(&verdictapi.Handler{Evaluators: registry.Shadows}).Routes(verdictMux)
+		if err := mgr.Add(&httpRunnable{
+			addr:                   attributionVerdictAddr,
+			handler:                verdictMux,
+			name:                   "attribution-verdict",
+			logger:                 logger,
+			leaderElectionRequired: true,
+		}); err != nil {
+			managerSetupLog.Error(err, "unable to add attribution verdict server")
 			return 1
 		}
 	}

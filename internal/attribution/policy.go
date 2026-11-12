@@ -280,3 +280,31 @@ func (p *Policy) Ledger() []Decision {
 	defer p.mu.Unlock()
 	return append([]Decision(nil), p.ledger...)
 }
+
+// Verdict is the answer a progressive-delivery controller can act on. It is
+// shaped for Argo Rollouts' analysis: a "fail" aborts the rollout, an
+// "inconclusive" pauses it at its current step, and a "pass" lets it go on.
+type Verdict string
+
+const (
+	VerdictPass         Verdict = "pass"
+	VerdictInconclusive Verdict = "inconclusive"
+	VerdictFail         Verdict = "fail"
+)
+
+// Verdict maps a decision to what a controller is told. A decision that is not
+// Enforced (shadow mode, an open circuit breaker, an alert-only grade) is always
+// a pass, so that nothing is ever blocked by a decision that was not meant to
+// act; the action it would have taken stays visible in Decision.Wanted.
+func (d Decision) Verdict() Verdict {
+	if !d.Enforced {
+		return VerdictPass
+	}
+	switch d.Action {
+	case ActionRollback:
+		return VerdictFail
+	case ActionHold:
+		return VerdictInconclusive
+	}
+	return VerdictPass
+}
