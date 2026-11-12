@@ -40,6 +40,8 @@ import (
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/internal/alerting"
+	"github.com/joao00001/pg-regression-radar/internal/attribution"
+	"github.com/joao00001/pg-regression-radar/internal/attribution/shadow"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
@@ -712,6 +714,9 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		PeriodicIntervalMinutes: periodicIntervalMinutes,
 		Cancel:                  cancel,
 	}
+	if col != nil && watch.Spec.Attribution != nil && watch.Spec.Attribution.Enabled {
+		rt.Shadow = shadow.New(col, collector.FingerprintQuery, attribution.Config{})
+	}
 
 	// col is nil precisely when sampleSrc came from promsource instead —
 	// that implementation has no background scrape loop of its own to run
@@ -758,6 +763,10 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 	defer ticker.Stop()
 
 	pending := correlation.NewPendingSet(rt.Engine, r.Logger)
+	var shadowRun *shadowTracker
+	if rt.Shadow != nil {
+		shadowRun = newShadowTracker(rt.Shadow, r.Logger, rt.PromRegistry, rt.ClusterName)
+	}
 	// Same rationale as internal/cli/operator.go's identical metric: makes
 	// PendingSet's by-design bound (every event retires once its analysis
 	// window elapses) directly observable instead of just asserted.
@@ -780,6 +789,12 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 			cursor = newCursor
 			for _, ev := range events {
 				pending.Add(ev)
+				if shadowRun != nil {
+					shadowRun.add(ev)
+				}
+			}
+			if shadowRun != nil {
+				shadowRun.tick(time.Now())
 			}
 
 			for _, tr := range pending.Tick() {

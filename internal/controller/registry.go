@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/joao00001/pg-regression-radar/internal/alerting"
+	"github.com/joao00001/pg-regression-radar/internal/attribution/shadow"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
@@ -117,6 +118,11 @@ type WatchRuntime struct {
 	// CapturePlans true here is a guarantee that Collector above is
 	// non-nil, not just a likelihood.
 	CapturePlans bool
+
+	// Shadow is the attribution engine's shadow-mode evaluator, set when the
+	// owning PostgresWatch has spec.attribution.enabled and the watch scrapes
+	// its own Collector. nil otherwise. It never acts.
+	Shadow *shadow.Evaluator
 
 	// AutoAbortEnabled mirrors the owning PostgresWatch's
 	// spec.autoAbort.enabled. False (the default) means pollLoop never

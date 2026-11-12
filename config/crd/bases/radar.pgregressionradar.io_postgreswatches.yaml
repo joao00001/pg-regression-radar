@@ -137,6 +137,22 @@ spec:
                       fixed Events API v2 endpoint instead — see pagerDutyRoutingKey.
                     type: string
                 type: object
+              attribution:
+                description: |-
+                  attribution optionally runs the counterfactual attribution engine in
+                  shadow mode next to the existing detector: every tracked deploy is
+                  judged against a control built from queries the deploy did not touch,
+                  and the decision it would take (alert, hold, roll back) is logged and
+                  exported as a metric, but never executed. nil (the default) means
+                  disabled. See docs/attribution-engine.md.
+                properties:
+                  enabled:
+                    default: false
+                    description: enabled turns the engine on for this watch.
+                    type: boolean
+                required:
+                - enabled
+                type: object
               autoAbort:
                 description: |-
                   autoAbort optionally closes the loop between detection and
