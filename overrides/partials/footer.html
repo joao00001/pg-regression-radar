@@ -4,7 +4,15 @@
   footer is identical on the home page, the playground and every released
   version of the docs.
 #}
-{% set root = config.site_url %}
+{#
+  mike builds each release with its version appended to `site_url`
+  (".../v1.8.0"), so strip that trailing segment to get the site root.
+#}
+{% set parts = config.site_url.rstrip("/").split("/") %}
+{% if parts[-1] == "latest" or (parts[-1][:1] == "v" and parts[-1][1:2].isdigit()) %}
+  {% set parts = parts[:-1] %}
+{% endif %}
+{% set root = parts | join("/") ~ "/" %}
 {% set docs = root ~ "latest/" %}
 {% set repo = config.repo_url %}
 <footer class="md-footer pgrr-footer" aria-label="Site footer">
