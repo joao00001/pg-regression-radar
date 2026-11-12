@@ -19,7 +19,11 @@ jobs:
   announce:
     runs-on: ubuntu-latest
     steps:
+      # full history and tags: the contributor list is the commit range
+      # between the previous tag and the announced one
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Resolve the tag
         id: tag
@@ -29,10 +33,10 @@ jobs:
         run: |
           TAG="${INPUT_TAG}"
           if [ -z "${TAG}" ]; then
-            TAG="$(gh release view --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName)"
+            TAG="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)"
           fi
           # the release must exist, or the link in the message would 404
-          gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" > /dev/null
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq .html_url > /dev/null
           echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
 
       - uses: ./.github/actions/announce-discord

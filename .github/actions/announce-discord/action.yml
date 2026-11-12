@@ -1,16 +1,26 @@
 name: Announce a release on Discord
 description: >-
-  Posts a release embed to a Discord channel through a webhook. Does nothing
-  when the webhook URL is empty (forks, or before the channel is wired up).
+  Posts a release embed to a Discord channel through a webhook: the release's
+  own notes (what changed in this version) and the contributors whose commits
+  are in it. Does nothing when the webhook URL is empty (forks, or before the
+  channel is wired up).
+
+  The caller must check out the repo with full history and tags
+  (fetch-depth: 0), because the contributor list is the commit range between
+  the previous tag and this one.
 
 inputs:
   tag:
-    description: The release tag, e.g. v1.8.0.
+    description: The release tag, e.g. v1.8.0. The GitHub Release must exist.
     required: true
   webhook-url:
     description: The Discord webhook URL (pass the repository secret).
     required: false
     default: ""
+  github-token:
+    description: Token used to read the release and the commit range.
+    required: false
+    default: ${{ github.token }}
 
 runs:
   using: composite
@@ -20,32 +30,92 @@ runs:
       env:
         WEBHOOK_URL: ${{ inputs.webhook-url }}
         TAG: ${{ inputs.tag }}
+        GH_TOKEN: ${{ inputs.github-token }}
         REPO: ${{ github.repository }}
         SERVER_URL: ${{ github.server_url }}
       run: |
+        set -euo pipefail
+
         if [ -z "${WEBHOOK_URL}" ]; then
           echo "DISCORD_RELEASE_WEBHOOK is not set; skipping the Discord announcement."
           exit 0
         fi
 
         RELEASE_URL="${SERVER_URL}/${REPO}/releases/tag/${TAG}"
+        WORK="${RUNNER_TEMP:-/tmp}"
 
-        # jq builds the JSON so the tag can never break out of the string.
+        # What changed: the GitHub Release body, which release.yml fills with
+        # this tag's own CHANGELOG section.
+        gh api "repos/${REPO}/releases/tags/${TAG}" --jq .body > "${WORK}/notes.md"
+
+        # Contributors: everyone with a commit between the previous tag and
+        # this one, plus the co-authors named in commit trailers. GitHub
+        # noreply addresses map to logins; other emails and bots are skipped.
+        PREV="$(git tag --list 'v*' --sort=v:refname | grep -x -B1 -- "${TAG}" | head -n1 || true)"
+        [ "${PREV}" = "${TAG}" ] && PREV=""
+
+        if [ -n "${PREV}" ]; then
+          gh api --paginate "repos/${REPO}/compare/${PREV}...${TAG}" \
+            --jq '.commits[] | {login: .author.login, msg: .commit.message}' \
+            | jq -s -r '
+                [ .[] | (.login // empty),
+                  ( .msg
+                    | [scan("(?im)^co-authored-by:[^<]*<([^>]+)>")] | .[] | .[0]
+                    | capture("^(?:[0-9]+\\+)?(?<l>[^@]+)@users\\.noreply\\.github\\.com$") | .l ) ]
+                | map(select(endswith("[bot]") | not))
+                | group_by(ascii_downcase) | map({l: .[0], n: length})
+                | sort_by(-.n, .l)
+                | .[].l' > "${WORK}/contributors.txt"
+        else
+          : > "${WORK}/contributors.txt"
+        fi
+
+        # jq builds the JSON so notes and names can never break out of the
+        # strings. Discord caps an embed description at 4096 characters and a
+        # field at 1024; cut at a line boundary and point to the release page.
         jq -n \
           --arg tag "${TAG}" \
           --arg url "${RELEASE_URL}" \
-          '{
-            username: "pg-regression-radar releases",
-            allowed_mentions: { parse: [] },
-            embeds: [{
-              title: ("pg-regression-radar " + $tag + " is out"),
-              url: $url,
-              description: "Release notes, images and the Helm chart are on the release page.",
-              color: 14355000
-            }]
-          }' > "${RUNNER_TEMP}/discord-payload.json"
+          --arg pulls "${SERVER_URL}/${REPO}/pull/" \
+          --arg prev "${PREV}" \
+          --rawfile notes "${WORK}/notes.md" \
+          --rawfile who "${WORK}/contributors.txt" '
+            def cut($n; $tail):
+              if length > $n
+              then (.[:$n] | sub("\n[^\n]*$"; "")) + $tail
+              else . end;
+            ($notes | gsub("\r"; "") | sub("^\\s+"; "") | sub("\\s+$"; "")
+              | gsub("\\(#(?<n>[0-9]+)\\)"; "([#" + .n + "](" + $pulls + .n + "))")) as $n
+            | ($who | split("\n") | map(select(length > 0))) as $people
+            | {
+                username: "pg-regression-radar releases",
+                allowed_mentions: { parse: [] },
+                embeds: [ {
+                  title: ("pg-regression-radar " + $tag + " is out"),
+                  url: $url,
+                  description: (
+                    (if ($n | length) > 0 then $n else "Release notes are on the release page." end)
+                    | cut(3500; "\n\n… [full release notes](" + $url + ")")
+                  ),
+                  color: 14355000
+                } + (
+                  if ($people | length) > 0 then
+                    { fields: [ {
+                        name: ("Contributors (" + ($people | length | tostring) + ")"),
+                        value: (
+                          ($people | map("[" + . + "](https://github.com/" + . + ")") | join(" · "))
+                          | cut(1000; " · …")
+                        )
+                      } ] }
+                  else {} end
+                ) + (
+                  if $prev != "" then
+                    { footer: { text: ($prev + " → " + $tag) } }
+                  else {} end
+                ) ]
+              }' > "${WORK}/discord-payload.json"
 
         curl --fail --silent --show-error \
           -H "Content-Type: application/json" \
-          -d @"${RUNNER_TEMP}/discord-payload.json" \
+          -d @"${WORK}/discord-payload.json" \
           "${WEBHOOK_URL}"
