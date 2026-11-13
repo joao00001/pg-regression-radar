@@ -32,6 +32,19 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.9.0 - 2026-11-13
+
+### Features
+
+- Added `attribution.mode` and a read-only verdict endpoint (`--attribution-verdict-addr`) that an Argo Rollouts analysis can poll: `inconclusive` pauses a rollout on grade B evidence and `fail` aborts it on grade A, with shadow remaining the default. (#247.attribution-verdict)
+- Added an opt-in counterfactual attribution engine that judges each tracked deploy against a control built from queries the deploy did not touch, and records the action it would take (alert, hold or roll back) in shadow mode without executing it. (#246)
+- Added `attribution.revert`: in enforce mode the radar can open a draft pull request that reverts the commit behind a convicted deploy, once per deploy and never merged, with the evidence and a pre-merge checklist in its body. (#248)
+
+### Fixes
+
+- Queries executed by multiple roles or databases now keep independent counters before their intervals are combined. Partial row changes no longer create misleading latency samples, and saved intervals retain their reset and validity state after a restart. (#241)
+
+
 ## v1.8.0 - 2026-11-11
 
 ### Features
