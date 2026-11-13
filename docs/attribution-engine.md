@@ -80,6 +80,42 @@ spec:
 
 The ladder is the one Google and Waze describe for a new canary analysis: begin with a non-blocking stage, then a manual judgement, and automate only once the analysis has proved reliable. Run shadow mode, compare `wouldBe` with what happened, then set `mode: enforce`. With enforce, the first action you will see is a pause, which one click resumes; an abort needs grade A.
 
+## Reverting a convicted deploy
+
+Pausing a rollout only helps while it is running. For a release that is already promoted, the durable fix is a revert in git: with Argo CD's automated sync on, Argo CD cannot roll the application back ("Rollback cannot be performed against an application with automated sync enabled"), and anything changed directly in the cluster is undone by the next sync. So in enforce mode the radar can open a **draft pull request that reverts the change**, and leave the decision to a person.
+
+```yaml
+spec:
+  attribution:
+    enabled: true
+    mode: enforce
+    revert:
+      enabled: true
+      repository: my-org/my-deploy-repo
+      tokenSecretRef: {name: github-token, key: token}
+      maxPerDay: 3
+      includeQueryText: false
+```
+
+It acts when the policy holds at hold or above (grade B or better, confirmed twice, material, attributed to this deploy). It then:
+
+1. Takes the deploy's revision, which must be a full 40-character commit SHA. An Argo CD source reports one; an Argo Rollouts source reports a pod hash and a tag is not a commit, so those are refused, not guessed at.
+2. Checks that no pull request for this deploy exists yet (a marker line `pgrr-revert-id: <deploy id>` is searched for, so a restart or a leader change does not open a second one).
+3. Finds the pull request whose merge commit is that SHA, merged into the default branch. A direct push, or a commit that is not the merge commit of a pull request, is refused.
+4. Asks GitHub to create the revert (the GraphQL `revertPullRequest` mutation, which "creates a pull request that reverts the changes from a merged pull request"), as a draft, with a body that gives the grade, the lower-bound added database time, the attribution, the most affected queries, and what to check before merging: database migrations, other changes in the same commit, and a warning if the radar has not seen an earlier deploy of the app.
+
+What keeps this safe:
+
+- **It never merges.** The pull request is always a draft and a person reviews it. That is the one safeguard that does not depend on the statistics being right.
+- **Once per deploy, and at most `maxPerDay` (default 3) per watch**, so a bad day cannot bury a repository.
+- **Query text is off by default.** The body shows fingerprints and ratios. Turn on `includeQueryText` only if the repository is private, since a query's text names tables and columns. Everything written into the body is stripped of markdown, mentions and issue references.
+- **The token** comes from a Secret that carries the same consent label as every other Secret a PostgresWatch references (`pg-regression-radar.io/allow-postgreswatch-access=true`). It is read for each use and not kept, it is only sent to the configured API host, which must be https, and a redirect is never followed with it attached. Use a fine-grained token limited to that one repository. The documentation I read does not state which permissions `revertPullRequest` needs; start with Pull requests and Contents, both read and write, and check that against your GitHub.
+- **In shadow mode nothing is called.** The log says which pull request would have been opened.
+
+Metric: `pg_regression_radar_attribution_revert_proposals_total{result}` with `opened`, `already-proposed`, `skipped` and `failed`.
+
+Limits: a failed attempt is retried at the next evaluation, and the search that finds an earlier pull request lags by a short while after one is opened, so a restart within that window can, rarely, open a second draft. A revert does not undo a database migration that shipped with the change.
+
 ## How it works
 
 1. **Identity.** A query is identified by the fingerprint of its normalised text, never by `queryid`. A rewritten query is a new unit with no history, so it is never judged against a baseline.
@@ -123,12 +159,14 @@ Simulated workloads (120 queries, 90 minutes before and 30 after, with load shoc
 - Table extraction from query text is lexical. A mistake makes queries look related, never invents evidence.
 - A pause or abort only helps while the Rollout is still in progress. After a full promotion the verdict can only inform an alert; reverting a promoted release belongs to your GitOps flow.
 - Samples from `pg_stat_statements` carry no arm label, so through the collector the best grade is B and the strongest verdict is `inconclusive` (a pause). A `fail` needs a sample source that labels arms.
+- The revert proposal needs the deploy's revision to be a git commit SHA: Argo CD sources qualify, Argo Rollouts sources (a pod hash) do not.
 - The circuit breaker is in the policy, but nothing feeds it a post-action check yet, so it never opens on its own.
 
 ## References
 
 - Argo Rollouts documentation: [Analysis & Progressive Delivery](https://argo-rollouts.readthedocs.io/en/stable/features/analysis) and [Rollout specification](https://argo-rollouts.readthedocs.io/en/stable/features/specification/).
 - Flagger documentation: [Deployment strategies and webhooks](https://docs.flagger.app/main/usage/deployment-strategies).
+- Argo CD documentation: [Automated sync policy](https://argo-cd.readthedocs.io/en/release-3.0/user-guide/auto_sync/). GitHub documentation: [GraphQL pull request mutations](https://docs.github.com/en/graphql/reference/pulls) and [REST: list pull requests associated with a commit](https://docs.github.com/en/rest/commits/commits).
 - Google Cloud, [Canary analysis: lessons learned and best practices from Google and Waze](https://cloud.google.com/blog/products/devops-sre/canary-analysis-lessons-learned-and-best-practices-from-google-and-waze).
 - Brodersen et al., *Inferring causal impact using Bayesian structural time-series models*, Annals of Applied Statistics 2015.
 - Abadie, Diamond, Hainmueller, *Synthetic control methods for comparative case studies*, JASA 2010.

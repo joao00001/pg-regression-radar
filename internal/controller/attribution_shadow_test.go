@@ -15,8 +15,13 @@
 package controller
 
 import (
+	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,6 +29,7 @@ import (
 	dto_prom "github.com/prometheus/client_model/go"
 
 	"github.com/joao00001/pg-regression-radar/internal/attribution"
+	"github.com/joao00001/pg-regression-radar/internal/attribution/revert"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/shadow"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/sim"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
@@ -97,3 +103,114 @@ func TestShadowTrackerRunsDueEvaluationsOnce(t *testing.T) {
 }
 
 func counterValue(m *dto_prom.Metric) float64 { return m.GetCounter().GetValue() }
+
+// fakeGitHub answers the calls the revert proposer makes and counts the pull
+// requests it is asked to create.
+type fakeGitHub struct {
+	mu      sync.Mutex
+	calls   int
+	created int
+}
+
+func (f *fakeGitHub) handler(sha string) http.Handler {
+	mux := http.NewServeMux()
+	count := func() { f.mu.Lock(); f.calls++; f.mu.Unlock() }
+	mux.HandleFunc("/search/issues", func(w http.ResponseWriter, r *http.Request) {
+		count()
+		_ = json.NewEncoder(w).Encode(map[string]int{"total_count": 0})
+	})
+	mux.HandleFunc("/repos/o/r", func(w http.ResponseWriter, r *http.Request) {
+		count()
+		_ = json.NewEncoder(w).Encode(map[string]string{"default_branch": "main"})
+	})
+	mux.HandleFunc("/repos/o/r/commits/", func(w http.ResponseWriter, r *http.Request) {
+		count()
+		_ = json.NewEncoder(w).Encode([]any{map[string]any{"number": 7, "node_id": "N", "merged_at": "2026-01-01T00:00:00Z", "merge_commit_sha": sha, "base": map[string]string{"ref": "main"}}})
+	})
+	mux.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
+		count()
+		f.mu.Lock()
+		f.created++
+		f.mu.Unlock()
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"revertPullRequest": map[string]any{
+			"revertPullRequest": map[string]any{"number": 8, "url": "https://github.com/o/r/pull/8"}}}})
+	})
+	return mux
+}
+
+func revertTracker(t *testing.T, enforce bool) (*shadowTracker, *fakeGitHub, dto.DeployEvent, *prometheus.Registry) {
+	t.Helper()
+	const sha = "0123456789abcdef0123456789abcdef01234567"
+	units, _, dep, _ := sim.World{Seed: 3, Queries: 40, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	src := &replaySource{samples: map[int64][]pgstat.QuerySample{}}
+	for i, u := range units {
+		id := int64(i + 1)
+		src.ids = append(src.ids, id)
+		for _, o := range u.Obs {
+			src.samples[id] = append(src.samples[id], pgstat.QuerySample{
+				QueryID: id, QueryText: u.Text, RecordedAt: o.At, IntervalKnown: true, IntervalComputed: true,
+				IntervalCalls: o.Calls, IntervalTotalMs: o.MeanMs * float64(o.Calls),
+			})
+		}
+	}
+	gh := &fakeGitHub{}
+	srv := httptest.NewServer(gh.handler(sha))
+	t.Cleanup(srv.Close)
+	prop, err := revert.New(revert.Config{Repository: "o/r", APIURL: srv.URL}, func(context.Context) (string, error) { return "t", nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	reg := prometheus.NewRegistry()
+	ev := shadow.NewWithPolicy(src, collector.FingerprintQuery, attribution.Config{}, attribution.PolicyConfig{Enforce: enforce})
+	tr := newShadowTracker(ev, slog.New(slog.NewTextHandler(io.Discard, nil)), reg, "c")
+	tr.withRevert(prop, enforce, false)
+	tr.add(dto.DeployEvent{ID: dep.ID, App: "api", Namespace: "prod", Revision: sha, Timestamp: dep.At})
+	return tr, gh, dto.DeployEvent{Timestamp: dep.At}, reg
+}
+
+func waitRecords(t *testing.T, tr *shadowTracker, n int) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Minute)
+	for len(tr.ev.Records()) < n && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	// let the goroutine finish its last proposal
+	time.Sleep(200 * time.Millisecond)
+	if len(tr.ev.Records()) < n {
+		t.Fatalf("only %d evaluations", len(tr.ev.Records()))
+	}
+}
+
+func TestEnforceOpensExactlyOneDraftRevert(t *testing.T) {
+	tr, gh, at, reg := revertTracker(t, true)
+	tr.tick(at.Timestamp.Add(46 * time.Minute))
+	waitRecords(t, tr, 8)
+	if gh.created != 1 {
+		t.Fatalf("opened %d revert pull requests across 8 evaluations, want exactly 1", gh.created)
+	}
+	mfs, _ := reg.Gather()
+	var opened float64
+	for _, mf := range mfs {
+		if mf.GetName() != "pg_regression_radar_attribution_revert_proposals_total" {
+			continue
+		}
+		for _, m := range mf.GetMetric() {
+			switch m.GetLabel()[len(m.GetLabel())-1].GetValue() {
+			case "opened":
+				opened += m.GetCounter().GetValue()
+			}
+		}
+	}
+	if opened != 1 {
+		t.Fatalf("metric: opened=%v, want 1", opened)
+	}
+}
+
+func TestShadowNeverCallsGitHub(t *testing.T) {
+	tr, gh, at, _ := revertTracker(t, false)
+	tr.tick(at.Timestamp.Add(46 * time.Minute))
+	waitRecords(t, tr, 8)
+	if gh.calls != 0 {
+		t.Fatalf("shadow mode made %d calls to GitHub", gh.calls)
+	}
+}

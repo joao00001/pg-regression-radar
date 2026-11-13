@@ -915,6 +915,66 @@ spec:
                     - shadow
                     - enforce
                     type: string
+                  revert:
+                    description: |-
+                      revert opens a draft pull request that reverts the change behind a
+                      deploy the engine has convicted. It is never merged by this manager. Only
+                      deploys whose revision is a full git commit SHA (an Argo CD source, or a
+                      generic one that reports the commit) can be reverted; in shadow mode the
+                      pull request that would be opened is only logged.
+                    properties:
+                      apiURL:
+                        description: |-
+                          apiURL is the GitHub REST API root, for GitHub Enterprise Server
+                          (https://host/api/v3). It must be https: the token is sent to it.
+                        pattern: ^https://.+
+                        type: string
+                      enabled:
+                        default: false
+                        description: enabled turns the revert proposal on.
+                        type: boolean
+                      includeQueryText:
+                        default: false
+                        description: |-
+                          includeQueryText adds the normalised text of the affected queries to the
+                          pull request. Off by default: the repository may be public, and a
+                          query's text names tables and columns.
+                        type: boolean
+                      maxPerDay:
+                        default: 3
+                        description: maxPerDay caps the revert pull requests opened in any 24 hours.
+                        format: int32
+                        maximum: 20
+                        minimum: 1
+                        type: integer
+                      repository:
+                        description: |-
+                          repository is the GitHub repository whose history holds the deployed
+                          commit, as owner/name.
+                        pattern: ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$
+                        type: string
+                      tokenSecretRef:
+                        description: |-
+                          tokenSecretRef is a Secret key holding a GitHub token that can open
+                          pull requests in repository (fine-grained: Pull requests and Contents,
+                          read and write, on that repository only). The Secret must carry the
+                          pg-regression-radar.io/allow-postgreswatch-access=true label.
+                        properties:
+                          key:
+                            description: key within the Secret's Data.
+                            type: string
+                          name:
+                            description: name of the referenced Secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    required:
+                    - enabled
+                    - repository
+                    - tokenSecretRef
+                    type: object
                 required:
                 - enabled
                 type: object
