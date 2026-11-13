@@ -131,7 +131,7 @@ func New(cfg Config, token func(ctx context.Context) (string, error)) (*Proposer
 	if err != nil || u.Host == "" {
 		return nil, fmt.Errorf("revert: invalid api url %q", cfg.APIURL)
 	}
-	if u.Scheme != "https" && !(u.Scheme == "http" && isLoopback(u.Hostname())) {
+	if u.Scheme != "https" && (u.Scheme != "http" || !isLoopback(u.Hostname())) {
 		return nil, fmt.Errorf("revert: api url must be https, the token is sent to it")
 	}
 	cfg.APIURL = strings.TrimRight(cfg.APIURL, "/")
@@ -318,7 +318,7 @@ func (p *Proposer) do(req *http.Request, tok string, out any) error {
 		// A transport error can quote the URL; it never contains the token.
 		return fmt.Errorf("request failed")
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode/100 != 2 {
 		return fmt.Errorf("github answered %d", resp.StatusCode)
