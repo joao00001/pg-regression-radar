@@ -41,6 +41,7 @@ import (
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/internal/alerting"
 	"github.com/joao00001/pg-regression-radar/internal/attribution"
+	"github.com/joao00001/pg-regression-radar/internal/attribution/revert"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/shadow"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
@@ -717,6 +718,21 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	if col != nil && watch.Spec.Attribution != nil && watch.Spec.Attribution.Enabled {
 		rt.Shadow = shadow.NewWithPolicy(col, collector.FingerprintQuery, attribution.Config{},
 			attribution.PolicyConfig{Enforce: watch.Spec.Attribution.Mode == "enforce"})
+		if rc := watch.Spec.Attribution.Revert; rc != nil && rc.Enabled {
+			prop, err := r.newRevertProposer(watch, rc)
+			if err != nil {
+				// A bad revert setting must not take the watch down: the
+				// engine and its verdict keep working without it.
+				r.Logger.Error("postgreswatch: attribution revert disabled by invalid configuration",
+					"watch", key.String(), "err", err)
+			} else {
+				rt.Revert = &RevertRuntime{
+					Proposer:       prop,
+					Enforce:        watch.Spec.Attribution.Mode == "enforce",
+					IncludeQueries: rc.IncludeQueryText,
+				}
+			}
+		}
 	}
 
 	// col is nil precisely when sampleSrc came from promsource instead —
@@ -767,6 +783,9 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 	var shadowRun *shadowTracker
 	if rt.Shadow != nil {
 		shadowRun = newShadowTracker(rt.Shadow, r.Logger, rt.PromRegistry, rt.ClusterName)
+		if rv := rt.Revert; rv != nil {
+			shadowRun.withRevert(rv.Proposer, rv.Enforce, rv.IncludeQueries)
+		}
 	}
 	// Same rationale as internal/cli/operator.go's identical metric: makes
 	// PendingSet's by-design bound (every event retires once its analysis
@@ -1148,4 +1167,27 @@ func mergeAlertingDestinationPolicy(globalPolicy, watchPolicy alerting.Destinati
 		return globalPolicy
 	}
 	return watchPolicy
+}
+
+// newRevertProposer builds the draft-revert proposer for a watch. The GitHub
+// token is not read here: it is fetched from its Secret on every use, through
+// the same consent check as every other Secret a PostgresWatch references, so a
+// rotated token is picked up and the manager never holds it between uses.
+func (r *PostgresWatchReconciler) newRevertProposer(watch *radarv1alpha1.PostgresWatch, rc *radarv1alpha1.RevertConfig) (*revert.Proposer, error) {
+	ns, ref := watch.Namespace, rc.TokenSecretRef
+	token := func(ctx context.Context) (string, error) {
+		var secret corev1.Secret
+		if err := r.Get(ctx, types.NamespacedName{Namespace: ns, Name: ref.Name}, &secret); err != nil {
+			return "", fmt.Errorf("fetch github token secret %s/%s: %w", ns, ref.Name, err)
+		}
+		if err := checkSecretConsent(&secret, "github token secret"); err != nil {
+			return "", err
+		}
+		v, ok := secret.Data[ref.Key]
+		if !ok || len(v) == 0 {
+			return "", fmt.Errorf("secret %s/%s has no key %q", ns, ref.Name, ref.Key)
+		}
+		return strings.TrimSpace(string(v)), nil
+	}
+	return revert.New(revert.Config{Repository: rc.Repository, APIURL: rc.APIURL, MaxPerDay: int(rc.MaxPerDay)}, token)
 }

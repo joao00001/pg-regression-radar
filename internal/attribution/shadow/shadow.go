@@ -92,6 +92,22 @@ func (e *Evaluator) Register(d Deploy) {
 	e.deploys = append(e.deploys, d)
 }
 
+// HasPrior reports whether an earlier deploy of app in namespace is known, that
+// is, whether there is something to roll back to. After a manager restart the
+// evaluator knows nothing, so the first deploy it sees counts as having no
+// earlier one, which is the safe direction: it can pause a rollout but not
+// abort one.
+func (e *Evaluator) HasPrior(namespace, app string, before time.Time) bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, x := range e.deploys {
+		if x.Namespace == namespace && x.App == app && x.At.Before(before) {
+			return true
+		}
+	}
+	return false
+}
+
 // Latest returns the most recent evaluation of the newest deploy of app in
 // namespace (of the given revision, when revision is not empty). found is false
 // when no such deploy is known; ok is false when it is known but has not been

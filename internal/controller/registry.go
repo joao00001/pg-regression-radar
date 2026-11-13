@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/joao00001/pg-regression-radar/internal/alerting"
+	"github.com/joao00001/pg-regression-radar/internal/attribution/revert"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/shadow"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
@@ -123,6 +124,10 @@ type WatchRuntime struct {
 	// owning PostgresWatch has spec.attribution.enabled and the watch scrapes
 	// its own Collector. nil otherwise. It never acts.
 	Shadow *shadow.Evaluator
+
+	// Revert is the draft-revert proposal for this watch, set only when
+	// spec.attribution.revert is enabled and valid. nil otherwise.
+	Revert *RevertRuntime
 
 	// AutoAbortEnabled mirrors the owning PostgresWatch's
 	// spec.autoAbort.enabled. False (the default) means pollLoop never
@@ -229,4 +234,13 @@ func (r *Registry) Shadows() []*shadow.Evaluator {
 		}
 	}
 	return out
+}
+
+// RevertRuntime is a watch's draft-revert proposal and how it is used.
+type RevertRuntime struct {
+	Proposer *revert.Proposer
+	// Enforce is whether the watch is in enforce mode; otherwise a proposal is
+	// only logged.
+	Enforce        bool
+	IncludeQueries bool
 }

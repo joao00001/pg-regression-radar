@@ -409,6 +409,53 @@ type AttributionConfig struct {
 	// +kubebuilder:default=shadow
 	// +optional
 	Mode string `json:"mode,omitempty"`
+
+	// revert opens a draft pull request that reverts the change behind a
+	// deploy the engine has convicted. It is never merged by this manager. Only
+	// deploys whose revision is a full git commit SHA (an Argo CD source, or a
+	// generic one that reports the commit) can be reverted; in shadow mode the
+	// pull request that would be opened is only logged.
+	// +optional
+	Revert *RevertConfig `json:"revert,omitempty"`
+}
+
+// RevertConfig controls the draft revert pull request opened for a convicted
+// deploy. See docs/attribution-engine.md.
+type RevertConfig struct {
+	// enabled turns the revert proposal on.
+	// +kubebuilder:default=false
+	Enabled bool `json:"enabled"`
+
+	// repository is the GitHub repository whose history holds the deployed
+	// commit, as owner/name.
+	// +kubebuilder:validation:Pattern=`^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$`
+	Repository string `json:"repository"`
+
+	// tokenSecretRef is a Secret key holding a GitHub token that can open
+	// pull requests in repository (fine-grained: Pull requests and Contents,
+	// read and write, on that repository only). The Secret must carry the
+	// pg-regression-radar.io/allow-postgreswatch-access=true label.
+	TokenSecretRef SecretKeySelector `json:"tokenSecretRef"`
+
+	// apiURL is the GitHub REST API root, for GitHub Enterprise Server
+	// (https://host/api/v3). It must be https: the token is sent to it.
+	// +kubebuilder:validation:Pattern=`^https://.+`
+	// +optional
+	APIURL string `json:"apiURL,omitempty"`
+
+	// maxPerDay caps the revert pull requests opened in any 24 hours.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=20
+	// +kubebuilder:default=3
+	// +optional
+	MaxPerDay int32 `json:"maxPerDay,omitempty"`
+
+	// includeQueryText adds the normalised text of the affected queries to the
+	// pull request. Off by default: the repository may be public, and a
+	// query's text names tables and columns.
+	// +kubebuilder:default=false
+	// +optional
+	IncludeQueryText bool `json:"includeQueryText,omitempty"`
 }
 
 // AutoAbortConfig controls automatic Argo Rollouts abortion. It only ever
