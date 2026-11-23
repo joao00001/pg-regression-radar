@@ -13,6 +13,10 @@
         <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/kubernetes/workloads/">
       
       
+        <link rel="prev" href="../objects/">
+      
+      
+        <link rel="next" href="../config-secrets/">
       
       
         
@@ -300,6 +304,8 @@
   
   
   
+    
+  
   
     
     
@@ -307,10 +313,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="https://joao00001.github.io/pg-regression-radar/latest/lab/" class="md-tabs__link">
           
   
@@ -502,8 +510,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -527,17 +537,20 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
@@ -555,7 +568,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1710,8 +1723,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1740,11 +1755,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" checked>
         
           
           <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
@@ -1765,7 +1780,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1783,7 +1798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/overview/" class="md-nav__link">
+      <a href="../overview/" class="md-nav__link">
         
   
   
@@ -1811,7 +1826,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/objects/" class="md-nav__link">
+      <a href="../objects/" class="md-nav__link">
         
   
   
@@ -1836,10 +1851,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/workloads/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pods and Deployments
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1855,6 +1897,131 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pods
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployments-and-replicasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deployments and ReplicaSets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollouts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rollouts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-is-the-radars-deploy-signal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this is the radar's deploy signal
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#health-probes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health: probes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#replicas-leader-election-and-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Replicas, leader election and logs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resources-requests-and-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resources: requests and limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1867,7 +2034,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/config-secrets/" class="md-nav__link">
+      <a href="../config-secrets/" class="md-nav__link">
         
   
   
@@ -1895,7 +2062,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/networking/" class="md-nav__link">
+      <a href="../networking/" class="md-nav__link">
         
   
   
@@ -1923,7 +2090,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/crds-operators/" class="md-nav__link">
+      <a href="../crds-operators/" class="md-nav__link">
         
   
   
@@ -1951,7 +2118,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/rbac/" class="md-nav__link">
+      <a href="../rbac/" class="md-nav__link">
         
   
   
@@ -1979,7 +2146,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/helm/" class="md-nav__link">
+      <a href="../helm/" class="md-nav__link">
         
   
   
@@ -2007,7 +2174,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/troubleshooting/" class="md-nav__link">
+      <a href="../troubleshooting/" class="md-nav__link">
         
   
   
@@ -2649,8 +2816,8 @@ kubectl<span class="w"> </span>top<span class="w"> </span>pod<span class="w"> </
 </code></pre></div>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/config-secrets/">Config and Secrets</a>: what the radar's pods read at startup.</li>
-<li><a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/troubleshooting/">Troubleshooting toolkit</a>: <code>Pending</code>, <code>CrashLoopBackOff</code> and <code>ImagePullBackOff</code> step by step.</li>
+<li><a href="../config-secrets/">Config and Secrets</a>: what the radar's pods read at startup.</li>
+<li><a href="../troubleshooting/">Troubleshooting toolkit</a>: <code>Pending</code>, <code>CrashLoopBackOff</code> and <code>ImagePullBackOff</code> step by step.</li>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/webhooks/">Deploy Sources &amp; Webhooks</a>: every way a deploy becomes an event.</li>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/deployment-security/">Hardening (Helm)</a>: security context, quota and limit range.</li>
 </ul>

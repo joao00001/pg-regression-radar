@@ -13,6 +13,10 @@
         <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/kubernetes/objects/">
       
       
+        <link rel="prev" href="../overview/">
+      
+      
+        <link rel="next" href="../workloads/">
       
       
         
@@ -300,6 +304,8 @@
   
   
   
+    
+  
   
     
     
@@ -307,10 +313,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="https://joao00001.github.io/pg-regression-radar/latest/lab/" class="md-tabs__link">
           
   
@@ -502,8 +510,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -527,17 +537,20 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
@@ -555,7 +568,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1710,8 +1723,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1740,11 +1755,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" checked>
         
           
           <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
@@ -1765,7 +1780,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1783,7 +1798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/overview/" class="md-nav__link">
+      <a href="../overview/" class="md-nav__link">
         
   
   
@@ -1808,10 +1823,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/objects/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Objects and namespaces
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1827,6 +1869,154 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-shape-of-an-object" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The shape of an object
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#namespaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Namespaces
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Namespaces">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-namespaces-matter-for-the-radar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why namespaces matter for the radar
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#labels-selectors-and-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Labels, selectors and annotations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Labels, selectors and annotations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#two-metadata-fields-the-radar-relies-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two metadata fields the radar relies on
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-kubectl-commands-you-will-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The kubectl commands you will use
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The kubectl commands you will use">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#apply-not-create" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        apply, not create
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#order-matters-for-custom-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Order matters for custom resources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1839,7 +2029,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/workloads/" class="md-nav__link">
+      <a href="../workloads/" class="md-nav__link">
         
   
   
@@ -1867,7 +2057,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/config-secrets/" class="md-nav__link">
+      <a href="../config-secrets/" class="md-nav__link">
         
   
   
@@ -1895,7 +2085,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/networking/" class="md-nav__link">
+      <a href="../networking/" class="md-nav__link">
         
   
   
@@ -1923,7 +2113,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/crds-operators/" class="md-nav__link">
+      <a href="../crds-operators/" class="md-nav__link">
         
   
   
@@ -1951,7 +2141,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/rbac/" class="md-nav__link">
+      <a href="../rbac/" class="md-nav__link">
         
   
   
@@ -1979,7 +2169,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/helm/" class="md-nav__link">
+      <a href="../helm/" class="md-nav__link">
         
   
   
@@ -2007,7 +2197,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/troubleshooting/" class="md-nav__link">
+      <a href="../troubleshooting/" class="md-nav__link">
         
   
   
@@ -2570,7 +2760,7 @@
 </ul>
 <div class="admonition note">
 <p class="admonition-title">In pg-regression-radar</p>
-<p>The things you write are <code>PostgresWatch</code> (what database to watch and how sensitively) and <code>DeploySource</code> (where deploy events come from). The things the radar writes are <code>status</code> on both of those, and whole <code>PerformanceRegression</code> objects, one per detection. See <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/crds-operators/">CRDs and operators</a>.</p>
+<p>The things you write are <code>PostgresWatch</code> (what database to watch and how sensitively) and <code>DeploySource</code> (where deploy events come from). The things the radar writes are <code>status</code> on both of those, and whole <code>PerformanceRegression</code> objects, one per detection. See <a href="../crds-operators/">CRDs and operators</a>.</p>
 </div>
 <h2 id="namespaces">Namespaces<a class="headerlink" href="#namespaces" title="Permanent link">&para;</a></h2>
 <p>A <strong>namespace</strong> is a named partition of a cluster. Most objects live in exactly one namespace, and two objects of the same kind can share a name only if they are in different namespaces. Namespaces are how teams, environments and tools share a cluster without colliding.</p>
@@ -2629,8 +2819,8 @@ kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w
 </code></pre></div>
 <h3 id="two-metadata-fields-the-radar-relies-on">Two metadata fields the radar relies on<a class="headerlink" href="#two-metadata-fields-the-radar-relies-on" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>The consent label.</strong> <code>pg-regression-radar.io/allow-postgreswatch-access: "true"</code> on a Secret says "the owner of this Secret agrees that a <code>PostgresWatch</code> may read it". The radar refuses to use a Secret without it. The full reasoning is in <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/rbac/#the-consent-label">RBAC and access</a>; the how-to is in <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/config-secrets/">Config and Secrets</a>.</li>
-<li><strong>The revision annotation.</strong> For a Deployment, <code>deployment.kubernetes.io/revision</code> is a counter Kubernetes bumps on every rollout. A <code>DeploySource</code> with <code>sourceType: kubernetes</code> uses it as the deploy's <code>revision</code>. See <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/workloads/#rollouts">Pods and Deployments</a>.</li>
+<li><strong>The consent label.</strong> <code>pg-regression-radar.io/allow-postgreswatch-access: "true"</code> on a Secret says "the owner of this Secret agrees that a <code>PostgresWatch</code> may read it". The radar refuses to use a Secret without it. The full reasoning is in <a href="../rbac/#the-consent-label">RBAC and access</a>; the how-to is in <a href="../config-secrets/">Config and Secrets</a>.</li>
+<li><strong>The revision annotation.</strong> For a Deployment, <code>deployment.kubernetes.io/revision</code> is a counter Kubernetes bumps on every rollout. A <code>DeploySource</code> with <code>sourceType: kubernetes</code> uses it as the deploy's <code>revision</code>. See <a href="../workloads/#rollouts">Pods and Deployments</a>.</li>
 </ul>
 <p>The Helm chart also puts the conventional <code>app.kubernetes.io/name</code>, <code>app.kubernetes.io/instance</code> and <code>app.kubernetes.io/component</code> labels on everything it creates, which is why <code>-l app.kubernetes.io/component=manager</code> selects the manager's objects.</p>
 <h2 id="the-kubectl-commands-you-will-use">The <code>kubectl</code> commands you will use<a class="headerlink" href="#the-kubectl-commands-you-will-use" title="Permanent link">&para;</a></h2>
@@ -2676,7 +2866,7 @@ kubectl<span class="w"> </span>label<span class="w"> </span>secret<span class="w
 </tr>
 <tr>
 <td>Read a pod's logs</td>
-<td><code>kubectl logs &lt;pod&gt; -n &lt;ns&gt;</code> (see <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/troubleshooting/">Troubleshooting toolkit</a>)</td>
+<td><code>kubectl logs &lt;pod&gt; -n &lt;ns&gt;</code> (see <a href="../troubleshooting/">Troubleshooting toolkit</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -2698,12 +2888,12 @@ kubectl<span class="w"> </span>apply<span class="w"> </span>-f<span class="w"> <
 <div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span><span class="nb">wait</span><span class="w"> </span>--for<span class="o">=</span><span class="nv">condition</span><span class="o">=</span>Established<span class="w"> </span>--timeout<span class="o">=</span>60s<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>crd/postgreswatches.radar.pgregressionradar.io
 </code></pre></div>
-<p>If you ever see <code>no matches for kind "PostgresWatch" in version "radar.pgregressionradar.io/v1alpha1"</code>, the definition is not installed yet. <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/crds-operators/">CRDs and operators</a> explains why.</p>
+<p>If you ever see <code>no matches for kind "PostgresWatch" in version "radar.pgregressionradar.io/v1alpha1"</code>, the definition is not installed yet. <a href="../crds-operators/">CRDs and operators</a> explains why.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/workloads/">Pods and Deployments</a>: the objects that actually run the radar and your app.</li>
-<li><a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/crds-operators/">CRDs and operators</a>: how <code>PostgresWatch</code> and friends come to exist.</li>
-<li><a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/troubleshooting/">Troubleshooting toolkit</a>: <code>describe</code>, events and logs in practice.</li>
+<li><a href="../workloads/">Pods and Deployments</a>: the objects that actually run the radar and your app.</li>
+<li><a href="../crds-operators/">CRDs and operators</a>: how <code>PostgresWatch</code> and friends come to exist.</li>
+<li><a href="../troubleshooting/">Troubleshooting toolkit</a>: <code>describe</code>, events and logs in practice.</li>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/configuration/">Configuration Reference</a>: every field of <code>PostgresWatch</code> and <code>DeploySource</code>.</li>
 </ul>
 

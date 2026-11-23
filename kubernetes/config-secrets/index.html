@@ -13,6 +13,10 @@
         <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/kubernetes/config-secrets/">
       
       
+        <link rel="prev" href="../workloads/">
+      
+      
+        <link rel="next" href="../networking/">
       
       
         
@@ -300,6 +304,8 @@
   
   
   
+    
+  
   
     
     
@@ -307,10 +313,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="https://joao00001.github.io/pg-regression-radar/latest/lab/" class="md-tabs__link">
           
   
@@ -502,8 +510,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -527,17 +537,20 @@
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
@@ -555,7 +568,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1710,8 +1723,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1740,11 +1755,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" checked>
         
           
           <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
@@ -1765,7 +1780,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1783,7 +1798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/overview/" class="md-nav__link">
+      <a href="../overview/" class="md-nav__link">
         
   
   
@@ -1811,7 +1826,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/objects/" class="md-nav__link">
+      <a href="../objects/" class="md-nav__link">
         
   
   
@@ -1839,7 +1854,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/workloads/" class="md-nav__link">
+      <a href="../workloads/" class="md-nav__link">
         
   
   
@@ -1864,10 +1879,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/config-secrets/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config and Secrets
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1883,6 +1925,142 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configmaps-and-secrets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ConfigMaps and Secrets
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-a-pod-receives-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How a pod receives them
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-the-dsn-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create the DSN Secret
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Create the DSN Secret">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#applying-it-from-a-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Applying it from a manifest
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-consent-label" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The consent label
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pointing-a-postgreswatch-at-the-secret" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pointing a PostgresWatch at the Secret
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rotating-a-credential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rotating a credential
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#webhook-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Webhook authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1895,7 +2073,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/networking/" class="md-nav__link">
+      <a href="../networking/" class="md-nav__link">
         
   
   
@@ -1923,7 +2101,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/crds-operators/" class="md-nav__link">
+      <a href="../crds-operators/" class="md-nav__link">
         
   
   
@@ -1951,7 +2129,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/rbac/" class="md-nav__link">
+      <a href="../rbac/" class="md-nav__link">
         
   
   
@@ -1979,7 +2157,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/helm/" class="md-nav__link">
+      <a href="../helm/" class="md-nav__link">
         
   
   
@@ -2007,7 +2185,7 @@
   
   
     <li class="md-nav__item">
-      <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/troubleshooting/" class="md-nav__link">
+      <a href="../troubleshooting/" class="md-nav__link">
         
   
   
@@ -2608,7 +2786,7 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>status<span class=
 <p>Without that label the <code>PostgresWatch</code> ends up in <code>status.phase: Failed</code>, with the reason in <code>status.message</code>:</p>
 <div class="language-bash highlight"><pre><span></span><code>kubectl<span class="w"> </span>get<span class="w"> </span>postgreswatch<span class="w"> </span>orders<span class="w"> </span>-n<span class="w"> </span>&lt;ns&gt;<span class="w"> </span>-o<span class="w"> </span><span class="nv">jsonpath</span><span class="o">=</span><span class="s1">'{.status.phase}{"\n"}{.status.message}{"\n"}'</span>
 </code></pre></div>
-<p>Labelling a Secret needs the same permission as editing it, so only the people who own the Secret can opt it in. The reasoning, and the admission policies that restrict who may set the label in shared clusters, are in <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/rbac/#the-consent-label">RBAC and access</a>.</p>
+<p>Labelling a Secret needs the same permission as editing it, so only the people who own the Secret can opt it in. The reasoning, and the admission policies that restrict who may set the label in shared clusters, are in <a href="../rbac/#the-consent-label">RBAC and access</a>.</p>
 <div class="admonition note">
 <p class="admonition-title">In pg-regression-radar</p>
 <p>The Helm chart creates its own Secret, <code>&lt;fullname&gt;-secret</code>, with the consent label already set, holding the keys <code>dsn</code>, <code>slackWebhookUrl</code>, <code>alertUrl</code>, <code>stateDsn</code>, and, only when you set them, <code>pagerDutyRoutingKey</code>, <code>alertTemplate</code>, <code>otlpHeaders</code> and <code>webhookSecret</code>. If you create a <code>PostgresWatch</code> yourself, the Secret and its label are yours to create.</p>
@@ -2625,7 +2803,7 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>status<span class=
 <span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">orders-dsn</span><span class="w">      </span><span class="c1"># the Secret's name, in the SAME namespace</span>
 <span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dsn</span><span class="w">              </span><span class="c1"># the key inside it</span>
 </code></pre></div>
-<p>The Secret must be in the <code>PostgresWatch</code>'s own namespace (see <a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/objects/#why-namespaces-matter-for-the-radar">Objects and namespaces</a>). Prefer <code>dsnSecretRef</code> over putting the DSN directly in the spec: a plain DSN in a <code>PostgresWatch</code> shows up in <code>kubectl get postgreswatch -o yaml</code> and in anyone's <code>describe</code> output.</p>
+<p>The Secret must be in the <code>PostgresWatch</code>'s own namespace (see <a href="../objects/#why-namespaces-matter-for-the-radar">Objects and namespaces</a>). Prefer <code>dsnSecretRef</code> over putting the DSN directly in the spec: a plain DSN in a <code>PostgresWatch</code> shows up in <code>kubectl get postgreswatch -o yaml</code> and in anyone's <code>describe</code> output.</p>
 <h2 id="rotating-a-credential">Rotating a credential<a class="headerlink" href="#rotating-a-credential" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Change the password in Postgres (or create the new role).</li>
@@ -2637,7 +2815,7 @@ kubectl<span class="w"> </span>rollout<span class="w"> </span>status<span class=
 <p>If you protect the deploy-event endpoint with a token, the sender must send it in an <code>X-Webhook-Token</code> header, and the radar compares it with the configured secret. With the chart, set <code>ingester.webhookSecret</code>; it lands in the chart's Secret under <code>webhookSecret</code>. Leaving it empty leaves <code>POST /webhook</code> open to anyone who can reach the Service, which is acceptable only while the Service stays cluster-internal. See <a href="https://joao00001.github.io/pg-regression-radar/latest/webhooks/#webhook-authentication">Deploy Sources &amp; Webhooks</a>.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="https://joao00001.github.io/pg-regression-radar/latest/kubernetes/rbac/">RBAC and access</a>: why Secret read access and the consent label exist.</li>
+<li><a href="../rbac/">RBAC and access</a>: why Secret read access and the consent label exist.</li>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/installation/#creating-a-least-privilege-postgres-role">Installation</a>: the Postgres role to put in the DSN.</li>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/security-model/">Security Model</a>: the full threat model for credentials.</li>
 <li><a href="https://joao00001.github.io/pg-regression-radar/latest/multi-cluster/">Multi-Cluster (Fleet) Mode</a>: reading the DSN Secret from a different cluster.</li>
