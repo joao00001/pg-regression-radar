@@ -40,6 +40,22 @@ UNVERSIONED_PAGES = {
     "our-math.md": "our-math/",
     "contribute.md": "contribute/",
 }
+# "Basic Kubernetes" is about Kubernetes, not about a release of this tool, so
+# it is published once too (see mkdocs.yml's nav, which links to these root
+# URLs). Listing the pages here is what makes the unversioned build give them
+# the Docs menu with the Kubernetes group open, instead of an empty sidebar.
+for _name in (
+    "overview",
+    "objects",
+    "workloads",
+    "config-secrets",
+    "networking",
+    "crds-operators",
+    "rbac",
+    "helm",
+    "troubleshooting",
+):
+    UNVERSIONED_PAGES[f"kubernetes/{_name}.md"] = f"kubernetes/{_name}/"
 
 # Matches either an inline code span (returned untouched) or the
 # `](target.md#frag)` part of an inline Markdown link whose target is a
