@@ -247,5 +247,5 @@ None of the above has real effect unless `main`'s (and, where applicable, each `
 - [Supply Chain Verification](supply-chain.md) — operator commands to verify artifact signatures, SBOMs, and provenance.
 - [Support Matrix](support-matrix.md) — officially supported PostgreSQL versions/distributions and exactly which of them each CI job verifies.
 - [Branch Protection](branch-protection.md) — whether these checks actually block anything.
-- [Roadmap](roadmap.md) — CI/CD items still open (branch protection review, Discussions link, `release.yml` follow-ups).
+- [Roadmap](roadmap.md) — CI/CD items still open (the kind e2e workflows' first real runs).
 
