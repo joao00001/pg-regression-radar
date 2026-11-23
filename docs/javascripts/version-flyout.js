@@ -19,6 +19,18 @@
  * the search box is more of a nuisance than a convenience.
  */
 (function () {
+  // Remember which version the reader is on, so the "Docs" tab of the
+  // version-less pages (home, roadmap, ...) brings them back to it instead of
+  // to `latest` (see docs-version.js).
+  try {
+    var seen = location.pathname.match(/\/(v\d+\.\d+\.\d+[0-9A-Za-z.-]*|latest)\//);
+    if (seen) {
+      localStorage.setItem("pgrr.docsVersion", seen[1]);
+    }
+  } catch (e) {
+    /* storage can be blocked: the tab simply keeps pointing at latest */
+  }
+
   var POLL_INTERVAL_MS = 100;
   var POLL_TIMEOUT_MS = 5000; // give up quietly if versions.json never resolves
   var CLOSE_TRANSITION_MS = 200; // extra.css's 160ms fade, plus slack
