@@ -22,7 +22,7 @@ This page tracks only what's *not* done yet: planned features, known robustness 
 </div>
 
 <div class="rm-glance" markdown="1">
-<div class="rm-stat"><span class="rm-stat-num" data-rm-count>20</span><span class="rm-stat-label">open items below</span></div>
+<div class="rm-stat"><span class="rm-stat-num" data-rm-count>23</span><span class="rm-stat-label">open items below</span></div>
 <div class="rm-stat rm-stat--progress"><span class="rm-stat-num">6<small> / 7</small></span><span class="rm-stat-label">security and robustness checklist steps complete</span><span class="rm-steps" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i class="rm-step-open"></i></span></div>
 </div>
 
@@ -58,31 +58,14 @@ Step 7 remains intentionally **operational**, and genuinely open:
 ## Key initiatives
 
 <div class="rm-features">
-<a class="rm-feature" href="#roadmap-items" data-area="Statistics"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Trustworthy statistics</span><span class="rm-feature-desc">Make the significance the engine reports mean what it says: honest thresholds, calibrated p-values and multiple-comparison control.</span><span class="rm-fields"><span><b>Open items</b>4</span><span><b>Impact</b>High</span><span><b>Timeline</b>Q4 2026 – Q2 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
-<a class="rm-feature" href="#roadmap-items" data-area="Attribution"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Honest attribution</span><span class="rm-feature-desc">Say when a deploy is the likely cause, when several could be, and when the database as a whole slowed down.</span><span class="rm-fields"><span><b>Open items</b>3</span><span><b>Impact</b>High</span><span><b>Timeline</b>Q1 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
-<a class="rm-feature" href="#roadmap-items" data-area="Validation"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Proven in real environments</span><span class="rm-feature-desc">Close the gap between what CI proves and what operators will run: real-runner e2e, real ArgoCD, and an external-user quickstart.</span><span class="rm-fields"><span><b>Open items</b>3</span><span><b>Impact</b>Medium</span><span><b>Timeline</b>Q4 2026 – Q1 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
+<a class="rm-feature" href="#roadmap-items" data-area="Statistics"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Trustworthy statistics</span><span class="rm-feature-desc">Make the significance the engine reports mean what it says: honest thresholds, calibrated p-values and multiple-comparison control.</span><span class="rm-fields"><span><b>Open items</b>3</span><span><b>Impact</b>High</span><span><b>Timeline</b>Q1 2027 – Q2 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
+<a class="rm-feature" href="#roadmap-items" data-area="Attribution"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Honest attribution</span><span class="rm-feature-desc">Say when a deploy is the likely cause, when several could be, and when the database as a whole slowed down, and give the actions taken on a verdict a working brake.</span><span class="rm-fields"><span><b>Open items</b>5</span><span><b>Impact</b>High</span><span><b>Timeline</b>Q1 2027 – Q2 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
+<a class="rm-feature" href="#roadmap-items" data-area="Validation"><span class="rm-kicker">Key initiative</span><span class="rm-feature-title">Proven in real environments</span><span class="rm-feature-desc">Close the gap between what CI proves and what operators will run: real-runner e2e, real ArgoCD, real GitHub for the revert proposer, real workloads for the attribution engine, and an external-user quickstart.</span><span class="rm-fields"><span><b>Open items</b>5</span><span><b>Impact</b>Medium</span><span><b>Timeline</b>Q4 2026 – Q1 2027</span></span><span class="rm-cta">View items &rarr;</span></a>
 </div>
 
 ## Roadmap items {: #roadmap-items }
 
 <div class="rm-list" markdown="1">
-
-<div class="rm-item" data-status="proposed" data-area="Statistics" data-quarter="Q1 2027" markdown="1">
-<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q1 2027</span></div>
-
-<div class="rm-title" markdown="span">Welch's t-test ignores how many calls stand behind each observation</div>
-
-Stage 2 weighs a one-call interval like a ten-thousand-call one, while the reported window means are call-weighted.
-{ .rm-summary }
-
-<details markdown="1">
-<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
-
-The reported `MeanLatencyBefore`/`MeanLatencyAfter` are total time over total calls, but the t-test compares unweighted per-interval means. A ratio-estimator test (mean = total time / total calls, with a cluster-robust variance that treats each scrape interval as a cluster) is consistent with the reported numbers and, in simulation with bursty traffic and log-normal latency, kept the 5% size while raising power for a +30% regression from 41% to 73% at 3 calls per interval. It would also make `--min-executions` act directly on the precision of the test. Per-call variance from `stddev_exec_time` is a further input that is not used yet.
-
-</details>
-</div>
-
 <div class="rm-item" data-status="gap" data-area="Validation" data-quarter="Q4 2026" markdown="1">
 <div class="rm-meta"><span class="rm-status rm-status--gap" role="img" aria-label="Known gap" title="Known gap"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-gap"/></svg></span><span class="rm-area">Validation</span><span class="rm-quarter">Q4 2026</span></div>
 
@@ -99,34 +82,50 @@ Both kind-based workflows were validated locally but have never run on a real Gi
 </details>
 </div>
 
-<div class="rm-item" data-status="followup" data-area="Operations" data-quarter="Q4 2026" markdown="1">
-<div class="rm-meta"><span class="rm-status rm-status--followup" role="img" aria-label="Follow-up" title="Follow-up"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-followup"/></svg></span><span class="rm-area">Operations</span><span class="rm-quarter">Q4 2026</span></div>
+<div class="rm-item" data-status="gap" data-area="Validation" data-quarter="Q4 2026" markdown="1">
+<div class="rm-meta"><span class="rm-status rm-status--gap" role="img" aria-label="Known gap" title="Known gap"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-gap"/></svg></span><span class="rm-area">Validation</span><span class="rm-quarter">Q4 2026</span></div>
 
-<div class="rm-title" markdown="span">Branch protection review</div>
+<div class="rm-title" markdown="span">The draft revert PR proposer has never run against real GitHub</div>
 
-Required checks only have effect once `main`'s ruleset requires each one by name.
+It is tested only against a stub server; the GraphQL call, the idempotency search and the token permissions are unconfirmed.
 { .rm-summary }
 
 <details markdown="1">
 <summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
 
-See [Branch Protection](branch-protection.md) — the CI checks in [CI/CD](ci-cd.md) only have real effect once `main`'s ruleset actually requires each one by name.
+`internal/attribution/revert` is unit-tested against an HTTP stub of GitHub. Four things have not been confirmed against the real service: the exact input fields of the `revertPullRequest` GraphQL mutation (including how the draft flag is set); whether the search API indexes the `pgrr-revert-id` marker line quickly enough to keep the proposer idempotent across a manager restart; the permissions a fine-grained token needs; and how the deploy's pull request is resolved from `GET /repos/{r}/commits/{sha}/pulls` under squash and rebase merges. Until a run against a real repository exists, treat `attribution.revert` as unproven and keep it behind `attribution.mode: shadow`. See [Reverting a convicted deploy](attribution-engine.md#reverting-a-convicted-deploy).
 
 </details>
 </div>
 
-<div class="rm-item" data-status="followup" data-area="Operations" data-quarter="Q4 2026" markdown="1">
-<div class="rm-meta"><span class="rm-status rm-status--followup" role="img" aria-label="Follow-up" title="Follow-up"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-followup"/></svg></span><span class="rm-area">Operations</span><span class="rm-quarter">Q4 2026</span></div>
+<div class="rm-item" data-status="planned" data-area="Integrations" data-quarter="Q4 2026" markdown="1">
+<div class="rm-meta"><span class="rm-status rm-status--planned" role="img" aria-label="Planned" title="Planned"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-planned"/></svg></span><span class="rm-area">Integrations</span><span class="rm-quarter">Q4 2026</span></div>
 
-<div class="rm-title" markdown="span">GitHub Discussions link</div>
+<div class="rm-title" markdown="span">The Helm chart does not expose the verdict endpoint</div>
 
-The issue template links to Discussions; whether it is enabled on the repo hasn't been confirmed.
+`--attribution-verdict-addr` is off by default and the chart has no port or Service for it, so Argo Rollouts cannot reach it without a manual patch.
 { .rm-summary }
 
 <details markdown="1">
 <summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
 
-`.github/ISSUE_TEMPLATE/config.yml` links to the repo's Discussions tab; whether Discussions is actually enabled on the repo hasn't been confirmed.
+The endpoint is served by the leader-only runnable behind `--attribution-verdict-addr`. The chart needs a value to enable it, the container port, a cluster-internal Service, and a matching rule in its network policy, so that an `AnalysisTemplate` can call `GET /api/v1/attribution/verdict` out of the box. See [Acting on a verdict](attribution-engine.md#acting-on-a-verdict).
+
+</details>
+</div>
+
+<div class="rm-item" data-status="proposed" data-area="Statistics" data-quarter="Q1 2027" markdown="1">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q1 2027</span></div>
+
+<div class="rm-title" markdown="span">Welch's t-test ignores how many calls stand behind each observation</div>
+
+Stage 2 weighs a one-call interval like a ten-thousand-call one, while the reported window means are call-weighted.
+{ .rm-summary }
+
+<details markdown="1">
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+
+The reported `MeanLatencyBefore`/`MeanLatencyAfter` are total time over total calls, but the t-test compares unweighted per-interval means. A ratio-estimator test (mean = total time / total calls, with a cluster-robust variance that treats each scrape interval as a cluster) is consistent with the reported numbers and, in simulation with bursty traffic and log-normal latency, kept the 5% size while raising power for a +30% regression from 41% to 73% at 3 calls per interval. It would also make `--min-executions` act directly on the precision of the test. Per-call variance from `stddev_exec_time` is a further input that is not used yet.
 
 </details>
 </div>
@@ -240,6 +239,38 @@ The execution checklist exists in [Quickstart Validation](quickstart-validation.
 </details>
 </div>
 
+<div class="rm-item" data-status="gap" data-area="Validation" data-quarter="Q1 2027" markdown="1">
+<div class="rm-meta"><span class="rm-status rm-status--gap" role="img" aria-label="Known gap" title="Known gap"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-gap"/></svg></span><span class="rm-area">Validation</span><span class="rm-quarter">Q1 2027</span></div>
+
+<div class="rm-title" markdown="span">The attribution engine is validated only in simulation</div>
+
+Calibration comes from a simulated world; no real workload has been run through it yet.
+{ .rm-summary }
+
+<details markdown="1">
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+
+The simulator covers an A/A run, a load shock, a statistics refresh, a cold cache, a query rewrite, a concurrent deploy and an effect below the materiality margin. It produced no grade A or B false positives, and about 98% impact recall with a canary arm and about 94% with a synthetic control. That shows the math does what it claims on simulated data, not that real `pg_stat_statements` series satisfy the model's assumptions. `attribution.mode: shadow` exists to close this: it records what the engine *would* have done on real deploys, so a period of shadow decisions can be compared with what operators knew had happened before `enforce` is trusted. See [Attribution Engine](attribution-engine.md).
+
+</details>
+</div>
+
+<div class="rm-item" data-status="planned" data-area="Attribution" data-quarter="Q1 2027" markdown="1">
+<div class="rm-meta"><span class="rm-status rm-status--planned" role="img" aria-label="Planned" title="Planned"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-planned"/></svg></span><span class="rm-area">Attribution</span><span class="rm-quarter">Q1 2027</span></div>
+
+<div class="rm-title" markdown="span">The revert circuit breaker is never fed</div>
+
+The breaker (limit 2) has no input, so it never opens by itself; only the daily cap and the cooldown limit how often a revert is proposed.
+{ .rm-summary }
+
+<details markdown="1">
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+
+`Verify` is how the policy learns that an acted-on decision did not hold up, and the breaker opens after the configured number of such outcomes. Nothing calls it yet. Feeding it needs a definition of "the decision was wrong" that the operator can inspect, for example a draft revert PR closed without merging, or the deploy being judged clean after the revert merged. Until then `maxPerDay` (default 3) and the 10-minute cooldown are the only brakes.
+
+</details>
+</div>
+
 <div class="rm-item" data-status="proposed" data-area="Statistics" data-quarter="Q2 2027" markdown="1">
 <div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Statistics</span><span class="rm-quarter">Q2 2027</span></div>
 
@@ -295,6 +326,22 @@ Make explicit what each observation means, so new sources can't be mixed into th
 
 An OLM bundle for OperatorHub.io.
 { .rm-summary }
+</div>
+
+<div class="rm-item" data-status="proposed" data-area="Attribution" data-quarter="Q2 2027" markdown="1">
+<div class="rm-meta"><span class="rm-status rm-status--proposed" role="img" aria-label="Proposed" title="Proposed"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-proposed"/></svg></span><span class="rm-area">Attribution</span><span class="rm-quarter">Q2 2027</span></div>
+
+<div class="rm-title" markdown="span">Grade A evidence is unreachable from `pg_stat_statements`</div>
+
+Concurrent-control evidence, and therefore a `fail` verdict, needs per-arm data the collector cannot supply.
+{ .rm-summary }
+
+<details markdown="1">
+<summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
+
+`pg_stat_statements` aggregates per `queryid` across every backend and carries no label saying which release served a call, so through the collector the best evidence is grade B (synthetic control) and the best verdict is `inconclusive`, which pauses a rollout. Grade A needs a control arm observed at the same time as the canary. That would have to come from a source that carries a version or arm attribute with each observation, which is another reason the `SampleSource` item below matters. Separately, the engine cannot convict before about 15 minutes after a deploy, so a rollout needs a pause step of at least 20 minutes for any verdict to arrive in time.
+
+</details>
 </div>
 
 <div class="rm-item" data-status="gap" data-area="Plan-diff" data-quarter="Unscheduled" markdown="1">
@@ -382,7 +429,7 @@ Control-group methods (difference-in-differences against comparable queries), co
 ## See also
 
 - [CHANGELOG.md](changelog.md) — what's already shipped, release by release; this page only tracks what's still open.
-- [CI/CD](ci-cd.md) — the workflows referenced by the operational follow-ups above.
+- [CI/CD](ci-cd.md) — the workflows referenced by the validation items above.
 - [Persistence](persistence.md) and [Collector Internals](collector-internals.md) — the two pages with the most detail on the robustness gaps above.
 - [Support Matrix](support-matrix.md) — officially supported PostgreSQL versions and distributions, including real `kind` + CloudNativePG validation coverage (single- and two-cluster) and the remaining `pg_store_plans`-on-CloudNativePG-operand-image follow-up referenced above.
 

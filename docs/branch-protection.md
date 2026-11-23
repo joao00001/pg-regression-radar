@@ -53,4 +53,3 @@ Every `release-X.Y` maintenance branch (created automatically by `release-branch
 
 - [CI/CD](ci-cd.md) — every check referenced in the table above.
 - [Backporting](backporting.md) — how `release-X.Y` branches come to exist and why two checks are deliberately excluded from them.
-- [Roadmap](roadmap.md) — this is tracked there as an open operational follow-up.
