@@ -44,6 +44,7 @@ extra_css:
 
 extra_javascript:
   - javascripts/roadmap.js
+  - javascripts/docs-version.js
   - javascripts/contribute.js
   - javascripts/code-header.js
   - javascripts/theme-toggle.js
