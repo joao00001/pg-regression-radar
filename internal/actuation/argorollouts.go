@@ -83,3 +83,23 @@ func (a *ArgoRolloutsAborter) Abort(ctx context.Context, namespace, name string)
 	}
 	return nil
 }
+
+// Pause sets spec.paused=true on the Rollout named name in namespace, which
+// holds the canary at its current step the same way `kubectl argo rollouts
+// pause <name>` does: traffic stays where it is, nothing is rolled back, and a
+// person decides whether to resume or abort. It is the milder of the two
+// actions this package offers, used when the evidence is a hold, not a
+// conviction.
+//
+// It patches the Rollout's spec, so it needs the `patch` verb on `rollouts`,
+// not only on `rollouts/status`; docs/auto-abort.md lists both.
+func (a *ArgoRolloutsAborter) Pause(ctx context.Context, namespace, name string) error {
+	patch := []byte(`{"spec":{"paused":true}}`)
+	_, err := a.dyn.Resource(rolloutGVR).Namespace(namespace).Patch(
+		ctx, name, types.MergePatchType, patch, metav1.PatchOptions{},
+	)
+	if err != nil {
+		return fmt.Errorf("pause rollout %s/%s: %w", namespace, name, err)
+	}
+	return nil
+}

@@ -35,6 +35,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 	"github.com/joao00001/pg-regression-radar/internal/telemetry/otlpexport"
+	apidto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
 // RolloutAborter is the narrow interface pollLoop needs to auto-abort an
@@ -44,6 +45,25 @@ import (
 // k8s.io/client-go/dynamic at all.
 type RolloutAborter interface {
 	Abort(ctx context.Context, namespace, name string) error
+}
+
+// RolloutPauser is the second narrow interface the attribution engine needs:
+// holding a canary without aborting it. *actuation.ArgoRolloutsAborter satisfies
+// it structurally, next to RolloutAborter.
+type RolloutPauser interface {
+	Pause(ctx context.Context, namespace, name string) error
+}
+
+// ActuateRuntime is a watch's permission to act on the attribution engine's
+// decisions, and the means to do it. A nil *ActuateRuntime means the engine only
+// reports and serves verdicts.
+type ActuateRuntime struct {
+	Aborter RolloutAborter
+	Pauser  RolloutPauser
+	// IsRollout reports whether the deploy came from an argo-rollouts
+	// DeploySource, the only kind with a pause or abort to call. Anything else
+	// is left alone.
+	IsRollout func(ctx context.Context, ev apidto.DeployEvent) bool
 }
 
 // WatchRuntime bundles the running background components that back a single
@@ -122,12 +142,17 @@ type WatchRuntime struct {
 
 	// Shadow is the attribution evaluator (shadow or enforce, per the watch), set when the
 	// owning PostgresWatch has spec.attribution.enabled and the watch scrapes
-	// its own Collector. nil otherwise. It never acts.
+	// its own Collector. nil otherwise. It only reports; acting is Actuate's job.
 	Shadow *shadow.Evaluator
 
 	// Revert is the draft-revert proposal for this watch, set only when
 	// spec.attribution.revert is enabled and valid. nil otherwise.
 	Revert *RevertRuntime
+
+	// Actuate is non-nil only when attribution.actuate.enabled is set, the watch
+	// is in enforce mode, and this manager has the means to act (an Aborter
+	// that can also pause). See ActuateRuntime.
+	Actuate *ActuateRuntime
 
 	// AutoAbortEnabled mirrors the owning PostgresWatch's
 	// spec.autoAbort.enabled. False (the default) means pollLoop never
