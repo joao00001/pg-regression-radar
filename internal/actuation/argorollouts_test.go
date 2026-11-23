@@ -109,3 +109,37 @@ func TestArgoRolloutsAborter_Abort_DoesNotTouchOtherRollouts(t *testing.T) {
 		t.Fatal("expected the staging namespace's rollout to be untouched, but status.abort is true")
 	}
 }
+
+// TestArgoRolloutsAborter_Pause verifies Pause sets spec.paused=true on the
+// named Rollout and leaves status.abort alone: pausing is the milder action and
+// must never abort.
+func TestArgoRolloutsAborter_Pause(t *testing.T) {
+	scheme := runtime.NewScheme()
+	dyn := dynamicfake.NewSimpleDynamicClient(scheme, newRollout("default", "checkout"))
+
+	a := NewArgoRolloutsAborter(dyn)
+	if err := a.Pause(context.Background(), "default", "checkout"); err != nil {
+		t.Fatalf("Pause: %v", err)
+	}
+	got, err := dyn.Resource(rolloutGVR).Namespace("default").Get(context.Background(), "checkout", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("get rollout after pause: %v", err)
+	}
+	paused, found, err := unstructured.NestedBool(got.Object, "spec", "paused")
+	if err != nil || !found || !paused {
+		t.Fatalf("spec.paused = %v (found=%v, err=%v), want true", paused, found, err)
+	}
+	if abort, _, _ := unstructured.NestedBool(got.Object, "status", "abort"); abort {
+		t.Fatal("Pause must not set status.abort")
+	}
+}
+
+// TestArgoRolloutsAborter_Pause_RolloutNotFound verifies a missing Rollout is an
+// error, so a caller never believes a rollout was held when nothing was.
+func TestArgoRolloutsAborter_Pause_RolloutNotFound(t *testing.T) {
+	dyn := dynamicfake.NewSimpleDynamicClient(runtime.NewScheme())
+	err := NewArgoRolloutsAborter(dyn).Pause(context.Background(), "default", "nope")
+	if err == nil || !strings.Contains(err.Error(), "pause rollout default/nope") {
+		t.Fatalf("err = %v, want a pause rollout default/nope error", err)
+	}
+}

@@ -898,6 +898,19 @@ spec:
                   exported as a metric, but never executed. nil (the default) means
                   disabled. See docs/attribution-engine.md.
                 properties:
+                  actuate:
+                    description: |-
+                      actuate lets this manager act on the engine's decisions itself, instead
+                      of waiting for a rollout controller to ask for a verdict. It only has an
+                      effect in enforce mode. See ActuateConfig.
+                    properties:
+                      enabled:
+                        default: false
+                        description: enabled turns on pausing and aborting.
+                        type: boolean
+                    required:
+                    - enabled
+                    type: object
                   enabled:
                     default: false
                     description: enabled turns the engine on for this watch.
@@ -909,8 +922,9 @@ spec:
                       verdict served to a rollout controller is always "pass" and the action
                       the engine would have taken is only reported. In enforce mode the
                       verdict is "inconclusive" (pause the rollout) for grade B evidence and
-                      "fail" (abort it) for grade A. Nothing is written to the cluster by this
-                      manager in either mode: the rollout controller acts on the verdict.
+                      "fail" (abort it) for grade A. Unless actuate is on, nothing is written to
+                      the cluster by this manager in either mode: the rollout controller acts on
+                      the verdict.
                     enum:
                     - shadow
                     - enforce

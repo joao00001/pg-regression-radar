@@ -40,7 +40,7 @@ flowchart TB
 
 ## Acting on a verdict
 
-The manager does not patch Rollouts. It serves a read-only verdict and the progressive-delivery controller acts on it, which is how Argo Rollouts and Flagger are designed to take an outside signal: Argo's analysis passes, fails (aborting the rollout) or is inconclusive (pausing it at its current step), and a Flagger webhook that does not return 2xx halts promotion. This also means the manager needs no new RBAC.
+By default the manager does not patch Rollouts. It serves a read-only verdict and the progressive-delivery controller acts on it, which is how Argo Rollouts and Flagger are designed to take an outside signal (to have the manager act itself, see [Letting the manager act](#letting-the-manager-act)): Argo's analysis passes, fails (aborting the rollout) or is inconclusive (pausing it at its current step), and a Flagger webhook that does not return 2xx halts promotion. On this path the manager needs no new RBAC.
 
 Start the manager with `--attribution-verdict-addr=:8082` (off by default; only the leader serves it) and expose that port with a Service. The endpoint is `GET /api/v1/attribution/verdict?namespace=<ns>&app=<name>[&revision=<rev>]`:
 
@@ -79,6 +79,37 @@ spec:
 **Timing matters.** On simulated workloads the engine cannot convict before about 15 minutes after a deploy, because its persistence check needs a late window (transients, such as a cold cache, must have decayed). A canary that is fully promoted in five minutes is out of reach: give the Rollout a pause step of at least 20 minutes, or the verdict arrives after the release is done and can only alert. Compare Flagger, whose rollback time is the analysis interval times its failure threshold, and the Google and Waze advice to run a canary long enough for a meaningful number of data points.
 
 The ladder is the one Google and Waze describe for a new canary analysis: begin with a non-blocking stage, then a manual judgement, and automate only once the analysis has proved reliable. Run shadow mode, compare `wouldBe` with what happened, then set `mode: enforce`. With enforce, the first action you will see is a pause, which one click resumes; an abort needs grade A.
+
+## Letting the manager act
+
+The verdict endpoint needs a rollout controller that asks. When you want the radar to act on its own, with no `AnalysisTemplate` in between, turn on actuation:
+
+```yaml
+spec:
+  attribution:
+    enabled: true
+    mode: enforce
+    actuate:
+      enabled: true
+```
+
+It follows the same ladder as the verdict, and only for a deploy that a [`DeploySource`](webhooks.md) of type `argo-rollouts` reported:
+
+| Engine action | What the manager does | Same as |
+|---|---|---|
+| `hold` (grade B, confirmed twice, material) | sets `spec.paused: true` on the Rollout | `kubectl argo rollouts pause` |
+| `rollback` (grade A, confirmed twice) | sets `status.abort: true` on the Rollout | `kubectl argo rollouts abort` |
+| anything else | nothing | |
+
+It never resumes, rolls back to a revision, scales, or deletes: a pause or an abort stops a bad rollout where it is, and a person decides what comes next. Each action is taken at most once per deploy, a pause can escalate to an abort if later evidence is stronger, and a failed call is retried at the next evaluation. Every attempt is counted in `pg_regression_radar_attribution_actions_total{action,result}` (`result` is `done`, `failed` or `skipped`) and logged with the grade, the impact and the reasons.
+
+Three rules keep it safe to turn on:
+
+- **Enforce mode only.** In shadow mode nothing is written; the log says what would have been done.
+- **One detector acts.** While `actuate` is on, the older `spec.autoAbort` trigger is ignored for that watch, so one regression is never acted on twice by two detectors that disagree. The engine's guards (material impact, two consecutive confirmations, attribution of at least 0.8, a cooldown) apply to every action.
+- **It needs the Rollout RBAC.** Set `manager.autoAbort.rbacEnabled: true` in the Helm chart (it grants `patch` on `rollouts` and `rollouts/status`). Without it, or without `mode: enforce`, `actuate` is ignored and the log says why.
+
+Through the collector the best evidence is grade B, because `pg_stat_statements` carries no label saying which release served a call, so in practice the manager pauses and a person aborts; an abort needs grade A evidence from a source that distinguishes the arms. The [timing note](#acting-on-a-verdict) applies here too: the engine cannot convict before about 15 minutes, so the Rollout needs a pause step of at least 20 minutes for the action to land in time.
 
 ## Reverting a convicted deploy
 

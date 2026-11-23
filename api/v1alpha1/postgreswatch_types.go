@@ -403,8 +403,9 @@ type AttributionConfig struct {
 	// verdict served to a rollout controller is always "pass" and the action
 	// the engine would have taken is only reported. In enforce mode the
 	// verdict is "inconclusive" (pause the rollout) for grade B evidence and
-	// "fail" (abort it) for grade A. Nothing is written to the cluster by this
-	// manager in either mode: the rollout controller acts on the verdict.
+	// "fail" (abort it) for grade A. Unless actuate is on, nothing is written to
+	// the cluster by this manager in either mode: the rollout controller acts on
+	// the verdict.
 	// +kubebuilder:validation:Enum=shadow;enforce
 	// +kubebuilder:default=shadow
 	// +optional
@@ -417,6 +418,28 @@ type AttributionConfig struct {
 	// pull request that would be opened is only logged.
 	// +optional
 	Revert *RevertConfig `json:"revert,omitempty"`
+
+	// actuate lets this manager act on the engine's decisions itself, instead
+	// of waiting for a rollout controller to ask for a verdict. It only has an
+	// effect in enforce mode. See ActuateConfig.
+	// +optional
+	Actuate *ActuateConfig `json:"actuate,omitempty"`
+}
+
+// ActuateConfig makes the manager write to the cluster on the engine's
+// decision: pause an Argo Rollouts rollout when the engine holds a deploy
+// (grade B evidence) and abort it when the engine rolls it back (grade A). It
+// is the only part of the attribution engine that mutates anything in the
+// cluster, so it is off unless asked for, only runs in enforce mode, and only
+// ever touches a Rollout that a DeploySource of type argo-rollouts reported.
+// When it is on, the older spec.autoAbort trigger is ignored for this watch, so
+// one regression cannot be acted on twice by two different detectors. The
+// manager needs the optional Argo Rollouts RBAC (manager.autoAbort.rbacEnabled
+// in the chart), which grants patch on rollouts and rollouts/status.
+type ActuateConfig struct {
+	// enabled turns on pausing and aborting.
+	// +kubebuilder:default=false
+	Enabled bool `json:"enabled"`
 }
 
 // RevertConfig controls the draft revert pull request opened for a convicted

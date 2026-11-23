@@ -42,7 +42,9 @@ var shadowEvaluations = []time.Duration{
 // shadowTracker schedules the attribution evaluations of every drained deploy
 // and runs them off the poll goroutine, since one assessment can take a while on
 // a large workload. It logs, counts, and keeps the result for the verdict
-// endpoint; this manager never writes to the cluster because of it.
+// endpoint. It writes to the cluster only through the optional ActuateRuntime
+// (pause or abort an Argo Rollouts rollout), and to GitHub only through the
+// optional revert proposer; with neither it is read-only.
 type shadowTracker struct {
 	ev     *shadow.Evaluator
 	logger *slog.Logger
@@ -54,13 +56,24 @@ type shadowTracker struct {
 	includeQueries bool
 	revertCount    *prometheus.CounterVec
 
+	// Optional pause/abort of the rollout behind a convicted deploy. act is nil
+	// when none is configured.
+	act      *ActuateRuntime
+	actCount *prometheus.CounterVec
+
 	mu   sync.Mutex
 	jobs []*shadowJob
 	busy bool
+	// acted is the strongest action already taken on a deploy, so a repeated
+	// evaluation never patches the same Rollout twice; skipped marks deploys
+	// that are not an Argo Rollouts rollout, so they are not looked up again.
+	acted   map[string]attribution.Action
+	skipped map[string]bool
 }
 
 type shadowJob struct {
 	deploy shadow.Deploy
+	event  dto.DeployEvent
 	due    []time.Time
 }
 
@@ -79,8 +92,21 @@ func newShadowTracker(ev *shadow.Evaluator, logger *slog.Logger, reg prometheus.
 		ConstLabels: prometheus.Labels{"cluster": cluster},
 	}, []string{"result"})
 	reg.MustRegister(rc)
-	return &shadowTracker{ev: ev, logger: logger, count: c, revertCount: rc}
+	ac := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace:   "pg_regression_radar",
+		Name:        "attribution_actions_total",
+		Help:        "Pauses and aborts of an Argo Rollouts rollout taken on an attribution decision, by action and result.",
+		ConstLabels: prometheus.Labels{"cluster": cluster},
+	}, []string{"action", "result"})
+	reg.MustRegister(ac)
+	return &shadowTracker{ev: ev, logger: logger, count: c, revertCount: rc, actCount: ac,
+		acted: map[string]attribution.Action{}, skipped: map[string]bool{}}
 }
+
+// withActuation lets the tracker pause or abort the Argo Rollouts rollout of a
+// deploy the engine has held or rolled back. It only ever acts on a decision
+// the policy marked as enforced.
+func (s *shadowTracker) withActuation(a *ActuateRuntime) { s.act = a }
 
 // withRevert enables draft revert proposals. In enforce mode a convicted deploy
 // gets a pull request; otherwise the pull request that would be opened is only
@@ -94,7 +120,7 @@ func (s *shadowTracker) add(e dto.DeployEvent) {
 	d := shadow.Deploy{ID: e.ID, Namespace: e.Namespace, App: e.App, Revision: e.Revision, At: e.Timestamp,
 		HasRollbackTarget: s.ev.HasPrior(e.Namespace, e.App, e.Timestamp)}
 	s.ev.Register(d)
-	j := &shadowJob{deploy: d}
+	j := &shadowJob{deploy: d, event: e}
 	for _, o := range shadowEvaluations {
 		j.due = append(j.due, e.Timestamp.Add(o))
 	}
@@ -111,14 +137,15 @@ func (s *shadowTracker) tick(now time.Time) {
 		return
 	}
 	type work struct {
-		d shadow.Deploy
+		d  shadow.Deploy
+		ev dto.DeployEvent
 	}
 	var todo []work
 	live := s.jobs[:0]
 	for _, j := range s.jobs {
 		for len(j.due) > 0 && !now.Before(j.due[0]) {
 			j.due = j.due[1:]
-			todo = append(todo, work{j.deploy})
+			todo = append(todo, work{j.deploy, j.event})
 		}
 		if len(j.due) > 0 {
 			live = append(live, j)
@@ -149,6 +176,7 @@ func (s *shadowTracker) tick(now time.Time) {
 				"deploy", w.d.ID, "health", string(rec.Assessment.Health),
 				"action", string(d.Action), "verdict", string(d.Verdict()), "wanted", string(d.Wanted), "grade", string(d.Grade),
 				"impact", d.Impact, "attribution", rec.Assessment.Attribution, "reasons", d.Reasons)
+			s.maybeActuate(w.ev, rec)
 			s.maybePropose(w.d, rec)
 		}
 	}()
@@ -182,4 +210,74 @@ func (s *shadowTracker) maybePropose(d shadow.Deploy, rec shadow.Record) {
 	s.revertCount.WithLabelValues(string(res.Outcome)).Inc()
 	s.logger.Info("attribution: draft revert pull request",
 		"deploy", d.ID, "outcome", string(res.Outcome), "reason", res.Reason, "url", res.URL)
+}
+
+// maybeActuate pauses or aborts the Argo Rollouts rollout behind a deploy the
+// policy has held or rolled back, when the watch is allowed to. A hold pauses
+// the rollout (spec.paused), a rollback aborts it (status.abort); nothing is
+// resumed, rolled back to a revision, or deleted, so a person always decides
+// what happens next. It runs on every evaluation, which is safe: each action is
+// taken at most once per deploy, a later and stronger decision still escalates
+// from a pause to an abort, and a failed call is retried at the next evaluation.
+func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record) {
+	if s.act == nil || !rec.Decision.Enforced {
+		return
+	}
+	act := rec.Decision.Action
+	if act != attribution.ActionHold && act != attribution.ActionRollback {
+		return
+	}
+	s.mu.Lock()
+	done, skip := s.acted[ev.ID], s.skipped[ev.ID]
+	s.mu.Unlock()
+	if skip || done.Rank() >= act.Rank() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if s.act.IsRollout != nil && !s.act.IsRollout(ctx, ev) {
+		s.mu.Lock()
+		s.skipped[ev.ID] = true
+		s.mu.Unlock()
+		s.actCount.WithLabelValues(actionName(act), "skipped").Inc()
+		s.logger.Info("attribution: not an Argo Rollouts deploy, nothing to pause or abort",
+			"deploy", ev.ID, "source", ev.Source, "action", string(act))
+		return
+	}
+
+	var err error
+	switch act {
+	case attribution.ActionHold:
+		if s.act.Pauser == nil {
+			return
+		}
+		err = s.act.Pauser.Pause(ctx, ev.Namespace, ev.App)
+	case attribution.ActionRollback:
+		if s.act.Aborter == nil {
+			return
+		}
+		err = s.act.Aborter.Abort(ctx, ev.Namespace, ev.App)
+	}
+	if err != nil {
+		s.actCount.WithLabelValues(actionName(act), "failed").Inc()
+		s.logger.Error("attribution: could not act on the rollout, will retry at the next evaluation",
+			"deploy", ev.ID, "rollout", ev.Namespace+"/"+ev.App, "action", actionName(act), "err", err)
+		return
+	}
+	s.mu.Lock()
+	s.acted[ev.ID] = act
+	s.mu.Unlock()
+	s.actCount.WithLabelValues(actionName(act), "done").Inc()
+	s.logger.Info("attribution: acted on the rollout",
+		"deploy", ev.ID, "rollout", ev.Namespace+"/"+ev.App, "action", actionName(act),
+		"grade", string(rec.Decision.Grade), "impact", rec.Decision.Impact, "reasons", rec.Decision.Reasons)
+}
+
+// actionName is the rollout operation an engine action stands for.
+func actionName(a attribution.Action) string {
+	if a == attribution.ActionRollback {
+		return "abort"
+	}
+	return "pause"
 }

@@ -733,6 +733,16 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 				}
 			}
 		}
+		if ac := watch.Spec.Attribution.Actuate; ac != nil && ac.Enabled {
+			rt.Actuate = r.newActuateRuntime(key, watch)
+			if rt.Actuate != nil && rt.AutoAbortEnabled {
+				// One regression must not be acted on by two detectors: the
+				// engine decides, so the older p-value trigger stands down.
+				rt.AutoAbortEnabled = false
+				r.Logger.Info("postgreswatch: spec.autoAbort ignored, attribution.actuate decides instead",
+					"watch", key.String())
+			}
+		}
 	}
 
 	// col is nil precisely when sampleSrc came from promsource instead —
@@ -786,6 +796,7 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 		if rv := rt.Revert; rv != nil {
 			shadowRun.withRevert(rv.Proposer, rv.Enforce, rv.IncludeQueries)
 		}
+		shadowRun.withActuation(rt.Actuate)
 	}
 	// Same rationale as internal/cli/operator.go's identical metric: makes
 	// PendingSet's by-design bound (every event retires once its analysis
@@ -1190,4 +1201,33 @@ func (r *PostgresWatchReconciler) newRevertProposer(watch *radarv1alpha1.Postgre
 		return strings.TrimSpace(string(v)), nil
 	}
 	return revert.New(revert.Config{Repository: rc.Repository, APIURL: rc.APIURL, MaxPerDay: int(rc.MaxPerDay)}, token)
+}
+
+// newActuateRuntime builds the means to pause or abort an Argo Rollouts rollout
+// for a watch that asked for attribution.actuate. It returns nil, and says why,
+// when the watch is not in enforce mode or this manager has no Rollout actuator
+// (the optional Argo Rollouts RBAC is off): the engine then keeps reporting and
+// serving verdicts, exactly as if actuation had not been asked for.
+func (r *PostgresWatchReconciler) newActuateRuntime(key types.NamespacedName, watch *radarv1alpha1.PostgresWatch) *ActuateRuntime {
+	if watch.Spec.Attribution.Mode != "enforce" {
+		r.Logger.Info("postgreswatch: attribution.actuate ignored, it only acts in enforce mode", "watch", key.String())
+		return nil
+	}
+	pauser, ok := r.Aborter.(RolloutPauser)
+	if r.Aborter == nil || !ok {
+		r.Logger.Info("postgreswatch: attribution.actuate ignored, no Argo Rollouts actuator is available "+
+			"(enable manager.autoAbort.rbacEnabled)", "watch", key.String())
+		return nil
+	}
+	return &ActuateRuntime{
+		Aborter: r.Aborter,
+		Pauser:  pauser,
+		IsRollout: func(ctx context.Context, ev dto.DeployEvent) bool {
+			var src radarv1alpha1.DeploySource
+			if err := r.Get(ctx, types.NamespacedName{Namespace: key.Namespace, Name: ev.Source}, &src); err != nil {
+				return false
+			}
+			return src.Spec.SourceType == "argo-rollouts"
+		},
+	}
 }
