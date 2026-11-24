@@ -435,11 +435,21 @@ type AttributionConfig struct {
 // When it is on, the older spec.autoAbort trigger is ignored for this watch, so
 // one regression cannot be acted on twice by two different detectors. The
 // manager needs the optional Argo Rollouts RBAC (manager.autoAbort.rbacEnabled
-// in the chart), which grants patch on rollouts and rollouts/status.
+// in the chart), which grants patch on rollouts and rollouts/status. Setting the
+// annotation pg-regression-radar.io/actuation-paused="true" on the PostgresWatch
+// stops all pausing and aborting at once, without a restart or a spec change.
 type ActuateConfig struct {
 	// enabled turns on pausing and aborting.
 	// +kubebuilder:default=false
 	Enabled bool `json:"enabled"`
+
+	// namespaces limits actuation to Rollouts in these namespaces. Empty (the
+	// default) means any namespace the watch's deploy sources report. Deploys
+	// elsewhere are still judged, logged and served as verdicts; they are only
+	// never paused or aborted by this manager.
+	// +kubebuilder:validation:MaxItems=50
+	// +optional
+	Namespaces []string `json:"namespaces,omitempty"`
 }
 
 // RevertConfig controls the draft revert pull request opened for a convicted

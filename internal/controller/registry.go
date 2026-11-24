@@ -64,6 +64,13 @@ type ActuateRuntime struct {
 	// DeploySource, the only kind with a pause or abort to call. Anything else
 	// is left alone.
 	IsRollout func(ctx context.Context, ev apidto.DeployEvent) bool
+	// Namespaces limits actuation to Rollouts in these namespaces; empty means
+	// any (attribution.actuate.namespaces).
+	Namespaces []string
+	// Paused reports whether an operator has switched actuation off with the
+	// pg-regression-radar.io/actuation-paused annotation on the PostgresWatch.
+	// It is read at the moment of acting, so the switch takes effect at once.
+	Paused func(ctx context.Context) bool
 }
 
 // WatchRuntime bundles the running background components that back a single
