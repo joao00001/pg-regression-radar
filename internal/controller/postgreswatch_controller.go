@@ -1203,6 +1203,12 @@ func (r *PostgresWatchReconciler) newRevertProposer(watch *radarv1alpha1.Postgre
 	return revert.New(revert.Config{Repository: rc.Repository, APIURL: rc.APIURL, MaxPerDay: int(rc.MaxPerDay)}, token)
 }
 
+// ActuationPausedAnnotation, set to "true" on a PostgresWatch, stops the manager
+// from pausing or aborting any Rollout for that watch, at once and without a
+// restart. The engine keeps judging, logging and serving verdicts. Remove it (or
+// set anything else) to let actuation resume.
+const ActuationPausedAnnotation = "pg-regression-radar.io/actuation-paused"
+
 // newActuateRuntime builds the means to pause or abort an Argo Rollouts rollout
 // for a watch that asked for attribution.actuate. It returns nil, and says why,
 // when the watch is not in enforce mode or this manager has no Rollout actuator
@@ -1220,8 +1226,18 @@ func (r *PostgresWatchReconciler) newActuateRuntime(key types.NamespacedName, wa
 		return nil
 	}
 	return &ActuateRuntime{
-		Aborter: r.Aborter,
-		Pauser:  pauser,
+		Aborter:    r.Aborter,
+		Pauser:     pauser,
+		Namespaces: append([]string(nil), watch.Spec.Attribution.Actuate.Namespaces...),
+		Paused: func(ctx context.Context) bool {
+			var cur radarv1alpha1.PostgresWatch
+			if err := r.Get(ctx, key, &cur); err != nil {
+				// If the watch cannot be read, acting on the cluster is the
+				// wrong thing to do: assume paused.
+				return true
+			}
+			return cur.Annotations[ActuationPausedAnnotation] == "true"
+		},
 		IsRollout: func(ctx context.Context, ev dto.DeployEvent) bool {
 			var src radarv1alpha1.DeploySource
 			if err := r.Get(ctx, types.NamespacedName{Namespace: key.Namespace, Name: ev.Source}, &src); err != nil {

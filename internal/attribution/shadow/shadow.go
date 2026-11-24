@@ -65,6 +65,7 @@ type Evaluator struct {
 	others  []attribution.Event
 	records []Record
 	deploys []Deploy
+	actions []ActionRecord
 }
 
 // New returns an evaluator in shadow mode (the policy never enforces).
@@ -147,9 +148,9 @@ func (e *Evaluator) NoteDeploy(id string, at time.Time) {
 	e.others = append(e.others, attribution.Event{ID: id, Kind: attribution.EventDeploy, At: at})
 }
 
-// Evaluate judges deploy d at time now, from the samples in
-// [d.At − PreWindow, now]. It returns false when there are no samples at all.
-func (e *Evaluator) Evaluate(now time.Time, d Deploy) (Record, bool) {
+// assess builds the engine's reading of deploy d at time now, from the samples
+// in [d.At − PreWindow, now]. It returns false when there are no samples at all.
+func (e *Evaluator) assess(now time.Time, d Deploy) (attribution.Assessment, bool) {
 	cfg := e.Config
 	pre := cfg.PreWindow
 	if pre <= 0 {
@@ -161,7 +162,7 @@ func (e *Evaluator) Evaluate(now time.Time, d Deploy) (Record, bool) {
 		samples = append(samples, dedupe(e.Source.SamplesInRange(id, from, now))...)
 	}
 	if len(samples) == 0 {
-		return Record{}, false
+		return attribution.Assessment{}, false
 	}
 	units := adapter.Units(samples, e.Fingerprint, d.Tables)
 
@@ -174,10 +175,19 @@ func (e *Evaluator) Evaluate(now time.Time, d Deploy) (Record, bool) {
 	}
 	e.mu.Unlock()
 
-	a := attribution.Assess(cfg, units, events, attribution.Deploy{
+	return attribution.Assess(cfg, units, events, attribution.Deploy{
 		ID: d.ID, At: d.At, Tables: d.Tables,
 		Reversible: true, HasRollbackTarget: d.HasRollbackTarget,
-	})
+	}), true
+}
+
+// Evaluate judges deploy d at time now. It returns false when there are no
+// samples at all.
+func (e *Evaluator) Evaluate(now time.Time, d Deploy) (Record, bool) {
+	a, ok := e.assess(now, d)
+	if !ok {
+		return Record{}, false
+	}
 	dec := e.Policy.Decide(now, a)
 	rec := Record{At: now, Assessment: a, Decision: dec}
 
@@ -186,6 +196,58 @@ func (e *Evaluator) Evaluate(now time.Time, d Deploy) (Record, bool) {
 	e.mu.Unlock()
 	return rec, true
 }
+
+// Verify re-reads deploy d at time now, after an action on it had time to act,
+// and tells the policy whether the regression is still supported. It is what
+// feeds the circuit breaker: after enough actions that did not help, the policy
+// stops acting and only alerts. It records no decision. It returns false when
+// there are no samples to judge by.
+func (e *Evaluator) Verify(now time.Time, d Deploy) (attribution.Verification, bool) {
+	a, ok := e.assess(now, d)
+	if !ok {
+		return attribution.Verification{}, false
+	}
+	return e.Policy.Verify(a), true
+}
+
+// ActionRecord is one thing the manager did, or declined to do, on the engine's
+// decision, or the outcome of checking it afterwards.
+type ActionRecord struct {
+	At        time.Time `json:"at"`
+	DeployID  string    `json:"deployId"`
+	Namespace string    `json:"namespace"`
+	App       string    `json:"app"`
+	// Action is "pause" or "abort".
+	Action string `json:"action"`
+	// Result is "done", "failed" or "skipped" for the action itself, then
+	// "recovered" or "persisted" for the check made after an abort.
+	Result string `json:"result"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// maxActions bounds the in-memory action ledger.
+const maxActions = 200
+
+// RecordAction appends to the action ledger, dropping the oldest entry once it
+// holds maxActions.
+func (e *Evaluator) RecordAction(a ActionRecord) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.actions = append(e.actions, a)
+	if len(e.actions) > maxActions {
+		e.actions = append([]ActionRecord(nil), e.actions[len(e.actions)-maxActions:]...)
+	}
+}
+
+// Actions returns the action ledger, oldest first.
+func (e *Evaluator) Actions() []ActionRecord {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]ActionRecord(nil), e.actions...)
+}
+
+// BreakerOpen reports whether the circuit breaker has stopped automatic actions.
+func (e *Evaluator) BreakerOpen() bool { return e.Policy.BreakerOpen() }
 
 // Records returns the evaluations so far, oldest first.
 func (e *Evaluator) Records() []Record {

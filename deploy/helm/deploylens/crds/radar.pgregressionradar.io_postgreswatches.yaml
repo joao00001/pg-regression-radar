@@ -156,6 +156,16 @@ spec:
                         default: false
                         description: enabled turns on pausing and aborting.
                         type: boolean
+                      namespaces:
+                        description: |-
+                          namespaces limits actuation to Rollouts in these namespaces. Empty (the
+                          default) means any namespace the watch's deploy sources report. Deploys
+                          elsewhere are still judged, logged and served as verdicts; they are only
+                          never paused or aborted by this manager.
+                        items:
+                          type: string
+                        maxItems: 50
+                        type: array
                     required:
                     - enabled
                     type: object

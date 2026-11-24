@@ -190,3 +190,36 @@ func TestRevisionSelectsTheRelease(t *testing.T) {
 		t.Fatalf("an unrelated revision must be unknown: %+v", r)
 	}
 }
+
+func TestActionsServesTheLedgerNewestFirstAndFilters(t *testing.T) {
+	ev := shadow.New(&src{}, collector.FingerprintQuery, attribution.Config{})
+	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	ev.RecordAction(shadow.ActionRecord{At: t0, DeployID: "d1", Namespace: "shop", App: "checkout", Action: "pause", Result: "done"})
+	ev.RecordAction(shadow.ActionRecord{At: t0.Add(time.Minute), DeployID: "d1", Namespace: "shop", App: "checkout", Action: "abort", Result: "done"})
+	ev.RecordAction(shadow.ActionRecord{At: t0.Add(2 * time.Minute), DeployID: "d2", Namespace: "pay", App: "api", Action: "pause", Result: "skipped"})
+
+	mux := http.NewServeMux()
+	(&verdictapi.Handler{Evaluators: func() []*shadow.Evaluator { return []*shadow.Evaluator{ev} }}).Routes(mux)
+	get := func(url string) verdictapi.ActionsResponse {
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, url, nil))
+		var out verdictapi.ActionsResponse
+		if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+			t.Fatalf("%s: %v (%s)", url, err, rr.Body.String())
+		}
+		return out
+	}
+	all := get("/api/v1/attribution/actions")
+	if len(all.Actions) != 3 || all.Actions[0].DeployID != "d2" || all.Actions[2].Action != "pause" {
+		t.Fatalf("not newest first: %+v", all.Actions)
+	}
+	if all.BreakerOpen {
+		t.Fatal("breaker reported open on a fresh evaluator")
+	}
+	if got := get("/api/v1/attribution/actions?namespace=shop&app=checkout"); len(got.Actions) != 2 {
+		t.Fatalf("filter returned %d actions, want 2", len(got.Actions))
+	}
+	if got := get("/api/v1/attribution/actions?namespace=none"); got.Actions == nil || len(got.Actions) != 0 {
+		t.Fatalf("empty result must be an empty list, got %#v", got.Actions)
+	}
+}

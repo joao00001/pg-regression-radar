@@ -80,3 +80,53 @@ func TestShadowNoSamples(t *testing.T) {
 		t.Fatal("expected no record without samples")
 	}
 }
+
+// Verify feeds the circuit breaker: a regression that is still there after an
+// action counts as a failure, and after BreakerLimit of them the policy stops
+// acting. A deploy with nothing wrong verifies cleanly and resets the count.
+func TestVerifyCountsAnActionThatDidNotHelp(t *testing.T) {
+	units, _, dep, _ := sim.World{Seed: 3, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	ev := shadow.NewWithPolicy(replay(units), collector.FingerprintQuery, attribution.Config{},
+		attribution.PolicyConfig{Enforce: true, BreakerLimit: 2})
+	d := shadow.Deploy{ID: dep.ID, At: dep.At, HasRollbackTarget: true}
+	now := dep.At.Add(45 * time.Minute)
+
+	v, ok := ev.Verify(now, d)
+	if !ok || v.Effective {
+		t.Fatalf("a regression that is still there verified as effective: %+v ok=%v", v, ok)
+	}
+	if ev.BreakerOpen() {
+		t.Fatal("breaker opened after one failure, limit is 2")
+	}
+	if v, _ = ev.Verify(now, d); v.Effective || !ev.BreakerOpen() {
+		t.Fatalf("breaker = %v after two failures, want open", ev.BreakerOpen())
+	}
+	if len(ev.Records()) != 0 {
+		t.Fatal("Verify must not record a decision")
+	}
+}
+
+func TestVerifyAcceptsAHealthyDeploy(t *testing.T) {
+	units, _, dep, _ := sim.World{Seed: 4}.Generate()
+	ev := shadow.NewWithPolicy(replay(units), collector.FingerprintQuery, attribution.Config{},
+		attribution.PolicyConfig{Enforce: true, BreakerLimit: 2})
+	d := shadow.Deploy{ID: dep.ID, At: dep.At}
+	for i := 0; i < 3; i++ {
+		if v, ok := ev.Verify(dep.At.Add(45*time.Minute), d); !ok || !v.Effective {
+			t.Fatalf("healthy deploy did not verify: %+v ok=%v", v, ok)
+		}
+	}
+	if ev.BreakerOpen() {
+		t.Fatal("breaker opened on a healthy deploy")
+	}
+}
+
+func TestActionLedgerIsBounded(t *testing.T) {
+	ev := shadow.New(&fakeSource{}, collector.FingerprintQuery, attribution.Config{})
+	for i := 0; i < 250; i++ {
+		ev.RecordAction(shadow.ActionRecord{DeployID: "d", Action: "pause", Result: "done", Detail: string(rune('a' + i%26))})
+	}
+	if n := len(ev.Actions()); n != 200 {
+		t.Fatalf("ledger holds %d entries, want it capped at 200", n)
+	}
+}

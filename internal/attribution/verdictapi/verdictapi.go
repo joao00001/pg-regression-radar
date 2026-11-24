@@ -27,6 +27,7 @@ package verdictapi
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/joao00001/pg-regression-radar/internal/attribution"
@@ -60,9 +61,44 @@ type Response struct {
 	Reasons     []string            `json:"reasons,omitempty"`
 }
 
-// Routes registers the endpoint on mux.
+// ActionsResponse is the body of GET /api/v1/attribution/actions.
+type ActionsResponse struct {
+	// BreakerOpen is true when any watch's circuit breaker has stopped automatic
+	// actions: earlier aborts did not make the regression go away.
+	BreakerOpen bool                  `json:"breakerOpen"`
+	Actions     []shadow.ActionRecord `json:"actions"`
+}
+
+// Routes registers the endpoints on mux.
 func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/attribution/verdict", h.verdict)
+	mux.HandleFunc("GET /api/v1/attribution/actions", h.actions)
+}
+
+// actions serves the ledger of what the manager did on the engine's decisions
+// (pauses, aborts, and the checks made after an abort), newest first, optionally
+// filtered by ?namespace= and ?app=. It is the audit trail of an enforcing watch.
+func (h *Handler) actions(w http.ResponseWriter, r *http.Request) {
+	ns, app := r.URL.Query().Get("namespace"), r.URL.Query().Get("app")
+	resp := ActionsResponse{Actions: []shadow.ActionRecord{}}
+	var evs []*shadow.Evaluator
+	if h.Evaluators != nil {
+		evs = h.Evaluators()
+	}
+	for _, ev := range evs {
+		if ev.BreakerOpen() {
+			resp.BreakerOpen = true
+		}
+		for _, a := range ev.Actions() {
+			if (ns == "" || a.Namespace == ns) && (app == "" || a.App == app) {
+				resp.Actions = append(resp.Actions, a)
+			}
+		}
+	}
+	sort.SliceStable(resp.Actions, func(i, j int) bool { return resp.Actions[i].At.After(resp.Actions[j].At) })
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 func (h *Handler) verdict(w http.ResponseWriter, r *http.Request) {

@@ -91,6 +91,7 @@ spec:
     mode: enforce
     actuate:
       enabled: true
+      namespaces: [shop, payments]   # optional; empty means any
 ```
 
 It follows the same ladder as the verdict, and only for a deploy that a [`DeploySource`](webhooks.md) of type `argo-rollouts` reported:
@@ -103,10 +104,21 @@ It follows the same ladder as the verdict, and only for a deploy that a [`Deploy
 
 It never resumes, rolls back to a revision, scales, or deletes: a pause or an abort stops a bad rollout where it is, and a person decides what comes next. Each action is taken at most once per deploy, a pause can escalate to an abort if later evidence is stronger, and a failed call is retried at the next evaluation. Every attempt is counted in `pg_regression_radar_attribution_actions_total{action,result}` (`result` is `done`, `failed` or `skipped`) and logged with the grade, the impact and the reasons.
 
-Three rules keep it safe to turn on:
+Every attempt is also written to an in-memory ledger, served newest first at `GET /api/v1/attribution/actions` (same port as the verdict endpoint; filter with `?namespace=` and `?app=`): the time, the deploy, `pause` or `abort`, and the result with its reason. It also reports `breakerOpen`. The ledger keeps the last 200 entries and is lost on a restart; the metrics and the logs are the durable record.
+
+```json
+{"breakerOpen":false,"actions":[
+ {"at":"2026-11-24T14:41:00Z","deployId":"d1","namespace":"shop","app":"checkout","action":"abort","result":"recovered","detail":"regression no longer supported after the action"},
+ {"at":"2026-11-24T14:26:00Z","deployId":"d1","namespace":"shop","app":"checkout","action":"abort","result":"done","detail":"grade A evidence supports 12.0% added database time"}]}
+```
+
+**Checking that it helped.** Fifteen minutes after an abort the engine reads the deploy again. If the regression is gone the result is `recovered`. If it is still supported at grade B or better, the abort did not help (the deploy was not the cause, or the abort did not take) and the result is `persisted`. Each `persisted` counts as a failure for the policy; after two in a row (`BreakerLimit`) the circuit breaker opens and the engine only alerts, until the manager restarts. `pg_regression_radar_attribution_breaker_open` is `1` while it is open, and `pg_regression_radar_attribution_verifications_total{result}` counts the checks. A pause is not checked: a held canary keeps serving traffic, so its regression persists by design.
+
+Four rules keep it safe to turn on:
 
 - **Enforce mode only.** In shadow mode nothing is written; the log says what would have been done.
 - **One detector acts.** While `actuate` is on, the older `spec.autoAbort` trigger is ignored for that watch, so one regression is never acted on twice by two detectors that disagree. The engine's guards (material impact, two consecutive confirmations, attribution of at least 0.8, a cooldown) apply to every action.
+- **You can bound it and stop it.** `actuate.namespaces` limits it to Rollouts in the listed namespaces (empty means any); a deploy elsewhere is still judged and logged, and the ledger records it as `skipped`. To stop all pausing and aborting at once, with no restart and no spec change, annotate the watch: `kubectl annotate postgreswatch <name> pg-regression-radar.io/actuation-paused=true` (remove the annotation to resume). If the watch cannot be read at that moment, the manager assumes it is paused.
 - **It needs the Rollout RBAC.** Set `manager.autoAbort.rbacEnabled: true` in the Helm chart (it grants `patch` on `rollouts` and `rollouts/status`). Without it, or without `mode: enforce`, `actuate` is ignored and the log says why.
 
 Through the collector the best evidence is grade B, because `pg_stat_statements` carries no label saying which release served a call, so in practice the manager pauses and a person aborts; an abort needs grade A evidence from a source that distinguishes the arms. The [timing note](#acting-on-a-verdict) applies here too: the engine cannot convict before about 15 minutes, so the Rollout needs a pause step of at least 20 minutes for the action to land in time.
@@ -191,7 +203,7 @@ Simulated workloads (120 queries, 90 minutes before and 30 after, with load shoc
 - A pause or abort only helps while the Rollout is still in progress. After a full promotion the verdict can only inform an alert; reverting a promoted release belongs to your GitOps flow.
 - Samples from `pg_stat_statements` carry no arm label, so through the collector the best grade is B and the strongest verdict is `inconclusive` (a pause). A `fail` needs a sample source that labels arms.
 - The revert proposal needs the deploy's revision to be a git commit SHA: Argo CD sources qualify, Argo Rollouts sources (a pod hash) do not.
-- The circuit breaker is in the policy, but nothing feeds it a post-action check yet, so it never opens on its own.
+- The circuit breaker is fed only by the check after an abort. A pause cannot be checked (a held canary keeps serving traffic, so its regression persists by design) and a revert pull request is not checked yet, so neither can open it.
 
 ## References
 
