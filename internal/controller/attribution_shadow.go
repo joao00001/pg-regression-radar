@@ -216,8 +216,13 @@ func (s *shadowTracker) tick(now time.Time) {
 			d := rec.Decision
 			s.count.WithLabelValues(string(d.Action), string(d.Grade)).Inc()
 			msg := "attribution (shadow): decision, not executed"
-			if d.Enforced {
+			switch {
+			case d.Enforced:
 				msg = "attribution (enforce): verdict served to the rollout controller"
+			case s.ev.Policy.Enforcing():
+				// Enforce mode, but this decision is not one that acts (an alert, or
+				// nothing): it is not a shadow decision.
+				msg = "attribution (enforce): decision below the acting threshold, nothing to execute"
 			}
 			s.logger.Info(msg,
 				"deploy", w.d.ID, "health", string(rec.Assessment.Health),
@@ -293,6 +298,14 @@ func (s *shadowTracker) maybePropose(d shadow.Deploy, rec shadow.Record) {
 		"deploy", d.ID, "outcome", string(res.Outcome), "reason", res.Reason, "url", res.URL)
 }
 
+// notActed tells the policy that the action it chose was not carried out, so its
+// cooldown does not delay the next attempt.
+func (s *shadowTracker) notActed(id string) {
+	if s.ev != nil {
+		s.ev.Policy.NotActed(id)
+	}
+}
+
 // maybeActuate pauses or aborts the Argo Rollouts rollout behind a deploy the
 // policy has held or rolled back, when the watch is allowed to. A hold pauses
 // the rollout (spec.paused), a rollback aborts it (status.abort); nothing is
@@ -329,6 +342,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 	}
 	if s.act.Paused != nil && s.act.Paused(ctx) {
 		// Not remembered: lifting the annotation lets the next evaluation act.
+		s.notActed(ev.ID)
 		s.actCount.WithLabelValues(actionName(act), "skipped").Inc()
 		s.record(ev, actionName(act), "skipped", "actuation paused by annotation", now)
 		s.logger.Warn("attribution: actuation paused by annotation, nothing paused or aborted",
@@ -360,6 +374,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 		err = s.act.Aborter.Abort(ctx, ev.Namespace, ev.App)
 	}
 	if err != nil {
+		s.notActed(ev.ID)
 		s.actCount.WithLabelValues(actionName(act), "failed").Inc()
 		s.record(ev, actionName(act), "failed", err.Error(), now)
 		s.logger.Error("attribution: could not act on the rollout, will retry at the next evaluation",

@@ -17,7 +17,7 @@ spec:
     mode: shadow   # or "enforce"
 ```
 
-Decisions appear in the manager log (`attribution (shadow): decision, not executed`, or `attribution (enforce): verdict served…`) and in the metric `pg_regression_radar_attribution_shadow_decisions_total{action,grade}`. It requires the watch to scrape its own collector (not a Prometheus sample source).
+Decisions appear in the manager log (`attribution (shadow): decision, not executed`, `attribution (enforce): verdict served…` when a decision is enforced, or `attribution (enforce): decision below the acting threshold…` for an alert or nothing in enforce mode) and in the metric `pg_regression_radar_attribution_shadow_decisions_total{action,grade}`. It requires the watch to scrape its own collector (not a Prometheus sample source).
 
 ```mermaid
 flowchart TB
@@ -171,8 +171,12 @@ Limits: a failed attempt is retried at the next evaluation, and the search that 
     | C | The query's own history | Nothing; cannot separate the deploy from anything else |
     | D | Nothing | Not enough data; never blocks |
 
+    A control query must have data for at least half of the pre-deploy window (45 of the 90 minutes), so after a manager restart the evidence stays at grade C, an alert, until about 45 minutes of history have been collected. Hold and pause are not available before then.
+
 3. **Inference.** A local-level state-space model with the step estimated inside the Kalman filter, ridge-regressed on the control series. Evidence is an e-process against "no regression beyond the margin" (default 20%), so it is valid at any stopping time, and the false-discovery rate across queries is controlled with e-BH, valid under arbitrary dependence.
-4. **Guards.** A persistence test (the shift must still be there after the grace period, so warm-ups do not count), a table-level cap (a shift concentrated on one table that the deploy did not declare is capped at grade C), attribution among overlapping deploys, and a global-shift flag.
+4. **Guards.** A persistence test (the shift must still be there after the grace period, so warm-ups do not count), a table-level cap (a shift concentrated on one table that the deploy did not declare is capped at grade C), attribution among overlapping deploys, and a global-shift flag. The global-shift flag only counts untouched units that moved the same way as the unit under test: a slow query that throttles a closed-loop workload makes the other queries faster, and that is not a cause shared with the regression.
+
+    When the evidence stops at grade C, the decision says why (`evidence is capped at grade C by: global-shift (3), few-donors (1)`), in the log and in the verdict's reasons.
 5. **Policy.** The action depends on the strongest grade whose supported lower-bound impact reaches the materiality threshold (5% of database time):
 
     | Evidence | Action |
