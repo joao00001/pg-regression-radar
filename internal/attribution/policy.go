@@ -16,6 +16,7 @@ package attribution
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -181,6 +182,12 @@ func (p *Policy) Decide(now time.Time, a Assessment) Decision {
 	d.Action = d.Wanted
 	d.Reasons = append(d.Reasons, fmt.Sprintf("grade %s evidence supports %.1f%% added database time", grade, impact*100))
 
+	if grade == GradeC {
+		if why := a.CappedBy(); len(why) > 0 {
+			d.Reasons = append(d.Reasons, "evidence is capped at grade C by: "+strings.Join(why, ", "))
+		}
+	}
+
 	cap := func(to Action, why string) {
 		if to.Rank() < d.Action.Rank() {
 			d.Action = to
@@ -218,6 +225,19 @@ func (p *Policy) Decide(now time.Time, a Assessment) Decision {
 		p.lastAct[id] = now
 	}
 	return p.record(d)
+}
+
+// Enforcing reports whether the policy is in enforce mode, whatever it decided.
+func (p *Policy) Enforcing() bool { return p.cfg.Enforce }
+
+// NotActed tells the policy that the action it just chose was not carried out
+// (actuation was switched off, or the call failed). The cooldown exists to give
+// an action time to work, so there is nothing to wait for, and the next
+// evaluation may choose the action again.
+func (p *Policy) NotActed(deployID string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delete(p.lastAct, deployID)
 }
 
 // supported returns the strongest grade whose supported lower-bound impact

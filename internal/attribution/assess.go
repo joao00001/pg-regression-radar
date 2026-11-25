@@ -15,6 +15,7 @@
 package attribution
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"strings"
@@ -71,6 +72,37 @@ type Assessment struct {
 	GlobalShift bool
 
 	Tested, Regressed, Improved, Healthy, Inconclusive, Untestable int
+}
+
+// CappedBy explains why the strongest evidence stops at grade C: the flags that
+// kept the regressed units from a higher grade, with the number of units each
+// one held back, most common first. It is empty when no regressed unit sits at
+// grade C. Without it a deploy stuck at an alert gives no hint of what to fix.
+func (a Assessment) CappedBy() []string {
+	n := map[Flag]int{}
+	for _, v := range a.Units {
+		if !v.Rejected || v.Grade != GradeC {
+			continue
+		}
+		for _, f := range v.Flags {
+			n[f]++
+		}
+	}
+	flags := make([]Flag, 0, len(n))
+	for f := range n {
+		flags = append(flags, f)
+	}
+	sort.Slice(flags, func(i, j int) bool {
+		if n[flags[i]] != n[flags[j]] {
+			return n[flags[i]] > n[flags[j]]
+		}
+		return flags[i] < flags[j]
+	})
+	out := make([]string, len(flags))
+	for i, f := range flags {
+		out[i] = fmt.Sprintf("%s (%d)", f, n[f])
+	}
+	return out
 }
 
 // Assess judges one deploy against the observed units.

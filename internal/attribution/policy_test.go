@@ -253,3 +253,21 @@ func TestPolicyEndToEnd(t *testing.T) {
 		})
 	}
 }
+
+func TestNotActedLiftsTheCooldown(t *testing.T) {
+	p := attribution.NewPolicy(attribution.PolicyConfig{Enforce: true})
+	a := regressed(attribution.GradeB, 0.2)
+	p.Decide(t0, a)
+	if d := p.Decide(t0.Add(time.Minute), a); d.Action != attribution.ActionHold {
+		t.Fatalf("second evaluation: %s, want hold", d.Action)
+	}
+	// The hold was chosen but never carried out: no reason to wait.
+	p.NotActed(a.Deploy.ID)
+	if d := p.Decide(t0.Add(2*time.Minute), a); d.Action != attribution.ActionHold {
+		t.Fatalf("after NotActed: %s (%v), want hold again", d.Action, d.Reasons)
+	}
+	// Without it the cooldown applies.
+	if d := p.Decide(t0.Add(3*time.Minute), a); d.Action != attribution.ActionAlert {
+		t.Fatalf("inside the cooldown: %s, want alert", d.Action)
+	}
+}
