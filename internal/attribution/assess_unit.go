@@ -399,8 +399,22 @@ func (r *run) donorPoolFor(i int) *donorPool {
 		}
 	}
 	if p.eligible >= 5 {
-		f := float64(max(up, down)) / float64(p.eligible)
-		if f >= r.cfg.GlobalShiftFraction && max(up, down) >= 3 {
+		// A cause shared with the untouched units must push them the way it pushes
+		// the target. Units that moved the other way (a slow query throttling a
+		// closed-loop workload makes the others faster, say) are not a shared
+		// cause of the target's shift, so only same-direction movement counts.
+		// The target's direction is unknown while its own shift cannot be read, and
+		// then either direction counts.
+		same := max(up, down)
+		if _, shift, ok := r.shiftZ(r.ser[i]); ok && shift != 0 {
+			if shift > 0 {
+				same = up
+			} else {
+				same = down
+			}
+		}
+		f := float64(same) / float64(p.eligible)
+		if f >= r.cfg.GlobalShiftFraction && same >= 3 {
 			p.global = true
 		}
 	}

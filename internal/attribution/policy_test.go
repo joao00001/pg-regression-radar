@@ -203,6 +203,11 @@ func TestPolicyEndToEnd(t *testing.T) {
 		{"real regression", func(s uint64) sim.World {
 			return sim.World{Seed: s, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}
 		}, attribution.ActionHold, 1.6},
+		// The other queries get faster when a slow query throttles a closed-loop
+		// workload. That is not a shared cause of a regression, and must not cap it.
+		{"real regression while the shared load falls", func(s uint64) sim.World {
+			return sim.World{Seed: s, LoadShock: -0.5, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}
+		}, attribution.ActionHold, 1.6},
 		{"canary real regression", func(s uint64) sim.World {
 			return sim.World{Seed: s, Canary: true, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}
 		}, attribution.ActionRollback, 1.6},
