@@ -1,0 +1,224 @@
+[
+ {
+  "in": "",
+  "terms": []
+ },
+ {
+  "in": "   ",
+  "terms": []
+ },
+ {
+  "in": "app:checkout",
+  "terms": [
+   [
+    "app",
+    "checkout",
+    1
+   ]
+  ]
+ },
+ {
+  "in": "app:checkout   state:regressed",
+  "terms": [
+   [
+    "app",
+    "checkout",
+    1
+   ],
+   [
+    "state",
+    "regressed",
+    16
+   ]
+  ]
+ },
+ {
+  "in": "query:\"SELECT on orders\"",
+  "terms": [
+   [
+    "query",
+    "SELECT on orders",
+    1
+   ]
+  ]
+ },
+ {
+  "in": "query:\"say \\\"hi\\\" \\\\ done\"",
+  "terms": [
+   [
+    "query",
+    "say \"hi\" \\ done",
+    1
+   ]
+  ]
+ },
+ {
+  "in": "app:check* namespace:*pay*",
+  "terms": [
+   [
+    "app",
+    "check*",
+    1
+   ],
+   [
+    "namespace",
+    "*pay*",
+    12
+   ]
+  ]
+ },
+ {
+  "in": "app:checkout app:cart",
+  "terms": [
+   [
+    "app",
+    "checkout",
+    1
+   ],
+   [
+    "app",
+    "cart",
+    14
+   ]
+  ]
+ },
+ {
+  "in": "app:café state:healthy",
+  "terms": [
+   [
+    "app",
+    "café",
+    1
+   ],
+   [
+    "state",
+    "healthy",
+    10
+   ]
+  ]
+ },
+ {
+  "in": "app:a\tstate:b",
+  "terms": [
+   [
+    "app",
+    "a",
+    1
+   ],
+   [
+    "state",
+    "b",
+    7
+   ]
+  ]
+ },
+ {
+  "in": "  app:a  ",
+  "terms": [
+   [
+    "app",
+    "a",
+    3
+   ]
+  ]
+ },
+ {
+  "in": "app:\"a b\" state:acted",
+  "terms": [
+   [
+    "app",
+    "a b",
+    1
+   ],
+   [
+    "state",
+    "acted",
+    11
+   ]
+  ]
+ },
+ {
+  "in": "checkout",
+  "error": {
+   "code": "bad-term",
+   "col": 1
+  }
+ },
+ {
+  "in": "app",
+  "error": {
+   "code": "bad-term",
+   "col": 1
+  }
+ },
+ {
+  "in": "App:x",
+  "error": {
+   "code": "bad-term",
+   "col": 1
+  }
+ },
+ {
+  "in": "app:x oops",
+  "error": {
+   "code": "bad-term",
+   "col": 7
+  }
+ },
+ {
+  "in": "app:",
+  "error": {
+   "code": "empty-value",
+   "col": 1
+  }
+ },
+ {
+  "in": "app:\"\"",
+  "error": {
+   "code": "empty-value",
+   "col": 1
+  }
+ },
+ {
+  "in": "app: x",
+  "error": {
+   "code": "empty-value",
+   "col": 1
+  }
+ },
+ {
+  "in": "query:\"abc",
+  "error": {
+   "code": "unterminated-quote",
+   "col": 7
+  }
+ },
+ {
+  "in": "app:ab\"c",
+  "error": {
+   "code": "stray-quote",
+   "col": 7
+  }
+ },
+ {
+  "in": "query:\"a\\nb\"",
+  "error": {
+   "code": "bad-escape",
+   "col": 9
+  }
+ },
+ {
+  "in": "query:\"abc\"def",
+  "error": {
+   "code": "bad-term",
+   "col": 12
+  }
+ },
+ {
+  "in": "a:1 b:1 c:1 d:1 e:1 f:1 g:1 h:1 i:1 j:1 k:1 l:1 m:1",
+  "error": {
+   "code": "too-many",
+   "col": 49
+  }
+ }
+]

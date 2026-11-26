@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Deploy radar</title>
+<script src="/js/theme.js"></script>
+<link rel="stylesheet" href="/app.css">
+<link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+</head>
+<body class="boot">
+<a class="skip" href="#board">Skip to the board</a>
+<header class="top">
+  <div class="top-row">
+    <a class="brand" href="#/" aria-label="pg-regression-radar, deploy radar">
+      <img class="logo logo-dark" src="/brand/logo-on-dark.svg" alt="">
+      <img class="logo logo-light" src="/brand/logo-on-light.svg" alt="">
+      <span class="brand-name">PG-REGRESSION-RADAR</span>
+    </a>
+    <div class="top-right">
+      <span id="live" class="live" role="status"><span class="dot" aria-hidden="true"></span><span id="live-text">Connecting</span></span>
+      <button id="theme" class="icon-btn" type="button"></button>
+    </div>
+  </div>
+  <div class="top-row tabs">
+    <nav id="boards" class="board-tabs" aria-label="Boards"></nav>
+    <div class="tools" id="tools"></div>
+  </div>
+  <div class="top-row editbar" id="editbar" hidden></div>
+</header>
+<div class="sheet">
+  <div id="error" class="error" role="alert" hidden></div>
+  <div id="notice" class="notice" role="status" hidden></div>
+  <main id="board" tabindex="-1" aria-label="Board"></main>
+  <section id="focus" class="focus" aria-label="Panel in focus" hidden></section>
+</div>
+<dialog id="export" class="dialog" aria-labelledby="export-title"></dialog>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  "generatedAt": "2026-11-25T21:00:00Z",
+  "history": {
+    "recording": false,
+    "store": ""
+  },
+  "scope": {
+    "all": false,
+    "namespaces": [
+      "shop"
+    ]
+  },
+  "version": "v1",
+  "watches": [
+    {
+      "actuation": {
+        "enabled": false,
+        "paused": false
+      },
+      "breakerOpen": false,
+      "cluster": "",
+      "collector": {
+        "staleSeconds": 0
+      },
+      "mode": "enforce",
+      "name": "w1",
+      "namespace": "shop"
+    },
+    {
+      "actuation": {
+        "enabled": false,
+        "paused": false
+      },
+      "breakerOpen": false,
+      "cluster": "",
+      "collector": {
+        "staleSeconds": 0
+      },
+      "mode": "shadow",
+      "name": "w2",
+      "namespace": "secret"
+    }
+  ]
+}

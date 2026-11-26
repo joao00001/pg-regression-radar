@@ -1,0 +1,78 @@
+{
+  "actions": null,
+  "app": "orders",
+  "at": "2026-11-25T19:00:00Z",
+  "evaluations": 1,
+  "health": "regressed",
+  "history": [
+    {
+      "at": "2026-11-25T19:05:00Z",
+      "attribution": 0,
+      "counts": {
+        "healthy": 0,
+        "improved": 0,
+        "inconclusive": 0,
+        "regressed": 0,
+        "tested": 0,
+        "untestable": 0
+      },
+      "coverage": 0.9,
+      "decision": {
+        "action": "",
+        "at": "0001-01-01T00:00:00Z",
+        "attribution": 0,
+        "enforced": false,
+        "grade": "",
+        "gradeNote": "",
+        "impact": 0,
+        "streak": 0,
+        "wanted": ""
+      },
+      "globalShift": false,
+      "health": "regressed",
+      "impact": {
+        "a": 0,
+        "ab": 0,
+        "abc": 0
+      },
+      "pointImpact": 0,
+      "units": [
+        {
+          "donors": 0,
+          "family": "SELECT:orders",
+          "grade": "A",
+          "gradeNote": "",
+          "impactShare": 0,
+          "key": "q1",
+          "kind": "regressed",
+          "method": "",
+          "onsetSeconds": 0,
+          "pReg": 0,
+          "persisting": false,
+          "postN": 0,
+          "preN": 0,
+          "ratio": 2.1,
+          "ratioHigh": 0,
+          "ratioLow": 0,
+          "rejected": false
+        }
+      ]
+    }
+  ],
+  "id": "shop/orders/1",
+  "latest": {
+    "action": "rollback",
+    "at": "2026-11-25T19:05:00Z",
+    "attribution": 0.97,
+    "enforced": true,
+    "grade": "A",
+    "gradeNote": "",
+    "impact": 0.31,
+    "streak": 2,
+    "wanted": "rollback"
+  },
+  "namespace": "shop",
+  "phase": "acted",
+  "revision": "rev-shop/orders/1",
+  "sentence": "x"
+}

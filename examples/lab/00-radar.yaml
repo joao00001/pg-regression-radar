@@ -1847,6 +1847,9 @@ spec:
             - --metrics-bind-address=:8443
             - --health-probe-bind-address=:8081
             - "--security-profile=controlled"
+            - "--observe-history=memory"
+            - "--observe-history-retention=720h"
+            - "--observe-history-max-deploys=500"
           ports:
             - name: webhook
               containerPort: 8080

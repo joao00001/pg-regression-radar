@@ -1,0 +1,4066 @@
+[
+  {
+    "text": "Shows the deploys",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "Shows the deploys",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "Shows the deploys",
+              "description": "Shows the deploys",
+              "query": "Shows the deploys"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: Shows the deploys\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: Shows the deploys\n        description: Shows the deploys\n        query: Shows the deploys\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "app:checkout state:regressed",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "app:checkout state:regressed",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "app:checkout state:regressed",
+              "description": "app:checkout state:regressed",
+              "query": "app:checkout state:regressed"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"app:checkout state:regressed\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"app:checkout state:regressed\"\n        description: \"app:checkout state:regressed\"\n        query: \"app:checkout state:regressed\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "query:\"SELECT on orders\"",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "query:\"SELECT on orders\"",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "query:\"SELECT on orders\"",
+              "description": "query:\"SELECT on orders\"",
+              "query": "query:\"SELECT on orders\""
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"query:\\\"SELECT on orders\\\"\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"query:\\\"SELECT on orders\\\"\"\n        description: \"query:\\\"SELECT on orders\\\"\"\n        query: \"query:\\\"SELECT on orders\\\"\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "What this shows: a colon",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "What this shows: a colon",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "What this shows: a colon",
+              "description": "What this shows: a colon",
+              "query": "What this shows: a colon"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"What this shows: a colon\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"What this shows: a colon\"\n        description: \"What this shows: a colon\"\n        query: \"What this shows: a colon\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "has \"quotes\" and # hash",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "has \"quotes\" and # hash",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "has \"quotes\" and # hash",
+              "description": "has \"quotes\" and # hash",
+              "query": "has \"quotes\" and # hash"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"has \\\"quotes\\\" and # hash\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"has \\\"quotes\\\" and # hash\"\n        description: \"has \\\"quotes\\\" and # hash\"\n        query: \"has \\\"quotes\\\" and # hash\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "it's fine",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "it's fine",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "it's fine",
+              "description": "it's fine",
+              "query": "it's fine"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"it's fine\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"it's fine\"\n        description: \"it's fine\"\n        query: \"it's fine\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "Trailing space ",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "Trailing space ",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "Trailing space ",
+              "description": "Trailing space ",
+              "query": "Trailing space "
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"Trailing space \"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"Trailing space \"\n        description: \"Trailing space \"\n        query: \"Trailing space \"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "yes",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "yes",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "yes",
+              "description": "yes",
+              "query": "yes"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"yes\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"yes\"\n        description: \"yes\"\n        query: \"yes\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "Null",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "Null",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "Null",
+              "description": "Null",
+              "query": "Null"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"Null\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"Null\"\n        description: \"Null\"\n        query: \"Null\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "Línea con acentos é",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "Línea con acentos é",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "Línea con acentos é",
+              "description": "Línea con acentos é",
+              "query": "Línea con acentos é"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"Línea con acentos é\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"Línea con acentos é\"\n        description: \"Línea con acentos é\"\n        query: \"Línea con acentos é\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "multi\nline",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "multi\nline",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "multi\nline",
+              "description": "multi\nline",
+              "query": "multi\nline"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"multi\\nline\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"multi\\nline\"\n        description: \"multi\\nline\"\n        query: \"multi\\nline\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "- starts with dash",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "- starts with dash",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "- starts with dash",
+              "description": "- starts with dash",
+              "query": "- starts with dash"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"- starts with dash\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"- starts with dash\"\n        description: \"- starts with dash\"\n        query: \"- starts with dash\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "100% of deploys",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "100% of deploys",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "100% of deploys",
+              "description": "100% of deploys",
+              "query": "100% of deploys"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"100% of deploys\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"100% of deploys\"\n        description: \"100% of deploys\"\n        query: \"100% of deploys\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "back\\slash",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "back\\slash",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "back\\slash",
+              "description": "back\\slash",
+              "query": "back\\slash"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"back\\\\slash\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"back\\\\slash\"\n        description: \"back\\\\slash\"\n        query: \"back\\\\slash\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "tab\there",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "tab\there",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "tab\there",
+              "description": "tab\there",
+              "query": "tab\there"
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"tab\\there\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"tab\\there\"\n        description: \"tab\\there\"\n        query: \"tab\\there\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  },
+  {
+    "text": "A long description that goes on and on and on and on and on and on and on and on and on and on, well past eighty columns: yes.",
+    "layout": {
+      "apiVersion": "pgrr.io/v1",
+      "kind": "Dashboard",
+      "boards": [
+        {
+          "id": "now",
+          "title": "A long description that goes on and on and on and on and on and on and on and on and on and on, well past eighty columns: yes.",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "summary",
+              "type": "summary",
+              "at": [
+                0,
+                0,
+                12,
+                4
+              ],
+              "title": "A long description that goes on and on and on and on and on and on and on and on and on and on, well past eighty columns: yes.",
+              "description": "A long description that goes on and on and on and on and on and on and on and on and on and on, well past eighty columns: yes.",
+              "query": "A long description that goes on and on and on and on and on and on and on and on and on and on, well past eighty columns: yes."
+            },
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                4,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                6,
+                3,
+                18
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                0,
+                24,
+                3,
+                13
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                6,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "canary",
+              "type": "canary-chart",
+              "at": [
+                3,
+                10,
+                6,
+                10
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                9,
+                10,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                20,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                24,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                36,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "case",
+          "title": "Case",
+          "range": "24h",
+          "panels": [
+            {
+              "id": "deploys",
+              "type": "deploy-cards",
+              "at": [
+                0,
+                0,
+                3,
+                16
+              ]
+            },
+            {
+              "id": "figures",
+              "type": "figures",
+              "at": [
+                0,
+                16,
+                3,
+                10
+              ]
+            },
+            {
+              "id": "deploy",
+              "type": "deploy-head",
+              "at": [
+                3,
+                0,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "ratios",
+              "type": "ratio-chart",
+              "at": [
+                3,
+                4,
+                5,
+                11
+              ]
+            },
+            {
+              "id": "evaluations",
+              "type": "evaluations",
+              "at": [
+                8,
+                4,
+                4,
+                11
+              ]
+            },
+            {
+              "id": "why",
+              "type": "why",
+              "at": [
+                3,
+                15,
+                9,
+                4
+              ]
+            },
+            {
+              "id": "evidence",
+              "type": "evidence-table",
+              "at": [
+                3,
+                19,
+                9,
+                12
+              ]
+            },
+            {
+              "id": "ledger",
+              "type": "ledger",
+              "at": [
+                3,
+                31,
+                9,
+                5
+              ]
+            }
+          ]
+        },
+        {
+          "id": "health",
+          "title": "Source health",
+          "range": "6h",
+          "panels": [
+            {
+              "id": "state",
+              "type": "radar-state",
+              "at": [
+                0,
+                0,
+                12,
+                2
+              ]
+            },
+            {
+              "id": "sources",
+              "type": "source-health",
+              "at": [
+                0,
+                2,
+                12,
+                11
+              ]
+            },
+            {
+              "id": "safety",
+              "type": "safety",
+              "at": [
+                0,
+                13,
+                6,
+                17
+              ]
+            },
+            {
+              "id": "activity",
+              "type": "decision-feed",
+              "at": [
+                6,
+                13,
+                6,
+                17
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "yaml": "apiVersion: pgrr.io/v1\nkind: Dashboard\nboards:\n  - id: now\n    title: \"A long description that goes on and on and on and on and on and on and on and on and on and on, well past eighty columns: yes.\"\n    range: 6h\n    panels:\n      - id: summary\n        type: summary\n        at: [0, 0, 12, 4]\n        title: \"A long description that goes on and on and on and on and on and on and on and on and on and on, well past eighty columns: yes.\"\n        description: \"A long description that goes on and on and on and on and on and on and on and on and on and on, well past eighty columns: yes.\"\n        query: \"A long description that goes on and on and on and on and on and on and on and on and on and on, well past eighty columns: yes.\"\n      - id: state\n        type: radar-state\n        at: [0, 4, 12, 2]\n      - id: deploys\n        type: deploy-cards\n        at: [0, 6, 3, 18]\n      - id: activity\n        type: decision-feed\n        at: [0, 24, 3, 13]\n      - id: deploy\n        type: deploy-head\n        at: [3, 6, 9, 4]\n      - id: canary\n        type: canary-chart\n        at: [3, 10, 6, 10]\n      - id: figures\n        type: figures\n        at: [9, 10, 3, 10]\n      - id: why\n        type: why\n        at: [3, 20, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 24, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 36, 9, 5]\n  - id: case\n    title: Case\n    range: 24h\n    panels:\n      - id: deploys\n        type: deploy-cards\n        at: [0, 0, 3, 16]\n      - id: figures\n        type: figures\n        at: [0, 16, 3, 10]\n      - id: deploy\n        type: deploy-head\n        at: [3, 0, 9, 4]\n      - id: ratios\n        type: ratio-chart\n        at: [3, 4, 5, 11]\n      - id: evaluations\n        type: evaluations\n        at: [8, 4, 4, 11]\n      - id: why\n        type: why\n        at: [3, 15, 9, 4]\n      - id: evidence\n        type: evidence-table\n        at: [3, 19, 9, 12]\n      - id: ledger\n        type: ledger\n        at: [3, 31, 9, 5]\n  - id: health\n    title: Source health\n    range: 6h\n    panels:\n      - id: state\n        type: radar-state\n        at: [0, 0, 12, 2]\n      - id: sources\n        type: source-health\n        at: [0, 2, 12, 11]\n      - id: safety\n        type: safety\n        at: [0, 13, 6, 17]\n      - id: activity\n        type: decision-feed\n        at: [6, 13, 6, 17]\n"
+  }
+]

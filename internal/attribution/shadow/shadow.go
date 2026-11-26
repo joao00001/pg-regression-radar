@@ -62,6 +62,21 @@ type Record struct {
 	Decision   attribution.Decision
 }
 
+// Hooks lets an observer (the live dashboard) hear what the evaluator does. Each
+// is called after the evaluator's lock is released, on the goroutine that did
+// the work, and must return quickly and never block: the radar does not wait for
+// whoever is watching it. Any of them may be nil.
+type Hooks struct {
+	OnRegister func(Deploy)
+	OnEvaluate func(Deploy, Record)
+	OnAction   func(ActionRecord)
+}
+
+// defaultMaxRecords bounds the evaluations kept in memory. One record holds the
+// engine's whole finding (every unit), so the bound is on count, and the oldest
+// go first.
+const defaultMaxRecords = 500
+
 // Evaluator judges deploys and remembers the outcome. Safe for concurrent use.
 type Evaluator struct {
 	Source      Source
@@ -76,6 +91,12 @@ type Evaluator struct {
 	// rollout), and the engine then works as it does without a log.
 	Arms    ArmSource
 	ArmsFor func(d Deploy) (adapter.ArmSpec, bool)
+
+	// Hooks is set once, before the evaluator is used.
+	Hooks Hooks
+
+	// MaxRecords bounds the evaluations kept in memory; 500 if zero.
+	MaxRecords int
 
 	mu      sync.Mutex
 	others  []attribution.Event
@@ -100,13 +121,36 @@ func NewWithPolicy(src Source, fp adapter.Fingerprint, cfg attribution.Config, p
 func (e *Evaluator) Register(d Deploy) {
 	e.NoteDeploy(d.ID, d.At)
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	for _, x := range e.deploys {
 		if x.ID == d.ID {
+			e.mu.Unlock()
 			return
 		}
 	}
 	e.deploys = append(e.deploys, d)
+	e.mu.Unlock()
+	if e.Hooks.OnRegister != nil {
+		e.Hooks.OnRegister(d)
+	}
+}
+
+// Deploys returns every deploy registered so far, oldest first.
+func (e *Evaluator) Deploys() []Deploy {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return append([]Deploy(nil), e.deploys...)
+}
+
+// DeployByID returns the registered deploy with this id.
+func (e *Evaluator) DeployByID(id string) (Deploy, bool) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for _, x := range e.deploys {
+		if x.ID == id {
+			return x, true
+		}
+	}
+	return Deploy{}, false
 }
 
 // HasPrior reports whether an earlier deploy of app in namespace is known, that
@@ -167,25 +211,11 @@ func (e *Evaluator) NoteDeploy(id string, at time.Time) {
 // assess builds the engine's reading of deploy d at time now, from the samples
 // in [d.At − PreWindow, now]. It returns false when there are no samples at all.
 func (e *Evaluator) assess(now time.Time, d Deploy) (attribution.Assessment, bool) {
-	cfg := e.Config
-	pre := cfg.PreWindow
-	if pre <= 0 {
-		pre = 90 * time.Minute
-	}
-	from := d.At.Add(-pre)
-	var samples []pgstat.QuerySample
-	for _, id := range e.Source.AllQueryIDs() {
-		samples = append(samples, dedupe(e.Source.SamplesInRange(id, from, now))...)
-	}
-	if len(samples) == 0 {
+	units, ok := e.units(now, d)
+	if !ok {
 		return attribution.Assessment{}, false
 	}
-	units := adapter.Units(samples, e.Fingerprint, d.Tables)
-	if e.Arms != nil && e.ArmsFor != nil {
-		if spec, ok := e.ArmsFor(d); ok {
-			units = adapter.WithArms(units, e.Arms.Range(from, now), spec, d.At)
-		}
-	}
+	cfg := e.Config
 
 	e.mu.Lock()
 	var events []attribution.Event
@@ -202,6 +232,47 @@ func (e *Evaluator) assess(now time.Time, d Deploy) (attribution.Assessment, boo
 	}), true
 }
 
+// units builds what the engine reads for deploy d at time now: every query's
+// series over [d.At − PreWindow, now], with the canary and stable arms told apart
+// when the log can. It returns false when there are no samples at all.
+func (e *Evaluator) units(now time.Time, d Deploy) ([]attribution.Unit, bool) {
+	pre := e.Config.PreWindow
+	if pre <= 0 {
+		pre = 90 * time.Minute
+	}
+	from := d.At.Add(-pre)
+	var samples []pgstat.QuerySample
+	for _, id := range e.Source.AllQueryIDs() {
+		samples = append(samples, dedupe(e.Source.SamplesInRange(id, from, now))...)
+	}
+	if len(samples) == 0 {
+		return nil, false
+	}
+	units := adapter.Units(samples, e.Fingerprint, d.Tables)
+	if e.Arms != nil && e.ArmsFor != nil {
+		if spec, ok := e.ArmsFor(d); ok {
+			units = adapter.WithArms(units, e.Arms.Range(from, now), spec, d.At)
+		}
+	}
+	return units, true
+}
+
+// Unit returns the series the engine compared for one query of deploy d: what
+// a chart of the evidence is drawn from. It is rebuilt from the same sources the
+// evaluation read, so it shows what the engine would see now.
+func (e *Evaluator) Unit(now time.Time, d Deploy, key string) (attribution.Unit, bool) {
+	units, ok := e.units(now, d)
+	if !ok {
+		return attribution.Unit{}, false
+	}
+	for _, u := range units {
+		if u.Key == key {
+			return u, true
+		}
+	}
+	return attribution.Unit{}, false
+}
+
 // Evaluate judges deploy d at time now. It returns false when there are no
 // samples at all.
 func (e *Evaluator) Evaluate(now time.Time, d Deploy) (Record, bool) {
@@ -214,7 +285,17 @@ func (e *Evaluator) Evaluate(now time.Time, d Deploy) (Record, bool) {
 
 	e.mu.Lock()
 	e.records = append(e.records, rec)
+	limit := e.MaxRecords
+	if limit <= 0 {
+		limit = defaultMaxRecords
+	}
+	if len(e.records) > limit {
+		e.records = append([]Record(nil), e.records[len(e.records)-limit:]...)
+	}
 	e.mu.Unlock()
+	if e.Hooks.OnEvaluate != nil {
+		e.Hooks.OnEvaluate(d, rec)
+	}
 	return rec, true
 }
 
@@ -253,10 +334,13 @@ const maxActions = 200
 // holds maxActions.
 func (e *Evaluator) RecordAction(a ActionRecord) {
 	e.mu.Lock()
-	defer e.mu.Unlock()
 	e.actions = append(e.actions, a)
 	if len(e.actions) > maxActions {
 		e.actions = append([]ActionRecord(nil), e.actions[len(e.actions)-maxActions:]...)
+	}
+	e.mu.Unlock()
+	if e.Hooks.OnAction != nil {
+		e.Hooks.OnAction(a)
 	}
 }
 

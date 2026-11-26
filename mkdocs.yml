@@ -148,6 +148,7 @@ nav:
           - Multi-cluster: multi-cluster.md
           - Auto-abort: auto-abort.md
           - Attribution engine: attribution-engine.md
+          - Dashboard: dashboard.md
       - Integrations:
           - Deploy sources: webhooks.md
           - Alerting: alerting.md

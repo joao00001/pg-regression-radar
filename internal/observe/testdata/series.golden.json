@@ -1,0 +1,13 @@
+{
+  "deployAt": "2026-11-25T21:00:00Z",
+  "deployId": "shop/orders/1",
+  "key": "q1",
+  "namespace": "shop",
+  "treatment": [
+    {
+      "at": "2026-11-25T21:00:00Z",
+      "meanMs": 3,
+      "n": 10
+    }
+  ]
+}
