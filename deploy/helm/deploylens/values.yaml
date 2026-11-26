@@ -286,6 +286,21 @@ manager:
     ctrlMetrics: 8443  # controller-runtime's own reconcile/workqueue metrics
     healthProbe: 8081  # /healthz and /readyz
 
+  # The live dashboard (`pg-regression-radar dashboard`, docs/dashboard.md) reads a
+  # read-only API the manager serves on 127.0.0.1 inside its pod: no Service, no
+  # Ingress. What it can show back in time is the history store below.
+  observe:
+    history:
+      # memory: a bounded ring, lost when the manager restarts (the dashboard says
+      # so). postgres: kept across restarts; needs a Secret holding the DSN, which
+      # the manager reads from a mounted file and never logs.
+      store: memory
+      retention: 720h    # 30 days
+      maxDeploys: 500    # memory only
+      postgres:
+        existingSecret: ""   # a Secret in this namespace
+        key: dsn             # the key inside it that holds the DSN
+
   # How often PostgresRadarClusterReconciler re-probes each registered
   # remote cluster's kubeconfig (a lightweight API discovery call) to keep
   # status.ready/status.conditions/status.lastProbeTime current — see

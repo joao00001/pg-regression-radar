@@ -66,7 +66,7 @@ Full walkthrough: [Regression Scenario Example](https://joao00001.github.io/pg-r
 
 ![checkout-api query latency: flat at about 3 ms through deploy v1, then about 49 ms after deploy v2, with the detected regression annotated at 15.7x and 0.98 confidence](https://github.com/user-attachments/assets/78ef1e6c-9512-4d1a-8f60-b5dd341c1f5e)
 
-<sub>Illustrative rendering of the numbers the scripted example produces. The project emits alerts and custom resources; it does not ship a dashboard.</sub>
+<sub>Illustrative rendering of the numbers the scripted example produces. The project emits alerts and custom resources, and `pg-regression-radar dashboard` shows what the radar saw and decided in a local page ([docs](docs/dashboard.md)).</sub>
 
 ## Quick start
 

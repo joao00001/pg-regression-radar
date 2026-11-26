@@ -1,0 +1,48 @@
+{
+  "deploys": [
+    {
+      "app": "cart",
+      "at": "2026-11-25T20:30:00Z",
+      "evaluations": 1,
+      "health": "regressed",
+      "id": "shop/cart/1",
+      "latest": {
+        "action": "rollback",
+        "at": "2026-11-25T20:35:00Z",
+        "attribution": 0.97,
+        "enforced": true,
+        "grade": "A",
+        "gradeNote": "",
+        "impact": 0.31,
+        "streak": 2,
+        "wanted": "rollback"
+      },
+      "namespace": "shop",
+      "phase": "observing",
+      "revision": "rev-shop/cart/1",
+      "sentence": "x"
+    },
+    {
+      "app": "orders",
+      "at": "2026-11-25T19:00:00Z",
+      "evaluations": 1,
+      "health": "regressed",
+      "id": "shop/orders/1",
+      "latest": {
+        "action": "rollback",
+        "at": "2026-11-25T19:05:00Z",
+        "attribution": 0.97,
+        "enforced": true,
+        "grade": "A",
+        "gradeNote": "",
+        "impact": 0.31,
+        "streak": 2,
+        "wanted": "rollback"
+      },
+      "namespace": "shop",
+      "phase": "acted",
+      "revision": "rev-shop/orders/1",
+      "sentence": "x"
+    }
+  ]
+}

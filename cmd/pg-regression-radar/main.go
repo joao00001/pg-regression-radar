@@ -58,6 +58,9 @@ Commands:
   manager     Kubernetes-native mode: a controller-runtime Manager that
               reconciles PostgresWatch/DeploySource/PerformanceRegression
               CRDs, with leader-election HA. Recommended for production.
+  dashboard   Open the live dashboard in your browser: reads the manager
+              of your cluster through a port-forward, served from this
+              machine only. Also: dashboard config validate|dump.
   collector   Standalone Postgres metric scraper (pg_stat_statements ->
               Prometheus), without correlation/alerting/webhooks.
   ingester    Standalone deploy-event webhook receiver, without the
@@ -83,6 +86,8 @@ func main() {
 		os.Exit(cli.RunOperator(args))
 	case "manager":
 		os.Exit(cli.RunManager(args))
+	case "dashboard":
+		os.Exit(cli.RunDashboard(args))
 	case "collector":
 		os.Exit(cli.RunCollector(args))
 	case "ingester":

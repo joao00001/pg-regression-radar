@@ -1,0 +1,81 @@
+apiVersion: pgrr.io/v1
+kind: Dashboard
+boards:
+  - id: now
+    title: Now
+    range: 6h
+    panels:
+      - id: summary
+        type: summary
+        at: [0, 0, 12, 4]
+      - id: state
+        type: radar-state
+        at: [0, 4, 12, 2]
+      - id: deploys
+        type: deploy-cards
+        at: [0, 6, 3, 18]
+      - id: activity
+        type: decision-feed
+        at: [0, 24, 3, 13]
+      - id: deploy
+        type: deploy-head
+        at: [3, 6, 9, 4]
+      - id: canary
+        type: canary-chart
+        at: [3, 10, 6, 10]
+      - id: figures
+        type: figures
+        at: [9, 10, 3, 10]
+      - id: why
+        type: why
+        at: [3, 20, 9, 4]
+      - id: evidence
+        type: evidence-table
+        at: [3, 24, 9, 12]
+      - id: ledger
+        type: ledger
+        at: [3, 36, 9, 5]
+  - id: case
+    title: Case
+    range: 24h
+    panels:
+      - id: deploys
+        type: deploy-cards
+        at: [0, 0, 3, 16]
+      - id: figures
+        type: figures
+        at: [0, 16, 3, 10]
+      - id: deploy
+        type: deploy-head
+        at: [3, 0, 9, 4]
+      - id: ratios
+        type: ratio-chart
+        at: [3, 4, 5, 11]
+      - id: evaluations
+        type: evaluations
+        at: [8, 4, 4, 11]
+      - id: why
+        type: why
+        at: [3, 15, 9, 4]
+      - id: evidence
+        type: evidence-table
+        at: [3, 19, 9, 12]
+      - id: ledger
+        type: ledger
+        at: [3, 31, 9, 5]
+  - id: health
+    title: Source health
+    range: 6h
+    panels:
+      - id: state
+        type: radar-state
+        at: [0, 0, 12, 2]
+      - id: sources
+        type: source-health
+        at: [0, 2, 12, 11]
+      - id: safety
+        type: safety
+        at: [0, 13, 6, 17]
+      - id: activity
+        type: decision-feed
+        at: [6, 13, 6, 17]

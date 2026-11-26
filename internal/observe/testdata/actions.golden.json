@@ -1,0 +1,12 @@
+{
+  "actions": [
+    {
+      "action": "abort",
+      "app": "orders",
+      "at": "2026-11-25T19:20:00Z",
+      "deployId": "shop/orders/1",
+      "namespace": "shop",
+      "result": "done"
+    }
+  ]
+}

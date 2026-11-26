@@ -45,6 +45,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/controller"
 	"github.com/joao00001/pg-regression-radar/internal/dashboardapi"
 	"github.com/joao00001/pg-regression-radar/internal/httpserver"
+	"github.com/joao00001/pg-regression-radar/internal/observe"
 )
 
 var (
@@ -81,6 +82,9 @@ func RunManager(args []string) int {
 	var webhookAddr string
 	var dashboardAddr string
 	var attributionVerdictAddr string
+	var observeAddr string
+	var observeAllowQueries bool
+	var history historyConfig
 	var enableLeaderElection bool
 	var leaderElectionNamespace string
 	var alertAllowedDestinations string
@@ -106,6 +110,27 @@ func RunManager(args []string) int {
 		"address for the read-only attribution verdict endpoint (GET /api/v1/attribution/verdict), e.g. :8082, "+
 			"which a rollout controller's analysis can poll; disabled when empty. Only the leader serves it. "+
 			"See docs/attribution-engine.md")
+	fs.StringVar(&observeAddr, "observe-addr", "127.0.0.1:8083",
+		"Address of the read-only Observe API the live dashboard reads (/observe/v1). It is bound to "+
+			"loopback by default, so it is reachable only from inside the pod, which is how "+
+			"`pg-regression-radar dashboard` reaches it (a port-forward, with the user's own Kubernetes "+
+			"permissions). Do not expose it with a Service or Ingress. Empty disables it. Leader only.")
+	fs.BoolVar(&observeAllowQueries, "observe-allow-queries", false,
+		"Let a dashboard started with --show-queries see the normalised SQL text of queries. Off by "+
+			"default: the text is removed from every Observe API response.")
+	fs.StringVar(&history.Kind, "observe-history", "memory",
+		"Where the Observe API keeps history: memory (default; a bounded ring lost on restart, and the "+
+			"dashboard says so) or postgres (survives restarts; needs --observe-history-dsn-file). "+
+			"Writing history never delays a decision: if the store is down the radar keeps acting and the "+
+			"dashboard says history is not being recorded.")
+	fs.StringVar(&history.DSNFile, "observe-history-dsn-file", "",
+		"File holding the Postgres DSN for --observe-history=postgres, for example a mounted Secret. A file "+
+			"rather than a flag so the credential is not in the pod spec or the process list.")
+	fs.DurationVar(&history.Retention, "observe-history-retention", 30*24*time.Hour,
+		"How long a deploy stays in the history (30 days by default); applied by a prune sweep for postgres "+
+			"and on every write for memory.")
+	fs.IntVar(&history.MaxDeploys, "observe-history-max-deploys", 500,
+		"Memory history only: how many deploys the ring keeps; the oldest go first.")
 	fs.StringVar(&dashboardAddr, "dashboard-addr", "",
 		"Address the read-only dashboard API (see internal/dashboardapi) binds to. Empty (default) "+
 			"disables it. Serves GET /api/v1/regressions and /api/v1/watches, listing "+
@@ -368,6 +393,48 @@ func RunManager(args []string) int {
 		}
 	}
 
+	// The Observe API reads the leader's in-memory attribution state, so it only
+	// runs on the leader, and a dashboard finds the leader to talk to.
+	if observeAddr != "" {
+		store, prune, stopStore, err := openHistory(context.Background(), history, logger)
+		if err != nil {
+			managerSetupLog.Error(err, "invalid or unreachable observe history")
+			return 1
+		}
+		defer stopStore()
+		live := &controller.LiveSource{
+			Registry: registry, Started: time.Now(), History: store,
+			Retention: history.Retention, StoreQueryText: observeAllowQueries,
+		}
+		// The recorder and the retention sweep run beside the decisions, on the
+		// leader that holds the evaluators; neither can slow or stop a decision.
+		if err := mgr.Add(leaderRunnable(func(ctx context.Context) error {
+			if prune != nil {
+				go prune(ctx)
+			}
+			live.RunRecorder(ctx, logger)
+			return nil
+		})); err != nil {
+			managerSetupLog.Error(err, "unable to add observe history recorder")
+			return 1
+		}
+		observeMux := http.NewServeMux()
+		(&observe.Handler{
+			Source:       live,
+			AllowQueries: observeAllowQueries,
+		}).Routes(observeMux)
+		if err := mgr.Add(&httpRunnable{
+			addr:                   observeAddr,
+			handler:                observeMux,
+			name:                   "observe",
+			logger:                 logger,
+			leaderElectionRequired: true,
+		}); err != nil {
+			managerSetupLog.Error(err, "unable to add observe server")
+			return 1
+		}
+	}
+
 	managerSetupLog.Info("starting manager", "leaderElection", enableLeaderElection)
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		if statusClient != nil {
@@ -434,3 +501,13 @@ func (h *httpRunnable) Start(ctx context.Context) error {
 func (h *httpRunnable) NeedLeaderElection() bool {
 	return h.leaderElectionRequired
 }
+
+// leaderRunnable runs a function once this process is the leader, and stops it
+// when the manager's context ends.
+type leaderRunnable func(ctx context.Context) error
+
+// Start implements manager.Runnable.
+func (f leaderRunnable) Start(ctx context.Context) error { return f(ctx) }
+
+// NeedLeaderElection implements manager.LeaderElectionRunnable.
+func (f leaderRunnable) NeedLeaderElection() bool { return true }

@@ -53,6 +53,14 @@ spec:
             - {{ printf "--alerting-destination-policy=%s" .Values.alerting.destinationPolicy | quote }}
             {{- end }}
             - {{ printf "--security-profile=%s" .Values.securityProfile | quote }}
+            {{- with .Values.manager.observe.history }}
+            - {{ printf "--observe-history=%s" .store | quote }}
+            - {{ printf "--observe-history-retention=%s" .retention | quote }}
+            - {{ printf "--observe-history-max-deploys=%d" (int .maxDeploys) | quote }}
+            {{- if eq .store "postgres" }}
+            - --observe-history-dsn-file=/etc/pgrr/history/{{ .postgres.key }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.alerting.destinationPolicyRelayUrl }}
             - --alerting-destination-policy-relay-url=$(ALERTING_DESTINATION_POLICY_RELAY_URL)
             {{- end }}
@@ -85,8 +93,21 @@ spec:
             httpGet:
               path: /readyz
               port: probes
+          {{- if eq .Values.manager.observe.history.store "postgres" }}
+          volumeMounts:
+            - name: observe-history-dsn
+              mountPath: /etc/pgrr/history
+              readOnly: true
+          {{- end }}
           resources:
             {{- toYaml .Values.manager.resources | nindent 12 }}
+      {{- if eq .Values.manager.observe.history.store "postgres" }}
+      volumes:
+        - name: observe-history-dsn
+          secret:
+            secretName: {{ required "manager.observe.history.postgres.existingSecret is required when manager.observe.history.store is postgres" .Values.manager.observe.history.postgres.existingSecret }}
+            defaultMode: 0440
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -91,6 +91,7 @@ Practical example:
 | Remote-cluster kubeconfig Secrets (`remoteClusterRef` registry entry or deprecated `remoteClusterSecretRef`) | Delegates Kubernetes API access to spoke clusters |
 | Alert destination configuration (`alerting.url`, webhook targets) | Potential data exfiltration/SSRF route |
 | Deployment metadata (`DeployEvent`, app/revision/cluster mapping) | Operational intelligence about release cadence and topology |
+| The dashboard's saved profile (layout edits, panel queries, time ranges) | Holds no credentials, but its panel titles, descriptions and queries name applications, namespaces and tables, so it is topology metadata of the same kind as deploy metadata, on the user's disk. See [What the dashboard saves](#what-the-dashboard-saves-and-how-it-is-protected) |
 
 ### Trust boundaries
 
@@ -98,6 +99,7 @@ Practical example:
 |---|---|---|---|
 | Tenant authoring CRDs -> manager reading Secrets | A `PostgresWatch` references `dsnSecretRef` plus `remoteClusterRef`/deprecated `remoteClusterSecretRef` | Confused deputy (manager reads Secrets broader than author's own rights) | Secret consent label check before use ([Multi-Cluster: Secret consent label](multi-cluster.md#secret-consent-label)) |
 | Hub cluster -> spoke cluster Kubernetes API | Kubeconfig from `remoteClusterRef` registry (or deprecated `remoteClusterSecretRef`) is used to build remote client, to read `dsnSecretRef` and, when `cnpgClusterRef` is set, a CloudNativePG `Cluster`'s status | Credential/plugin abuse, proxy-based traffic redirection | Kubeconfig auth restrictions (`exec`, `auth-provider`, `proxy-url` rejected) ([Multi-Cluster: Kubeconfig restrictions](multi-cluster.md#kubeconfig-restrictions)) |
+| Dashboard page -> dashboard server (the one write) | The page saves the user's edits with `PUT`/`DELETE /dashboard/profile`; a page on another site, or another process, tries the same | Overwriting or reading someone's profile; writing outside the data directory; using a forged request from a browser tab | Fixed path, marker header that forces a CORS preflight the server never answers, same-origin `Origin`/`Sec-Fetch-Site`, `Host` check, size limit, validation before write; saving off under `--insecure-listen` ([below](#what-the-dashboard-saves-and-how-it-is-protected)) |
 | Manager -> external alert endpoint | Notifier sends payloads to configured destination | SSRF/data exfiltration to unsafe endpoints | URL validation + optional strict allowlist ([Alerting: Destination validation](alerting.md#destination-validation-ssrf-hardening)) |
 
 ### Operator responsibilities vs Kubernetes responsibilities
@@ -141,6 +143,36 @@ In short: label consent is required, RBAC scope still applies, and remote access
 
 `attribution.arms` reads the database's JSON log, either through the Kubernetes `pods/log` subresource or from a file. A Postgres log can hold anything the server logs, so the access is broad, and the chart grants it only with `manager.arms.rbacEnabled: true` (cluster-wide `get`/`list` on pods and `get` on `pods/log`; narrow it to a `Role` in the database's namespace if you can). What the manager keeps from it: when a statement ran, its `application_name`, its `query_id` and its duration. It does not keep the statement text or the bind parameters, a line over 1 MiB is skipped, and the number of distinct `application_name`/`query_id` pairs is bounded so a client cannot grow the manager's memory by putting a request id in its `application_name`. The `file` path comes from the PostgresWatch, so whoever may create one chooses a file the manager reads: it must be an absolute, clean path to a regular file, and what is read from it is only parsed as log lines, but treat the right to create a PostgresWatch with `arms.file` as the right to point the manager at any file it can open, or use `podLogs`. It writes nothing to the database or the cluster.
 
+### The Observe API and the dashboard (read-only)
+
+The manager serves a read-only Observe API (`/observe/v1`) on `--observe-addr`, `127.0.0.1:8083` by default, so it is reachable only from inside the pod. There is no Service or Ingress for it and the chart adds none. The [dashboard](dashboard.md) reaches it through a Kubernetes port-forward with the user's own kubeconfig, which needs `get` on `leases`, `get` on `pods` and `create` on `pods/portforward` in the manager's namespace; whoever lacks that permission cannot see it.
+
+- Nothing in the API changes cluster state. It serves only deploys in `attribution.actuate.namespaces` when that list is set, on every endpoint including the event stream.
+- Normalised SQL text is off unless both the manager (`--observe-allow-queries`) and the dashboard (`--show-queries`) ask for it.
+- History in Postgres (`--observe-history=postgres`) reads its DSN from a file (`--observe-history-dsn-file`, for example a mounted Secret), never from a flag.
+- The dashboard binds to loopback, checks the `Host` header, accepts only GET and HEAD (and the one save request described next), and sets a strict Content-Security-Policy. It has no sign-in, so `--insecure-listen` exposes it to anyone who can reach the address; for that reason it also turns saving off.
+- It is read-only toward the cluster and the radar. The only thing it writes is the user's own profile file, in its data directory, described in the next section.
+
+#### What the dashboard saves, and how it is protected
+
+The dashboard keeps the user's edits between runs in one small JSON file per dashboard source, `dashboard-default.json` or `dashboard-file-<id>.json`, in `--data-dir` (default `pg-regression-radar/dashboard` under the user's configuration directory). See [Dashboard: your edits are kept between runs](dashboard.md#your-edits-are-kept-between-runs) for how a user works with it.
+
+**What the file holds:** the layout (board and panel ids, types, positions and sizes), each panel's settings, its title, description and `query` text, the time range of each board, and a fingerprint of the layout it was edited on. Titles, descriptions and queries are text the user typed, so they can name applications, namespaces and tables.
+
+**What it never holds:** credentials of any kind (the kubeconfig, DSNs, tokens, the history DSN), Observe API data (deploys, evaluations, series, decisions), normalised SQL text, or anything the manager serves. The page does not put such data in the profile and the server accepts only the fields listed above. Do not type secrets into a title or description: they are stored in clear text and shown on the page.
+
+| Threat | How it is handled | Residual risk |
+|---|---|---|
+| A web page on another site makes the user's browser write or read the profile | A write needs the `X-Requested-By: pgrr-dashboard` header, which a browser sends cross-site only after a preflight the server never answers; `Origin` and `Sec-Fetch-Site`, when present, must be this page's own; the `Host` check refuses DNS-rebound names for reads and writes; no CORS headers are sent | Browsers and extensions that do not enforce CORS are outside this model |
+| Another local user reads the file | Directory created 0700 and file 0600; the file holds no credentials | An **existing** directory keeps its own permissions (a shared or world-readable `--data-dir` exposes the file's contents, not secrets); keep the directory private |
+| Another local user replaces or tampers with the file | Everything read from the file is re-validated: known fields only, a layout that passes the dashboard-file validator, plain ranges, at most 256 KiB; the page sanitises it again and draws all text as text (no HTML), under a strict Content-Security-Policy; an unusable file is reported and left alone until the next save | Someone who can write the user's configuration directory can change what the user's own dashboard shows (hide a panel, change a title or query); they can also edit the user's other files |
+| Remote users on an exposed dashboard overwrite the profile | `--insecure-listen` turns saving off (the page then keeps edits in the browser) and the command says so | None for the file; the page itself is still readable by anyone who can reach it |
+| A request names a file to write, or escapes the directory | The path is fixed (`dashboard-<key>.json` in the data directory; the key is `default` or a digest of the `--config` path); no request carries a path; writes go to a temporary file in the same directory and are renamed over it | A data directory that is itself a symlink or a mount points where the user pointed it |
+| A large or malformed body fills the disk or crashes the server | At most 256 KiB, a single JSON object, validated before anything is written, one file per source | The user can still fill their own disk by other means |
+| The file is copied by backup or file-sync software | Nothing in it is a credential | It is copied like any other file in the configuration directory; point `--data-dir` somewhere excluded, or use `--no-save`, where topology names must not leave the machine |
+
+**Retention and deletion.** The file lives until it is removed; there is no expiry and no history. *Undo my edits* drops the layout from it, and deleting the file (or the data directory) resets everything. `--no-save` writes nothing to disk and keeps edits in the browser only. In a container or on a read-only file system, an unwritable directory is reported at start and the dashboard falls back to the browser; mount a volume and pass `--data-dir` to keep edits.
+
 ### Actions on the outside world (optional, off by default)
 
 Two optional features of the [attribution engine](attribution-engine.md) can change things outside the manager. Both need `attribution.mode: enforce` on the watch, so a default install does neither.
@@ -183,6 +215,7 @@ This document defines the contract for CRD-driven access mediation and manager c
 | Kubeconfig restrictions for remote cluster refs | Block `exec` plugins, `auth-provider`, and `proxy-url` in tenant-supplied kubeconfigs | [Multi-Cluster: Kubeconfig restrictions](multi-cluster.md#kubeconfig-restrictions) | `internal/controller/remote_client.go` (`validateKubeconfigAuth`) |
 | Alert destination validation and allowlist support | Reduce SSRF/exfiltration risk for alerting destinations | [Alerting: Destination validation](alerting.md#destination-validation-ssrf-hardening) | `internal/alerting` notifier construction and destination validation path |
 | Webhook shared-secret authentication | Prevent unauthenticated deploy-event injection | [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication) | `internal/cli/ingester.go` (`X-Webhook-Token` constant-time check) |
+| Dashboard profile write protection (marker header, same-origin check, fixed path, validation, 0600 file, saving off under `--insecure-listen`) | Keep the dashboard's one write from being forged, redirected or abused | [Security model: What the dashboard saves](#what-the-dashboard-saves-and-how-it-is-protected), [Dashboard](dashboard.md#your-edits-are-kept-between-runs) | `internal/dashboard/profile.go`, `internal/dashboard/server.go`, `internal/cli/dashboard.go` |
 | Manager RBAC split (hub Secrets vs spoke kubeconfig rights) | Clarify and constrain what manager SA can do in hub cluster | [Multi-Cluster: RBAC](multi-cluster.md#rbac-two-separate-concerns) | `config/rbac/role.yaml` + spoke-cluster RBAC provided by kubeconfig owner |
 
 ## Hardened-mode deployment: admission + RBAC for consent labeling

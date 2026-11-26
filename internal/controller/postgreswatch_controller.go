@@ -738,6 +738,9 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 				}
 			}
 		}
+		if ac := watch.Spec.Attribution.Actuate; ac != nil {
+			rt.ObserveNamespaces = append([]string(nil), ac.Namespaces...)
+		}
 		if ac := watch.Spec.Attribution.Actuate; ac != nil && ac.Enabled {
 			rt.Actuate = r.newActuateRuntime(key, watch)
 			if rt.Actuate != nil && rt.AutoAbortEnabled {

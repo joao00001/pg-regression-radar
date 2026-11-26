@@ -34,6 +34,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/observe"
 	"github.com/joao00001/pg-regression-radar/internal/telemetry/otlpexport"
 	apidto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
@@ -156,6 +157,11 @@ type WatchRuntime struct {
 	// its own Collector. nil otherwise. It only reports; acting is Actuate's job.
 	Shadow *shadow.Evaluator
 
+	// ObserveNamespaces is attribution.actuate.namespaces, copied whether or not
+	// actuation is enabled: the dashboard shows this watch's deploys only in these
+	// namespaces. Empty means every namespace.
+	ObserveNamespaces []string
+
 	// Revert is the draft-revert proposal for this watch, set only when
 	// spec.attribution.revert is enabled and valid. nil otherwise.
 	Revert *RevertRuntime
@@ -206,18 +212,61 @@ type WatchRuntime struct {
 type Registry struct {
 	mu       sync.RWMutex
 	runtimes map[types.NamespacedName]*WatchRuntime
+
+	// Events carries what happens to deploys to the live dashboard. It is never
+	// nil, and publishing to it never blocks.
+	Events *observe.Hub
 }
 
 // NewRegistry creates an empty Registry.
 func NewRegistry() *Registry {
-	return &Registry{runtimes: make(map[types.NamespacedName]*WatchRuntime)}
+	return &Registry{runtimes: make(map[types.NamespacedName]*WatchRuntime), Events: observe.NewHub(0)}
 }
 
 // Set stores (or replaces) the runtime for key.
 func (r *Registry) Set(key types.NamespacedName, rt *WatchRuntime) {
+	if rt != nil && rt.Shadow != nil {
+		r.hook(rt.Shadow)
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.runtimes[key] = rt
+}
+
+// hook publishes an evaluator's doings to the event hub.
+func (r *Registry) hook(ev *shadow.Evaluator) {
+	ev.Hooks = shadow.Hooks{
+		OnRegister: func(d shadow.Deploy) {
+			r.Events.Publish(observe.Event{Type: observe.EventDeployRegistered, Namespace: d.Namespace, DeployID: d.ID,
+				Summary: d.App + " deployed"})
+		},
+		OnEvaluate: func(d shadow.Deploy, rec shadow.Record) {
+			r.Events.Publish(observe.Event{Type: observe.EventEvaluation, Namespace: d.Namespace, DeployID: d.ID,
+				Summary: "judged: " + string(rec.Assessment.Health) + ", grade " + string(rec.Decision.Grade)})
+		},
+		OnAction: func(a shadow.ActionRecord) {
+			r.Events.Publish(observe.Event{Type: observe.EventAction, Namespace: a.Namespace, DeployID: a.DeployID,
+				Summary: a.Action + " " + a.Result})
+		},
+	}
+}
+
+// Each calls fn for every watch, in no particular order, with the registry
+// unlocked, so fn may take its time.
+func (r *Registry) Each(fn func(key types.NamespacedName, rt *WatchRuntime)) {
+	r.mu.RLock()
+	keys := make([]types.NamespacedName, 0, len(r.runtimes))
+	rts := make([]*WatchRuntime, 0, len(r.runtimes))
+	for k, rt := range r.runtimes {
+		keys = append(keys, k)
+		rts = append(rts, rt)
+	}
+	r.mu.RUnlock()
+	for i := range keys {
+		if rts[i] != nil {
+			fn(keys[i], rts[i])
+		}
+	}
 }
 
 // Get returns the runtime for key, if any.
