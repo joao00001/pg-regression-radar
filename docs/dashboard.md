@@ -49,7 +49,7 @@ The page has no sign-in. Anyone who can reach it sees your deploys, which is why
 ## What the page shows
 
 - **Now**: is the radar watching and fresh, which deploys it is judging, the picked deploy's grade, the canary-against-stable chart, why it decided that, the evidence per query, and what it did.
-- **Case**: the same evidence for one deploy, full width, with every evaluation and a ratio chart of all queries. Open it from a deploy with *Open as a case*; the address (`#/case/<id>`) can be shared.
+- **Case**: the same evidence for one deploy, full width, with every evaluation, a ratio chart of all queries and the activity feed beside the deploy list. Open it from a deploy with *Open as a case*; the address (`#/case/<id>`) can be shared.
 - **Source health**: whether each source the radar reads is answering, what the radar may do (mode, actuation, breaker, namespaces) and the activity feed.
 
 Every panel has an **info button** at its top right. Hover it, or focus it with the keyboard, to read what the panel shows and how to read it; click to keep the text open (Escape or a click elsewhere closes it). A panel's own `description` in the file replaces the built-in text.

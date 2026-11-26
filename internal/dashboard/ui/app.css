@@ -216,7 +216,28 @@ input[type="datetime-local"] { border-radius: 8px; min-width: 0; }
   border-bottom: 1px solid var(--line);
 }
 .panel.edge-r { border-right: 0; }
-.p-body { position: absolute; inset: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.p-body { position: absolute; inset: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; --fade: 32px; }
+
+/* A column that ends above its neighbour leaves cells with no panel in them. They
+ * get the same hairlines as a panel, so no cell of the sheet has an open side. */
+.hole {
+  grid-column: var(--x) / span var(--w);
+  grid-row: var(--y) / span var(--h);
+  min-width: 0;
+  min-height: 0;
+  pointer-events: none;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.hole.edge-r { border-right: 0; }
+.hole.open-below { border-bottom: 0; }
+
+/* A panel scrolls inside its cell. Where there is more behind an edge the content
+ * fades out instead of ending in a cut line: a row sliced in half at the border
+ * looks like a card that was left open. board.js sets data-more. */
+.p-body[data-more="end"] { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - var(--fade)), transparent); }
+.p-body[data-more="start"] { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--fade)); mask-image: linear-gradient(to bottom, transparent, #000 var(--fade)); }
+.p-body[data-more="start end"] { -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); mask-image: linear-gradient(to bottom, transparent, #000 var(--fade), #000 calc(100% - var(--fade)), transparent); }
 
 /* A panel's small heading: only where the panel has something to name. */
 .ph { padding: 18px var(--pad) 12px; color: var(--muted); font: 500 10.5px/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; }
@@ -520,6 +541,7 @@ table.sources tr.tone-warn .state, table.sources tr.tone-bad .state { color: var
 /* ---- Narrow: one column, panels stacked in reading order ----------------------------- */
 @media (max-width: 900px) {
   .grid { display: block; min-height: 0; }
+  .hole { display: none; }
   .panel { overflow: visible; border-right: 0; }
   .p-body { position: static; overflow: visible; }
   .p-cards .scroll { max-height: 60vh; }

@@ -35,6 +35,20 @@ const panel = (id) => `.panel[data-panel="${id}"]`;
   assert.deepEqual(await p.$$eval('.board-tabs .tab', (a) => a.map((e) => e.textContent)), ['Now', 'Case', 'Source health']);
   assert.equal(await p.getAttribute('.tab[href="#/now"]', 'aria-current'), 'page');
 
+  // No cell of the sheet is left open: the default boards have no empty cells, and a panel that
+  // scrolls inside its cell fades where there is more behind the edge instead of cutting a row in half.
+  for (const b of ['now', 'case', 'health']) {
+    await p.goto(url + '#/' + b);
+    await p.waitForSelector('.panel');
+    assert.equal((await p.$$('.hole')).length, 0, `${b}: no empty cells`);
+  }
+  await p.goto(url + '#/now');
+  await p.waitForSelector('table.evidence tbody tr');
+  await p.waitForFunction(() => document.querySelector('.panel[data-panel="evidence"] .p-body').dataset.more === 'end');
+  await p.$eval('.panel[data-panel="evidence"] .p-body', (e) => { e.scrollTop = e.scrollHeight; });
+  await p.waitForFunction(() => document.querySelector('.panel[data-panel="evidence"] .p-body').dataset.more === 'start');
+  await p.$eval('.panel[data-panel="evidence"] .p-body', (e) => { e.scrollTop = 0; });
+
   // The theme switches, sticks across a reload, and the page keeps its black-and-white ground.
   const bg = () => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
   const was = await p.evaluate(() => document.documentElement.dataset.theme);
@@ -522,6 +536,12 @@ const panel = (id) => `.panel[data-panel="${id}"]`;
   await p.selectOption('#add-panel', 'safety');
   await p.waitForSelector(panel('safety'));
   assert.equal((await p.$$('.panel')).length, n0);
+
+  // Whatever the layout became, every cell is closed: the empty ones are drawn, and none lies under a panel.
+  const cells = await p.$$eval('.panel, .hole', (els) => els.map((e) => ({ hole: e.classList.contains('hole'), ...(({ left, top, right, bottom }) => ({ left, top, right, bottom }))(e.getBoundingClientRect()) })));
+  for (const a of cells.filter((c) => c.hole)) for (const c of cells.filter((x) => !x.hole)) {
+    assert.ok(!(a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1), 'an empty cell is never drawn under a panel');
+  }
 
   // The edits stay across a reload, and Undo brings the layout back.
   await p.reload();

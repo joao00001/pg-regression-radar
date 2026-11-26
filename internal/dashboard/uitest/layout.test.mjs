@@ -76,6 +76,37 @@ test('placing an unknown id changes nothing', () => {
   assert.equal(L.place(ps, 'nope', [0, 0, 1, 1]), ps);
 });
 
+test('holes are the empty cells under a column that ends above its neighbour', () => {
+  assert.deepEqual(L.holes([P('a', 0, 0, 12, 3), P('b', 0, 3, 4, 5), P('c', 4, 3, 8, 5)]), []);
+  // the last column ends early: the gap is closed along the bottom of the layout
+  assert.deepEqual(L.holes([P('a', 0, 0, 4, 10), P('b', 4, 0, 8, 6)]), [[4, 6, 8, 4, true]]);
+  // two gaps, one of them against the right edge
+  assert.deepEqual(L.holes([P('a', 0, 0, 4, 10), P('b', 4, 0, 6, 4), P('c', 10, 0, 2, 6)]), [[4, 4, 6, 2, false], [4, 6, 8, 4, true]]);
+  // a gap over a panel is closed along its bottom
+  assert.deepEqual(L.holes([P('a', 0, 0, 4, 10), P('b', 4, 0, 8, 4), P('c', 4, 6, 8, 4)]), [[4, 4, 8, 2, true]]);
+  assert.deepEqual(L.holes([]), []);
+});
+
+test('holes and panels together cover every cell above the bottom once', () => {
+  let seed = 11;
+  const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+  let ps = bundle.layout.boards[0].panels;
+  for (let i = 0; i < 200; i++) {
+    const p = ps[rnd(ps.length)];
+    ps = L.place(ps, p.id, [rnd(14) - 1, rnd(45) - 2, rnd(13) + 1, rnd(12) + 1], minOf);
+    const rows = L.bottom(ps);
+    const seen = Array.from({ length: rows }, () => new Array(L.COLS).fill(0));
+    for (const at of [...ps.map((q) => q.at), ...L.holes(ps).map((r) => r.slice(0, 4))]) {
+      for (let y = at[1]; y < at[1] + at[3]; y++) for (let x = at[0]; x < at[0] + at[2]; x++) seen[y][x]++;
+    }
+    assert.ok(seen.every((r) => r.every((n) => n === 1)), `cells covered once after move ${i}`);
+  }
+});
+
+test('the default boards have no empty cells', () => {
+  for (const b of bundle.layout.boards) assert.deepEqual(L.holes(b.panels), [], b.id);
+});
+
 test('any sequence of moves keeps a layout overlap-free, in the grid and compact', () => {
   let seed = 7;
   const rnd = (n) => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
