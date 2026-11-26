@@ -181,4 +181,8 @@ An unknown type in a user's file is a validation error, not a crash; the UI show
 - The real port-forward needs a real cluster; it is covered in tests by a fake API server, and by `--url` for everything else.
 - No user-written queries: panels read the datasets the Observe API serves.
 
-See also: [ADR-0002](adr/0002-live-dashboard.md), [Security model](security-model.md), [Persistence](persistence.md).
+## See also
+
+- [ADR-0002: A live dashboard](adr/0002-live-dashboard.md) — why it is local, read-only toward the cluster and opened with one command.
+- [Security model](security-model.md) — the dashboard's trust boundary, and how the file it saves is protected.
+- [Persistence](persistence.md) — the radar's optional Postgres state store, which is separate from the dashboard's own edits file.
