@@ -823,3 +823,69 @@ func TestHandler_RejectsOversizedBody(t *testing.T) {
 		t.Errorf("expected no event stored for a rejected oversized body, got %d", len(store.All()))
 	}
 }
+
+func genericEvent(id string) *bytes.Reader {
+	return bytes.NewReader([]byte(`{"id":"` + id + `","app":"checkout","revision":"r-` + id + `"}`))
+}
+
+// TestHandlerFunc_ResolvesTheStoreOnEveryRequest is the regression test for events
+// accepted into a Store nobody reads: a Handler built with NewHandlerFunc must follow
+// whichever Store its owner hands out now, not the one that existed when it was built.
+func TestHandlerFunc_ResolvesTheStoreOnEveryRequest(t *testing.T) {
+	t.Parallel()
+
+	first, second := &ingester.Store{}, &ingester.Store{}
+	current := first
+	h := ingester.NewHandlerFunc(func() (*ingester.Store, bool) { return current, true },
+		v1alpha1.DeploySource{Name: "src", SourceType: "generic"}, nil)
+
+	send := func(id string) int {
+		rr := httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/webhook", genericEvent(id)))
+		return rr.Code
+	}
+
+	if code := send("one"); code != http.StatusNoContent {
+		t.Fatalf("first request: expected 204, got %d", code)
+	}
+	current = second // the owner replaced its Store
+	if code := send("two"); code != http.StatusNoContent {
+		t.Fatalf("second request: expected 204, got %d", code)
+	}
+
+	if got := first.All(); len(got) != 1 || got[0].ID != "one" {
+		t.Errorf("old Store: expected only event one, got %+v", got)
+	}
+	if got := second.All(); len(got) != 1 || got[0].ID != "two" {
+		t.Errorf("new Store: expected event two, got %+v", got)
+	}
+}
+
+// TestHandlerFunc_NoStoreAnswers503 verifies an event is refused, visibly and
+// retryably, when there is no Store to put it in, instead of being accepted and lost.
+func TestHandlerFunc_NoStoreAnswers503(t *testing.T) {
+	t.Parallel()
+
+	var store *ingester.Store
+	h := ingester.NewHandlerFunc(func() (*ingester.Store, bool) { return store, store != nil },
+		v1alpha1.DeploySource{Name: "src", SourceType: "generic"}, nil)
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/webhook", genericEvent("lost")))
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 with no Store, got %d", rr.Code)
+	}
+	if rr.Header().Get("Retry-After") == "" {
+		t.Error("expected a Retry-After header so senders retry")
+	}
+
+	store = &ingester.Store{}
+	rr = httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/webhook", genericEvent("kept")))
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("expected 204 once a Store exists, got %d", rr.Code)
+	}
+	if got := store.All(); len(got) != 1 || got[0].ID != "kept" {
+		t.Errorf("expected the retried event to be stored, got %+v", got)
+	}
+}

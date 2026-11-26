@@ -42,8 +42,9 @@ const pendingRequeueInterval = 10 * time.Second
 
 // DeploySourceReconciler reconciles a DeploySource object. It looks up the
 // PostgresWatch named by spec.postgresWatchRef in the shared Registry to
-// find that watch's ingester.Store, wraps it with an unmodified
-// internal/ingester.Handler, and (de)registers an HTTP route for it on
+// find that watch's ingester.Store, wraps it with an internal/ingester.Handler
+// that looks the Store up again on every request (the watch's runtime is
+// replaced when its spec changes), and (de)registers an HTTP route for it on
 // Mux — controller-runtime's job here is purely to keep the set of live
 // webhook routes in sync with DeploySource CRs; the actual payload parsing
 // and normalisation is 100% delegated to internal/ingester.
@@ -89,8 +90,7 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	watchKey := types.NamespacedName{Namespace: req.Namespace, Name: src.Spec.PostgresWatchRef}
-	rt, ok := r.Registry.Get(watchKey)
-	if !ok {
+	if _, ok := r.Registry.Get(watchKey); !ok {
 		r.unregisterRoutes(req.NamespacedName)
 
 		src.Status.Phase = radarv1alpha1.DeploySourcePhasePending
@@ -172,7 +172,17 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
-	handler := ingester.NewHandler(rt.Store, source, r.Logger)
+	// The route must follow the watch, not the runtime that exists now: a change to
+	// the PostgresWatch's spec replaces its runtime (and its Store), and this
+	// reconciler is not woken for that. A Handler holding rt.Store would keep
+	// accepting events into a Store nobody reads. Resolve it on every request.
+	handler := ingester.NewHandlerFunc(func() (*ingester.Store, bool) {
+		cur, ok := r.Registry.Get(watchKey)
+		if !ok || cur.Store == nil {
+			return nil, false
+		}
+		return cur.Store, true
+	}, source, r.Logger)
 
 	path := webhookPath(req.NamespacedName)
 	r.Mux.Register(path, handler)
