@@ -87,6 +87,13 @@ func (h *Handler) serveOTLP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := h.otlp.Events(spans, time.Now())
+	var store *Store
+	if len(res.Events) > 0 {
+		var ok bool
+		if store, ok = h.resolveStore(w); !ok {
+			return
+		}
+	}
 	stored := 0
 	for _, ev := range res.Events {
 		ev.Source = h.source.Name
@@ -96,7 +103,7 @@ func (h *Handler) serveOTLP(w http.ResponseWriter, r *http.Request) {
 		if h.source.AppName != "" && ev.App != h.source.AppName {
 			continue
 		}
-		h.store.Add(ev)
+		store.Add(ev)
 		stored++
 		h.logger.Info("ingester: deploy event stored",
 			"id", ev.ID, "app", ev.App, "revision", ev.Revision, "timestamp", ev.Timestamp)

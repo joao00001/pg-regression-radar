@@ -228,3 +228,29 @@ func TestValidateSource(t *testing.T) {
 		t.Error("otlp must be a valid source type")
 	}
 }
+
+func TestOTLP_NoStoreAnswers503(t *testing.T) {
+	t.Parallel()
+	var store *ingester.Store
+	h := ingester.NewHandlerFunc(func() (*ingester.Store, bool) { return store, store != nil }, otlpSource(nil), nil)
+	body := []byte(otlpJSON("checkout", "deploy"))
+	hdr := map[string]string{"Content-Type": "application/json"}
+
+	rr := post(h, body, hdr)
+	if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") == "" {
+		t.Fatalf("expected 503 with Retry-After while there is no Store, got %d (%v)", rr.Code, rr.Header())
+	}
+
+	// A request with nothing to store must not be turned into an error.
+	if rr := post(h, []byte(otlpJSON("checkout", "compile")), hdr); rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 for spans that match nothing, got %d", rr.Code)
+	}
+
+	store = ingester.NewStore()
+	if rr := post(h, body, hdr); rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 once a Store exists, got %d", rr.Code)
+	}
+	if n := len(store.All()); n != 1 {
+		t.Errorf("expected the retried export to be stored once, got %d events", n)
+	}
+}

@@ -178,6 +178,10 @@ This mode needs read-only RBAC on `apps/v1` `deployments`/`statefulsets`, alread
 
 Two different `DeploySource`s (each with its own `postgresWatchRef`) can watch the exact same `Deployment`/`StatefulSet` — e.g. two teams independently tracking the same shared workload against two different `PostgresWatch`es. `WorkloadWatchReconciler` reports the rollout to every matching `DeploySource` on the same pass, each getting its own `DeployEvent` with a distinct `id` and `source`; a `PostgresWatch` that isn't registered yet on one of them doesn't block delivery to the others, though the reconcile does retry until every match has been delivered.
 
+## When the watch behind a source is not running
+
+In `manager` mode, a `DeploySource` route hands each event to the event store of the `PostgresWatch` it references, looked up again on every request. While that watch is stopped (it is being deleted, or it is restarting because its spec changed), the route answers `503 Service Unavailable` with `Retry-After: 10` and logs `ingester: deploy event not stored`, instead of accepting an event that nothing would read. Senders that retry, such as Argo Rollouts notifications and OTLP exporters, deliver the event once the watch is back. In v1.9.0 and earlier, an event sent after a `PostgresWatch` spec change was accepted and never judged.
+
 ## Webhook authentication
 
 By default the `/webhook` endpoint accepts any POST request that reaches port 8080, which means any process that can route to that port can inject deploy events. To prevent event spoofing — spam alerts, or masking a real regression under noise — configure a shared secret.

@@ -188,9 +188,11 @@ func (s *Store) All() []v1alpha1.DeployEvent {
 // Handler is an HTTP handler that accepts webhook payloads from ArgoCD,
 // Argo Rollouts, and Flux and stores normalised DeployEvents.
 type Handler struct {
-	store  *Store
-	source v1alpha1.DeploySource
-	logger *slog.Logger
+	// storeFor returns the Store an accepted event is added to, resolved on every
+	// request (see StoreFunc).
+	storeFor StoreFunc
+	source   v1alpha1.DeploySource
+	logger   *slog.Logger
 	// otlp is the compiled span matcher for SourceType "otlp"; otlpErr holds
 	// the reason it could not be built, in which case every request is
 	// answered with 500 instead of silently ingesting nothing.
@@ -210,12 +212,28 @@ func ValidateSource(source v1alpha1.DeploySource) error {
 	return otlpdeploy.ValidateMapping(*source.OTLP)
 }
 
-// NewHandler creates a new Handler.
+// StoreFunc returns the Store a Handler should add an event to right now, and
+// false when there is none (for example, the PostgresWatch it feeds is not
+// running). A Handler that outlives the thing that owns its Store must resolve
+// the Store this way on every request: holding a *Store directly keeps feeding
+// the old one after its owner is replaced, and the events are accepted and never
+// read.
+type StoreFunc func() (*Store, bool)
+
+// NewHandler creates a new Handler that adds events to one fixed Store.
 func NewHandler(store *Store, source v1alpha1.DeploySource, logger *slog.Logger) *Handler {
+	return NewHandlerFunc(func() (*Store, bool) { return store, store != nil }, source, logger)
+}
+
+// NewHandlerFunc creates a new Handler that resolves its Store on every request.
+// When storeFor reports no Store, the request is answered 503 with a Retry-After
+// header, so a sender that retries (Argo Rollouts notifications, for one) delivers
+// the event once the Store is back instead of it being lost.
+func NewHandlerFunc(storeFor StoreFunc, source v1alpha1.DeploySource, logger *slog.Logger) *Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := &Handler{store: store, source: source, logger: logger}
+	h := &Handler{storeFor: storeFor, source: source, logger: logger}
 	if source.SourceType == "otlp" {
 		if source.OTLP == nil {
 			h.otlpErr = fmt.Errorf("otlp span mapping is not configured")
@@ -224,6 +242,21 @@ func NewHandler(store *Store, source v1alpha1.DeploySource, logger *slog.Logger)
 		}
 	}
 	return h
+}
+
+// resolveStore returns the Store to add events to. When there is none it answers
+// 503 with a Retry-After header and returns false, so a sender that retries
+// delivers the event once the Store is back instead of it being lost.
+func (h *Handler) resolveStore(w http.ResponseWriter) (*Store, bool) {
+	store, ok := h.storeFor()
+	if ok && store != nil {
+		return store, true
+	}
+	h.logger.Warn("ingester: deploy event not stored, the watch this source feeds is not running",
+		"source", h.source.Name)
+	w.Header().Set("Retry-After", "10")
+	http.Error(w, "the PostgresWatch this source feeds is not running; retry shortly", http.StatusServiceUnavailable)
+	return nil, false
 }
 
 // ServeHTTP handles an incoming webhook POST request. The payload shape differs
@@ -296,7 +329,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.store.Add(ev)
+	store, ok := h.resolveStore(w)
+	if !ok {
+		return
+	}
+	store.Add(ev)
 	h.logger.Info("ingester: deploy event stored",
 		"id", ev.ID,
 		"app", ev.App,

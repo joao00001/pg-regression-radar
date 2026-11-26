@@ -146,6 +146,59 @@ func TestDeploySourceReconcile_RegistersAndUnregistersRoute(t *testing.T) {
 	}
 }
 
+// TestDeploySourceRoute_FollowsTheWatchWhenItsRuntimeIsReplaced is the regression
+// test for deploys that were accepted and never judged. Changing a PostgresWatch's
+// spec replaces its WatchRuntime (and its Store), and DeploySourceReconciler is not
+// woken for that, so a route bound to the Store of the old runtime kept accepting
+// events into a Store nobody drained.
+func TestDeploySourceRoute_FollowsTheWatchWhenItsRuntimeIsReplaced(t *testing.T) {
+	registry := NewRegistry()
+	watchKey := types.NamespacedName{Name: "watch-r", Namespace: "default"}
+	oldStore := &ingester.Store{}
+	registry.Set(watchKey, &WatchRuntime{Store: oldStore})
+
+	src := &radarv1alpha1.DeploySource{
+		ObjectMeta: metav1.ObjectMeta{Name: "src-r", Namespace: "default"},
+		Spec:       radarv1alpha1.DeploySourceSpec{PostgresWatchRef: "watch-r", SourceType: "generic"},
+	}
+	mux := NewDynamicMux()
+	r := newDeploySourceReconciler(t, registry, mux, src)
+	req := ctrl.Request{NamespacedName: types.NamespacedName{Name: "src-r", Namespace: "default"}}
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+
+	send := func(id string) *httptest.ResponseRecorder {
+		body := bytes.NewBufferString(`{"id":"` + id + `","app":"checkout","revision":"` + id + `"}`)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/webhook/default/src-r", body))
+		return rec
+	}
+
+	if rec := send("before"); rec.Code != http.StatusNoContent {
+		t.Fatalf("before the restart: expected 204, got %d", rec.Code)
+	}
+
+	// What PostgresWatchReconciler does on a spec change: stopWatch, then startWatch
+	// builds a fresh runtime with a fresh Store. The DeploySource is NOT reconciled.
+	registry.Delete(watchKey)
+	if rec := send("during"); rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") == "" {
+		t.Fatalf("while the watch is stopped: expected 503 with Retry-After, got %d", rec.Code)
+	}
+	newStore := &ingester.Store{}
+	registry.Set(watchKey, &WatchRuntime{Store: newStore})
+
+	if rec := send("after"); rec.Code != http.StatusNoContent {
+		t.Fatalf("after the restart: expected 204, got %d", rec.Code)
+	}
+	if got := newStore.All(); len(got) != 1 || got[0].ID != "after" {
+		t.Fatalf("the event sent after the restart must reach the new runtime's Store, got %+v", got)
+	}
+	if got := oldStore.All(); len(got) != 1 || got[0].ID != "before" {
+		t.Fatalf("the old Store must not receive events after it is replaced, got %+v", got)
+	}
+}
+
 const otlpDeployTraceJSON = `{"resourceSpans":[{"resource":{"attributes":[` +
 	`{"key":"service.name","value":{"stringValue":"checkout"}},` +
 	`{"key":"k8s.namespace.name","value":{"stringValue":"shop"}},` +
