@@ -24,6 +24,7 @@ import (
 
 	"github.com/joao00001/pg-regression-radar/internal/attribution"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/adapter"
+	"github.com/joao00001/pg-regression-radar/internal/pglog"
 	"github.com/joao00001/pg-regression-radar/internal/pgstat"
 )
 
@@ -32,6 +33,13 @@ import (
 type Source interface {
 	AllQueryIDs() []int64
 	SamplesInRange(queryID int64, from, to time.Time) []pgstat.QuerySample
+}
+
+// ArmSource is the log-derived executions labelled by application_name, from
+// which a canary and the stable pods can be told apart. *pglog.Store satisfies
+// it.
+type ArmSource interface {
+	Range(from, to time.Time) []pglog.Bucket
 }
 
 // Deploy is the deploy under judgement and what is known about it.
@@ -60,6 +68,14 @@ type Evaluator struct {
 	Fingerprint adapter.Fingerprint
 	Config      attribution.Config
 	Policy      *attribution.Policy
+
+	// Arms and ArmsFor, when both are set, let the evaluator compare a canary
+	// against the stable pods (grade A). ArmsFor says, for a deploy, which
+	// application_names ran the new version and which the old; it returns false
+	// when the deploy has no two arms to compare (it was promoted, or is not a
+	// rollout), and the engine then works as it does without a log.
+	Arms    ArmSource
+	ArmsFor func(d Deploy) (adapter.ArmSpec, bool)
 
 	mu      sync.Mutex
 	others  []attribution.Event
@@ -165,6 +181,11 @@ func (e *Evaluator) assess(now time.Time, d Deploy) (attribution.Assessment, boo
 		return attribution.Assessment{}, false
 	}
 	units := adapter.Units(samples, e.Fingerprint, d.Tables)
+	if e.Arms != nil && e.ArmsFor != nil {
+		if spec, ok := e.ArmsFor(d); ok {
+			units = adapter.WithArms(units, e.Arms.Range(from, now), spec, d.At)
+		}
+	}
 
 	e.mu.Lock()
 	var events []attribution.Event

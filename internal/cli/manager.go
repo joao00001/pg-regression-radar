@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -234,6 +235,15 @@ func RunManager(args []string) int {
 		aborter = actuation.NewArgoRolloutsAborter(dynClient)
 	}
 
+	// Reads Postgres pod logs for attribution.arms.podLogs. Like the dynamic
+	// client, failing to build it only means that option has nothing to call.
+	var kubeClient kubernetes.Interface
+	if cs, err := kubernetes.NewForConfig(cfg); err != nil {
+		managerSetupLog.Error(err, "unable to build Kubernetes client; attribution.arms.podLogs will have no effect")
+	} else {
+		kubeClient = cs
+	}
+
 	if err := (&controller.PostgresWatchReconciler{
 		Client:                            mgr.GetClient(),
 		Scheme:                            mgr.GetScheme(),
@@ -244,6 +254,7 @@ func RunManager(args []string) int {
 		AlertingDestinationPolicyRelayURL: alertingDestinationPolicyRelayURL,
 		SecurityProfile:                   radarv1alpha1.SecurityProfile(securityProfile),
 		Aborter:                           aborter,
+		KubeClient:                        kubeClient,
 	}).SetupWithManager(mgr); err != nil {
 		managerSetupLog.Error(err, "unable to create controller", "controller", "PostgresWatch")
 		return 1

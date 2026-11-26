@@ -405,7 +405,7 @@ func (r *run) onset(i int, v *UnitVerdict) time.Duration {
 	}
 	y, w := s.Y, s.W
 	if v.Method == "concurrent-control" && r.ctl[i] != nil {
-		d := controlSeries(s, *r.ctl[i])
+		d := controlSeries(r.treatment(i), *r.ctl[i])
 		y, w = d.Y, d.W
 	}
 	best, bestT := math.Inf(-1), r.T

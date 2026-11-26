@@ -42,6 +42,12 @@ type Unit struct {
 	// (the stable replicas during a canary), when the source can tell the arms
 	// apart. It makes a concurrent control possible, grade A.
 	Control []Obs
+	// Treatment is the unit on the arm the deploy reached, when that is not what
+	// Obs holds. Obs is the whole unit (every arm together, as pg_stat_statements
+	// reports it), which dilutes a canary's effect by its share of the traffic;
+	// the comparison against Control has to be arm against arm. Empty means Obs
+	// is the treatment arm.
+	Treatment []Obs
 	// Touched is true when the deploy declares it changes this unit (a migration
 	// on one of its tables, a rewritten query). A touched unit is never used as
 	// a donor.
@@ -99,7 +105,7 @@ type Grid struct {
 func NewGrid(units []Unit, from, to time.Time) Grid {
 	var gaps []float64
 	for _, u := range units {
-		for _, list := range [][]Obs{u.Obs, u.Control} {
+		for _, list := range [][]Obs{u.Obs, u.Control, u.Treatment} {
 			for i := 1; i < len(list); i++ {
 				if d := list[i].At.Sub(list[i-1].At); d > 0 {
 					gaps = append(gaps, float64(d))

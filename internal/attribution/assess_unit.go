@@ -247,6 +247,7 @@ type run struct {
 	units    []Unit
 	ser      []Series
 	ctl      []*Series
+	trt      []*Series
 	events   []Event
 	deploy   Deploy
 	totalPre float64
@@ -264,8 +265,13 @@ func newRun(cfg Config, units []Unit, events []Event, d Deploy) *run {
 	r.T = g.TickAtOrAfter(d.At)
 	r.ser = make([]Series, len(units))
 	r.ctl = make([]*Series, len(units))
+	r.trt = make([]*Series, len(units))
 	for i, u := range units {
 		r.ser[i] = g.Series(u.Obs)
+		if len(u.Treatment) > 0 {
+			s := g.Series(u.Treatment)
+			r.trt[i] = &s
+		}
 		r.totalPre += r.ser[i].totalTimeMs(0, r.T)
 		if len(u.Control) > 0 {
 			s := g.Series(u.Control)
@@ -273,6 +279,15 @@ func newRun(cfg Config, units []Unit, events []Event, d Deploy) *run {
 		}
 	}
 	return r
+}
+
+// treatment is the series compared against the control arm: the unit's own
+// treatment-arm observations when it has them, otherwise the unit itself.
+func (r *run) treatment(i int) Series {
+	if r.trt[i] != nil {
+		return *r.trt[i]
+	}
+	return r.ser[i]
 }
 
 // graceTicks is the grace period in ticks.
@@ -573,7 +588,7 @@ func (r *run) assessUnit(i int) UnitVerdict {
 
 	// A: concurrent control arm
 	if c := r.ctl[i]; c != nil {
-		d := controlSeries(s, *c)
+		d := controlSeries(r.treatment(i), *c)
 		if d.observed(0, r.T) >= r.cfg.MinPre && d.observed(r.T, r.g.N) >= r.cfg.MinPost {
 			rr := StepTest(d.Y, d.W, nil, r.T, opt)
 			if rr.Ok {

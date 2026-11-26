@@ -317,6 +317,10 @@ func (c *Collector) Scrape(ctx context.Context) error {
 	return c.scrape(ctx)
 }
 
+// DB is the connection the collector scrapes through, for read-only checks of
+// the server's settings. Callers must not close it.
+func (c *Collector) DB() *sql.DB { return c.db }
+
 // Close releases the Collector's database connection. Run already closes it
 // when ctx is cancelled, so this is only needed by callers — tests, tools —
 // that construct a Collector and drive Scrape directly without calling Run.

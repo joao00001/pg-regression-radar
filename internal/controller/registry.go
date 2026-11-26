@@ -83,6 +83,10 @@ type ActuateRuntime struct {
 // is created (or its spec changes) and torn down via its cancel func when
 // the CR is deleted or the spec changes again.
 type WatchRuntime struct {
+	// Arms reads the Postgres log for attribution.arms; nil when it is not
+	// configured or cannot work.
+	Arms *ArmsRuntime
+
 	// Store holds DeployEvents ingested by any DeploySource bound to this
 	// watch. DeploySourceReconciler looks up the Store for its
 	// postgresWatchRef and wires an ingester.Handler on top of it.

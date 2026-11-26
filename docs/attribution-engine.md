@@ -123,7 +123,64 @@ Four rules keep it safe to turn on:
 - **You can bound it and stop it.** `actuate.namespaces` limits it to Rollouts in the listed namespaces (empty means any); a deploy elsewhere is still judged and logged, and the ledger records it as `skipped`. To stop all pausing and aborting at once, with no restart and no spec change, annotate the watch: `kubectl annotate postgreswatch <name> pg-regression-radar.io/actuation-paused=true` (remove the annotation to resume). If the watch cannot be read at that moment, the manager assumes it is paused.
 - **It needs the Rollout RBAC.** Set `manager.autoAbort.rbacEnabled: true` in the Helm chart (it grants `patch` on `rollouts` and `rollouts/status`). Without it, or without `mode: enforce`, `actuate` is ignored and the log says why.
 
-Through the collector the best evidence is grade B, because `pg_stat_statements` carries no label saying which release served a call, so in practice the manager pauses and a person aborts; an abort needs grade A evidence from a source that distinguishes the arms. The [timing note](#acting-on-a-verdict) applies here too: the engine cannot convict before about 15 minutes, so the Rollout needs a pause step of at least 20 minutes for the action to land in time.
+Through the collector alone the best evidence is grade B, because `pg_stat_statements` carries no label saying which release served a call, so the manager pauses and a person aborts; an abort needs grade A evidence, which [`attribution.arms`](#telling-a-canary-from-the-stable-pods-grade-a) provides. The [timing note](#acting-on-a-verdict) applies here too: the engine cannot convict before about 15 minutes, so the Rollout needs a pause step of at least 20 minutes for the action to land in time.
+
+## Telling a canary from the stable pods (grade A)
+
+`pg_stat_statements` mixes every client together, so through the collector alone the best evidence is grade B and the strongest action is a pause. To abort, the engine needs to see the canary and the stable pods **at the same time**. It gets that from the Postgres log, which records for each statement the `application_name` of the session that ran it. Nothing is installed on the server: it takes core settings, and no extension.
+
+```yaml
+spec:
+  attribution:
+    enabled: true
+    mode: enforce
+    actuate: {enabled: true}
+    arms:
+      enabled: true
+      podLogs:                       # Postgres in the cluster (CloudNativePG, a StatefulSet)
+        namespace: db
+        selector: cnpg.io/cluster=pg
+      # file: /var/log/postgresql/postgresql.json   # or a log file the manager can open
+```
+
+What you set up:
+
+1. **The server.** `compute_query_id = on`, `log_destination = 'jsonlog'` (PostgreSQL 15 or newer), `log_min_duration_sample = 0`, `log_min_duration_statement = -1` (or leave a slow-query log on: the engine weights for it), and a small `log_statement_sample_rate`, for example `0.05`. The manager reads these settings itself every five minutes and logs exactly which one is wrong. The log is not used until they pass. A rate above 0.25 only draws a warning, because it costs the database and the log pipeline.
+2. **The application.** Every pod must report an `application_name` that **begins with the pod's name** (`<rollout>-<pod-template-hash>-<suffix>`), which is the hostname. With an Argo Rollouts workload, set `PGAPPNAME` from the pod's own name:
+
+   ```yaml
+   env:
+   - name: PGAPPNAME
+     valueFrom: {fieldRef: {fieldPath: metadata.name}}
+   ```
+
+   The manager reads the Rollout's `status.stableRS` and `status.currentPodHash`, so the pods of the new version are the treatment and the pods of the old version the control. A pod that does not follow the naming is simply not counted; if none do, the engine behaves as it does without `arms`.
+3. **The manager.** `podLogs` needs `manager.arms.rbacEnabled: true` in the chart (get and list on pods, get on `pods/log`). `file` needs nothing. Reading Rollouts needs `manager.autoAbort.rbacEnabled`, as for `actuate`.
+
+How the evidence is built:
+
+- The manager keeps, per `application_name` and `query_id`, the number of sampled executions and their mean duration in each scrape interval. It joins a log line to a collected query by `query_id`. It never keeps the statement text or the bind parameters, which can hold personal data, and a line longer than 1 MiB is skipped.
+- Each sampled execution is weighted by the inverse of its chance of being logged, so the mean stays unbiased when slow statements are always logged (a slow-query log) and fast ones only sampled. The weight of a mean is the number of samples behind it, not the number of calls they stand for.
+- **Before the deploy there is no canary**, so the old version's pods are split in two alternating halves and one half stands in for the canary. The ratio of treatment to control is therefore flat by construction before the deploy; after it, the canary pods are the treatment and the old pods the control. A step in that ratio at the deploy time, which also passes the engine's placebo tests at fake deploy times, is grade A.
+- When the log is not flowing (no line for five minutes), its settings fail, the Rollout is already promoted (stable and current hash are equal), or the Rollout cannot be read, the evaluation falls back to what `pg_stat_statements` supports.
+
+Two things decide how much a canary check can see: the traffic the canary receives and the sample rate. The number that matters is the sampled executions per minute the canary produces for a query: with only a handful, the engine cannot tell a regression from noise and says nothing, which is safe but silent. The Prometheus metrics `pg_regression_radar_attribution_arms_usable`, `..._arms_records_total` and `..._arms_dropped_total` say whether the log is usable and flowing.
+
+### What a real test showed
+
+The arm reader was run twice against seven PostgreSQL 16 servers (four stable pods and one canary pod per server, a real Kubernetes API server with the Argo Rollouts CRD, the manager in `enforce` mode with `actuate`, a canary at about 15% of the traffic, evaluations from 10 minutes after the deploy). The canary regression was a query that runs without its index in the canary only.
+
+| Case | Round 1 | Round 2 |
+|---|---|---|
+| Canary regression, every statement logged (about 26 sampled executions a minute for the query) | grade A at +15 min | grade A at +15 min, **abort** at +20 min |
+| Canary regression, sample rate 0.2 (about 5 a minute) | grade A at +15 min | grade A at +15 min, **abort** at +20 min |
+| Canary regression, sample rate 0.05 (about 1 a minute) | grade A at +15 min | **missed**: stayed at grade C, alert only |
+| Canary identical to stable (A/A) | no action | no action |
+| A/A while a shared load shock hit both arms | no action | no action |
+| One stable pod degraded, canary healthy | no action | no action |
+| `application_name` not following the pod name | alert only (grade C) | alert only (grade C) |
+
+Read it for what it is: two rounds of seven scenarios, one workload, a 2-core machine. It shows that the mechanism works end to end and that no control case acted; it is not a rate. The one miss is the expected limit: at about one sampled execution a minute the canary leaves too little to tell a regression from noise, so choose a sample rate that gives the canary at least a handful of sampled executions a minute for the queries you care about (rate x canary traffic x the query's share). Round 1 also paused instead of aborting because the test had registered no earlier deploy, and the engine never aborts a first deploy. In round 2 the verification 15 minutes after each abort recorded `persisted` (the regression was still there), because nothing in the test acts on an abort: no rollout controller scales the canary down. The engine kept judging the deploy a rollback but did not patch the Rollout a second time, and the persisted check counts toward the circuit breaker, as designed.
 
 ## Reverting a convicted deploy
 
@@ -202,12 +259,13 @@ Simulated workloads (120 queries, 90 minutes before and 30 after, with load shoc
 
 ## Limits
 
-- `pg_stat_statements` cannot split canary and stable. Grade A needs arm-labelled data, for example from a Prometheus source; without it the best grade is B.
+- `pg_stat_statements` cannot split canary and stable. Grade A needs arm-labelled data, which `attribution.arms` reads from the Postgres log; without it the best grade is B.
 - A shift shared by every query, with no control arm, is capped at grade C: the engine cannot tell a slower deploy from slower hardware.
 - A real regression concentrated on one table, when the deploy does not declare that table, is capped at grade C.
 - Table extraction from query text is lexical. A mistake makes queries look related, never invents evidence.
 - A pause or abort only helps while the Rollout is still in progress. After a full promotion the verdict can only inform an alert; reverting a promoted release belongs to your GitOps flow.
-- Samples from `pg_stat_statements` carry no arm label, so through the collector the best grade is B and the strongest verdict is `inconclusive` (a pause). A `fail` needs a sample source that labels arms.
+- Without `attribution.arms` the samples from `pg_stat_statements` carry no arm label, so the best grade is B and the strongest verdict is `inconclusive` (a pause). A `fail` needs the arms.
+- `attribution.arms` assumes the pod name is the `application_name`, a Postgres 15 or newer JSON log, and a canary that receives enough traffic to leave samples; it was tested against PostgreSQL 16 logs read from a file, and the CloudNativePG log wrapper is unwrapped as documented but has not been run against a live CloudNativePG cluster.
 - The revert proposal needs the deploy's revision to be a git commit SHA: Argo CD sources qualify, Argo Rollouts sources (a pod hash) do not.
 - The circuit breaker is fed only by the check after an abort. A pause cannot be checked (a held canary keeps serving traffic, so its regression persists by design) and a revert pull request is not checked yet, so neither can open it.
 

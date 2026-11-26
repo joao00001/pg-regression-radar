@@ -30,15 +30,32 @@ rules:
     verbs: ["get", "list", "watch"]
   {{- if .Values.manager.autoAbort.rbacEnabled }}
   # Only granted when manager.autoAbort.rbacEnabled is set. Backs
-  # spec.autoAbort on PostgresWatch (see docs/auto-abort.md): grants no
-  # access to anything but the one status field this project ever writes;
-  # no read of spec, no create/delete of Rollouts. Off by default so a
-  # cluster that doesn't use (or doesn't even have) Argo Rollouts, and
-  # never sets spec.autoAbort.enabled on any PostgresWatch, doesn't get
-  # this RBAC granted for nothing.
+  # spec.autoAbort on PostgresWatch (see docs/auto-abort.md), which writes
+  # status.abort, and attribution.actuate (see docs/attribution-engine.md),
+  # which also sets spec.paused to hold a rollout. `patch` on the main
+  # resource is what allows the pause, so this grants a write to the Rollout
+  # spec as well as to its status; it never creates or deletes a Rollout. Off
+  # by default so a cluster that doesn't use (or doesn't even have) Argo
+  # Rollouts, and never turns either feature on, doesn't get this RBAC
+  # granted for nothing.
   - apiGroups: ["argoproj.io"]
     resources: ["rollouts", "rollouts/status"]
     verbs: ["get", "patch"]
+  {{- end }}
+  {{- if .Values.manager.arms.rbacEnabled }}
+  # Only granted when manager.arms.rbacEnabled is set. Backs
+  # attribution.arms.podLogs on PostgresWatch (see docs/attribution-engine.md),
+  # which reads the statement durations of Postgres pods from their log to tell a
+  # canary from the stable pods. Reading a pod's log is a broad read (the log can
+  # hold anything the server logs), so it is cluster-wide here only because the
+  # chart cannot know the database's namespace: narrow it to a Role in that
+  # namespace if you can.
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
   {{- end }}
   # Read-only, hub cluster only: resolves PostgresWatch.spec.dsnSecretRef
   # directly, and/or the spec.remoteClusterSecretRef kubeconfig Secret used

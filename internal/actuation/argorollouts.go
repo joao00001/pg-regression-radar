@@ -26,6 +26,7 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/dynamic"
@@ -102,4 +103,20 @@ func (a *ArgoRolloutsAborter) Pause(ctx context.Context, namespace, name string)
 		return fmt.Errorf("pause rollout %s/%s: %w", namespace, name, err)
 	}
 	return nil
+}
+
+// PodHashes reads the two pod-template hashes that say which pods of a Rollout
+// run which version: stable is the hash of the version being replaced
+// (status.stableRS) and current the hash of the version being rolled out
+// (status.currentPodHash). Pods of a Rollout are named
+// <rollout>-<hash>-<suffix>, so the hash tells a canary pod from a stable one.
+// They are equal, or one is empty, when there is no canary to tell apart.
+func (a *ArgoRolloutsAborter) PodHashes(ctx context.Context, namespace, name string) (stable, current string, err error) {
+	u, err := a.dyn.Resource(rolloutGVR).Namespace(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return "", "", fmt.Errorf("read rollout %s/%s: %w", namespace, name, err)
+	}
+	stable, _, _ = unstructured.NestedString(u.Object, "status", "stableRS")
+	current, _, _ = unstructured.NestedString(u.Object, "status", "currentPodHash")
+	return stable, current, nil
 }

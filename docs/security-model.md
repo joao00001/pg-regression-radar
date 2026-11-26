@@ -137,6 +137,10 @@ In short: label consent is required, RBAC scope still applies, and remote access
 | PostgreSQL endpoint from DSN | Allowed per referenced Secret | Allowed per approved Secret + tighter namespace policy | Usually via approved internal path only |
 | Alert endpoints (`alerting.url`) | Team-defined with built-in validation | Restricted allowlist + network egress controls | Internal relay destinations only |
 
+### Reading the Postgres log (optional, off by default)
+
+`attribution.arms` reads the database's JSON log, either through the Kubernetes `pods/log` subresource or from a file. A Postgres log can hold anything the server logs, so the access is broad, and the chart grants it only with `manager.arms.rbacEnabled: true` (cluster-wide `get`/`list` on pods and `get` on `pods/log`; narrow it to a `Role` in the database's namespace if you can). What the manager keeps from it: when a statement ran, its `application_name`, its `query_id` and its duration. It does not keep the statement text or the bind parameters, a line over 1 MiB is skipped, and the number of distinct `application_name`/`query_id` pairs is bounded so a client cannot grow the manager's memory by putting a request id in its `application_name`. It writes nothing to the database or the cluster.
+
 ### Actions on the outside world (optional, off by default)
 
 Two optional features of the [attribution engine](attribution-engine.md) can change things outside the manager. Both need `attribution.mode: enforce` on the watch, so a default install does neither.
