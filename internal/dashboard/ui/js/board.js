@@ -31,10 +31,32 @@ function expandButton(title, open) {
       svgEl('path', { d: 'M10 2.5h3.5V6M6 13.5H2.5V10M13.5 2.5L9.5 6.5M2.5 13.5l4-4' })));
 }
 
+// Tells the stylesheet which edges of a scrolling panel have more behind them
+// (data-more="start", "end" or "start end"), so the content fades out there
+// instead of ending in a cut line that reads like an open card.
+function watchEdges(body) {
+  let queued = false;
+  const measure = () => {
+    queued = false;
+    const slack = 2; // sub-pixel rounding is not "more"
+    const more = [];
+    if (body.scrollTop > slack) more.push('start');
+    if (body.scrollHeight - body.clientHeight - body.scrollTop > slack) more.push('end');
+    const v = more.join(' ');
+    if ((body.dataset.more || '') === v) return;
+    if (v) body.dataset.more = v; else delete body.dataset.more;
+  };
+  const soon = () => { if (!queued) { queued = true; requestAnimationFrame(measure); } };
+  body.addEventListener('scroll', soon, { passive: true });
+  if (typeof ResizeObserver === 'function') new ResizeObserver(soon).observe(body);
+  if (typeof MutationObserver === 'function') new MutationObserver(soon).observe(body, { childList: true, subtree: true, characterData: true });
+  soon();
+}
+
 export function createBoard(root, { catalog, grid, env, onEdit, onFocus }) {
   const types = new Map(catalog.map((c) => [c.type, c]));
   const minOf = (p) => { const t = types.get(p.type); return t ? { w: t.minW, h: t.minH } : { w: 1, h: 1 }; };
-  let board = null, panels = [], editing = false, view = null;
+  let board = null, panels = [], editing = false, view = null, holeSig = '';
   const inst = new Map(); // panel id -> { el, body, panel, api, ctx }
   root.classList.add('grid');
   root.style.setProperty('--cols', String(grid.columns));
@@ -58,10 +80,33 @@ export function createBoard(root, { catalog, grid, env, onEdit, onFocus }) {
       i.el.classList.toggle('edge-r', x + w >= grid.columns);
     }
     root.style.setProperty('--rows', String(Math.max(L.bottom(list), 1)));
-    if (!reorder) return;
-    // The DOM order is the reading order, which is also the order on a narrow screen.
-    const ordered = [...list].sort(L.byPosition).map((p) => inst.get(p.id)).filter(Boolean);
-    ordered.forEach((i, n) => { if (root.children[n] !== i.el) root.insertBefore(i.el, root.children[n] || null); });
+    if (reorder) {
+      // The DOM order is the reading order, which is also the order on a narrow screen.
+      // The empty cells (below) come after the panels.
+      const ordered = [...list].sort(L.byPosition).map((p) => inst.get(p.id)).filter(Boolean);
+      ordered.forEach((i, n) => { if (root.children[n] !== i.el) root.insertBefore(i.el, root.children[n] || null); });
+    }
+    drawHoles(list);
+  }
+
+  // What a column that ends above its neighbour leaves empty gets its edges drawn
+  // like a panel's, so the sheet has no cell with an open side.
+  function drawHoles(list) {
+    const want = L.holes(list, grid.columns);
+    const sig = JSON.stringify(want);
+    if (sig === holeSig) return;
+    holeSig = sig;
+    for (const el of root.querySelectorAll(':scope > .hole')) el.remove();
+    for (const [x, y, w, hh, sealed] of want) {
+      const el = h('div', { class: 'hole', 'aria-hidden': 'true' });
+      el.classList.toggle('open-below', !sealed);
+      el.style.setProperty('--x', String(x + 1));
+      el.style.setProperty('--y', String(y + 1));
+      el.style.setProperty('--w', String(w));
+      el.style.setProperty('--h', String(hh));
+      el.classList.toggle('edge-r', x + w >= grid.columns);
+      root.append(el);
+    }
   }
 
   function commit(list) {
@@ -88,6 +133,7 @@ export function createBoard(root, { catalog, grid, env, onEdit, onFocus }) {
       return { title: q.title || (t && t.title) || q.type, text: q.query ? `${base} This panel is limited by its query: ${q.query}.` : base };
     };
     el.append(body, grip, handle);
+    watchEdges(body);
     const tools = [];
     if (about().text) tools.push(infoButton(about));
     tools.push(expandButton(title, () => onFocus && onFocus(p.id)));
@@ -181,6 +227,7 @@ export function createBoard(root, { catalog, grid, env, onEdit, onFocus }) {
       for (const i of inst.values()) i.el.remove();
       inst.clear();
       root.replaceChildren();
+      holeSig = '';
       const list = b.panels.map((p) => ({ ...p, at: [...p.at] }));
       panels = list;
       for (const p of list) root.append(mountPanel(p).el);

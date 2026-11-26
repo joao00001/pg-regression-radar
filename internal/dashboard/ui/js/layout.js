@@ -67,6 +67,43 @@ export function place(panels, id, at, minOf = () => ({ w: 1, h: 1 })) {
 // The bottom edge of a layout, in rows.
 export const bottom = (panels) => panels.reduce((m, p) => Math.max(m, p.at[Y] + p.at[H]), 0);
 
+// The empty cells of a layout, as rectangles [x, y, w, h, sealed]: what a column that
+// ends above its neighbour leaves under it. The board draws their edges so that every
+// cell of the sheet is closed, and so that what is empty reads as empty rather than as
+// a card that was cut off. `sealed` says whether the rectangle needs a line along its
+// bottom: it does at the bottom of the layout and over a panel, and does not over
+// another empty cell, where the line would cut one empty area in two. Only rows above
+// the layout's bottom are looked at.
+export function holes(panels, cols = COLS) {
+  const rows = bottom(panels);
+  const full = Array.from({ length: rows }, () => new Array(cols).fill(false));
+  for (const p of panels) {
+    for (let y = p.at[Y]; y < Math.min(p.at[Y] + p.at[H], rows); y++) {
+      for (let x = p.at[X]; x < Math.min(p.at[X] + p.at[W], cols); x++) full[y][x] = true;
+    }
+  }
+  const out = [];
+  let open = new Map(); // "x:w" -> the rectangle still growing downwards
+  for (let y = 0; y < rows; y++) {
+    const next = new Map();
+    for (let x = 0; x < cols;) {
+      if (full[y][x]) { x++; continue; }
+      let w = 0;
+      while (x + w < cols && !full[y][x + w]) w++;
+      const key = `${x}:${w}`;
+      const r = open.get(key);
+      if (r) { r[H]++; next.set(key, r); } else { const n = [x, y, w, 1, true]; out.push(n); next.set(key, n); }
+      x += w;
+    }
+    open = next;
+  }
+  for (const r of out) {
+    const below = r[Y] + r[H];
+    r[4] = below >= rows || full[below].slice(r[X], r[X] + r[W]).some(Boolean);
+  }
+  return out;
+}
+
 // A fresh id for a type on a board: the type's name, then name-2, name-3.
 export function freshId(panels, type) {
   const taken = new Set(panels.map((p) => p.id));

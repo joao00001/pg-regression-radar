@@ -31,6 +31,7 @@ func panel(id, typ string, x, y, w, h int) Panel {
 // Default is the dashboard you get without a file: what is happening now, one
 // deploy in depth, and whether the radar can be trusted. The deploys list is a
 // column on the left, and everything about the picked deploy sits to its right.
+// The columns of a board end on the same row, so no cell is left empty.
 func Default() *Dashboard {
 	return &Dashboard{
 		APIVersion: APIVersion, Kind: Kind,
@@ -39,7 +40,7 @@ func Default() *Dashboard {
 				panel("summary", "summary", 0, 0, 12, 4),
 				panel("state", "radar-state", 0, 4, 12, 2),
 				panel("deploys", "deploy-cards", 0, 6, 3, 18),
-				panel("activity", "decision-feed", 0, 24, 3, 13),
+				panel("activity", "decision-feed", 0, 24, 3, 17),
 				panel("deploy", "deploy-head", 3, 6, 9, 4),
 				panel("canary", "canary-chart", 3, 10, 6, 10),
 				panel("figures", "figures", 9, 10, 3, 10),
@@ -50,6 +51,7 @@ func Default() *Dashboard {
 			{ID: "case", Title: "Case", Range: "24h", Panels: []Panel{
 				panel("deploys", "deploy-cards", 0, 0, 3, 16),
 				panel("figures", "figures", 0, 16, 3, 10),
+				panel("activity", "decision-feed", 0, 26, 3, 10),
 				panel("deploy", "deploy-head", 3, 0, 9, 4),
 				panel("ratios", "ratio-chart", 3, 4, 5, 11),
 				panel("evaluations", "evaluations", 8, 4, 4, 11),
