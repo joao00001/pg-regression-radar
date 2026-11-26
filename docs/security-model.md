@@ -137,6 +137,17 @@ In short: label consent is required, RBAC scope still applies, and remote access
 | PostgreSQL endpoint from DSN | Allowed per referenced Secret | Allowed per approved Secret + tighter namespace policy | Usually via approved internal path only |
 | Alert endpoints (`alerting.url`) | Team-defined with built-in validation | Restricted allowlist + network egress controls | Internal relay destinations only |
 
+### Actions on the outside world (optional, off by default)
+
+Two optional features of the [attribution engine](attribution-engine.md) can change things outside the manager. Both need `attribution.mode: enforce` on the watch, so a default install does neither.
+
+| Capability | What it can do | What it cannot do | Stop it |
+|---|---|---|---|
+| `attribution.actuate` | Set `spec.paused` or `status.abort` on an Argo Rollouts rollout reported by an `argo-rollouts` `DeploySource`, once per deploy | Create, delete, scale, resume or roll back a Rollout; touch any other kind | Set `actuate.enabled: false`, or annotate the `PostgresWatch` with `pg-regression-radar.io/actuation-paused="true"` (no restart). Without `manager.autoAbort.rbacEnabled` the RBAC is not even granted |
+| `attribution.revert` | Open a **draft** pull request that reverts the commit behind a convicted deploy, at most `maxPerDay` per day, using the token in `tokenSecretRef` | Merge or approve it. It creates a revert branch and a draft pull request (GitHub's `revertPullRequest`), and only for the merge commit of a merged pull request | Remove `revert`, or revoke the token. Give the token only the access to open pull requests on that one repository |
+
+Every pause and abort is recorded in the action ledger (`GET /api/v1/attribution/actions`) and in `pg_regression_radar_attribution_actions_total`, and an abort that did not help counts toward a circuit breaker that stops further action. The endpoints that serve the verdict and the ledger are read-only and unauthenticated: expose them only inside the cluster (a ClusterIP Service) and restrict them with a NetworkPolicy.
+
 ## Supported scenarios and limitations
 
 ### Namespace isolation assumptions

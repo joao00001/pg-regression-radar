@@ -78,6 +78,20 @@ If the radar runs without errors but never reports a regression, check these in 
 
 In Kubernetes, `PerformanceRegression` objects report `Detected`, `NoRegression` or `InsufficientData`; the last one means case 2.
 
+## The attribution engine only alerts, or does not act
+
+Start with the decision's `reasons` (in the manager log line `attribution (...)`, and in the verdict at `/api/v1/attribution/verdict`). Three cases cover almost everything.
+
+1. **"evidence is capped at grade C by: ..."** The engine saw a regression but could not prove it was the deploy, so it only alerts. The flags say what held it back:
+    - `few-donors`: fewer than 5 untouched queries with enough history to build a control. A control query needs data for at least half of the 90-minute pre-deploy window, so right after the manager starts or restarts the engine stays at alert for about 45 minutes. Wait, or check that the watch's collector sees enough distinct queries.
+    - `global-shift`: most untouched queries moved the same way at the deploy, so the cause may be load, not the code. The engine cannot separate them without a control arm.
+    - `table-level`: most queries on one table moved together and the deploy did not declare that table.
+    - `warming-up`, `transient`: the shift is too recent, or was fading, so it is not yet confirmed. Wait for the next evaluation (every 5 minutes).
+2. **"seen in 1 of 2 consecutive evaluations required"** and **"cooldown after the previous action"** are guards, not problems: a pause needs the same evidence twice, and a second action waits 10 minutes.
+3. **Nothing is paused although the engine wants a hold.** Look at the action ledger (`GET /api/v1/attribution/actions`): `skipped` means the namespace is not in `actuate.namespaces`, the watch carries the `pg-regression-radar.io/actuation-paused` annotation, or the deploy did not come from an `argo-rollouts` `DeploySource`; `failed` means the call to the Rollout was refused, usually because `manager.autoAbort.rbacEnabled` is off. The watch must be in `mode: enforce` with `actuate.enabled: true`.
+
+The engine cannot convict a deploy before about 15 minutes after it. A Rollout needs a pause step of at least 20 minutes for the action to land in time. See [Attribution engine](attribution-engine.md).
+
 ## Connecting to a local Postgres from Docker
 
 `localhost` inside a container is the container itself, not your machine. A DSN that works from your shell fails from the radar's container with `connection refused`.

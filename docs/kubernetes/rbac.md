@@ -62,12 +62,12 @@ The chart creates, in `manager` mode, a ServiceAccount, a ClusterRole with a Clu
 | read | `deployments`, `statefulsets` (`apps`) | the `kubernetes` deploy source watches rollouts. It never writes to a workload. |
 | read | `secrets` (core group) | to resolve `dsnSecretRef` and other referenced Secrets |
 | read, create, update, delete | `leases` (`coordination.k8s.io`), **in the manager's namespace only** | leader election |
-| `get`, `patch` on `rollouts` | `argoproj.io`, **only if** `manager.autoAbort.rbacEnabled` | the optional [auto-abort](../auto-abort.md) feature |
+| `get`, `patch` on `rollouts` and `rollouts/status` | `argoproj.io`, **only if** `manager.autoAbort.rbacEnabled` | the optional [auto-abort](../auto-abort.md) (writes `status.abort`) and [attribution actuation](../attribution-engine.md#letting-the-manager-act) (also writes `spec.paused` to hold a rollout). Neither creates, deletes or scales a Rollout |
 
 Two things in that table are deliberate:
 
 - **The cluster-wide Secret read.** The manager must be able to read a Secret in any namespace where someone creates a `PostgresWatch`, so it cannot be limited to one namespace. That is a big power, and the next section is what stops it being abused.
-- **Everything optional is off by default.** Argo Rollouts access is granted only when you ask for it, so a cluster without it, or a team that never enables auto-abort, does not get the permission for nothing.
+- **Everything optional is off by default.** Argo Rollouts access is granted only when you ask for it, so a cluster without it, or a team that never enables auto-abort or actuation, does not get the permission for nothing.
 
 ```bash
 kubectl get clusterrole,clusterrolebinding | grep <fullname>

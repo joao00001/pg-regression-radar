@@ -244,7 +244,7 @@ The execution checklist exists in [Quickstart Validation](quickstart-validation.
 
 <div class="rm-title" markdown="span">The attribution engine is validated only in simulation</div>
 
-Calibration comes from a simulated world; no real workload has been run through it yet.
+Calibration comes from a simulated world, plus test runs on PostgreSQL 16 under synthetic load; no production workload has been run through it yet.
 { .rm-summary }
 
 <details markdown="1">
