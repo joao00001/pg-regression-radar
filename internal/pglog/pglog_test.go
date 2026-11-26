@@ -231,3 +231,26 @@ func TestSamplingWeight(t *testing.T) {
 		t.Fatalf("w=%v", w)
 	}
 }
+
+func TestValidFilePath(t *testing.T) {
+	for _, ok := range []string{"/var/log/postgresql/postgresql.json", "/pg.json"} {
+		if err := ValidFilePath(ok); err != nil {
+			t.Errorf("%q: %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"", "pg.json", "./pg.json", "/var/log/../etc/passwd", "/var//log/pg.json", "/var/log/", "/var/log/./pg.json"} {
+		if ValidFilePath(bad) == nil {
+			t.Errorf("%q should be refused", bad)
+		}
+	}
+}
+
+func TestFollowFileIgnoresWhatIsNotARegularFile(t *testing.T) {
+	dir := t.TempDir() // a directory, not a file
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	defer cancel()
+	var n int
+	if err := FollowFile(ctx, dir, 10*time.Millisecond, func(Record) { n++ }); err != nil || n != 0 {
+		t.Fatalf("err %v records %d", err, n)
+	}
+}
