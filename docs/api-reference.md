@@ -119,6 +119,31 @@ Returns the raw, per-scrape samples for one `queryId` in `[since, until]` — un
 
 Lists `PostgresWatch` objects (`api/v1alpha1/postgreswatch_types.go`) as-is, with no transformation.
 
+## Attribution API
+
+The [attribution engine](attribution-engine.md) serves two read-only endpoints on their own listener, off by default: start the manager with `--attribution-verdict-addr=:8082` (only the leader serves it) and expose that port with a Service. They are not part of the Dashboard API and do not share its port.
+
+### `GET /api/v1/attribution/verdict?namespace=&app=&revision=`
+
+The engine's verdict on the latest deploy of `app` in `namespace` (or of `revision`), shaped for an Argo Rollouts `AnalysisTemplate` web provider that reads `$.verdict`.
+
+| Field | Meaning |
+|---|---|
+| `verdict` | `pass`, `inconclusive` (pause) or `fail` (abort). Anything undecidable, and every shadow-mode answer, is `pass` |
+| `known` | `true` when the deploy is known to the engine; `false` (with `pass`) for an unknown one |
+| `pending` | `true` while the deploy has not been evaluated yet; the verdict is `pass` until it has |
+| `deployId`, `evaluatedAt` | The deploy the answer is about and when it was last evaluated |
+| `enforced` | `true` when the watch is in `enforce` mode and the decision acts |
+| `wouldBe` | What the verdict would be in enforce mode |
+| `action`, `grade` | The engine's action (`none`, `alert`, `hold`, `rollback`) and evidence grade (`A` to `D`) |
+| `impact` | Supported lower bound of the added database time, as a fraction |
+| `attribution` | Probability that this deploy, not a concurrent one, is the cause |
+| `reasons` | Why, including what caps the evidence at grade C when it does |
+
+### `GET /api/v1/attribution/actions?namespace=&app=`
+
+The action ledger, newest first: every pause or abort the manager made or skipped, with `at`, `deployId`, `namespace`, `app`, `action` (`pause` or `abort`), `result` (`done`, `failed`, `skipped`, `recovered`, `persisted`) and `detail`. It also reports `breakerOpen`. The ledger keeps the last 200 entries and is lost on restart. See [Letting the manager act](attribution-engine.md#letting-the-manager-act).
+
 ## See also
 
 - [Detection Algorithm](detection-algorithm.md) — how `PerformanceRegression` fields are computed.

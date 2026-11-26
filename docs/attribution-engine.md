@@ -80,6 +80,8 @@ spec:
 
 The ladder is the one Google and Waze describe for a new canary analysis: begin with a non-blocking stage, then a manual judgement, and automate only once the analysis has proved reliable. Run shadow mode, compare `wouldBe` with what happened, then set `mode: enforce`. With enforce, the first action you will see is a pause, which one click resumes; an abort needs grade A.
 
+A copy-and-adapt walk-through is in [Example: pausing a bad rollout](examples/attribution-rollout.md), and [Troubleshooting](troubleshooting.md#the-attribution-engine-only-alerts-or-does-not-act) explains why a deploy might only alert.
+
 ## Letting the manager act
 
 The verdict endpoint needs a rollout controller that asks. When you want the radar to act on its own, with no `AnalysisTemplate` in between, turn on actuation:

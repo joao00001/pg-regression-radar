@@ -139,6 +139,7 @@ nav:
           - Troubleshooting and FAQ: troubleshooting.md
           - "Example: a regression": examples/regression-scenario.md
           - "Example: alerting": examples/alerting-example.md
+          - "Example: pausing a bad rollout": examples/attribution-rollout.md
       - Concepts:
           - Architecture: architecture.md
           - Detection algorithm: detection-algorithm.md
