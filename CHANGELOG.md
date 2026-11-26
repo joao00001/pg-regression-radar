@@ -32,6 +32,25 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.9.0 - 2026-11-26
+
+### Features
+
+- Added `attribution.mode` and a read-only verdict endpoint (`--attribution-verdict-addr`) that an Argo Rollouts analysis can poll: `inconclusive` pauses a rollout on grade B evidence and `fail` aborts it on grade A, with shadow remaining the default. (#247.attribution-verdict)
+- Added an opt-in counterfactual attribution engine that judges each tracked deploy against a control built from queries the deploy did not touch, and records the action it would take (alert, hold or roll back) in shadow mode without executing it. (#246)
+- Added `attribution.revert`: in enforce mode the radar can open a draft pull request that reverts the commit behind a convicted deploy, once per deploy and never merged, with the evidence and a pre-merge checklist in its body. (#248)
+- The attribution engine can now act on its own decisions: with attribution.actuate enabled in enforce mode, the manager pauses the Argo Rollouts rollout of a held deploy and aborts the rollout of a rolled-back one, instead of waiting for a rollout controller to ask for a verdict. (#253)
+- The attribution engine now records every pause and abort it makes in an action ledger at /api/v1/attribution/actions, checks 15 minutes after an abort whether the regression went away and feeds that to its circuit breaker, and lets you bound actuation with actuate.namespaces or stop it at once with the pg-regression-radar.io/actuation-paused annotation. (#254)
+- The attribution engine can now tell a canary from the stable pods by reading the Postgres JSON log (attribution.arms, with the log settings checked and the comparison weighted for sampling), so it can reach grade A and abort a bad canary; it needs no extension on the server. (#259)
+- Added `pg-regression-radar dashboard`, a local web page, read-only toward the cluster, that shows what the radar saw, decided and did. It has editable boards, a per-panel view with settings and a filter query, and keeps your edits between runs in its own data directory. (#260)
+
+### Fixes
+
+- Queries executed by multiple roles or databases now keep independent counters before their intervals are combined. Partial row changes no longer create misleading latency samples, and saved intervals retain their reset and validity state after a restart. (#241)
+- The attribution engine no longer treats other queries moving the opposite way as a shared cause, so a regression that makes the rest of the workload faster (a slow query throttling it) can reach grade B and be paused instead of staying at an alert. (#256)
+- The attribution engine now says what holds its evidence at grade C (for example global-shift or few-donors) in the decision's reasons, the log line for an enforce-mode decision that is not acting is no longer labelled shadow, and a pause or abort that was skipped or failed no longer waits out the 10-minute cooldown before the next attempt. (#257)
+
+
 ## v1.8.0 - 2026-11-11
 
 ### Features
