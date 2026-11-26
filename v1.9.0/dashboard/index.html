@@ -1335,6 +1335,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2753,6 +2764,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2964,7 +2986,12 @@ pg-regression-radar<span class="w"> </span>dashboard<span class="w"> </span>--co
 <li>The real port-forward needs a real cluster; it is covered in tests by a fake API server, and by <code>--url</code> for everything else.</li>
 <li>No user-written queries: panels read the datasets the Observe API serves.</li>
 </ul>
-<p>See also: <a href="../adr/0002-live-dashboard/">ADR-0002</a>, <a href="../security-model/">Security model</a>, <a href="../persistence/">Persistence</a>.</p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../adr/0002-live-dashboard/">ADR-0002: A live dashboard</a> — why it is local, read-only toward the cluster and opened with one command.</li>
+<li><a href="../security-model/">Security model</a> — the dashboard's trust boundary, and how the file it saves is protected.</li>
+<li><a href="../persistence/">Persistence</a> — the radar's optional Postgres state store, which is separate from the dashboard's own edits file.</li>
+</ul>
 
 
 
