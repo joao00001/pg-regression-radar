@@ -19,8 +19,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -70,6 +72,20 @@ func Consume(ctx context.Context, r io.Reader, sink func(Record)) (skipped int, 
 	}
 }
 
+// ValidFilePath says whether path may be followed by FollowFile: absolute and
+// already clean (no "..", no doubled or trailing separators), so what the manager
+// opens is exactly what the PostgresWatch names. It does not say the path is safe
+// to read: who may create a PostgresWatch decides that, see the security model.
+func ValidFilePath(path string) error {
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("log file path %q must be absolute", path)
+	}
+	if filepath.Clean(path) != path {
+		return fmt.Errorf("log file path %q must be clean (no .., //, or trailing /)", path)
+	}
+	return nil
+}
+
 // FollowFile reads the file at path from its current end, like tail -F: it waits
 // for new lines, notices that the file was truncated or replaced (rotation) and
 // starts over from the top of the new one. It returns when ctx is done.
@@ -94,8 +110,17 @@ func FollowFile(ctx context.Context, path string, poll time.Duration, sink func(
 	first := true
 	for {
 		if f == nil {
-			nf, err := os.Open(path)
+			// The path comes from a PostgresWatch and is checked by ValidFilePath
+			// before it gets here; what is read from it is only parsed as log
+			// lines, and only a regular file is followed.
+			nf, err := os.Open(path) // #nosec G304 -- validated by ValidFilePath; content is only parsed as jsonlog
 			if err == nil {
+				if st, serr := nf.Stat(); serr != nil || !st.Mode().IsRegular() {
+					_ = nf.Close()
+					nf = nil
+				}
+			}
+			if nf != nil {
 				f = nf
 				info, _ = f.Stat()
 				if first {

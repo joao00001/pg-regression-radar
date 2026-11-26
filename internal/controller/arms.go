@@ -129,6 +129,11 @@ func (r *PostgresWatchReconciler) startArms(ctx context.Context, key fmt.Stringe
 	if (cfg.PodLogs == nil) == (cfg.File == "") {
 		return fail("set exactly one of podLogs and file")
 	}
+	if cfg.File != "" {
+		if err := pglog.ValidFilePath(cfg.File); err != nil {
+			return fail(err.Error())
+		}
+	}
 	hashes, ok := r.Aborter.(RolloutHashes)
 	if !ok || r.Aborter == nil {
 		return fail("the manager cannot read Rollouts (enable manager.autoAbort.rbacEnabled)")
