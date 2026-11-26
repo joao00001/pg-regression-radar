@@ -2826,6 +2826,11 @@ cannot list resource "deployments" in API group "apps" at the cluster scope
 <td><code>argoproj.io</code>, <strong>only if</strong> <code>manager.autoAbort.rbacEnabled</code></td>
 <td>the optional <a href="https://joao00001.github.io/pg-regression-radar/latest/auto-abort/">auto-abort</a> (writes <code>status.abort</code>) and <a href="https://joao00001.github.io/pg-regression-radar/latest/attribution-engine/#letting-the-manager-act">attribution actuation</a> (also writes <code>spec.paused</code> to hold a rollout). Neither creates, deletes or scales a Rollout</td>
 </tr>
+<tr>
+<td><code>get</code>, <code>list</code> on <code>pods</code>; <code>get</code> on <code>pods/log</code></td>
+<td>core, <strong>only if</strong> <code>manager.arms.rbacEnabled</code></td>
+<td><a href="https://joao00001.github.io/pg-regression-radar/latest/attribution-engine/#telling-a-canary-from-the-stable-pods-grade-a"><code>attribution.arms.podLogs</code></a>: follows the Postgres pods' log to tell a canary from the stable pods. A log can hold anything the server logs, so grant it only if a watch uses <code>podLogs</code>; a <code>Role</code> in the database's namespace is narrower than the chart's cluster-wide rule</td>
+</tr>
 </tbody>
 </table>
 <p>Two things in that table are deliberate:</p>
