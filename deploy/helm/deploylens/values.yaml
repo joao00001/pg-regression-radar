@@ -303,15 +303,22 @@ manager:
   # Deployment).
   createDefaultWatch: true
 
-  # Auto-abort (see docs/auto-abort.md): automatically aborting an Argo
-  # Rollouts canary on a high-confidence detected regression, instead of
-  # only alerting. Off by default at two independent levels: the RBAC to
-  # even reach Rollout objects (rbacEnabled, below) and the behaviour
-  # itself (PostgresWatch.spec.autoAbort.enabled, per watch, unset by this
-  # chart). Set rbacEnabled: true here only if at least one PostgresWatch
-  # you manage will actually set spec.autoAbort.enabled — there is no
-  # reason to grant this RBAC otherwise.
+  # Acting on a Rollout: spec.autoAbort (docs/auto-abort.md) aborts a canary,
+  # and attribution.actuate (docs/attribution-engine.md) pauses or aborts one.
+  # Off by default at two independent levels: the RBAC to even reach Rollout
+  # objects (rbacEnabled, below, which grants get and patch on rollouts and
+  # rollouts/status) and the behaviour itself (set per PostgresWatch, unset by
+  # this chart). Set rbacEnabled: true here only if at least one PostgresWatch
+  # you manage will actually turn one of them on.
   autoAbort:
+    rbacEnabled: false
+
+  # Reading Postgres pod logs: attribution.arms.podLogs (docs/attribution-engine.md)
+  # compares the pods of a canary with the stable ones from the statement durations
+  # in the Postgres log. rbacEnabled grants get and list on pods and get on
+  # pods/log, which is a broad read; leave it off unless a PostgresWatch uses
+  # podLogs. It is not needed for attribution.arms.file.
+  arms:
     rbacEnabled: false
 
   resources:

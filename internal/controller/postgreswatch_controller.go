@@ -33,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -167,6 +168,10 @@ type PostgresWatchReconciler struct {
 	// that couldn't build a Kubernetes dynamic client degrades to
 	// alert-only rather than panicking on a nil Aborter.
 	Aborter RolloutAborter
+
+	// KubeClient reads the log of Postgres pods for attribution.arms.podLogs.
+	// nil is valid: a watch that asks for pod logs then runs without arms.
+	KubeClient kubernetes.Interface
 }
 
 // getRemoteClients returns the reconciler's remote client cache,
@@ -743,6 +748,10 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 					"watch", key.String())
 			}
 		}
+	}
+
+	if watch.Spec.Attribution != nil && watch.Spec.Attribution.Enabled {
+		rt.Arms = r.startArms(workerCtx, key, watch, rt, scrapeInterval)
 	}
 
 	// col is nil precisely when sampleSrc came from promsource instead —

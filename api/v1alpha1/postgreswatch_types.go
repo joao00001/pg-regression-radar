@@ -424,6 +424,62 @@ type AttributionConfig struct {
 	// effect in enforce mode. See ActuateConfig.
 	// +optional
 	Actuate *ActuateConfig `json:"actuate,omitempty"`
+
+	// arms lets the engine tell a canary from the stable pods by reading the
+	// Postgres log, which is what makes grade A evidence (a concurrent
+	// control, the only grade that justifies an abort) possible. Without it
+	// the engine only sees pg_stat_statements, which mixes every client
+	// together, and its strongest decision is to pause. See ArmsConfig.
+	// +optional
+	Arms *ArmsConfig `json:"arms,omitempty"`
+}
+
+// ArmsConfig reads the statement durations from the Postgres JSON log,
+// labelled by application_name, so the engine can compare the pods of a canary
+// with the pods it is replacing at the same time. It needs nothing installed on
+// the server beyond core settings: compute_query_id = on, a jsonlog log
+// destination, log_min_duration_sample = 0 and a small log_statement_sample_rate
+// (the manager checks them and says what is wrong). It needs the application_name
+// of every client pod to begin with the pod's name, which an Argo Rollouts
+// workload gets by setting PGAPPNAME from the pod's own name. The manager reads
+// statement durations only: not the statement text, not the bind parameters.
+// Exactly one of podLogs and file must be set.
+type ArmsConfig struct {
+	// enabled turns the log reader on.
+	// +kubebuilder:default=false
+	Enabled bool `json:"enabled"`
+
+	// podLogs reads the log of Postgres pods through the Kubernetes API
+	// (the pods/log subresource), for Postgres running in a cluster, such as
+	// CloudNativePG or a StatefulSet. The manager needs the optional pods/log
+	// RBAC (manager.arms.rbacEnabled in the chart).
+	// +optional
+	PodLogs *PodLogsConfig `json:"podLogs,omitempty"`
+
+	// file is the path of a Postgres JSON log file the manager can open,
+	// for a log directory mounted into the manager. It is followed like
+	// tail -F and survives rotation.
+	// +kubebuilder:validation:MaxLength=1024
+	// +optional
+	File string `json:"file,omitempty"`
+}
+
+// PodLogsConfig selects the Postgres pods whose log is read.
+type PodLogsConfig struct {
+	// namespace of the Postgres pods.
+	// +kubebuilder:validation:MinLength=1
+	Namespace string `json:"namespace"`
+
+	// selector is a label selector for the Postgres pods, for example
+	// cnpg.io/cluster=pg for a CloudNativePG cluster. Every running pod it
+	// matches is followed, so a failover or a replica is covered.
+	// +kubebuilder:validation:MinLength=1
+	Selector string `json:"selector"`
+
+	// container is the container that runs Postgres.
+	// +kubebuilder:default=postgres
+	// +optional
+	Container string `json:"container,omitempty"`
 }
 
 // ActuateConfig makes the manager write to the cluster on the engine's

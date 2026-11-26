@@ -143,3 +143,24 @@ func TestArgoRolloutsAborter_Pause_RolloutNotFound(t *testing.T) {
 		t.Fatalf("err = %v, want a pause rollout default/nope error", err)
 	}
 }
+
+// TestArgoRolloutsAborter_PodHashes reads which hash is the stable version and
+// which the one being rolled out, so a canary's pods can be told from the stable
+// ones by name.
+func TestArgoRolloutsAborter_PodHashes(t *testing.T) {
+	r := newRollout("default", "checkout")
+	_ = unstructured.SetNestedField(r.Object, "7d9f8c6b5", "status", "stableRS")
+	_ = unstructured.SetNestedField(r.Object, "5c4b7d9f8", "status", "currentPodHash")
+	a := NewArgoRolloutsAborter(dynamicfake.NewSimpleDynamicClient(runtime.NewScheme(), r))
+
+	stable, current, err := a.PodHashes(context.Background(), "default", "checkout")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stable != "7d9f8c6b5" || current != "5c4b7d9f8" {
+		t.Fatalf("stable %q current %q", stable, current)
+	}
+	if _, _, err := a.PodHashes(context.Background(), "default", "nope"); err == nil {
+		t.Fatal("a missing Rollout must be an error")
+	}
+}

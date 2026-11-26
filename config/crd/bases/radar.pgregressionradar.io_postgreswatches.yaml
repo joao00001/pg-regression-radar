@@ -169,6 +169,54 @@ spec:
                     required:
                     - enabled
                     type: object
+                  arms:
+                    description: |-
+                      arms lets the engine tell a canary from the stable pods by reading the
+                      Postgres log, which is what makes grade A evidence (a concurrent
+                      control, the only grade that justifies an abort) possible. Without it
+                      the engine only sees pg_stat_statements, which mixes every client
+                      together, and its strongest decision is to pause. See ArmsConfig.
+                    properties:
+                      enabled:
+                        default: false
+                        description: enabled turns the log reader on.
+                        type: boolean
+                      file:
+                        description: |-
+                          file is the path of a Postgres JSON log file the manager can open,
+                          for a log directory mounted into the manager. It is followed like
+                          tail -F and survives rotation.
+                        maxLength: 1024
+                        type: string
+                      podLogs:
+                        description: |-
+                          podLogs reads the log of Postgres pods through the Kubernetes API
+                          (the pods/log subresource), for Postgres running in a cluster, such as
+                          CloudNativePG or a StatefulSet. The manager needs the optional pods/log
+                          RBAC (manager.arms.rbacEnabled in the chart).
+                        properties:
+                          container:
+                            default: postgres
+                            description: container is the container that runs Postgres.
+                            type: string
+                          namespace:
+                            description: namespace of the Postgres pods.
+                            minLength: 1
+                            type: string
+                          selector:
+                            description: |-
+                              selector is a label selector for the Postgres pods, for example
+                              cnpg.io/cluster=pg for a CloudNativePG cluster. Every running pod it
+                              matches is followed, so a failover or a replica is covered.
+                            minLength: 1
+                            type: string
+                        required:
+                        - namespace
+                        - selector
+                        type: object
+                    required:
+                    - enabled
+                    type: object
                   enabled:
                     default: false
                     description: enabled turns the engine on for this watch.
@@ -214,7 +262,8 @@ spec:
                         type: boolean
                       maxPerDay:
                         default: 3
-                        description: maxPerDay caps the revert pull requests opened in any 24 hours.
+                        description: maxPerDay caps the revert pull requests opened
+                          in any 24 hours.
                         format: int32
                         maximum: 20
                         minimum: 1

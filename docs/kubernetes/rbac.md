@@ -63,6 +63,7 @@ The chart creates, in `manager` mode, a ServiceAccount, a ClusterRole with a Clu
 | read | `secrets` (core group) | to resolve `dsnSecretRef` and other referenced Secrets |
 | read, create, update, delete | `leases` (`coordination.k8s.io`), **in the manager's namespace only** | leader election |
 | `get`, `patch` on `rollouts` and `rollouts/status` | `argoproj.io`, **only if** `manager.autoAbort.rbacEnabled` | the optional [auto-abort](../auto-abort.md) (writes `status.abort`) and [attribution actuation](../attribution-engine.md#letting-the-manager-act) (also writes `spec.paused` to hold a rollout). Neither creates, deletes or scales a Rollout |
+| `get`, `list` on `pods`; `get` on `pods/log` | core, **only if** `manager.arms.rbacEnabled` | [`attribution.arms.podLogs`](../attribution-engine.md#telling-a-canary-from-the-stable-pods-grade-a): follows the Postgres pods' log to tell a canary from the stable pods. A log can hold anything the server logs, so grant it only if a watch uses `podLogs`; a `Role` in the database's namespace is narrower than the chart's cluster-wide rule |
 
 Two things in that table are deliberate:
 
