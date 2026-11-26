@@ -597,6 +597,8 @@
       
         
       
+        
+      
     
     
     
@@ -823,6 +825,34 @@
     
   
     Example: alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/examples/attribution-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: pausing a bad rollout
   
 
     
@@ -2734,7 +2764,7 @@
 <div class="rm-item" data-area="Validation" data-quarter="Q1 2027" data-status="gap">
 <div class="rm-meta"><span class="rm-status rm-status--gap" role="img" aria-label="Known gap" title="Known gap"><svg class="rm-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#rm-i-gap"/></svg></span><span class="rm-area">Validation</span><span class="rm-quarter">Q1 2027</span></div>
 <div class="rm-title">The attribution engine is validated only in simulation</div>
-<p class="rm-summary">Calibration comes from a simulated world; no real workload has been run through it yet.</p>
+<p class="rm-summary">Calibration comes from a simulated world, plus test runs on PostgreSQL 16 under synthetic load; no production workload has been run through it yet.</p>
 <details>
 <summary><span class="rm-more">Read more</span><span class="rm-less">Show less</span></summary>
 <p>The simulator covers an A/A run, a load shock, a statistics refresh, a cold cache, a query rewrite, a concurrent deploy and an effect below the materiality margin. It produced no grade A or B false positives, and about 98% impact recall with a canary arm and about 94% with a synthetic control. That shows the math does what it claims on simulated data, not that real <code>pg_stat_statements</code> series satisfy the model's assumptions. <code>attribution.mode: shadow</code> exists to close this: it records what the engine <em>would</em> have done on real deploys, so a period of shadow decisions can be compared with what operators knew had happened before <code>enforce</code> is trusted. See <a href="https://joao00001.github.io/pg-regression-radar/latest/attribution-engine/">Attribution Engine</a>.</p>
