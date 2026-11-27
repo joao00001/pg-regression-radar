@@ -22,3 +22,11 @@ rules:
       - update
       - patch
       - delete
+  # Leader election records an Event in the lease's namespace.
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
