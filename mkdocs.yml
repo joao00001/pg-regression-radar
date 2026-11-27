@@ -136,7 +136,6 @@ nav:
           - Install: installation.md
           - Quickstart: getting-started.md
           - Validate your setup: quickstart-validation.md
-          - Troubleshooting and FAQ: troubleshooting.md
           - "Example: a regression": examples/regression-scenario.md
           - "Example: alerting": examples/alerting-example.md
           - "Example: pausing a bad rollout": examples/attribution-rollout.md
@@ -166,6 +165,20 @@ nav:
           - Persistence: persistence.md
           - Upgrading: upgrading.md
           - Support matrix: support-matrix.md
+      - Troubleshooting:
+          - Overview: troubleshooting/index.md
+          - Where to look: troubleshooting/where-to-look.md
+          - Setup and the database: troubleshooting/setup.md
+          - Nothing is detected: troubleshooting/detection.md
+          - Deploy sources: troubleshooting/deploy-sources.md
+          - Enforce mode: troubleshooting/enforce.md
+          - Alerts and the dashboard: troubleshooting/alerts-and-dashboard.md
+          - Logs: troubleshooting/logs.md
+          - Log catalog: troubleshooting/log-catalog.md
+          - Reason codes: troubleshooting/reasons.md
+          - Metrics: troubleshooting/metrics.md
+          - Collect a report: troubleshooting/report.md
+          - FAQ: troubleshooting/faq.md
       - Basic Kubernetes:
           - Overview: https://joao00001.github.io/pg-regression-radar/kubernetes/overview/
           - Objects and namespaces: https://joao00001.github.io/pg-regression-radar/kubernetes/objects/

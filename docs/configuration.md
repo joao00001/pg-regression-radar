@@ -55,6 +55,8 @@ This page is the single reference for configuring pg-regression-radar, regardles
 | `--periodic-detection` | `false` | Also run regression detection on a rolling schedule, independent of any tracked deploy — see [Periodic Detection](periodic-detection.md) |
 | `--periodic-window-minutes` | `60` | Split-window size for periodic detection; only meaningful alongside `--periodic-detection` |
 | `--periodic-interval-minutes` | `15` | How often a full periodic-detection pass runs; only meaningful alongside `--periodic-detection` |
+| `--log-level` | `info` | `debug`, `info`, `warn` or `error`. `debug` adds the per-query and per-scrape lines that are normally left out — see [Logs](troubleshooting/logs.md) |
+| `--log-format` | `json` | `json` (one object per line) or `text` (`key=value`) — see [Logs](troubleshooting/logs.md) |
 | `--version` | `false` | Print version, commit, and build date, then exit — see [Versioning & dry-run](#versioning-dry-run) |
 | `--dry-run` | `false` | Validate `--source-type`, the alerting configuration (`--alert-format` and its format-specific required fields), Postgres connectivity, (if `--state-backend=postgres`) the state DSN, and (if `--periodic-detection`) that `--periodic-window-minutes`/`--periodic-interval-minutes` are positive, then exit without starting any server — see [Versioning & dry-run](#versioning-dry-run) |
 
@@ -71,6 +73,8 @@ The `collector` binary exposes the scraper on its own, without the correlation/a
 | `--listen` | `:9090` | Prometheus metrics listen address |
 | `--max-query-text-len` | `200` | Max query text length (characters) stored per sample before truncation for alerting and fingerprint fallback — see [Collector Internals](collector-internals.md) |
 | `--retention-minutes` | `180` | How long to keep in-memory query samples before pruning them |
+| `--log-level` | `info` | `debug`, `info`, `warn` or `error`. `debug` adds the per-query and per-scrape lines that are normally left out — see [Logs](troubleshooting/logs.md) |
+| `--log-format` | `json` | `json` (one object per line) or `text` (`key=value`) — see [Logs](troubleshooting/logs.md) |
 | `--version` | `false` | Print version, commit, and build date, then exit |
 | `--dry-run` | `false` | Validate Postgres connectivity (dial + `pg_stat_statements` installed), then exit without scraping |
 
@@ -92,6 +96,8 @@ The `ingester` binary runs the deploy-event webhook receiver on its own, without
 | `--app-name` | `` (all apps) | Filter events to a specific application name |
 | `--cluster-name` | `` | Cluster identity stamped on `DeployEvent`s when the webhook payload doesn't carry one (e.g. Argo Rollouts, Flux without `eventMetadata`) |
 | `--webhook-secret` | `` | Shared secret for webhook authentication. When set, every `POST /webhook` must include this value in the `X-Webhook-Token` header (constant-time comparison), or the request is rejected with `401`. Recommended for internet-facing deployments — see [Deploy Sources & Webhooks: Webhook authentication](webhooks.md#webhook-authentication) |
+| `--log-level` | `info` | `debug`, `info`, `warn` or `error`. `debug` adds the per-query and per-scrape lines that are normally left out — see [Logs](troubleshooting/logs.md) |
+| `--log-format` | `json` | `json` (one object per line) or `text` (`key=value`) — see [Logs](troubleshooting/logs.md) |
 | `--version` | `false` | Print version, commit, and build date, then exit |
 | `--dry-run` | `false` | Validate `--source-type` and that `--listen` is a resolvable address, then exit without starting the webhook server |
 
@@ -112,6 +118,9 @@ Exposed routes once running: `POST /webhook` (receives deploy events), `GET /eve
 | `--alerting-destination-policy-relay-url` | `` | Fixed relay endpoint for `--alerting-destination-policy=relay-only`. Required when the policy is `relay-only` |
 | `--health-probe-bind-address` | `:8081` | `/healthz` and `/readyz` |
 | `--cluster-health-check-interval` | `5m` | How often `PostgresRadarClusterReconciler` re-probes each registered remote cluster's kubeconfig (a lightweight `discovery.ServerVersion()` call), independent of whether any `PostgresWatch` currently references it — see [Multi-Cluster: Cluster health checks](multi-cluster.md#cluster-health-checks) |
+| `--log-level` | `info` | `debug`, `info`, `warn` or `error`. `debug` adds the per-query and per-scrape lines that are normally left out — see [Logs](troubleshooting/logs.md) |
+| `--log-format` | `json` | `json` (one object per line) or `text` (`key=value`) — see [Logs](troubleshooting/logs.md) |
+| `--zap-log-level`, `--zap-encoder`, `--zap-devel` | | Deprecated: accepted and mapped to `--log-level` and `--log-format`, with a note in the log; an explicit `--log-level` or `--log-format` wins. Any other `--zap-*` flag has no effect |
 | `--version` | `false` | Print version, commit, and build date, then exit |
 | `--dry-run` | `false` | Validate that a Kubernetes API server config can be resolved (in-cluster or via kubeconfig), then exit without starting the manager |
 

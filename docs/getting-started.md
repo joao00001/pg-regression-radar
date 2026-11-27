@@ -139,6 +139,8 @@ Depending on mode and configuration, this appears in logs, in `PerformanceRegres
 
 ## Troubleshooting common setup issues
 
+A short list of first-run symptoms. For the full guide, see [Troubleshooting](troubleshooting/index.md).
+
 - **No deploy events are being ingested:** verify your webhook URL/path (`/webhook`), source type, and authentication header if `--webhook-secret` is enabled.
 - **No regression detected yet:** increase traffic volume for the target query, verify `pg_stat_statements` is enabled, and check detection thresholds (`windowMinutes`, `minSamples`, `minExecutions`, latency threshold).
 - **Manager exits with `address already in use` on startup:** the health probe endpoint listens on `:8081` by default (`--health-probe-bind-address`). If that port is already taken (for example by another manager instance), set a free port, for example `--health-probe-bind-address=:18081`.

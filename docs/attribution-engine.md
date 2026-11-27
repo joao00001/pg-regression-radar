@@ -80,7 +80,7 @@ spec:
 
 The ladder is the one Google and Waze describe for a new canary analysis: begin with a non-blocking stage, then a manual judgement, and automate only once the analysis has proved reliable. Run shadow mode, compare `wouldBe` with what happened, then set `mode: enforce`. With enforce, the first action you will see is a pause, which one click resumes; an abort needs grade A.
 
-A copy-and-adapt walk-through is in [Example: pausing a bad rollout](examples/attribution-rollout.md), and [Troubleshooting](troubleshooting.md#the-attribution-engine-only-alerts-or-does-not-act) explains why a deploy might only alert.
+A copy-and-adapt walk-through is in [Example: pausing a bad rollout](examples/attribution-rollout.md), and [Enforce mode](troubleshooting/enforce.md#the-engine-only-alerts-and-does-not-act) explains why a deploy might only alert.
 
 ## Letting the manager act
 
@@ -114,7 +114,9 @@ Every attempt is also written to an in-memory ledger, served newest first at `GE
  {"at":"2026-11-24T14:26:00Z","deployId":"d1","namespace":"shop","app":"checkout","action":"abort","result":"done","detail":"grade A evidence supports 12.0% added database time"}]}
 ```
 
-**Checking that it helped.** Fifteen minutes after an abort the engine reads the deploy again. It leaves out what the deploy did until the abort (and three minutes more for the canary's pods to drain) and reads what came after, so a canary that ran slow before it was stopped does not count against the abort; a canary that is still serving does. If the regression is gone the result is `recovered`. If it is still supported at grade B or better, the abort did not help (the deploy was not the cause, or the abort did not take) and the result is `persisted`. When there is too little data after the abort to judge by, no check is made and nothing counts. Each `persisted` counts as a failure for the policy; after two in a row (`BreakerLimit`) the circuit breaker opens and the engine only alerts, until the manager restarts. `pg_regression_radar_attribution_breaker_open` is `1` while it is open, and `pg_regression_radar_attribution_verifications_total{result}` counts the checks. A pause is not checked: a held canary keeps serving traffic, so its regression persists by design.
+**Checking that it helped.** Fifteen minutes after an abort the engine reads the deploy again. It leaves out what the deploy did until the abort (and three minutes more for the canary's pods to drain) and reads what came after, so a canary that ran slow before it was stopped does not count against the abort; a canary that is still serving does. If the regression is gone the result is `recovered`. If it is still supported at grade B or better, the abort did not help (the deploy was not the cause, or the abort did not take) and the result is `persisted`. When there is too little data after the abort to judge by, no check is made and nothing counts. Each `persisted` counts as a failure for the policy; after two in a row (`BreakerLimit`) the circuit breaker opens and the engine only alerts, until you close it with `kubectl annotate postgreswatch <name> pg-regression-radar.io/reset-breaker="$(date +%s)" --overwrite` (a change of the annotation's value; a value already on the object when the manager started is ignored) or the manager restarts. `pg_regression_radar_attribution_breaker_open` is `1` while it is open, and `pg_regression_radar_attribution_verifications_total{result}` counts the checks. A pause is not checked: a held canary keeps serving traffic, so its regression persists by design.
+
+The `Actuating` condition of the `PostgresWatch` says whether the manager may act right now, and if not, which of the cases below applies: the breaker is open, the watch is in shadow mode, `actuate` is not enabled, there is no Rollout RBAC, or the kill switch is set. [Enforce mode](troubleshooting/enforce.md) walks through each.
 
 Four rules keep it safe to turn on:
 
