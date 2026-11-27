@@ -49,6 +49,9 @@ jobs:
       - name: Run OTLP render test
         run: bash deploy/helm/deploylens/tests/otlp.sh
 
+      - name: Run log flags render test
+        run: bash deploy/helm/deploylens/tests/log-flags.sh
+
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest

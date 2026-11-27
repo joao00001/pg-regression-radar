@@ -309,6 +309,13 @@ manager:
   # default (controller.DefaultClusterHealthCheckInterval, currently 5m).
   clusterHealthCheckInterval: ""
 
+  # How much the manager logs and in what shape. logLevel is debug, info, warn
+  # or error; logFormat is json or text. Leave either empty to use the binary's
+  # default (info, json). debug writes a line per query per scrape, so turn it on
+  # for one investigation and off again. See docs/troubleshooting/logs.md.
+  logLevel: ""
+  logFormat: ""
+
   # When true, the chart also renders one PostgresWatch and one
   # DeploySource CR from the postgres/analysis/ingester/alerting values
   # above, so switching `mode` from "operator" to "manager" reproduces the
