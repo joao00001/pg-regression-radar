@@ -6,12 +6,25 @@
 
 The attribution engine works in steps, and each one is a place it can stop. Knowing which step a deploy reached is most of the diagnosis.
 
-```text
-registered ─▶ judged ─▶ decision ─▶ verdict ─▶ acted ─▶ checked
- at deploy    10-45 min  none/alert   served     paused    15 min
-              every 5    hold/        (enforce)  or        later
-                         rollback                aborted
+```mermaid
+flowchart LR
+  D["Deploy registered"]:::radar
+  J["Judged<br/>10 to 45 min after,<br/>every 5 min"]:::radar
+  X{"Decision"}:::gate
+  L["none or alert:<br/>logged, never acts"]:::gate
+  V["hold or rollback:<br/>verdict served<br/>(enforce mode)"]:::radar
+  C["Rollout controller<br/>polls the verdict"]:::ext
+  M["Manager pauses<br/>or aborts the Rollout"]:::out
+  K["Abort checked<br/>15 min later"]:::gate
+  D --> J --> X
+  X -->|"none, alert"| L
+  X -->|"hold, rollback"| V
+  V -->|"actuate off"| C
+  V -->|"actuate on"| M
+  M -->|"abort"| K
 ```
+
+*Each box is a place a deploy can stop. In shadow mode the path ends at the decision: the verdict is always `pass` and the decision is only logged.*
 
 - **Shadow mode** (`attribution.mode: shadow`, the default) judges and logs. The verdict is always `pass`, and nothing is written to a Rollout.
 - **Enforce** serves a verdict for a rollout controller to poll, and a decision is acted on only if the controller asks.
