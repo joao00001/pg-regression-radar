@@ -43,6 +43,12 @@ spec:
             - --pg-metrics-bind-address=:{{ .Values.manager.ports.pgMetrics }}
             - --metrics-bind-address=:{{ .Values.manager.ports.ctrlMetrics }}
             - --health-probe-bind-address=:{{ .Values.manager.ports.healthProbe }}
+            {{- if .Values.manager.logLevel }}
+            - {{ printf "--log-level=%s" .Values.manager.logLevel | quote }}
+            {{- end }}
+            {{- if .Values.manager.logFormat }}
+            - {{ printf "--log-format=%s" .Values.manager.logFormat | quote }}
+            {{- end }}
             {{- if .Values.manager.clusterHealthCheckInterval }}
             - {{ printf "--cluster-health-check-interval=%s" .Values.manager.clusterHealthCheckInterval | quote }}
             {{- end }}
