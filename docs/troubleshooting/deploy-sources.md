@@ -6,12 +6,22 @@
 
 The radar judges a deploy only after it has been told about it. The event travels in four steps, and it can stop at any of them. Each step leaves a trace, so the question "where did it stop" has an answer.
 
-```text
-sender ─▶ webhook route ─▶ event store ─▶ engine
-(Argo, CI) (DeploySource)  (PostgresWatch) (attribution)
+```mermaid
+flowchart LR
+  S["Sender<br/>Argo, Flux, CI"]:::ext
+  R["Webhook route<br/>DeploySource"]:::radar
+  K["Deployment or StatefulSet<br/>finishes a rollout"]:::k8s
+  W["Native watch<br/>sourceType: kubernetes"]:::radar
+  ST["Event store<br/>PostgresWatch"]:::radar
+  E["Attribution engine<br/>deploy registered"]:::out
+  S -->|"2: request reaches the manager"| R
+  R -->|"3: event stored"| ST
+  K --> W
+  W -->|"synthesised"| ST
+  ST -->|"4: registered"| E
 ```
 
-A native source (`sourceType: kubernetes`) replaces the first two steps with the manager watching the workload itself.
+*The numbers are the steps of the checklist below; step 1 is the DeploySource being ready. A native source replaces the sender and the route with the manager watching the workload itself.*
 
 ## A deploy never shows up
 
