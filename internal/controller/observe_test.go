@@ -17,17 +17,21 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/internal/attribution"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/shadow"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/sim"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/observe"
 	"github.com/joao00001/pg-regression-radar/internal/pgstat"
+	"github.com/joao00001/pg-regression-radar/internal/reason"
 )
 
 func replayOf(units []attribution.Unit) *replaySource {
@@ -264,5 +268,71 @@ func TestEvaluatorKeepsABoundedNumberOfRecords(t *testing.T) {
 	recs := ev.Records()
 	if len(recs) != 3 || !recs[2].At.Equal(dep.At.Add(35*time.Minute)) {
 		t.Fatalf("records are not bounded to the newest: %d", len(recs))
+	}
+}
+
+// The dashboard must say what `kubectl describe postgreswatch` says: the
+// Overview carries the conditions refreshStatus computed, with the reason code
+// and the docs page, and the message without the link that ends it in status.
+func TestOverviewCarriesTheHealthConditions(t *testing.T) {
+	src, _, _ := liveFixture(t)
+	var rt *WatchRuntime
+	src.Registry.Each(func(k types.NamespacedName, r *WatchRuntime) {
+		if k.Name == "open" {
+			rt = r
+		}
+	})
+	// Before the first refresh there is nothing to show, and nothing breaks.
+	o, err := src.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, w := range o.Watches {
+		if len(w.Conditions) != 0 {
+			t.Fatalf("%s: conditions before the first refresh: %+v", w.Name, w.Conditions)
+		}
+	}
+
+	watch := &radarv1alpha1.PostgresWatch{ObjectMeta: metav1.ObjectMeta{Name: "open", Namespace: "radar"}}
+	rt.SetHealth(healthConditions(watch, rt, time.Now()))
+	o, _ = src.Overview(context.Background())
+	var got *observe.Condition
+	for _, w := range o.Watches {
+		if w.Name != "open" {
+			continue
+		}
+		for i := range w.Conditions {
+			if w.Conditions[i].Type == ConditionActuating {
+				got = &w.Conditions[i]
+			}
+		}
+	}
+	if got == nil {
+		t.Fatalf("no Actuating condition in the overview: %+v", o.Watches)
+	}
+	if got.Status != "False" || got.Reason != string(reason.ShadowMode) {
+		t.Errorf("condition = %+v, want False/ShadowMode", got)
+	}
+	if got.Docs != reason.DocsURL(reason.ShadowMode) {
+		t.Errorf("docs = %q", got.Docs)
+	}
+	if strings.Contains(got.Message, "http") {
+		t.Errorf("the link belongs in docs, not in the message: %q", got.Message)
+	}
+}
+
+func TestTheActionLedgerCarriesTheReasonCode(t *testing.T) {
+	src, d, _ := liveFixture(t)
+	var ev *shadow.Evaluator
+	src.Registry.Each(func(k types.NamespacedName, rt *WatchRuntime) {
+		if k.Name == "open" {
+			ev = rt.Shadow
+		}
+	})
+	ev.RecordAction(shadow.ActionRecord{At: time.Now(), DeployID: d.ID, Namespace: "shop", App: "orders",
+		Action: "abort", Result: "skipped", Reason: string(reason.NamespaceNotAllowed), Detail: "namespace not in attribution.actuate.namespaces"})
+	c, _, _ := src.Case(context.Background(), d.ID)
+	if len(c.Actions) != 1 || c.Actions[0].Reason != string(reason.NamespaceNotAllowed) {
+		t.Errorf("actions of the case: %+v", c.Actions)
 	}
 }

@@ -1,6 +1,6 @@
 import { h } from '../dom.js';
-import { tone, relative, clock, percent, times, gradeOf, labelUnits, evidenceRows } from '../model.js';
-import { gradeBadge, stateTag, heading, emptyNote, mount } from './common.js';
+import { tone, relative, clock, percent, times, gradeOf, labelUnits, evidenceRows, docsHref } from '../model.js';
+import { gradeBadge, stateTag, heading, emptyNote, mount, reasonTag } from './common.js';
 import { countTo } from '../motion.js';
 import { ratioChartPanel } from './ratio.js';
 
@@ -142,7 +142,8 @@ export function ledgerPanel(host, ctx) {
       if (!c.actions || !c.actions.length) { mount(host, head, emptyNote('The radar has not acted on this deploy.')); return; }
       mount(host, head, h('ol', { class: 'ledger' }, c.actions.map((a) => h('li', null,
         h('span', { class: 'feed-time', text: clock(Date.parse(a.at), true) }),
-        h('strong', { text: a.action }), h('span', { text: a.result }), a.detail ? h('span', { class: 'muted', text: a.detail }) : null))));
+        h('strong', { text: a.action }), h('span', { text: a.result }), a.detail ? h('span', { class: 'muted', text: a.detail }) : null,
+        a.reason ? reasonTag(a.reason, docsHref(a.docs)) : null))));
     },
   };
 }

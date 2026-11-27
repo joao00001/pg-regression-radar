@@ -53,6 +53,8 @@ pg-regression-radar dashboard --namespace <manager-namespace> --open
 | the command cannot find the manager | your user cannot read the Lease or port-forward | needs `get` on `leases` and `pods`, `create` on `pods/portforward` |
 | query text is missing | by design | `--show-queries` on the dashboard **and** `--observe-allow-queries` on the manager |
 
+When the dashboard shows a source as not healthy, or says the radar may not act, the row carries a reason code (`ScrapeStale`, `ArmsLogStale`, `BreakerOpen` and so on) that links to [Reason codes](reasons.md). It is the same code as the `reason` of the matching condition in `kubectl describe postgreswatch` and of the log line, so you can look for it in either place. A manager older than 1.9.2 sends no codes.
+
 The dashboard reads the leader only. If the manager has more than one pod, a port-forward to a standby shows nothing, which is why the command resolves the leader from the Lease itself. See [Dashboard](../dashboard.md).
 
 ## See also

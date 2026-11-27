@@ -97,7 +97,7 @@ curl -s 'localhost:8082/api/v1/attribution/actions' | jq
 
 ### 6. The dashboard
 
-`pg-regression-radar dashboard` shows deploys, the judgement of each, and the query curves around it, with history. Use it when the question is "what did the engine see around this deploy", which no single log line answers. See [Dashboard](../dashboard.md).
+`pg-regression-radar dashboard` shows deploys, the judgement of each, and the query curves around it, with history. Use it when the question is "what did the engine see around this deploy", which no single log line answers. Its Source health and Safety panels and its action list show the same reason codes as the conditions and the logs, each linked to [Reason codes](reasons.md). See [Dashboard](../dashboard.md).
 
 ## Which place for which problem
 

@@ -398,6 +398,9 @@ type ActionRecord struct {
 	// Result is "done", "failed" or "skipped" for the action itself, then
 	// "recovered" or "persisted" for the check made after an abort.
 	Result string `json:"result"`
+	// Reason is the stable code (see internal/reason) that names why: the same
+	// code the manager log line carries. Detail is the sentence for this case.
+	Reason string `json:"reason,omitempty"`
 	Detail string `json:"detail,omitempty"`
 }
 

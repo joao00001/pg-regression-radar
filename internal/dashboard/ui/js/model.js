@@ -381,6 +381,25 @@ export function compareEvaluations(a, b) {
 
 // ---- source health and safety -------------------------------------------------------------
 
+// The health condition of a watch by type: the same Collecting, ArmsLog and
+// Actuating that `kubectl describe postgreswatch` shows. A manager that predates
+// them sends none, and the rows below fall back to the raw numbers.
+export function conditionOf(w, type) {
+  return ((w && w.conditions) || []).find((c) => c.type === type) || null;
+}
+
+// A link to the docs is only followed when it is https: the page does not trust
+// what a manager sends to be a safe URL.
+export function docsHref(url) {
+  return typeof url === 'string' && url.startsWith('https://') ? url : null;
+}
+
+// What a not-healthy condition adds to a row: its reason code and the page that
+// explains it. A healthy one adds nothing.
+function why(cond) {
+  return cond && cond.status === 'False' ? { reason: cond.reason, docs: docsHref(cond.docs), message: cond.message || '' } : { reason: '', docs: null, message: '' };
+}
+
 // One row per source the radar reads: is it answering, how fresh, and what is missing.
 export function sourceRows(overview, nowMs) {
   const rows = [];
@@ -394,6 +413,7 @@ export function sourceRows(overview, nowMs) {
       value: never ? 'no scrape yet' : stale > 180 ? `${duration(stale * 1e3)} old` : 'fresh',
       detail: never ? 'Nothing has been read from pg_stat_statements yet.' : `Last read ${w.collector.lastScrape ? relative(Date.parse(w.collector.lastScrape), nowMs) : `${duration(stale * 1e3)} ago`}. Every verdict rests on this.`,
       at: w.collector.lastScrape ? Date.parse(w.collector.lastScrape) : null,
+      ...why(conditionOf(w, 'Collecting')),
     });
     if (w.arms) {
       const a = w.arms;
@@ -404,6 +424,7 @@ export function sourceRows(overview, nowMs) {
           ? `${a.records.toLocaleString('en-US')} records read${a.dropped ? `, ${a.dropped.toLocaleString('en-US')} dropped` : ''}. Canary and stable pods can be told apart.`
           : a.why || 'The log cannot be used, so grade A is not possible.',
         at: a.newest ? Date.parse(a.newest) : null,
+        ...why(conditionOf(w, 'ArmsLog')),
       });
     } else {
       rows.push({ id: `log:${name}`, source: 'Postgres log', watch: name, tone: 'info', value: 'off', detail: 'Not configured. Without it the strongest decision is a pause (grade B at most).', at: null });
@@ -437,6 +458,13 @@ export function safetyRows(overview) {
       breaker: w.breakerOpen ? 'open' : 'closed', breakerTone: w.breakerOpen ? 'bad' : 'ok',
       breakerDetail: w.breakerOpen ? 'Earlier aborts did not make the regression go away, so the radar only alerts until it is reset.' : 'Automatic actions are allowed.',
       namespaces: act.namespaces || [],
+      ...(() => {
+        // One condition says whether it may act, and why not. Its reason is the
+        // breaker's when the breaker is what stops it, which has its own cell.
+        const c = why(conditionOf(w, 'Actuating'));
+        return w.breakerOpen ? { breakerReason: c.reason, breakerDocs: c.docs, breakerMessage: c.message, actingReason: '', actingDocs: null, actingMessage: '' }
+          : { actingReason: c.reason, actingDocs: c.docs, actingMessage: c.message, breakerReason: '', breakerDocs: null, breakerMessage: '' };
+      })(),
     });
   }
   return rows;

@@ -52,6 +52,8 @@ The page has no sign-in. Anyone who can reach it sees your deploys, which is why
 - **Case**: the same evidence for one deploy, full width, with every evaluation, a ratio chart of all queries and the activity feed beside the deploy list. Open it from a deploy with *Open as a case*; the address (`#/case/<id>`) can be shared.
 - **Source health**: whether each source the radar reads is answering, what the radar may do (mode, actuation, breaker, namespaces) and the activity feed.
 
+When a source is not healthy, or the radar may not act, the row says why in words and shows the **reason code** of the matching condition on the PostgresWatch (`ScrapeStale`, `ArmsLogStale`, `ActuationNotAsked`, `BreakerOpen`, and so on). The code links to its entry in [Reason codes](troubleshooting/reasons.md), which lists the causes, how to confirm each and the fix. The *What the radar did* panel shows the reason code of each action the same way, so a line in the manager log and a line on the dashboard can be matched by code. A manager older than 1.9.2 sends no codes; the dashboard then shows the same rows without them.
+
 Every panel has an **info button** at its top right. Hover it, or focus it with the keyboard, to read what the panel shows and how to read it; click to keep the text open (Escape or a click elsewhere closes it). A panel's own `description` in the file replaces the built-in text.
 
 ### Look at one panel

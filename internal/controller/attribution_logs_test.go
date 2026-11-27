@@ -244,3 +244,39 @@ func TestAbortVerificationLinesCarryTheirReason(t *testing.T) {
 		cap.mustFind(t, reason.AbortUnverifiable)
 	})
 }
+
+// The ledger the dashboard and /api/v1/attribution/actions show carries the same
+// reason code as the log line of the same event, so one search finds both.
+func TestActionLedgerEntriesCarryTheLogReason(t *testing.T) {
+	now := time.Unix(1000, 0)
+	for _, c := range []struct {
+		name   string
+		setup  func(*shadowTracker, *fakeActuator)
+		act    attribution.Action
+		result string
+		want   reason.Code
+	}{
+		{"acted", nil, attribution.ActionHold, "done", reason.Acted},
+		{"namespace not allowed", func(tr *shadowTracker, _ *fakeActuator) { tr.act.Namespaces = []string{"other"} }, attribution.ActionRollback, "skipped", reason.NamespaceNotAllowed},
+		{"paused by annotation", func(tr *shadowTracker, _ *fakeActuator) { tr.act.Paused = func(context.Context) bool { return true } }, attribution.ActionRollback, "skipped", reason.ActuationPaused},
+		{"not an argo rollout", func(tr *shadowTracker, _ *fakeActuator) {
+			tr.act.IsRollout = func(context.Context, dto.DeployEvent) bool { return false }
+		}, attribution.ActionHold, "skipped", reason.NotArgoRollout},
+		{"failed", func(_ *shadowTracker, f *fakeActuator) { f.pauseErr = errors.New("forbidden") }, attribution.ActionHold, "failed", reason.ActuationFailed},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			f := &fakeActuator{}
+			ev := shadow.NewWithPolicy(replayOf(nil), collector.FingerprintQuery, attribution.Config{}, attribution.PolicyConfig{Enforce: true})
+			tr := newShadowTracker(ev, (&logCapture{}).logger(), prometheus.NewRegistry(), "c")
+			tr.withActuation(&ActuateRuntime{Aborter: f, Pauser: f, IsRollout: func(context.Context, dto.DeployEvent) bool { return true }})
+			if c.setup != nil {
+				c.setup(tr, f)
+			}
+			tr.maybeActuate(rolloutDeploy, rec(c.act, true), now)
+			got := ev.Actions()
+			if len(got) != 1 || got[0].Result != c.result || got[0].Reason != string(c.want) {
+				t.Fatalf("ledger = %+v, want one %s entry with reason %s", got, c.result, c.want)
+			}
+		})
+	}
+}

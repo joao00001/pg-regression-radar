@@ -187,3 +187,37 @@ test('the activity feed can show only problems or only actions', () => {
   assert.deepEqual(kinds('problems').sort(), ['action!', 'evaluation!']);
   assert.equal(m.feedEntries([c], 1, 'all').length, 1, 'the limit applies after the filter');
 });
+
+const cond = (type, status, reason, message, docs = 'https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#' + reason.toLowerCase()) => ({ type, status, reason, message, docs });
+
+test('a row carries the reason code and docs page of its condition, and says what kubectl says', () => {
+  const w = watch({
+    arms: { usable: false, records: 0, dropped: 0, why: 'older text' },
+    conditions: [cond('Collecting', 'True', 'ScrapeFresh', 'The collector is scraping pg_stat_statements on schedule.'), cond('ArmsLog', 'False', 'ArmsNoLogYet', 'No Postgres log line has arrived yet.')],
+  });
+  const rows = m.sourceRows({ watches: [w] }, NOW);
+  assert.deepEqual([rows[0].reason, rows[0].docs], ['', null], 'a healthy condition adds no reason');
+  assert.equal(rows[1].reason, 'ArmsNoLogYet');
+  assert.match(rows[1].docs, /^https:\/\/.*#armsnologyet$/);
+  assert.equal(rows[1].message, 'No Postgres log line has arrived yet.');
+});
+
+test('a manager that sends no conditions still gets the rows it always had', () => {
+  const rows = m.sourceRows({ watches: [watch()] }, NOW);
+  assert.deepEqual([rows[0].reason, rows[0].docs, rows[0].message], ['', null, '']);
+  const s = m.safetyRows({ watches: [watch()] })[0];
+  assert.deepEqual([s.actingReason, s.breakerReason], ['', '']);
+});
+
+test('safety: the reason is the breaker\'s when the breaker is what stops it, the acting cell\'s otherwise', () => {
+  const shadow = m.safetyRows({ watches: [watch({ conditions: [cond('Actuating', 'False', 'ShadowMode', 'Shadow mode: nothing is paused or aborted.')] })] })[0];
+  assert.deepEqual([shadow.actingReason, shadow.breakerReason], ['ShadowMode', '']);
+  const open = m.safetyRows({ watches: [watch({ breakerOpen: true, conditions: [cond('Actuating', 'False', 'BreakerOpen', 'Earlier aborts did not help. Close it with kubectl annotate ...')] })] })[0];
+  assert.deepEqual([open.actingReason, open.breakerReason], ['', 'BreakerOpen']);
+  assert.match(open.breakerMessage, /kubectl annotate/);
+});
+
+test('a docs link is only followed when it is https', () => {
+  assert.equal(m.docsHref('https://example.org/x#y'), 'https://example.org/x#y');
+  for (const bad of ['javascript:alert(1)', 'http://example.org', '//example.org', '', null, undefined, 42]) assert.equal(m.docsHref(bad), null, String(bad));
+});

@@ -23,9 +23,11 @@ package controller
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/joao00001/pg-regression-radar/internal/alerting"
@@ -141,6 +143,11 @@ type WatchRuntime struct {
 	// runtime is built, so one left over from before a restart does nothing.
 	// Only the PostgresWatch reconciler reads or writes it.
 	breakerResetSeen string
+
+	// health is what refreshStatus last computed for the watch's health
+	// conditions, kept here so the Observe API shows the same thing as
+	// `kubectl describe` without reading the object. Use SetHealth and Health.
+	health atomic.Pointer[[]metav1.Condition]
 
 	// Cancel stops the Collector's scrape loop and the analysis poll loop.
 	Cancel func()
@@ -335,4 +342,19 @@ type RevertRuntime struct {
 	// only logged.
 	Enforce        bool
 	IncludeQueries bool
+}
+
+// SetHealth stores the health conditions of the watch, as computed by
+// refreshStatus.
+func (rt *WatchRuntime) SetHealth(c []metav1.Condition) {
+	rt.health.Store(&c)
+}
+
+// Health returns the health conditions last stored, or nil before the first
+// refresh.
+func (rt *WatchRuntime) Health() []metav1.Condition {
+	if p := rt.health.Load(); p != nil {
+		return *p
+	}
+	return nil
 }
