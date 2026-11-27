@@ -32,6 +32,15 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.9.1 - 2026-11-27
+
+### Fixes
+
+- Fixed deploys being accepted and then never judged after the PostgresWatch they feed was edited: a DeploySource route now finds the watch's current event store on every request, and answers 503 with Retry-After while the watch is not running, so senders retry instead of losing the event. (#262)
+- The dashboard no longer leaves cells of its sheet open: a column that ends above its neighbour now gets its edges drawn like any panel, the Case board fills its left column with the activity feed, and a panel that scrolls inside its cell fades out at the edge where more content continues instead of cutting a row in half. (#264)
+- The check the engine makes 15 minutes after an abort now reads only what came after the abort, not the whole deploy window. Before, the slow stretch the canary ran before it was stopped still counted, so a correct abort was recorded as `persisted` and two of them opened the circuit breaker, leaving the engine alerting only until the manager restarted. (#265)
+
+
 ## v1.9.0 - 2026-11-26
 
 ### Features
