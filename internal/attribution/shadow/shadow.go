@@ -208,14 +208,27 @@ func (e *Evaluator) NoteDeploy(id string, at time.Time) {
 	e.others = append(e.others, attribution.Event{ID: id, Kind: attribution.EventDeploy, At: at})
 }
 
+// gap is a stretch of time (from, to] whose data a reading leaves out. The zero
+// value leaves out nothing.
+type gap struct{ from, to time.Time }
+
+func (g gap) has(t time.Time) bool { return !g.to.IsZero() && t.After(g.from) && !t.After(g.to) }
+
 // assess builds the engine's reading of deploy d at time now, from the samples
 // in [d.At − PreWindow, now]. It returns false when there are no samples at all.
 func (e *Evaluator) assess(now time.Time, d Deploy) (attribution.Assessment, bool) {
-	units, ok := e.units(now, d)
+	a, _, ok := e.assessWithout(now, d, gap{}, e.Config)
+	return a, ok
+}
+
+// assessWithout is assess with a stretch of time left out of the data, under cfg.
+// It also returns how many samples the busiest query has after the gap, which is
+// all there is to judge by when the gap is the part that is not wanted.
+func (e *Evaluator) assessWithout(now time.Time, d Deploy, skip gap, cfg attribution.Config) (attribution.Assessment, int, bool) {
+	units, after, ok := e.unitsWithout(now, d, skip)
 	if !ok {
-		return attribution.Assessment{}, false
+		return attribution.Assessment{}, 0, false
 	}
-	cfg := e.Config
 
 	e.mu.Lock()
 	var events []attribution.Event
@@ -229,32 +242,59 @@ func (e *Evaluator) assess(now time.Time, d Deploy) (attribution.Assessment, boo
 	return attribution.Assess(cfg, units, events, attribution.Deploy{
 		ID: d.ID, At: d.At, Tables: d.Tables,
 		Reversible: true, HasRollbackTarget: d.HasRollbackTarget,
-	}), true
+	}), after, true
 }
 
 // units builds what the engine reads for deploy d at time now: every query's
 // series over [d.At − PreWindow, now], with the canary and stable arms told apart
 // when the log can. It returns false when there are no samples at all.
 func (e *Evaluator) units(now time.Time, d Deploy) ([]attribution.Unit, bool) {
+	u, _, ok := e.unitsWithout(now, d, gap{})
+	return u, ok
+}
+
+// unitsWithout is units with a stretch of time left out, in both the
+// pg_stat_statements samples and the log's buckets. after is the number of samples
+// the busiest query has once the gap is over.
+func (e *Evaluator) unitsWithout(now time.Time, d Deploy, skip gap) ([]attribution.Unit, int, bool) {
 	pre := e.Config.PreWindow
 	if pre <= 0 {
 		pre = 90 * time.Minute
 	}
 	from := d.At.Add(-pre)
 	var samples []pgstat.QuerySample
+	after := 0
 	for _, id := range e.Source.AllQueryIDs() {
-		samples = append(samples, dedupe(e.Source.SamplesInRange(id, from, now))...)
+		n := 0
+		for _, sm := range dedupe(e.Source.SamplesInRange(id, from, now)) {
+			if skip.has(sm.RecordedAt) {
+				continue
+			}
+			if !skip.to.IsZero() && sm.RecordedAt.After(skip.to) {
+				n++
+			}
+			samples = append(samples, sm)
+		}
+		if n > after {
+			after = n
+		}
 	}
 	if len(samples) == 0 {
-		return nil, false
+		return nil, 0, false
 	}
 	units := adapter.Units(samples, e.Fingerprint, d.Tables)
 	if e.Arms != nil && e.ArmsFor != nil {
 		if spec, ok := e.ArmsFor(d); ok {
-			units = adapter.WithArms(units, e.Arms.Range(from, now), spec, d.At)
+			var buckets []pglog.Bucket
+			for _, b := range e.Arms.Range(from, now) {
+				if !skip.has(b.At) {
+					buckets = append(buckets, b)
+				}
+			}
+			units = adapter.WithArms(units, buckets, spec, d.At)
 		}
 	}
-	return units, true
+	return units, after, true
 }
 
 // Unit returns the series the engine compared for one query of deploy d: what
@@ -302,15 +342,49 @@ func (e *Evaluator) Evaluate(now time.Time, d Deploy) (Record, bool) {
 // Verify re-reads deploy d at time now, after an action on it had time to act,
 // and tells the policy whether the regression is still supported. It is what
 // feeds the circuit breaker: after enough actions that did not help, the policy
-// stops acting and only alerts. It records no decision. It returns false when
-// there are no samples to judge by.
-func (e *Evaluator) Verify(now time.Time, d Deploy) (attribution.Verification, bool) {
-	a, ok := e.assess(now, d)
-	if !ok {
+// stops acting and only alerts. It records no decision.
+//
+// since is when the action took effect. What the deploy did until then is not
+// what the action is judged by: a canary that ran slow for twenty minutes before
+// it was stopped would otherwise count against the abort for as long as that
+// stretch stays in the window, and two correct aborts would open the breaker. So
+// the stretch from the deploy to since is left out, and the engine reads the
+// time before the deploy and the time after the action. If the canary is still
+// serving, its pods are still in the data after since and the regression is still
+// found. A zero since reads the whole window.
+//
+// It returns false when there is too little to judge by: no samples at all, or,
+// with a since, fewer than the engine needs after it. A check that cannot be made
+// is not a failure and does not count towards the breaker.
+func (e *Evaluator) Verify(now time.Time, d Deploy, since time.Time) (attribution.Verification, bool) {
+	skip := gap{}
+	cfg := e.Config
+	if since.After(d.At) {
+		skip = gap{from: d.At, to: since}
+		// The engine reads PostWindow after the deploy, and the part that counts
+		// now starts late. Let the window reach now, and keep the grace period
+		// where it was: the first minutes after a deploy are still left out.
+		post := cfg.PostWindow
+		if post <= 0 {
+			post = 30 * time.Minute
+		}
+		if cfg.Grace == 0 {
+			cfg.Grace = post / 3
+		}
+		if span := now.Sub(d.At); span > post {
+			cfg.PostWindow = span
+		}
+	}
+	a, after, ok := e.assessWithout(now, d, skip, cfg)
+	if !ok || (!skip.to.IsZero() && after < verifyMinSamples) {
 		return attribution.Verification{}, false
 	}
 	return e.Policy.Verify(a), true
 }
+
+// verifyMinSamples is how many samples a query needs after an action for Verify to
+// judge by them: the engine's own minimum for the time after a deploy.
+const verifyMinSamples = 3
 
 // ActionRecord is one thing the manager did, or declined to do, on the engine's
 // decision, or the outcome of checking it afterwards.

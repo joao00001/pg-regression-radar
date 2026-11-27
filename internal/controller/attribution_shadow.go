@@ -80,12 +80,19 @@ type verifyJob struct {
 	deploy shadow.Deploy
 	event  dto.DeployEvent
 	at     time.Time
+	// acted is when the Rollout was aborted.
+	acted time.Time
 }
 
 // verifyAfter is how long after an abort the engine checks whether the
 // regression is gone. The canary's traffic is back on the stable version by
 // then, and the engine's persistence check has a late window to read.
 const verifyAfter = 15 * time.Minute
+
+// abortSettle is how long after an abort the canary's pods are still draining.
+// The check reads what came after that, not what the canary did before the
+// abort, which is what made it fail.
+const abortSettle = 3 * time.Minute
 
 type shadowJob struct {
 	deploy shadow.Deploy
@@ -241,8 +248,9 @@ func (s *shadowTracker) tick(now time.Time) {
 // the policy, which counts an action that did not help and, after enough of them,
 // opens the circuit breaker so the engine goes back to alerting only.
 func (s *shadowTracker) verifyAbort(c verifyJob, now time.Time) {
-	v, ok := s.ev.Verify(now, c.deploy)
+	v, ok := s.ev.Verify(now, c.deploy, c.acted.Add(abortSettle))
 	if !ok {
+		s.logger.Info("attribution: could not check the abort, too little data after it", "deploy", c.deploy.ID)
 		return
 	}
 	result := "recovered"
@@ -384,7 +392,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 	s.mu.Lock()
 	s.acted[ev.ID] = act
 	if act == attribution.ActionRollback {
-		s.verify = append(s.verify, verifyJob{deploy: s.deployOf(ev), event: ev, at: now.Add(verifyAfter)})
+		s.verify = append(s.verify, verifyJob{deploy: s.deployOf(ev), event: ev, at: now.Add(verifyAfter), acted: now})
 	}
 	s.mu.Unlock()
 	s.actCount.WithLabelValues(actionName(act), "done").Inc()
