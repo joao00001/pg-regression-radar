@@ -325,6 +325,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Skip events that don't belong to the configured app so unrelated deploys
 	// never pollute the correlation window.
 	if h.source.AppName != "" && ev.App != h.source.AppName {
+		// The sender still gets 204, so this line is the only trace of the drop.
+		h.logger.Debug("ingester: deploy event ignored, its app is not the one this source is configured for",
+			"id", ev.ID, "app", ev.App, "configuredApp", h.source.AppName)
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

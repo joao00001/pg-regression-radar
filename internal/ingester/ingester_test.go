@@ -17,6 +17,7 @@ package ingester_test
 import (
 	"bytes"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -887,5 +888,32 @@ func TestHandlerFunc_NoStoreAnswers503(t *testing.T) {
 	}
 	if got := store.All(); len(got) != 1 || got[0].ID != "kept" {
 		t.Errorf("expected the retried event to be stored, got %+v", got)
+	}
+}
+
+// A deploy event for another app is answered 204 like any accepted one, so the
+// log line is the only way to learn it was dropped.
+func TestHandler_AppNameFilterLeavesATrace(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	h := ingester.NewHandler(&ingester.Store{}, v1alpha1.DeploySource{Name: "s", SourceType: "generic", AppName: "allowed-app"}, logger)
+
+	payload, _ := json.Marshal(v1alpha1.DeployEvent{ID: "d1", App: "other-app", Timestamp: time.Now()})
+	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want 204", rr.Code)
+	}
+	var line map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(buf.Bytes()), &line); err != nil {
+		t.Fatalf("log line is not JSON: %v: %q", err, buf.String())
+	}
+	if line["app"] != "other-app" || line["configuredApp"] != "allowed-app" || line["level"] != "DEBUG" {
+		t.Errorf("log line = %v, want app=other-app configuredApp=allowed-app at DEBUG", line)
 	}
 }

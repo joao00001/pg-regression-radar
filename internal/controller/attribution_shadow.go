@@ -230,19 +230,25 @@ func (s *shadowTracker) tick(now time.Time) {
 			}
 			d := rec.Decision
 			s.count.WithLabelValues(string(d.Action), string(d.Grade)).Inc()
-			msg, why := "attribution (shadow): decision, not executed", reason.ShadowMode
+			// One literal message per case, so the log catalog test can see each.
+			attrs := []any{
+				"deploy", w.d.ID, "health", string(rec.Assessment.Health),
+				"action", string(d.Action), "verdict", string(d.Verdict()), "wanted", string(d.Wanted), "grade", string(d.Grade),
+				"impact", d.Impact, "attribution", rec.Assessment.Attribution, "reasons", d.Reasons,
+			}
 			switch {
 			case d.Enforced:
-				msg, why = "attribution (enforce): verdict served to the rollout controller", reason.VerdictServed
+				s.logger.Info("attribution (enforce): verdict served to the rollout controller",
+					append([]any{"reason", reason.VerdictServed}, attrs...)...)
 			case s.ev.Policy.Enforcing():
 				// Enforce mode, but this decision is not one that acts (an alert, or
 				// nothing): it is not a shadow decision.
-				msg, why = "attribution (enforce): decision below the acting threshold, nothing to execute", reason.BelowActingThreshold
+				s.logger.Info("attribution (enforce): decision below the acting threshold, nothing to execute",
+					append([]any{"reason", reason.BelowActingThreshold}, attrs...)...)
+			default:
+				s.logger.Info("attribution (shadow): decision, not executed",
+					append([]any{"reason", reason.ShadowMode}, attrs...)...)
 			}
-			s.logger.Info(msg, "reason", why,
-				"deploy", w.d.ID, "health", string(rec.Assessment.Health),
-				"action", string(d.Action), "verdict", string(d.Verdict()), "wanted", string(d.Wanted), "grade", string(d.Grade),
-				"impact", d.Impact, "attribution", rec.Assessment.Attribution, "reasons", d.Reasons)
 			s.maybeActuate(w.ev, rec, now)
 			s.maybePropose(w.d, rec)
 		}
