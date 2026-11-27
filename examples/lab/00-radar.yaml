@@ -1738,6 +1738,12 @@ rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Leader election records an Event ("became leader") in the lease's
+  # namespace. Without this the manager logs "events is forbidden" at every
+  # start, which looks like a failure and is not one.
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
 ---
 # Source: pg-regression-radar/templates/manager-rbac.yaml
 apiVersion: rbac.authorization.k8s.io/v1
