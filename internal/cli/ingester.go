@@ -31,6 +31,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/httpserver"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/logging"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -49,6 +50,7 @@ func RunIngester(args []string) int {
 	otlpDeploy := registerOTLPDeployFlags(fs)
 	versionFlag := fs.Bool("version", false, "Print version information and exit")
 	dryRun := fs.Bool("dry-run", false, "Validate configuration, then exit without starting the webhook server")
+	logFlags := logging.Bind(fs)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -59,6 +61,11 @@ func RunIngester(args []string) int {
 	if *versionFlag {
 		fmt.Println(buildinfo.String("ingester"))
 		return 0
+	}
+
+	logger, ok := installLogging(logFlags, fs, os.Stdout)
+	if !ok {
+		return 2
 	}
 
 	otlpMapping, err := otlpDeploy.mapping(*sourceType)
@@ -94,8 +101,6 @@ func RunIngester(args []string) int {
 		slog.Info("--dry-run: configuration OK", "version", buildinfo.String("ingester"), "listen", addr.String())
 		return 0
 	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 	store := ingester.NewStore()
 

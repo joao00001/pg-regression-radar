@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joao00001/pg-regression-radar/internal/alerting"
@@ -45,6 +46,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/controller"
 	"github.com/joao00001/pg-regression-radar/internal/dashboardapi"
 	"github.com/joao00001/pg-regression-radar/internal/httpserver"
+	"github.com/joao00001/pg-regression-radar/internal/logging"
 	"github.com/joao00001/pg-regression-radar/internal/observe"
 )
 
@@ -162,8 +164,13 @@ func RunManager(args []string) int {
 	fs.BoolVar(&dryRun, "dry-run", false,
 		"Validate that a Kubernetes API server config can be resolved (in-cluster or via "+
 			"kubeconfig), then exit without starting the manager.")
-	opts := zap.Options{Development: true}
-	opts.BindFlags(fs)
+	logFlags := logging.Bind(fs)
+	// controller-runtime's own --zap-* flags are still accepted so that a
+	// deployment that passes one keeps starting, but they only feed
+	// --log-level and --log-format now (see logging.Legacy). The zap logger
+	// itself is no longer used: every line goes through one slog handler.
+	zapOpts := zap.Options{}
+	zapOpts.BindFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -176,8 +183,24 @@ func RunManager(args []string) int {
 		return 0
 	}
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	explicit := map[string]bool{}
+	var legacy []logging.Legacy
+	fs.Visit(func(f *flag.Flag) {
+		explicit[f.Name] = true
+		if strings.HasPrefix(f.Name, "zap-") {
+			legacy = append(legacy, logging.Legacy{Name: f.Name, Value: f.Value.String()})
+		}
+	})
+	logOpts, logNotes, err := logFlags.Resolve(func(n string) bool { return explicit[n] }, legacy)
+	if err != nil {
+		logging.Early(os.Stdout).Error("invalid logging flag", "err", err)
+		return 2
+	}
+	logger := logging.New(os.Stdout, logOpts)
+	ctrl.SetLogger(logging.Install(logger))
+	for _, n := range logNotes {
+		logger.Warn("logging: " + n)
+	}
 	parsedAllowedDestinations := splitCommaSeparatedValues(alertAllowedDestinations)
 	if err := alerting.ValidateAllowedDestinations(parsedAllowedDestinations); err != nil {
 		logger.Error("invalid --alerting-allowed-destinations", "err", err)
