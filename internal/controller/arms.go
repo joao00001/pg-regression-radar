@@ -29,6 +29,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/attribution/adapter"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/shadow"
 	"github.com/joao00001/pg-regression-radar/internal/pglog"
+	"github.com/joao00001/pg-regression-radar/internal/reason"
 )
 
 // RolloutHashes reads which pod-template hash is the stable version of a Rollout
@@ -91,7 +92,7 @@ func (a *ArmsRuntime) ArmsFor(d shadow.Deploy) (adapter.ArmSpec, bool) {
 	defer cancel()
 	stable, current, err := a.Hashes.PodHashes(ctx, d.Namespace, d.App)
 	if err != nil {
-		a.Logger.Warn("attribution: cannot tell the arms of a deploy apart", "deploy", d.ID, "err", err)
+		a.Logger.Warn("attribution: cannot tell the arms of a deploy apart", "reason", reason.ArmsUndistinguished, "deploy", d.ID, "err", err)
 		return adapter.ArmSpec{}, false
 	}
 	if stable == "" || current == "" || stable == current {
@@ -120,7 +121,7 @@ func (r *PostgresWatchReconciler) startArms(ctx context.Context, key fmt.Stringe
 		return nil
 	}
 	fail := func(why string) *ArmsRuntime {
-		r.Logger.Error("postgreswatch: attribution.arms disabled, "+why, "watch", key.String())
+		r.Logger.Error("postgreswatch: attribution.arms disabled, "+why, "reason", reason.ArmsDisabled, "watch", key.String())
 		return nil
 	}
 	if rt.Collector == nil {
@@ -188,7 +189,7 @@ func (a *ArmsRuntime) maintain(ctx context.Context, watch string, col interface{
 			if err != nil {
 				wait = 30 * time.Second
 				a.usable.Store(false)
-				a.Logger.Warn("attribution.arms: cannot read the server's settings", "watch", watch, "err", err)
+				a.Logger.Warn("attribution.arms: cannot read the server's settings", "reason", reason.ArmsSettingsUnread, "watch", watch, "err", err)
 				continue
 			}
 			wait = armsRevalidate
@@ -198,15 +199,19 @@ func (a *ArmsRuntime) maintain(ctx context.Context, watch string, col interface{
 				seen, lastOK = true, chk.OK()
 				if chk.OK() {
 					a.Logger.Info("attribution.arms: the Postgres log can serve as an arm-labelled source",
-						"watch", watch, "sampleRate", chk.Sampling.Rate)
+						"reason", reason.ArmsUsable, "watch", watch, "sampleRate", chk.Sampling.Rate)
 				}
 				for _, i := range chk.Issues {
-					msg := "attribution.arms: the Postgres log cannot be used yet"
+					msg, code := "attribution.arms: the Postgres log cannot be used yet", reason.ArmsSettingsRejected
 					if i.Warning {
-						msg = "attribution.arms: the Postgres log setting costs more than it needs to"
+						msg, code = "attribution.arms: the Postgres log setting costs more than it needs to", ""
 					}
-					a.Logger.Warn(msg, "watch", watch,
-						"setting", i.Setting, "value", i.Got, "problem", i.Problem, "fix", i.Fix)
+					attrs := []any{"watch", watch}
+					if code != "" {
+						attrs = append(attrs, "reason", code)
+					}
+					a.Logger.Warn(msg, append(attrs,
+						"setting", i.Setting, "value", i.Got, "problem", i.Problem, "fix", i.Fix)...)
 				}
 			}
 		}

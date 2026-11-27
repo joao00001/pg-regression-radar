@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	"github.com/joao00001/pg-regression-radar/internal/reason"
 )
 
 // DefaultClusterHealthCheckInterval is used whenever
@@ -127,7 +128,7 @@ func (r *PostgresRadarClusterReconciler) Reconcile(ctx context.Context, req ctrl
 
 	if probeErr != nil && r.Logger != nil {
 		r.Logger.Warn("postgresradarcluster health check failed",
-			"cluster", cluster.Name, "err", probeErr)
+			"reason", reason.ClusterHealthCheckFailed, "cluster", cluster.Name, "err", probeErr)
 	}
 
 	return ctrl.Result{RequeueAfter: interval}, nil

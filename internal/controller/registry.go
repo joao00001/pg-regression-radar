@@ -135,6 +135,13 @@ type WatchRuntime struct {
 	// from, so the reconciler can detect spec changes cheaply.
 	SpecHash string
 
+	// breakerResetSeen is the last value of the reset-breaker annotation the
+	// reconciler looked at. A value that differs from it asks for the circuit
+	// breaker to be closed. It starts as the annotation's value when the
+	// runtime is built, so one left over from before a restart does nothing.
+	// Only the PostgresWatch reconciler reads or writes it.
+	breakerResetSeen string
+
 	// Cancel stops the Collector's scrape loop and the analysis poll loop.
 	Cancel func()
 

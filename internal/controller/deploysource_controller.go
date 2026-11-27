@@ -29,6 +29,7 @@ import (
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/reason"
 	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -100,7 +101,7 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		setCondition(&src.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
 			Status:             metav1.ConditionFalse,
-			Reason:             "PostgresWatchNotReady",
+			Reason:             string(reason.PostgresWatchNotReady),
 			Message:            src.Status.Message,
 			ObservedGeneration: src.Generation,
 		})
@@ -130,14 +131,14 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		setCondition(&src.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
 			Status:             metav1.ConditionTrue,
-			Reason:             "NativeWatchActive",
+			Reason:             string(reason.NativeWatchActive),
 			Message:            src.Status.Message,
 			ObservedGeneration: src.Generation,
 		})
 		if err := r.Status().Update(ctx, &src); err != nil {
 			return ctrl.Result{}, err
 		}
-		log.Info("deploysource watched natively, no webhook route registered", "sourceType", sourceType, "appName", src.Spec.AppName)
+		log.Info("deploysource watched natively, no webhook route registered", "reason", reason.NativeWatchActive.String(), "sourceType", sourceType, "appName", src.Spec.AppName)
 		return ctrl.Result{}, nil
 	}
 
@@ -161,14 +162,14 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		setCondition(&src.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
 			Status:             metav1.ConditionFalse,
-			Reason:             "InvalidSpec",
+			Reason:             string(reason.InvalidSpec),
 			Message:            src.Status.Message,
 			ObservedGeneration: src.Generation,
 		})
 		if uerr := r.Status().Update(ctx, &src); uerr != nil {
 			return ctrl.Result{}, uerr
 		}
-		log.Info("deploysource has an invalid spec, route not registered", "err", err)
+		log.Info("deploysource has an invalid spec, route not registered", "reason", reason.InvalidSpec.String(), "err", err)
 		return ctrl.Result{}, nil
 	}
 
@@ -193,7 +194,7 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		r.Mux.Unregister(otlpTracesPath(path))
 	}
 
-	log.Info("deploysource webhook route registered", "path", path, "sourceType", sourceType)
+	log.Info("deploysource webhook route registered", "reason", reason.RouteRegistered.String(), "path", path, "sourceType", sourceType)
 
 	src.Status.Phase = radarv1alpha1.DeploySourcePhaseReady
 	src.Status.ObservedGeneration = src.Generation
@@ -202,7 +203,7 @@ func (r *DeploySourceReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	setCondition(&src.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             metav1.ConditionTrue,
-		Reason:             "RouteRegistered",
+		Reason:             string(reason.RouteRegistered),
 		Message:            "Webhook route is active.",
 		ObservedGeneration: src.Generation,
 	})
