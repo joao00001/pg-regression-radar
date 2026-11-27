@@ -1,16 +1,16 @@
-# Troubleshooting and FAQ
+# Setup and the database
 
-*The errors people hit most often when pointing the radar at a Postgres, what each one means, and the shortest fix.*
+*The errors you hit when pointing the radar at a Postgres or starting the manager, what each one means, and the shortest fix.*
 
 ## Overview
 
-Most first-run problems come from the database side, not from the radar: the extension is not loaded, the role cannot read what it needs, or the connection string points at the wrong place. This page lists those cases with the message you will actually see. Start with a dry run, which checks the connection and the extension without starting any server:
+Most first-run problems come from the database side, not from the radar: the extension is not loaded, the role cannot read what it needs, or the connection string points at the wrong place. This page lists those cases with the message you will actually see, then the reasons a manager does not start. Start with a dry run, which checks the connection and the extension without starting any server:
 
 ```bash
 pg-regression-radar operator --dsn "postgres://user:password@host:5432/mydb?sslmode=disable" --dry-run
 ```
 
-For problems inside a cluster (pods, CRDs, RBAC), use the [Troubleshooting toolkit](kubernetes/troubleshooting.md). For a short list of setup symptoms, see [Getting started](getting-started.md#troubleshooting-common-setup-issues).
+In a cluster, the same check shows up on the watch: `kubectl get pgw <name> -n <ns>` shows `Phase: Failed` and `kubectl describe pgw <name> -n <ns>` the message. For problems with pods, CRDs and RBAC, use the [Troubleshooting toolkit](../kubernetes/troubleshooting.md).
 
 ## `pg_stat_statements` is not available
 
@@ -57,7 +57,7 @@ Reading `pg_stat_statements` and capturing plans need different privileges.
 |---|---|---|
 | Scrape errors with `permission denied` | The role cannot read other users' statements | Grant the monitoring role `pg_read_all_stats` |
 | Queries show as `<insufficient privilege>` | Same cause: Postgres hides text and statistics of other roles from non-privileged ones | Same grant |
-| No plan diffs, and nothing in the logs at the default level | Plan capture runs `EXPLAIN (FORMAT JSON, GENERIC_PLAN)` on your query text, which needs `SELECT` on the tables involved | Grant `SELECT` on those tables (see [Installation](installation.md)) |
+| No plan diffs, and nothing in the logs at the default level | Plan capture runs `EXPLAIN (FORMAT JSON, GENERIC_PLAN)` on your query text, which needs `SELECT` on the tables involved | Grant `SELECT` on those tables (see [Installation](../installation.md)) |
 
 ```sql
 GRANT pg_read_all_stats TO pgrr_monitor;
@@ -66,31 +66,6 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO pgrr_monitor;
 
 !!! note "Plan capture fails quietly"
     A query whose plan cannot be captured is logged at `DEBUG` and skipped, so a `42501` from `EXPLAIN` does not stop detection and does not show up in a default log. Run with debug logging and look for `collector: plan capture failed for query, skipping`. `EXPLAIN (GENERIC_PLAN)` also needs PostgreSQL 16 or newer; on older servers the radar logs once that plan-diff capture is unavailable and continues without it.
-
-## Nothing is detected
-
-If the radar runs without errors but never reports a regression, check these in order:
-
-1. **The counters were reset.** After `pg_stat_statements_reset()` or a server restart, the radar logs `collector: pg_stat_statements counters restarted for query; using activity since the reset`. It then needs new samples before it can compare windows.
-2. **Not enough data yet.** A window needs `minSamples` scrape intervals with activity and `minExecutions` calls. See [Detection algorithm](detection-algorithm.md).
-3. **The query is outside the top 500.** Each scrape reads the 500 busiest statements.
-4. **Its own queries are excluded.** Statements containing `pg_stat_statements` are filtered out on purpose.
-
-In Kubernetes, `PerformanceRegression` objects report `Detected`, `NoRegression` or `InsufficientData`; the last one means case 2.
-
-## The attribution engine only alerts, or does not act
-
-Start with the decision's `reasons` (in the manager log line `attribution (...)`, and in the verdict at `/api/v1/attribution/verdict`). Three cases cover almost everything.
-
-1. **"evidence is capped at grade C by: ..."** The engine saw a regression but could not prove it was the deploy, so it only alerts. The flags say what held it back:
-    - `few-donors`: fewer than 5 untouched queries with enough history to build a control. A control query needs data for at least half of the 90-minute pre-deploy window, so right after the manager starts or restarts the engine stays at alert for about 45 minutes. Wait, or check that the watch's collector sees enough distinct queries.
-    - `global-shift`: most untouched queries moved the same way at the deploy, so the cause may be load, not the code. The engine cannot separate them without a control arm.
-    - `table-level`: most queries on one table moved together and the deploy did not declare that table.
-    - `warming-up`, `transient`: the shift is too recent, or was fading, so it is not yet confirmed. Wait for the next evaluation (every 5 minutes).
-2. **"seen in 1 of 2 consecutive evaluations required"** and **"cooldown after the previous action"** are guards, not problems: a pause needs the same evidence twice, and a second action waits 10 minutes.
-3. **Nothing is paused although the engine wants a hold.** Look at the action ledger (`GET /api/v1/attribution/actions`): `skipped` means the namespace is not in `actuate.namespaces`, the watch carries the `pg-regression-radar.io/actuation-paused` annotation, or the deploy did not come from an `argo-rollouts` `DeploySource`; `failed` means the call to the Rollout was refused, usually because `manager.autoAbort.rbacEnabled` is off. The watch must be in `mode: enforce` with `actuate.enabled: true`.
-
-The engine cannot convict a deploy before about 15 minutes after it. A Rollout needs a pause step of at least 20 minutes for the action to land in time. See [Attribution engine](attribution-engine.md).
 
 ## Connecting to a local Postgres from Docker
 
@@ -126,17 +101,42 @@ Other connection errors:
 | `SSL is not enabled on the server` | use `sslmode=disable` locally, `sslmode=require` otherwise |
 | `password authentication failed` | wrong role or password, or special characters in the password that need URL-encoding |
 
+## The manager does not start
+
+The manager logs why before it exits, so read the last lines of the container that crashed:
+
+```bash
+kubectl logs -n <ns> deploy/<manager> --previous | tail -20
+```
+
+| The log says | Cause | Fix |
+|---|---|---|
+| `invalid logging flag` | `--log-level` or `--log-format` has a value that is not accepted | use `debug`, `info`, `warn` or `error`, and `json` or `text` |
+| `unable to resolve Kubernetes API server config` | neither an in-cluster configuration nor a kubeconfig was found | in a cluster, check the pod's service account token is mounted; outside one, set `KUBECONFIG` |
+| `unable to create controller`, or an error that says `no matches for kind` | the CRDs are probably not installed | `kubectl get crd` should list the `radar.pgregressionradar.io` CRDs; Helm installs `crds/` only on the first install, so apply the CRDs by hand after an upgrade |
+| `unable to add webhook server`, `unable to add pg-metrics server` or `unable to set up health check`, with `address already in use` | another process, often a second manager, holds the port | change `--webhook-bind-address`, `--pg-metrics-bind-address` or `--health-probe-bind-address` (`manager.ports.*` in the chart) |
+| `invalid --security-profile` | the value is not `controlled` or `hardened` | set `securityProfile` in the chart to one of them |
+| `invalid or unreachable observe history` | `--observe-history=postgres` and the DSN in `--observe-history-dsn-file` does not work | fix the DSN or use `memory` |
+| `unable to start manager` | controller-runtime could not reach the API server or sync its cache | check the pod's network and the API server's health; `err` has the cause |
+| the pod runs, but is `0/1 Ready` | the readiness probe fails | `kubectl describe pod`, Events section |
+
+The manager running is not the same as a watch running. Once it is up, check each watch: `kubectl get pgw -n <ns>`.
+
+A watch that stays `Pending` or becomes `Failed` has its cause in the [reason codes](reasons.md): [`DSNUnresolved`](reasons.md#dsnunresolved) for a connection string it cannot read, [`SecretsUnresolved`](reasons.md#secretsunresolved) for another Secret, and [`WorkerStartFailed`](reasons.md#workerstartfailed) for the rest.
+
 ## `cosign verify` fails on the network
 
 `cosign verify` first fetches the Sigstore trust root over TLS. On a host with a broken IPv6 route, or behind a proxy that blocks the Sigstore domains, it can hang or fail before it ever looks at the image, with an error about updating the TUF root or a `dial tcp` failure to an IPv6 address.
 
 - Try from a network where IPv6 works, or temporarily prefer IPv4 for the command.
 - Allow outbound HTTPS to the Sigstore hosts, and set `HTTPS_PROXY` if you use a proxy.
-- If you see "no matching signatures" instead, the network is fine; see [Supply chain](supply-chain.md#troubleshooting).
+- If you see "no matching signatures" instead, the network is fine; see [Supply chain](../supply-chain.md#troubleshooting).
 
 ## See also
 
-- [Troubleshooting toolkit](kubernetes/troubleshooting.md): the Kubernetes order of checks.
-- [Collector internals](collector-internals.md): what a scrape reads and keeps.
-- [Support matrix](support-matrix.md): supported PostgreSQL versions.
-- [Supply chain](supply-chain.md): verifying images and charts.
+- [Where to look](where-to-look.md): which signal answers which question.
+- [Reason codes](reasons.md): the cause behind a condition or a log line.
+- [Troubleshooting toolkit](../kubernetes/troubleshooting.md): the Kubernetes order of checks.
+- [Collector internals](../collector-internals.md): what a scrape reads and keeps.
+- [Support matrix](../support-matrix.md): supported PostgreSQL versions.
+- [Supply chain](../supply-chain.md): verifying images and charts.

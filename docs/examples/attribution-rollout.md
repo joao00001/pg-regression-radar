@@ -94,4 +94,4 @@ Remove the annotation (`...actuation-paused-`) to resume. No restart is needed.
 
 ## If it does not act
 
-See [The attribution engine only alerts, or does not act](../troubleshooting.md#the-attribution-engine-only-alerts-or-does-not-act).
+See [The engine only alerts and does not act](../troubleshooting/enforce.md#the-engine-only-alerts-and-does-not-act).

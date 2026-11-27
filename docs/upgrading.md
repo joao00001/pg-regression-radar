@@ -91,4 +91,4 @@ Rollback restores the release's objects, **not the CRDs**. If the new CRDs chang
 - [CRDs and operators](kubernetes/crds-operators.md#installing-and-upgrading-the-definitions): why Helm skips CRDs.
 - [API versioning](api-versioning.md): the `v1alpha1` policy and graduation path.
 - [Installation](installation.md): pinning a chart version.
-- [Troubleshooting and FAQ](troubleshooting.md)
+- [Troubleshooting](troubleshooting/index.md)
