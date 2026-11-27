@@ -91,14 +91,14 @@ func TestVerifyCountsAnActionThatDidNotHelp(t *testing.T) {
 	d := shadow.Deploy{ID: dep.ID, At: dep.At, HasRollbackTarget: true}
 	now := dep.At.Add(45 * time.Minute)
 
-	v, ok := ev.Verify(now, d)
+	v, ok := ev.Verify(now, d, time.Time{})
 	if !ok || v.Effective {
 		t.Fatalf("a regression that is still there verified as effective: %+v ok=%v", v, ok)
 	}
 	if ev.BreakerOpen() {
 		t.Fatal("breaker opened after one failure, limit is 2")
 	}
-	if v, _ = ev.Verify(now, d); v.Effective || !ev.BreakerOpen() {
+	if v, _ = ev.Verify(now, d, time.Time{}); v.Effective || !ev.BreakerOpen() {
 		t.Fatalf("breaker = %v after two failures, want open", ev.BreakerOpen())
 	}
 	if len(ev.Records()) != 0 {
@@ -112,12 +112,101 @@ func TestVerifyAcceptsAHealthyDeploy(t *testing.T) {
 		attribution.PolicyConfig{Enforce: true, BreakerLimit: 2})
 	d := shadow.Deploy{ID: dep.ID, At: dep.At}
 	for i := 0; i < 3; i++ {
-		if v, ok := ev.Verify(dep.At.Add(45*time.Minute), d); !ok || !v.Effective {
+		if v, ok := ev.Verify(dep.At.Add(45*time.Minute), d, time.Time{}); !ok || !v.Effective {
 			t.Fatalf("healthy deploy did not verify: %+v ok=%v", v, ok)
 		}
 	}
 	if ev.BreakerOpen() {
 		t.Fatal("breaker opened on a healthy deploy")
+	}
+}
+
+// stopped returns the units of a deploy whose effect ends at when, as when a
+// canary is aborted: what the world with the effect shows before it, and what the
+// same world without the effect shows from then on. Both draw the same noise.
+func stopped(t *testing.T, seed uint64, when time.Duration) ([]attribution.Unit, attribution.Deploy) {
+	t.Helper()
+	post := 60 * time.Minute
+	bad, _, dep, _ := sim.World{Seed: seed, Post: post, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	ok, _, dep2, _ := sim.World{Seed: seed, Post: post}.Generate()
+	if len(bad) != len(ok) || !dep.At.Equal(dep2.At) {
+		t.Fatal("the two worlds do not line up")
+	}
+	cut := dep.At.Add(when)
+	out := make([]attribution.Unit, len(bad))
+	for i := range bad {
+		out[i] = bad[i]
+		out[i].Obs = nil
+		for j, o := range bad[i].Obs {
+			if j >= len(ok[i].Obs) || !ok[i].Obs[j].At.Equal(o.At) {
+				t.Fatal("the two worlds do not line up")
+			}
+			if o.At.After(cut) {
+				o = ok[i].Obs[j]
+			}
+			out[i].Obs = append(out[i].Obs, o)
+		}
+	}
+	return out, dep
+}
+
+// A canary that ran slow until it was aborted, and is gone, must verify as
+// recovered. Reading the whole window used to count the slow stretch against the
+// abort, and two correct aborts opened the circuit breaker.
+func TestVerifyIgnoresWhatTheDeployDidBeforeTheAbort(t *testing.T) {
+	units, dep := stopped(t, 3, 20*time.Minute)
+	d := shadow.Deploy{ID: dep.ID, At: dep.At, HasRollbackTarget: true}
+	now := dep.At.Add(40 * time.Minute)
+	since := dep.At.Add(23 * time.Minute) // the abort at +20, and three minutes to drain
+	policy := attribution.PolicyConfig{Enforce: true, BreakerLimit: 2}
+
+	whole := shadow.NewWithPolicy(replay(units), collector.FingerprintQuery, attribution.Config{}, policy)
+	if v, ok := whole.Verify(now, d, time.Time{}); !ok || v.Effective {
+		t.Fatalf("reading the whole window should still see the slow stretch (this is what the since argument is for): %+v ok=%v", v, ok)
+	}
+
+	ev := shadow.NewWithPolicy(replay(units), collector.FingerprintQuery, attribution.Config{}, policy)
+	for i := 0; i < 3; i++ {
+		v, ok := ev.Verify(now, d, since)
+		if !ok || !v.Effective {
+			t.Fatalf("check %d: an abort that worked verified as %+v (ok=%v)", i+1, v, ok)
+		}
+	}
+	if ev.BreakerOpen() {
+		t.Fatal("the breaker opened on aborts that worked")
+	}
+}
+
+// An abort that did not take, the canary still serving, must still count: the
+// regression is in the data after the abort too.
+func TestVerifyStillCatchesAnAbortThatDidNotTake(t *testing.T) {
+	units, _, dep, _ := sim.World{Seed: 3, Post: 60 * time.Minute, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	d := shadow.Deploy{ID: dep.ID, At: dep.At, HasRollbackTarget: true}
+	ev := shadow.NewWithPolicy(replay(units), collector.FingerprintQuery, attribution.Config{},
+		attribution.PolicyConfig{Enforce: true, BreakerLimit: 2})
+	now := dep.At.Add(40 * time.Minute)
+	since := dep.At.Add(23 * time.Minute)
+	if v, ok := ev.Verify(now, d, since); !ok || v.Effective {
+		t.Fatalf("an abort that did not take verified as %+v (ok=%v)", v, ok)
+	}
+	if v, _ := ev.Verify(now, d, since); v.Effective || !ev.BreakerOpen() {
+		t.Fatalf("two aborts that did not take should open the breaker, open=%v", ev.BreakerOpen())
+	}
+}
+
+// With nothing after the abort to read, the check cannot be made. That is not a
+// failure of the abort and must not count towards the breaker.
+func TestVerifyWithTooLittleAfterTheActionIsNotAFailure(t *testing.T) {
+	units, _, dep, _ := sim.World{Seed: 3, Deploy: sim.Effect{Fraction: 0.2, Factor: 1.6}}.Generate()
+	d := shadow.Deploy{ID: dep.ID, At: dep.At, HasRollbackTarget: true}
+	ev := shadow.NewWithPolicy(replay(units), collector.FingerprintQuery, attribution.Config{},
+		attribution.PolicyConfig{Enforce: true, BreakerLimit: 1})
+	now := dep.At.Add(30 * time.Minute)
+	if _, ok := ev.Verify(now, d, now.Add(-time.Minute)); ok {
+		t.Fatal("a check with one minute of data after the action should not be made")
+	}
+	if ev.BreakerOpen() {
+		t.Fatal("a check that was not made counted as a failure")
 	}
 }
 
