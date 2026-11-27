@@ -30,6 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	radarv1alpha1 "github.com/joao00001/pg-regression-radar/api/v1alpha1"
+	"github.com/joao00001/pg-regression-radar/internal/reason"
 	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -226,7 +227,7 @@ func (r *WorkloadWatchReconciler) reconcileWorkload(ctx context.Context, sources
 			// guarantee another Reconcile would come along on its own to
 			// give this a second chance.
 			log.Info("workloadwatch: postgresWatchRef not ready yet, will retry",
-				"deploySource", matched.Name, "workload", key.String(), "kind", kind)
+				"reason", reason.PostgresWatchNotReady.String(), "deploySource", matched.Name, "workload", key.String(), "kind", kind)
 			needsRequeue = true
 			continue
 		}
@@ -247,7 +248,7 @@ func (r *WorkloadWatchReconciler) reconcileWorkload(ctx context.Context, sources
 		r.mu.Unlock()
 
 		log.Info("workloadwatch: deploy event synthesised from native rollout",
-			"kind", kind, "workload", key.String(), "revision", revision, "deploySource", matched.Name)
+			"reason", reason.DeployEventSynthesised.String(), "kind", kind, "workload", key.String(), "revision", revision, "deploySource", matched.Name)
 	}
 
 	if needsRequeue {

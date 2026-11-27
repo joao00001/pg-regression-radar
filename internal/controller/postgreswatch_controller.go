@@ -48,6 +48,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/correlation"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
 	"github.com/joao00001/pg-regression-radar/internal/planner"
+	"github.com/joao00001/pg-regression-radar/internal/reason"
 	"github.com/joao00001/pg-regression-radar/internal/telemetry/promsource"
 	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
@@ -209,14 +210,14 @@ func (r *PostgresWatchReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		var err error
 		dsn, err = r.resolveDSN(ctx, &watch)
 		if err != nil {
-			log.Error(err, "unable to resolve DSN")
+			log.Error(err, "unable to resolve DSN", "reason", reason.DSNUnresolved.String())
 			return r.markFailed(ctx, &watch, err)
 		}
 	}
 
 	secrets, err := r.resolveWatchSecrets(ctx, &watch)
 	if err != nil {
-		log.Error(err, "unable to resolve referenced secrets")
+		log.Error(err, "unable to resolve referenced secrets", "reason", reason.SecretsUnresolved.String())
 		return r.markFailed(ctx, &watch, err)
 	}
 
@@ -235,12 +236,12 @@ func (r *PostgresWatchReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 
 	rt, err := r.startWatch(req.NamespacedName, watch.DeepCopy(), dsn, secrets, specHash)
 	if err != nil {
-		log.Error(err, "unable to start watch worker")
+		log.Error(err, "unable to start watch worker", "reason", reason.WorkerStartFailed.String())
 		return r.markFailed(ctx, &watch, err)
 	}
 	r.Registry.Set(req.NamespacedName, rt)
 
-	log.Info("postgreswatch worker started", "cluster", watch.Spec.ClusterName)
+	log.Info("postgreswatch worker started", "reason", reason.WorkerStarted.String(), "cluster", watch.Spec.ClusterName)
 
 	watch.Status.Phase = radarv1alpha1.PostgresWatchPhaseRunning
 	watch.Status.ObservedGeneration = watch.Generation
@@ -248,7 +249,7 @@ func (r *PostgresWatchReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	setCondition(&watch.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             metav1.ConditionTrue,
-		Reason:             "WorkerStarted",
+		Reason:             string(reason.WorkerStarted),
 		Message:            "Collector and Correlation Engine are running.",
 		ObservedGeneration: watch.Generation,
 	})
@@ -268,7 +269,7 @@ func (r *PostgresWatchReconciler) markFailed(ctx context.Context, watch *radarv1
 	setCondition(&watch.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             metav1.ConditionFalse,
-		Reason:             "WorkerStartFailed",
+		Reason:             string(reason.WorkerStartFailed),
 		Message:            cause.Error(),
 		ObservedGeneration: watch.Generation,
 	})
@@ -297,6 +298,8 @@ func (r *PostgresWatchReconciler) refreshStatus(ctx context.Context, watch *rada
 			watch.Status.LastScrapeTime = &mt
 		}
 	}
+	r.maybeResetBreaker(watch, rt)
+	applyHealthConditions(&watch.Status.Conditions, healthConditions(watch, rt, time.Now()))
 	return r.Status().Update(ctx, watch)
 }
 
@@ -606,7 +609,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	if err != nil {
 		// The CRD's enum rejects anything else, so this only happens for an
 		// object written around the API server; keep the default.
-		r.Logger.Warn("ignoring unknown spec.multipleTesting", "watch", watch.Name, "value", watch.Spec.MultipleTesting, "err", err)
+		r.Logger.Warn("ignoring unknown spec.multipleTesting", "reason", reason.MultipleTestingUnknown, "watch", watch.Name, "value", watch.Spec.MultipleTesting, "err", err)
 		multipleTesting = correlation.MultipleTestingNone
 	}
 
@@ -710,6 +713,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 		Notifier:                notifier,
 		PromRegistry:            promReg,
 		SpecHash:                specHash,
+		breakerResetSeen:        watch.Annotations[BreakerResetAnnotation],
 		ClusterName:             watch.Spec.ClusterName,
 		CapturePlans:            watch.Spec.CapturePlans,
 		AutoAbortEnabled:        autoAbortEnabled,
@@ -729,7 +733,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 				// A bad revert setting must not take the watch down: the
 				// engine and its verdict keep working without it.
 				r.Logger.Error("postgreswatch: attribution revert disabled by invalid configuration",
-					"watch", key.String(), "err", err)
+					"reason", reason.RevertDisabled, "watch", key.String(), "err", err)
 			} else {
 				rt.Revert = &RevertRuntime{
 					Proposer:       prop,
@@ -748,7 +752,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 				// engine decides, so the older p-value trigger stands down.
 				rt.AutoAbortEnabled = false
 				r.Logger.Info("postgreswatch: spec.autoAbort ignored, attribution.actuate decides instead",
-					"watch", key.String())
+					"reason", reason.AutoAbortIgnored, "watch", key.String())
 			}
 		}
 	}
@@ -764,7 +768,7 @@ func (r *PostgresWatchReconciler) startWatch(key types.NamespacedName, watch *ra
 	if col != nil {
 		go func() {
 			if err := col.Run(workerCtx); err != nil && workerCtx.Err() == nil {
-				r.Logger.Error("postgreswatch: collector exited unexpectedly", "watch", key.String(), "err", err)
+				r.Logger.Error("postgreswatch: collector exited unexpectedly", "reason", reason.CollectorExited, "watch", key.String(), "err", err)
 			}
 		}()
 	}
@@ -863,7 +867,7 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 				notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 				rt.Notifier.ObserveDetectedRegression(res)
 				if err := rt.Notifier.Notify(notifyCtx, res); err != nil {
-					r.Logger.Error("postgreswatch: alert notify failed", "watch", key.String(), "regression", res.Name, "err", err)
+					r.Logger.Error("postgreswatch: alert notify failed", "reason", reason.AlertNotifyFailed, "watch", key.String(), "regression", res.Name, "err", err)
 				}
 				cancel()
 				if rt.OTLPExporter != nil {
@@ -872,7 +876,7 @@ func (r *PostgresWatchReconciler) pollLoop(ctx context.Context, key types.Namesp
 
 				recCtx, recCancel := context.WithTimeout(context.Background(), 15*time.Second)
 				if err := r.recordRegression(recCtx, key, res); err != nil {
-					r.Logger.Error("postgreswatch: failed to persist PerformanceRegression CR", "watch", key.String(), "regression", res.Name, "err", err)
+					r.Logger.Error("postgreswatch: failed to persist PerformanceRegression CR", "reason", reason.RegressionPersistFailed, "watch", key.String(), "regression", res.Name, "err", err)
 				}
 				recCancel()
 			}
@@ -908,7 +912,7 @@ func (r *PostgresWatchReconciler) periodicPollLoop(ctx context.Context, key type
 				notifyCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 				rt.Notifier.ObserveDetectedRegression(res)
 				if err := rt.Notifier.Notify(notifyCtx, res); err != nil {
-					r.Logger.Error("postgreswatch: periodic alert notify failed", "watch", key.String(), "regression", res.Name, "err", err)
+					r.Logger.Error("postgreswatch: periodic alert notify failed", "reason", reason.AlertNotifyFailed, "watch", key.String(), "regression", res.Name, "err", err)
 				}
 				cancel()
 				if rt.OTLPExporter != nil {
@@ -917,7 +921,7 @@ func (r *PostgresWatchReconciler) periodicPollLoop(ctx context.Context, key type
 
 				recCtx, recCancel := context.WithTimeout(context.Background(), 15*time.Second)
 				if err := r.recordRegression(recCtx, key, res); err != nil {
-					r.Logger.Error("postgreswatch: failed to persist periodic PerformanceRegression CR", "watch", key.String(), "regression", res.Name, "err", err)
+					r.Logger.Error("postgreswatch: failed to persist periodic PerformanceRegression CR", "reason", reason.RegressionPersistFailed, "watch", key.String(), "regression", res.Name, "err", err)
 				}
 				recCancel()
 			}
@@ -946,7 +950,7 @@ func (r *PostgresWatchReconciler) maybeAutoAbort(ctx context.Context, watchKey t
 		// generic, kubernetes) legitimately have no abort action to take.
 		// Only log at Debug-equivalent (Info with a clear "skipped" reason)
 		// so this isn't mistaken for a failed abort attempt.
-		r.Logger.Info("postgreswatch: auto-abort skipped, deploysource not found", "watch", watchKey.String(), "source", ev.Source, "err", err)
+		r.Logger.Info("postgreswatch: auto-abort skipped, deploysource not found", "reason", reason.AutoAbortSkipped, "watch", watchKey.String(), "source", ev.Source, "err", err)
 		return
 	}
 	if src.Spec.SourceType != "argo-rollouts" {
@@ -959,10 +963,10 @@ func (r *PostgresWatchReconciler) maybeAutoAbort(ctx context.Context, watchKey t
 	res.AutoAbortTriggered = true
 	if err := rt.Aborter.Abort(abortCtx, ev.Namespace, ev.App); err != nil {
 		res.AutoAbortError = err.Error()
-		r.Logger.Error("postgreswatch: auto-abort failed", "watch", watchKey.String(), "rollout", ev.Namespace+"/"+ev.App, "confidence", res.ConfidenceScore, "err", err)
+		r.Logger.Error("postgreswatch: auto-abort failed", "reason", reason.AutoAbortFailed, "watch", watchKey.String(), "rollout", ev.Namespace+"/"+ev.App, "confidence", res.ConfidenceScore, "err", err)
 		return
 	}
-	r.Logger.Info("postgreswatch: auto-abort triggered", "watch", watchKey.String(), "rollout", ev.Namespace+"/"+ev.App, "confidence", res.ConfidenceScore, "query", res.QueryID)
+	r.Logger.Info("postgreswatch: auto-abort triggered", "reason", reason.AutoAbortTriggered, "watch", watchKey.String(), "rollout", ev.Namespace+"/"+ev.App, "confidence", res.ConfidenceScore, "query", res.QueryID)
 }
 
 // recordRegression creates (or updates, on retry) a PerformanceRegression
@@ -1215,6 +1219,37 @@ func (r *PostgresWatchReconciler) newRevertProposer(watch *radarv1alpha1.Postgre
 	return revert.New(revert.Config{Repository: rc.Repository, APIURL: rc.APIURL, MaxPerDay: int(rc.MaxPerDay)}, token)
 }
 
+// BreakerResetAnnotation closes the attribution circuit breaker of a PostgresWatch
+// without restarting the manager. Set it to any value it did not have before
+// (a timestamp works: kubectl annotate postgreswatch NAME
+// pg-regression-radar.io/reset-breaker="$(date +%s)" --overwrite) once you have
+// looked at why the aborts did not help. The breaker opens again if the next
+// aborts do not help either. A value that was already there when the manager
+// started does nothing.
+const BreakerResetAnnotation = "pg-regression-radar.io/reset-breaker"
+
+// maybeResetBreaker closes the circuit breaker when the reset-breaker annotation
+// has a new value. Setting it while the breaker is closed is harmless.
+func (r *PostgresWatchReconciler) maybeResetBreaker(watch *radarv1alpha1.PostgresWatch, rt *WatchRuntime) {
+	v := watch.Annotations[BreakerResetAnnotation]
+	if v == rt.breakerResetSeen {
+		return
+	}
+	rt.breakerResetSeen = v
+	if v == "" || rt.Shadow == nil {
+		return
+	}
+	key := watch.Namespace + "/" + watch.Name
+	if !rt.Shadow.BreakerOpen() {
+		r.Logger.Info("attribution: reset-breaker annotation changed, but the circuit breaker was already closed",
+			"watch", key, "token", v)
+		return
+	}
+	rt.Shadow.Policy.Reset()
+	r.Logger.Warn("attribution: circuit breaker closed by the reset-breaker annotation, the engine may act again",
+		"reason", reason.BreakerReset, "watch", key, "token", v)
+}
+
 // ActuationPausedAnnotation, set to "true" on a PostgresWatch, stops the manager
 // from pausing or aborting any Rollout for that watch, at once and without a
 // restart. The engine keeps judging, logging and serving verdicts. Remove it (or
@@ -1228,13 +1263,13 @@ const ActuationPausedAnnotation = "pg-regression-radar.io/actuation-paused"
 // serving verdicts, exactly as if actuation had not been asked for.
 func (r *PostgresWatchReconciler) newActuateRuntime(key types.NamespacedName, watch *radarv1alpha1.PostgresWatch) *ActuateRuntime {
 	if watch.Spec.Attribution.Mode != "enforce" {
-		r.Logger.Info("postgreswatch: attribution.actuate ignored, it only acts in enforce mode", "watch", key.String())
+		r.Logger.Info("postgreswatch: attribution.actuate ignored, it only acts in enforce mode", "reason", reason.ActuationNotAsked, "watch", key.String())
 		return nil
 	}
 	pauser, ok := r.Aborter.(RolloutPauser)
 	if r.Aborter == nil || !ok {
 		r.Logger.Info("postgreswatch: attribution.actuate ignored, no Argo Rollouts actuator is available "+
-			"(enable manager.autoAbort.rbacEnabled)", "watch", key.String())
+			"(enable manager.autoAbort.rbacEnabled)", "reason", reason.NoActuator, "watch", key.String())
 		return nil
 	}
 	return &ActuateRuntime{

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/joao00001/pg-regression-radar/internal/observe"
+	"github.com/joao00001/pg-regression-radar/internal/reason"
 )
 
 const (
@@ -139,7 +140,7 @@ func (s *LiveSource) record(ctx context.Context, ids []string, log *slog.Logger)
 		cancel()
 		if err != nil {
 			if _, was := s.rec.failing(); !was {
-				log.Warn("observe history: cannot record; the radar keeps acting, history will have a gap", "err", err)
+				log.Warn("observe history: cannot record; the radar keeps acting, history will have a gap", "reason", reason.HistoryNotRecording, "err", err)
 			}
 			s.rec.fail(s.now(), err)
 			continue

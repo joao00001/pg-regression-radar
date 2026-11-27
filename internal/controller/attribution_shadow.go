@@ -26,6 +26,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/attribution"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/revert"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/shadow"
+	"github.com/joao00001/pg-regression-radar/internal/reason"
 	dto "github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
 )
 
@@ -170,6 +171,11 @@ func (s *shadowTracker) add(e dto.DeployEvent) {
 	s.mu.Lock()
 	s.jobs = append(s.jobs, j)
 	s.mu.Unlock()
+	s.logger.Info("attribution: deploy registered, it will be judged from 10 to 45 minutes after it",
+		"reason", reason.DeployRegistered, "deploy", e.ID, "namespace", e.Namespace, "app", e.App,
+		"revision", e.Revision, "source", e.Source,
+		"firstEvaluation", e.Timestamp.Add(shadowEvaluations[0]).UTC().Format(time.RFC3339),
+		"lastEvaluation", e.Timestamp.Add(shadowEvaluations[len(shadowEvaluations)-1]).UTC().Format(time.RFC3339))
 }
 
 // tick runs every evaluation and post-action check that has come due, in the
@@ -218,20 +224,22 @@ func (s *shadowTracker) tick(now time.Time) {
 		for _, w := range todo {
 			rec, ok := s.ev.Evaluate(now, w.d)
 			if !ok {
+				s.logger.Warn("attribution: no query samples to judge the deploy by, evaluation skipped",
+					"reason", reason.NoSamples, "deploy", w.d.ID, "namespace", w.d.Namespace, "app", w.d.App)
 				continue
 			}
 			d := rec.Decision
 			s.count.WithLabelValues(string(d.Action), string(d.Grade)).Inc()
-			msg := "attribution (shadow): decision, not executed"
+			msg, why := "attribution (shadow): decision, not executed", reason.ShadowMode
 			switch {
 			case d.Enforced:
-				msg = "attribution (enforce): verdict served to the rollout controller"
+				msg, why = "attribution (enforce): verdict served to the rollout controller", reason.VerdictServed
 			case s.ev.Policy.Enforcing():
 				// Enforce mode, but this decision is not one that acts (an alert, or
 				// nothing): it is not a shadow decision.
-				msg = "attribution (enforce): decision below the acting threshold, nothing to execute"
+				msg, why = "attribution (enforce): decision below the acting threshold, nothing to execute", reason.BelowActingThreshold
 			}
-			s.logger.Info(msg,
+			s.logger.Info(msg, "reason", why,
 				"deploy", w.d.ID, "health", string(rec.Assessment.Health),
 				"action", string(d.Action), "verdict", string(d.Verdict()), "wanted", string(d.Wanted), "grade", string(d.Grade),
 				"impact", d.Impact, "attribution", rec.Assessment.Attribution, "reasons", d.Reasons)
@@ -250,7 +258,8 @@ func (s *shadowTracker) tick(now time.Time) {
 func (s *shadowTracker) verifyAbort(c verifyJob, now time.Time) {
 	v, ok := s.ev.Verify(now, c.deploy, c.acted.Add(abortSettle))
 	if !ok {
-		s.logger.Info("attribution: could not check the abort, too little data after it", "deploy", c.deploy.ID)
+		s.logger.Info("attribution: could not check the abort, too little data after it",
+			"reason", reason.AbortUnverifiable, "deploy", c.deploy.ID)
 		return
 	}
 	result := "recovered"
@@ -261,9 +270,14 @@ func (s *shadowTracker) verifyAbort(c verifyJob, now time.Time) {
 	s.record(c.event, "abort", result, v.Reason, now)
 	if s.ev.BreakerOpen() {
 		s.logger.Warn("attribution: circuit breaker open, the engine will only alert until it is reset",
-			"deploy", c.deploy.ID, "last", v.Reason)
+			"reason", reason.BreakerOpen, "deploy", c.deploy.ID, "result", result, "detail", v.Reason,
+			"howToReset", "set the "+BreakerResetAnnotation+" annotation on the PostgresWatch to a new value")
 	} else {
-		s.logger.Info("attribution: checked the abort", "deploy", c.deploy.ID, "result", result, "reason", v.Reason)
+		code := reason.AbortRecovered
+		if !v.Effective {
+			code = reason.AbortPersisted
+		}
+		s.logger.Info("attribution: checked the abort", "reason", code, "deploy", c.deploy.ID, "result", result, "detail", v.Reason)
 	}
 }
 
@@ -303,7 +317,7 @@ func (s *shadowTracker) maybePropose(d shadow.Deploy, rec shadow.Record) {
 	res := s.rv.Propose(ctx, in)
 	s.revertCount.WithLabelValues(string(res.Outcome)).Inc()
 	s.logger.Info("attribution: draft revert pull request",
-		"deploy", d.ID, "outcome", string(res.Outcome), "reason", res.Reason, "url", res.URL)
+		"deploy", d.ID, "outcome", string(res.Outcome), "detail", res.Reason, "url", res.URL)
 }
 
 // notActed tells the policy that the action it chose was not carried out, so its
@@ -345,7 +359,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 		s.actCount.WithLabelValues(actionName(act), "skipped").Inc()
 		s.record(ev, actionName(act), "skipped", "namespace not in attribution.actuate.namespaces", now)
 		s.logger.Info("attribution: namespace not allowed for actuation, nothing paused or aborted",
-			"deploy", ev.ID, "namespace", ev.Namespace, "action", string(act))
+			"reason", reason.NamespaceNotAllowed, "deploy", ev.ID, "namespace", ev.Namespace, "action", string(act))
 		return
 	}
 	if s.act.Paused != nil && s.act.Paused(ctx) {
@@ -354,7 +368,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 		s.actCount.WithLabelValues(actionName(act), "skipped").Inc()
 		s.record(ev, actionName(act), "skipped", "actuation paused by annotation", now)
 		s.logger.Warn("attribution: actuation paused by annotation, nothing paused or aborted",
-			"deploy", ev.ID, "action", string(act))
+			"reason", reason.ActuationPaused, "deploy", ev.ID, "action", string(act))
 		return
 	}
 	if s.act.IsRollout != nil && !s.act.IsRollout(ctx, ev) {
@@ -364,7 +378,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 		s.actCount.WithLabelValues(actionName(act), "skipped").Inc()
 		s.record(ev, actionName(act), "skipped", "not an Argo Rollouts deploy", now)
 		s.logger.Info("attribution: not an Argo Rollouts deploy, nothing to pause or abort",
-			"deploy", ev.ID, "source", ev.Source, "action", string(act))
+			"reason", reason.NotArgoRollout, "deploy", ev.ID, "source", ev.Source, "action", string(act))
 		return
 	}
 
@@ -386,7 +400,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 		s.actCount.WithLabelValues(actionName(act), "failed").Inc()
 		s.record(ev, actionName(act), "failed", err.Error(), now)
 		s.logger.Error("attribution: could not act on the rollout, will retry at the next evaluation",
-			"deploy", ev.ID, "rollout", ev.Namespace+"/"+ev.App, "action", actionName(act), "err", err)
+			"reason", reason.ActuationFailed, "deploy", ev.ID, "rollout", ev.Namespace+"/"+ev.App, "action", actionName(act), "err", err)
 		return
 	}
 	s.mu.Lock()
@@ -398,7 +412,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 	s.actCount.WithLabelValues(actionName(act), "done").Inc()
 	s.record(ev, actionName(act), "done", strings.Join(rec.Decision.Reasons, "; "), now)
 	s.logger.Info("attribution: acted on the rollout",
-		"deploy", ev.ID, "rollout", ev.Namespace+"/"+ev.App, "action", actionName(act),
+		"reason", reason.Acted, "deploy", ev.ID, "rollout", ev.Namespace+"/"+ev.App, "action", actionName(act),
 		"grade", string(rec.Decision.Grade), "impact", rec.Decision.Impact, "reasons", rec.Decision.Reasons)
 }
 
