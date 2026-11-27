@@ -57,6 +57,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/dashboardapi"
 	"github.com/joao00001/pg-regression-radar/internal/httpserver"
 	"github.com/joao00001/pg-regression-radar/internal/ingester"
+	"github.com/joao00001/pg-regression-radar/internal/logging"
 	"github.com/joao00001/pg-regression-radar/internal/planner"
 	"github.com/joao00001/pg-regression-radar/internal/storage"
 	"github.com/joao00001/pg-regression-radar/internal/storage/postgres"
@@ -130,6 +131,7 @@ func runOperator(args []string, logOutput io.Writer) int {
 	statePruneInterval := fs.Duration("state-prune-interval", 15*time.Minute, "How often to sweep the postgres state backend for records older than --state-retention")
 	versionFlag := fs.Bool("version", false, "Print version information and exit")
 	dryRun := fs.Bool("dry-run", false, "Validate configuration and Postgres connectivity, then exit without starting any servers")
+	logFlags := logging.Bind(fs)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -140,6 +142,11 @@ func runOperator(args []string, logOutput io.Writer) int {
 	if *versionFlag {
 		fmt.Println(buildinfo.String("operator"))
 		return 0
+	}
+
+	logger, ok := installLogging(logFlags, fs, logOutput)
+	if !ok {
+		return 2
 	}
 
 	if *dsn == "" {
@@ -157,7 +164,6 @@ func runOperator(args []string, logOutput io.Writer) int {
 		return 1
 	}
 
-	logger := slog.New(slog.NewJSONHandler(logOutput, nil))
 	reg := prometheus.NewRegistry()
 
 	if err := validatePostgresDSN(*dsn); err != nil {

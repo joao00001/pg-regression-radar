@@ -29,6 +29,7 @@ import (
 	"github.com/joao00001/pg-regression-radar/internal/buildinfo"
 	"github.com/joao00001/pg-regression-radar/internal/collector"
 	"github.com/joao00001/pg-regression-radar/internal/httpserver"
+	"github.com/joao00001/pg-regression-radar/internal/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -47,6 +48,7 @@ func RunCollector(args []string) int {
 	retentionMinutes := fs.Int("retention-minutes", 180, "How long (minutes) to retain in-memory query samples before pruning them; should stay well above the correlation window(s) analysed against this data")
 	versionFlag := fs.Bool("version", false, "Print version information and exit")
 	dryRun := fs.Bool("dry-run", false, "Validate configuration and Postgres connectivity, then exit without starting any servers")
+	logFlags := logging.Bind(fs)
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -59,6 +61,11 @@ func RunCollector(args []string) int {
 		return 0
 	}
 
+	logger, ok := installLogging(logFlags, fs, os.Stdout)
+	if !ok {
+		return 2
+	}
+
 	if *dsn == "" {
 		slog.Error("--dsn is required")
 		return 1
@@ -68,7 +75,6 @@ func RunCollector(args []string) int {
 		return 1
 	}
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	reg := prometheus.NewRegistry()
 
 	col, err := collector.New(collector.Config{
