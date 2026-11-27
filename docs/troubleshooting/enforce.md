@@ -7,9 +7,10 @@
 The attribution engine works in steps, and each one is a place it can stop. Knowing which step a deploy reached is most of the diagnosis.
 
 ```text
-registered ─▶ judged ─▶ decision ─▶ verdict served ─▶ manager acts ─▶ abort checked
- (10 min)     (every 5)   none/alert    (enforce)      (actuate)       (15 min later)
-                          hold/rollback
+registered ─▶ judged ─▶ decision ─▶ verdict ─▶ acted ─▶ checked
+ at deploy    10-45 min  none/alert   served     paused    15 min
+              every 5    hold/        (enforce)  or        later
+                         rollback                aborted
 ```
 
 - **Shadow mode** (`attribution.mode: shadow`, the default) judges and logs. The verdict is always `pass`, and nothing is written to a Rollout.

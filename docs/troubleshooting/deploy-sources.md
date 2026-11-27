@@ -7,8 +7,8 @@
 The radar judges a deploy only after it has been told about it. The event travels in four steps, and it can stop at any of them. Each step leaves a trace, so the question "where did it stop" has an answer.
 
 ```text
-sender ──▶ webhook route ──▶ event store of the watch ──▶ correlation and attribution
-(Argo, CI)   DeploySource      PostgresWatch                "deploy registered"
+sender ─▶ webhook route ─▶ event store ─▶ engine
+(Argo, CI) (DeploySource)  (PostgresWatch) (attribution)
 ```
 
 A native source (`sourceType: kubernetes`) replaces the first two steps with the manager watching the workload itself.
