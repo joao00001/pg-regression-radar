@@ -106,7 +106,7 @@ It follows the same ladder as the verdict, and only for a deploy that a [`Deploy
 
 It never resumes, rolls back to a revision, scales, or deletes: a pause or an abort stops a bad rollout where it is, and a person decides what comes next. Each action is taken at most once per deploy, a pause can escalate to an abort if later evidence is stronger, and a failed call is retried at the next evaluation. Every attempt is counted in `pg_regression_radar_attribution_actions_total{action,result}` (`result` is `done`, `failed` or `skipped`) and logged with the grade, the impact and the reasons.
 
-Every attempt is also written to an in-memory ledger, served newest first at `GET /api/v1/attribution/actions` (same port as the verdict endpoint; filter with `?namespace=` and `?app=`): the time, the deploy, `pause` or `abort`, and the result with its reason. It also reports `breakerOpen`. The ledger keeps the last 200 entries and is lost on a restart; the metrics and the logs are the durable record.
+Every attempt is also written to an in-memory ledger, served newest first at `GET /api/v1/attribution/actions` (same port as the verdict endpoint; filter with `?namespace=` and `?app=`): the time, the deploy, `pause` or `abort`, the result, and the `reason` code of the log line for the same event (see [Reason codes](troubleshooting/reasons.md)). It also reports `breakerOpen`. The ledger keeps the last 200 entries and is lost on a restart; the metrics and the logs are the durable record.
 
 ```json
 {"breakerOpen":false,"actions":[

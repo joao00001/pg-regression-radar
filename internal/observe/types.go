@@ -88,6 +88,22 @@ type WatchStatus struct {
 	BreakerOpen bool            `json:"breakerOpen"`
 	Collector   CollectorHealth `json:"collector"`
 	Arms        *ArmsHealth     `json:"arms,omitempty"`
+	// Conditions are the same health conditions `kubectl describe postgreswatch`
+	// shows (Collecting, ArmsLog, Actuating), so the two never disagree. They are
+	// refreshed every 30 seconds.
+	Conditions []Condition `json:"conditions,omitempty"`
+}
+
+// Condition is one health condition of a watch.
+type Condition struct {
+	Type string `json:"type"`
+	// Status is "True" or "False".
+	Status string `json:"status"`
+	// Reason is the stable code; Message is the sentence about this case.
+	Reason  string `json:"reason"`
+	Message string `json:"message,omitempty"`
+	// Docs is the page that explains Reason: its causes and the fix.
+	Docs string `json:"docs,omitempty"`
 }
 
 // ActuationStatus is what the manager may do to a Rollout.
@@ -178,6 +194,10 @@ type Action struct {
 	// Result is done, failed or skipped, then recovered or persisted for the
 	// check after an abort.
 	Result string `json:"result"`
+	// Reason is the stable reason code of the log line for the same event, and
+	// Docs the page that explains it.
+	Reason string `json:"reason,omitempty"`
+	Docs   string `json:"docs,omitempty"`
 	Detail string `json:"detail,omitempty"`
 }
 

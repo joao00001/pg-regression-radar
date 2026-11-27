@@ -273,7 +273,11 @@ func (s *shadowTracker) verifyAbort(c verifyJob, now time.Time) {
 		result = "persisted"
 	}
 	s.verCount.WithLabelValues(result).Inc()
-	s.record(c.event, "abort", result, v.Reason, now)
+	why := reason.AbortRecovered
+	if !v.Effective {
+		why = reason.AbortPersisted
+	}
+	s.record(c.event, "abort", result, why, v.Reason, now)
 	if s.ev.BreakerOpen() {
 		s.logger.Warn("attribution: circuit breaker open, the engine will only alert until it is reset",
 			"reason", reason.BreakerOpen, "deploy", c.deploy.ID, "result", result, "detail", v.Reason,
@@ -288,12 +292,12 @@ func (s *shadowTracker) verifyAbort(c verifyJob, now time.Time) {
 }
 
 // record adds an entry to the evaluator's action ledger.
-func (s *shadowTracker) record(ev dto.DeployEvent, action, result, detail string, at time.Time) {
+func (s *shadowTracker) record(ev dto.DeployEvent, action, result string, why reason.Code, detail string, at time.Time) {
 	if s.ev == nil {
 		return
 	}
 	s.ev.RecordAction(shadow.ActionRecord{At: at, DeployID: ev.ID, Namespace: ev.Namespace, App: ev.App,
-		Action: action, Result: result, Detail: detail})
+		Action: action, Result: result, Reason: string(why), Detail: detail})
 }
 
 // maybePropose opens a draft revert pull request for a deploy the policy has
@@ -363,7 +367,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 		s.skipped[ev.ID] = true
 		s.mu.Unlock()
 		s.actCount.WithLabelValues(actionName(act), "skipped").Inc()
-		s.record(ev, actionName(act), "skipped", "namespace not in attribution.actuate.namespaces", now)
+		s.record(ev, actionName(act), "skipped", reason.NamespaceNotAllowed, "namespace not in attribution.actuate.namespaces", now)
 		s.logger.Info("attribution: namespace not allowed for actuation, nothing paused or aborted",
 			"reason", reason.NamespaceNotAllowed, "deploy", ev.ID, "namespace", ev.Namespace, "action", string(act))
 		return
@@ -372,7 +376,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 		// Not remembered: lifting the annotation lets the next evaluation act.
 		s.notActed(ev.ID)
 		s.actCount.WithLabelValues(actionName(act), "skipped").Inc()
-		s.record(ev, actionName(act), "skipped", "actuation paused by annotation", now)
+		s.record(ev, actionName(act), "skipped", reason.ActuationPaused, "actuation paused by annotation", now)
 		s.logger.Warn("attribution: actuation paused by annotation, nothing paused or aborted",
 			"reason", reason.ActuationPaused, "deploy", ev.ID, "action", string(act))
 		return
@@ -382,7 +386,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 		s.skipped[ev.ID] = true
 		s.mu.Unlock()
 		s.actCount.WithLabelValues(actionName(act), "skipped").Inc()
-		s.record(ev, actionName(act), "skipped", "not an Argo Rollouts deploy", now)
+		s.record(ev, actionName(act), "skipped", reason.NotArgoRollout, "not an Argo Rollouts deploy", now)
 		s.logger.Info("attribution: not an Argo Rollouts deploy, nothing to pause or abort",
 			"reason", reason.NotArgoRollout, "deploy", ev.ID, "source", ev.Source, "action", string(act))
 		return
@@ -404,7 +408,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 	if err != nil {
 		s.notActed(ev.ID)
 		s.actCount.WithLabelValues(actionName(act), "failed").Inc()
-		s.record(ev, actionName(act), "failed", err.Error(), now)
+		s.record(ev, actionName(act), "failed", reason.ActuationFailed, err.Error(), now)
 		s.logger.Error("attribution: could not act on the rollout, will retry at the next evaluation",
 			"reason", reason.ActuationFailed, "deploy", ev.ID, "rollout", ev.Namespace+"/"+ev.App, "action", actionName(act), "err", err)
 		return
@@ -416,7 +420,7 @@ func (s *shadowTracker) maybeActuate(ev dto.DeployEvent, rec shadow.Record, now 
 	}
 	s.mu.Unlock()
 	s.actCount.WithLabelValues(actionName(act), "done").Inc()
-	s.record(ev, actionName(act), "done", strings.Join(rec.Decision.Reasons, "; "), now)
+	s.record(ev, actionName(act), "done", reason.Acted, strings.Join(rec.Decision.Reasons, "; "), now)
 	s.logger.Info("attribution: acted on the rollout",
 		"reason", reason.Acted, "deploy", ev.ID, "rollout", ev.Namespace+"/"+ev.App, "action", actionName(act),
 		"grade", string(rec.Decision.Grade), "impact", rec.Decision.Impact, "reasons", rec.Decision.Reasons)

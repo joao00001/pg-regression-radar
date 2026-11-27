@@ -142,7 +142,7 @@ The engine's verdict on the latest deploy of `app` in `namespace` (or of `revisi
 
 ### `GET /api/v1/attribution/actions?namespace=&app=`
 
-The action ledger, newest first: every pause or abort the manager made or skipped, with `at`, `deployId`, `namespace`, `app`, `action` (`pause` or `abort`), `result` (`done`, `failed`, `skipped`, `recovered`, `persisted`) and `detail`. It also reports `breakerOpen`. The ledger keeps the last 200 entries and is lost on restart. See [Letting the manager act](attribution-engine.md#letting-the-manager-act).
+The action ledger, newest first: every pause or abort the manager made or skipped, with `at`, `deployId`, `namespace`, `app`, `action` (`pause` or `abort`), `result` (`done`, `failed`, `skipped`, `recovered`, `persisted`), `reason` (the stable [reason code](troubleshooting/reasons.md) the log line for the same event carries, such as `Acted` or `ActuationPaused`) and `detail`. It also reports `breakerOpen`. The ledger keeps the last 200 entries and is lost on restart. See [Letting the manager act](attribution-engine.md#letting-the-manager-act).
 
 ## See also
 

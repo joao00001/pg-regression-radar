@@ -1,6 +1,16 @@
 import { h, s } from '../dom.js';
 import { gradeLevel, tone, stateLabel } from '../model.js';
 
+// The stable reason code of a log line or a condition, as a link to the docs page
+// that says what it means and how to fix it. Without a link it is plain text, so
+// the code can still be searched for in the manager log.
+export function reasonTag(code, docs) {
+  if (!code) return null;
+  return docs
+    ? h('a', { class: 'reason', href: docs, target: '_blank', rel: 'noopener noreferrer', title: 'What this means and how to fix it', text: code })
+    : h('span', { class: 'reason', text: code });
+}
+
 // Tone as a shape as well as a colour, drawn here so no font has to have it.
 const SHAPES = {
   watching: () => s('circle', { class: 'hollow', cx: 4.5, cy: 4.5, r: 3.6 }),

@@ -18,13 +18,16 @@ import (
 	"context"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/joao00001/pg-regression-radar/internal/attribution"
 	"github.com/joao00001/pg-regression-radar/internal/attribution/shadow"
 	"github.com/joao00001/pg-regression-radar/internal/observe"
+	"github.com/joao00001/pg-regression-radar/internal/reason"
 )
 
 // maxUnitsShown bounds the queries listed per evaluation: the ones that matter
@@ -139,6 +142,7 @@ func (s *LiveSource) Overview(ctx context.Context) (observe.Overview, error) {
 			w.Actuation.Paused = rt.Actuate.Paused(ctx)
 		}
 		w.Arms = armsHealth(rt.Arms, now)
+		w.Conditions = observeConditions(rt.Health())
 		o.Watches = append(o.Watches, w)
 	})
 	sort.Slice(o.Watches, func(i, j int) bool {
@@ -152,6 +156,21 @@ func (s *LiveSource) Overview(ctx context.Context) (observe.Overview, error) {
 
 	o.History = s.historyInfo(ctx, now)
 	return o, nil
+}
+
+// observeConditions turns the conditions refreshStatus last computed into the
+// API's type. The message there ends with the docs link, which the API carries
+// as a field of its own.
+func observeConditions(in []metav1.Condition) []observe.Condition {
+	var out []observe.Condition
+	for _, c := range in {
+		docs := reason.DocsURL(reason.Code(c.Reason))
+		out = append(out, observe.Condition{
+			Type: c.Type, Status: string(c.Status), Reason: c.Reason,
+			Message: strings.TrimSuffix(c.Message, " See "+docs), Docs: docs,
+		})
+	}
+	return out
 }
 
 func armsHealth(a *ArmsRuntime, now time.Time) *observe.ArmsHealth {
@@ -343,7 +362,11 @@ func decision(r shadow.Record) observe.Decision {
 }
 
 func action(a shadow.ActionRecord) observe.Action {
-	return observe.Action{At: a.At, DeployID: a.DeployID, Namespace: a.Namespace, App: a.App, Action: a.Action, Result: a.Result, Detail: a.Detail}
+	out := observe.Action{At: a.At, DeployID: a.DeployID, Namespace: a.Namespace, App: a.App, Action: a.Action, Result: a.Result, Reason: a.Reason, Detail: a.Detail}
+	if a.Reason != "" {
+		out.Docs = reason.DocsURL(reason.Code(a.Reason))
+	}
+	return out
 }
 
 func evaluation(r shadow.Record, all bool) observe.Evaluation {

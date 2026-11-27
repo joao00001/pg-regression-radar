@@ -299,7 +299,9 @@ func (r *PostgresWatchReconciler) refreshStatus(ctx context.Context, watch *rada
 		}
 	}
 	r.maybeResetBreaker(watch, rt)
-	applyHealthConditions(&watch.Status.Conditions, healthConditions(watch, rt, time.Now()))
+	health := healthConditions(watch, rt, time.Now())
+	rt.SetHealth(health)
+	applyHealthConditions(&watch.Status.Conditions, health)
 	return r.Status().Update(ctx, watch)
 }
 
