@@ -137,7 +137,7 @@ const (
 var all = []Entry{
 	{DeployRegistered, Attribution, Info, "A deploy was registered and will be judged between 10 and 45 minutes after it."},
 	{NoSamples, Attribution, Warn, "A deploy could not be judged because there are no query samples to read."},
-	{ShadowMode, Attribution, Info, "The decision was logged and not executed, because the watch is in shadow mode."},
+	{ShadowMode, Attribution, Info, "The watch is in shadow mode: decisions are logged and nothing is paused or aborted."},
 	{BelowActingThreshold, Attribution, Info, "The watch is in enforce mode, but this decision is not strong enough to act on."},
 	{VerdictServed, Attribution, Info, "An enforced decision was served to the rollout controller."},
 	{NamespaceNotAllowed, Attribution, Info, "The radar decided to act but the Rollout's namespace is not in attribution.actuate.namespaces."},
@@ -148,10 +148,10 @@ var all = []Entry{
 	{AbortRecovered, Attribution, Info, "After an abort, the regression went away."},
 	{AbortPersisted, Attribution, Info, "After an abort, the regression was still there: the action did not help."},
 	{AbortUnverifiable, Attribution, Info, "An abort could not be checked: too little data came after it."},
-	{BreakerOpen, Attribution, Warn, "Earlier aborts did not help, so the engine only alerts until the manager restarts."},
+	{BreakerOpen, Attribution, Warn, "Earlier aborts did not help, so the engine only alerts until the breaker is closed."},
 	{BreakerReset, Attribution, Warn, "An operator closed the circuit breaker with the reset-breaker annotation, so the engine may act again."},
 	{ActuationReady, Attribution, Info, "The watch is in enforce mode and may pause and abort Rollouts."},
-	{ActuationNotAsked, Attribution, Info, "The watch does not ask for actuation, or is in shadow mode."},
+	{ActuationNotAsked, Attribution, Info, "The watch is in enforce mode but attribution.actuate is not enabled, so this manager does not pause or abort."},
 	{NoActuator, Attribution, Info, "Actuation was asked for but this manager has no way to pause or abort a Rollout."},
 
 	{ArmsDisabled, Arms, Error, "attribution.arms is configured but cannot work, so grade A evidence is off."},

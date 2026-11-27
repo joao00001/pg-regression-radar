@@ -202,16 +202,14 @@ func (a *ArmsRuntime) maintain(ctx context.Context, watch string, col interface{
 						"reason", reason.ArmsUsable, "watch", watch, "sampleRate", chk.Sampling.Rate)
 				}
 				for _, i := range chk.Issues {
-					msg, code := "attribution.arms: the Postgres log cannot be used yet", reason.ArmsSettingsRejected
+					detail := []any{"setting", i.Setting, "value", i.Got, "problem", i.Problem, "fix", i.Fix}
 					if i.Warning {
-						msg, code = "attribution.arms: the Postgres log setting costs more than it needs to", ""
+						a.Logger.Warn("attribution.arms: the Postgres log setting costs more than it needs to",
+							append([]any{"watch", watch}, detail...)...)
+						continue
 					}
-					attrs := []any{"watch", watch}
-					if code != "" {
-						attrs = append(attrs, "reason", code)
-					}
-					a.Logger.Warn(msg, append(attrs,
-						"setting", i.Setting, "value", i.Got, "problem", i.Problem, "fix", i.Fix)...)
+					a.Logger.Warn("attribution.arms: the Postgres log cannot be used yet",
+						append([]any{"watch", watch, "reason", reason.ArmsSettingsRejected}, detail...)...)
 				}
 			}
 		}

@@ -1263,7 +1263,7 @@ const ActuationPausedAnnotation = "pg-regression-radar.io/actuation-paused"
 // serving verdicts, exactly as if actuation had not been asked for.
 func (r *PostgresWatchReconciler) newActuateRuntime(key types.NamespacedName, watch *radarv1alpha1.PostgresWatch) *ActuateRuntime {
 	if watch.Spec.Attribution.Mode != "enforce" {
-		r.Logger.Info("postgreswatch: attribution.actuate ignored, it only acts in enforce mode", "reason", reason.ActuationNotAsked, "watch", key.String())
+		r.Logger.Info("postgreswatch: attribution.actuate ignored, it only acts in enforce mode", "reason", reason.ShadowMode, "watch", key.String())
 		return nil
 	}
 	pauser, ok := r.Aborter.(RolloutPauser)

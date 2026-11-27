@@ -171,6 +171,11 @@ func RunManager(args []string) int {
 	// itself is no longer used: every line goes through one slog handler.
 	zapOpts := zap.Options{}
 	zapOpts.BindFlags(fs)
+	fs.VisitAll(func(f *flag.Flag) {
+		if strings.HasPrefix(f.Name, "zap-") {
+			f.Usage = "Deprecated: use --log-level and --log-format. " + f.Usage
+		}
+	})
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0

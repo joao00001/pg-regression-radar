@@ -110,7 +110,7 @@ func (h *Handler) serveOTLP(w http.ResponseWriter, r *http.Request) {
 	}
 	if res.Rejected > 0 {
 		h.logger.Warn("ingester: OTLP spans matched but were rejected",
-			"rejected", res.Rejected, "reason", res.RejectReason)
+			"rejected", res.Rejected, "detail", res.RejectReason)
 	}
 
 	// OTLP/HTTP requires 200 with an Export*ServiceResponse body; a 2xx
