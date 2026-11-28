@@ -195,3 +195,14 @@ test('dismissals that are not to outlive the page are not kept, and switching it
   b.update({ deploys: [dep('shop/a/1')] });
   assert.deepEqual(ids(b), ['deploy:shop/a/1'], 'old dismissals are not read when they are not to be remembered');
 });
+
+test('a resolved card is teal in every theme that recolours severity', async () => {
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync(new URL('../ui/app.css', import.meta.url), 'utf8');
+  const themed = [...css.matchAll(/^:root\[data-theme="(\w+)"\] \.alert-(?:warn|critical) \{[^}]*--hue:/gm)].map((m) => m[1]);
+  assert.ok(themed.length > 0, 'the light theme recolours warn and critical');
+  for (const theme of new Set(themed)) {
+    const rule = new RegExp(`^:root\\[data-theme="${theme}"\\] \\.alert\\[data-tone="ok"\\] \\{[^}]*--hue: var\\(--teal\\)`, 'm');
+    assert.match(css, rule, `a resolved card keeps the severity colour in the ${theme} theme`);
+  }
+});

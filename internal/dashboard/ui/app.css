@@ -896,6 +896,9 @@ table.feedtab tr.bad td:nth-child(3) { color: var(--accent); }
 :root[data-theme="light"] .alert-warn { --hue: #c93400; }
 :root[data-theme="light"] .alert-critical { --hue: #d70015; }
 .alert[data-tone="ok"] { --hue: var(--teal); --tint: 0.09; }
+/* The light-theme severity rules above are more specific than the line before this one, so a
+   resolved card needs its own light-theme rule or it keeps the red of the alert it replaced. */
+:root[data-theme="light"] .alert[data-tone="ok"] { --hue: var(--teal); }
 .alert::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--hue); opacity: var(--tint); pointer-events: none; }
 .alert-mark { position: relative; display: inline-grid; place-items: center; flex: none; width: 11px; height: 11px; }
 .alert-mark > span { grid-area: 1 / 1; display: grid; place-items: center; }
