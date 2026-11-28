@@ -54,6 +54,28 @@ The page has no sign-in. Anyone who can reach it sees your deploys, which is why
 
 When a source is not healthy, or the radar may not act, the row says why in words and shows the **reason code** of the matching condition on the PostgresWatch (`ScrapeStale`, `ArmsLogStale`, `ActuationNotAsked`, `BreakerOpen`, and so on). The code links to its entry in [Reason codes](troubleshooting/reasons.md), which lists the causes, how to confirm each and the fix. The *What the radar did* panel shows the reason code of each action the same way, so a line in the manager log and a line on the dashboard can be matched by code. A manager older than 1.9.2 sends no codes; the dashboard then shows the same rows without them.
 
+## Alerts
+
+The few situations that need a person stay at the top right of every board, whichever board or time range is open, until they are dealt with. There is at most one alert per deploy, and its wording follows how far the radar got:
+
+| Alert | Raised when | Goes away when |
+|---|---|---|
+| *Regression detected* | the engine reads a deploy as regressed and has not acted | the deploy is read as healthy again, or you dismiss it |
+| *Regressed, rollout paused* or *aborted* | the radar paused or aborted the rollout and the deploy is still regressed | the deploy is read as healthy again (the abort worked, or a later evaluation came back clean), or you dismiss it |
+| *Still regressed after the abort* | the check after an abort found the regression still there | the deploy is read as healthy again, or you dismiss it |
+| *Could not pause* or *abort the rollout* | the call to the Rollout failed | the deploy is read as healthy again, or you dismiss it |
+| *The radar stopped acting by itself* | the circuit breaker of a watch is open | the breaker is closed, or you dismiss it. The card carries the `BreakerOpen` code and the command that closes it |
+
+A few rules keep this quiet enough to trust:
+
+- **It stays until it is over.** An alert is not a toast that fades. It is removed on its own only when the engine reads the deploy as healthy; an inconclusive reading is not an all-clear, so the alert stays.
+- **Dismissing is yours.** The × removes one alert, *Dismiss all* removes those shown. A dismissed alert does not come back on the next refresh or after a reload (the browser remembers it for 30 days). It does come back if things get worse, for example *Still regressed after the abort* after you dismissed *Regressed, rollout aborted*, and if the same deploy regresses again after it had recovered.
+- **Silence is not an all-clear.** If the manager stops reporting a deploy (it restarted, and the history is kept in memory by default), its alert stays and says so, until you dismiss it.
+- **A long list is folded.** Three are shown on a wide screen and one on a phone, the worst first and then the newest; the rest is behind *N more alerts*.
+- **Screen readers** are told, politely, when an alert appears and when one is removed because the deploy recovered.
+
+Each alert links to the deploy's case and, when the radar acted, shows the [reason code](troubleshooting/reasons.md) of the action. Alerts are read from the Observe API for the last 90 days, so they do not depend on the time range of the board.
+
 Every panel has an **info button** at its top right. Hover it, or focus it with the keyboard, to read what the panel shows and how to read it; click to keep the text open (Escape or a click elsewhere closes it). A panel's own `description` in the file replaces the built-in text.
 
 ### Look at one panel
