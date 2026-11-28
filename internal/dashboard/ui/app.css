@@ -805,20 +805,28 @@ table.feedtab tr.bad td:nth-child(3) { color: var(--accent); }
 
 /* The look of a macOS notification: a frosted, rounded sheet, a bold title, then two quiet
    lines. How serious it is shows in one word above the title and the shape in front of it.
-   What a person rarely needs (the reason code, "Open case") shows when they reach for the card,
-   and so does the close button. The whole card opens the case. */
+   The whole card opens the case (or, for the breaker, the page that explains it), and the close
+   button shows when they reach for the card. The card never grows under the pointer. */
 .alert {
   --sheet: rgb(255 255 255 / 0.66); --sheet-edge: rgb(255 255 255 / 0.7); --ink: #1d1d1f; --ink-2: rgb(60 60 67 / 0.72);
   position: relative; display: block;
   padding: 12px 16px 13px; border: 0; border-radius: 22px;
-  background: var(--sheet); color: var(--ink);
-  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
-  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.1), inset 0 1px 0 var(--sheet-edge);
+  color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", var(--sans, system-ui), sans-serif;
   letter-spacing: -0.006em;
   isolation: isolate;
 }
-:root:not([data-theme="light"]) .alert { --sheet: rgb(44 44 48 / 0.58); --sheet-edge: rgb(255 255 255 / 0.16); --ink: #f5f5f7; --ink-2: rgb(235 235 245 / 0.62); box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 0.12), inset 0 1px 0 var(--sheet-edge); }
+:root:not([data-theme="light"]) .alert { --sheet: rgb(44 44 48 / 0.58); --sheet-edge: rgb(255 255 255 / 0.16); --ink: #f5f5f7; --ink-2: rgb(235 235 245 / 0.62); --rim: rgb(255 255 255 / 0.12); }
+/* The frosted sheet is a layer behind the card, not the card's own background. A backdrop blur
+   on the card itself would stop the close button, which is inside it, from blurring what is
+   behind the card's corner (the page), because a blurred element is the floor its children see. */
+.alert { --rim: rgb(0 0 0 / 0.1); }
+.alert::after {
+  content: ""; position: absolute; inset: 0; z-index: -2; border-radius: inherit; pointer-events: none;
+  background: var(--sheet);
+  -webkit-backdrop-filter: blur(28px) saturate(1.8); backdrop-filter: blur(28px) saturate(1.8);
+  box-shadow: inset 0 0 0 0.5px var(--rim), inset 0 1px 0 var(--sheet-edge);
+}
 .alert-critical .alert-main { min-width: 0; }
 .alert-main p { margin: 0; }
 .alert-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
@@ -832,11 +840,6 @@ table.feedtab tr.bad td:nth-child(3) { color: var(--accent); }
 .alert-sub b { font-weight: 500; }
 .alert-text { margin-top: 2px !important; color: var(--ink-2); font-size: 12.5px; line-height: 1.38; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .alert-missing { margin-top: 4px !important; color: var(--ink-2); font-size: 12px; line-height: 1.4; font-style: italic; }
-.alert-extras { display: flex; align-items: center; justify-content: space-between; gap: 8px; max-height: 0; margin-top: 0; opacity: 0; overflow: hidden; }
-.alert:hover .alert-extras, .alert:focus-within .alert-extras { max-height: 30px; margin-top: 8px; opacity: 1; }
-@media (hover: none) { .alert-extras { max-height: 30px; margin-top: 8px; opacity: 1; } }
-.alert-extras .reason { position: relative; z-index: 1; border: 0; border-radius: 7px; padding: 2px 7px; background: rgb(120 120 128 / 0.2); color: var(--ink); }
-.alert-go { color: var(--ink-2); font-size: 12px; }
 .alert-x { position: absolute; z-index: 2; left: -7px; top: -7px; display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; color: var(--ink); background: var(--sheet); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); box-shadow: inset 0 0 0 0.5px rgb(120 120 128 / 0.4); cursor: pointer; opacity: 0; transition: opacity 0.12s; }
 .alert-x svg { width: 9px; height: 9px; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; fill: none; }
 .alert:hover .alert-x, .alert:focus-within .alert-x { opacity: 1; }
@@ -881,11 +884,11 @@ table.feedtab tr.bad td:nth-child(3) { color: var(--accent); }
    blurred; the cards get a plain shadow to lift them instead. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .alerts-veil { display: none; }
-  .alert, .alert-more, .alert-link { box-shadow: 0 8px 22px rgb(0 0 0 / 0.3); }
+  .alert::after, .alert-more, .alert-link { box-shadow: 0 8px 22px rgb(0 0 0 / 0.3); }
 }
 @media (prefers-reduced-transparency: reduce), (forced-colors: active) {
   .alerts-veil { display: none; }
-  .alert, .alert-more, .alert-link { box-shadow: 0 8px 22px rgb(0 0 0 / 0.3); }
+  .alert::after, .alert-more, .alert-link { box-shadow: 0 8px 22px rgb(0 0 0 / 0.3); }
 }
 
 /* ---- Severity: a word above the title, in the colour of the shape in front of it ----

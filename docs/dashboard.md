@@ -78,7 +78,7 @@ The page behind the alerts is blurred, more strongly towards the cards and fadin
 
 Each card names how bad it is (*Alert* or *Critical*) in the colour of its shape, then what happened, where, and what the radar did. When trouble clears by itself the card does not just vanish: its shape turns into a teal circle, the text changes to *Healthy*, and after a moment it slides away. Where the system asks for reduced motion the same happens without the movement.
 
-Each alert links to the deploy's case and, when the radar acted, shows the [reason code](troubleshooting/reasons.md) of the action. Alerts are read from the Observe API for the last 90 days, so they do not depend on the time range of the board.
+The whole card is a link: click it to open the deploy's case, where the [reason code](troubleshooting/reasons.md) of what the radar did is shown. The circuit-breaker alert has no deploy, so it opens the entry for its reason code instead. Nothing on the card changes when you point at it, apart from the × that appears in its corner. Alerts are read from the Observe API for the last 90 days, so they do not depend on the time range of the board.
 
 Every panel has an **info button** at its top right. Hover it, or focus it with the keyboard, to read what the panel shows and how to read it; click to keep the text open (Escape or a click elsewhere closes it). A panel's own `description` in the file replaces the built-in text.
 
