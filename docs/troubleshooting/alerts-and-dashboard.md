@@ -53,6 +53,8 @@ pg-regression-radar dashboard --namespace <manager-namespace> --open
 | the command cannot find the manager | your user cannot read the Lease or port-forward | needs `get` on `leases` and `pods`, `create` on `pods/portforward` |
 | query text is missing | by design | `--show-queries` on the dashboard **and** `--observe-allow-queries` on the manager |
 
+A regression, an abort that did not help, a failed pause or abort and an open breaker also appear as alerts at the top right of the dashboard, and stay until you dismiss them or the deploy is healthy again. See [Alerts](../dashboard.md#alerts). If an alert you expected is not there, check that you did not dismiss it (the browser remembers dismissals), and that the deploy is read as regressed: *Regressed* in the deploy list.
+
 When the dashboard shows a source as not healthy, or says the radar may not act, the row carries a reason code (`ScrapeStale`, `ArmsLogStale`, `BreakerOpen` and so on) that links to [Reason codes](reasons.md). It is the same code as the `reason` of the matching condition in `kubectl describe postgreswatch` and of the log line, so you can look for it in either place. A manager older than 1.9.2 sends no codes.
 
 The dashboard reads the leader only. If the manager has more than one pod, a port-forward to a standby shows nothing, which is why the command resolves the leader from the Lease itself. See [Dashboard](../dashboard.md).

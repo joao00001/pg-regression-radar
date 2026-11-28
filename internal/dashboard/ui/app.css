@@ -755,3 +755,35 @@ table.feedtab tr.bad td:nth-child(3) { color: var(--accent); }
 .qstatus:empty { display: none; }
 .qhint { margin: 4px 0 0; color: var(--faint); font-size: 11.5px; line-height: 1.5; }
 @media (prefers-reduced-motion: no-preference) { .qlist:not([hidden]) { animation: fade 0.12s var(--ease) both; } }
+
+/* ---- Alerts: the few things that stay until somebody has dealt with them ------------- */
+.alerts { position: fixed; z-index: 35; top: var(--alerts-top, 108px); right: 16px; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - var(--alerts-top, 108px) - 12px); overflow-y: auto; overscroll-behavior: contain; pointer-events: none; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.alerts[hidden] { display: none; }
+.alert-list { display: grid; gap: 8px; }
+.alert-list > * { pointer-events: auto; }
+.alert { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; padding: 12px 8px 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--amber); background: var(--panel); color: var(--fg); box-shadow: 0 10px 28px rgb(0 0 0 / 0.28); }
+:root[data-theme="light"] .alert { box-shadow: 0 8px 22px rgb(0 0 0 / 0.12); }
+.alert-critical { border-color: var(--accent-border); border-left-color: var(--accent-solid); background: var(--accent-bg); }
+.alert-mark { padding-top: 5px; }
+.alert-body { min-width: 0; }
+.alert-body p { margin: 0; }
+.alert-title { font-size: 13px; font-weight: 600; line-height: 1.35; }
+.alert-what { margin-top: 2px !important; font-size: 12.5px; }
+.alert-text { margin-top: 6px !important; color: var(--muted); font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.alert-critical .alert-text { color: var(--fg); }
+.alert-missing { margin-top: 6px !important; padding-left: 8px; border-left: 2px solid var(--faint); color: var(--muted); font-size: 12px; line-height: 1.5; }
+.alert-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 8px !important; font-size: 12px; }
+.alert-open { color: var(--fg); text-underline-offset: 3px; }
+.alert-x { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
+.alert-x:hover { color: var(--fg); background: var(--card); }
+.alert-more, .alert-link { padding: 7px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font-size: 12.5px; cursor: pointer; }
+.alert-more { text-align: left; box-shadow: 0 10px 28px rgb(0 0 0 / 0.2); }
+.alert-tools { display: flex; justify-content: flex-end; gap: 6px; pointer-events: none; }
+.alert-tools > * { pointer-events: auto; }
+.alert-link { padding: 5px 10px; border-color: var(--line); background: var(--panel); color: var(--muted); font-size: 12px; box-shadow: 0 6px 16px rgb(0 0 0 / 0.18); }
+.alert-link:hover, .alert-more:hover { color: var(--fg); background: var(--card); }
+@media (prefers-reduced-motion: no-preference) {
+  .alert-new { animation: alert-in 0.22s ease-out; }
+  @keyframes alert-in { from { opacity: 0; transform: translateX(14px); } }
+}
+@media (max-width: 560px) { .alerts { left: 12px; right: 12px; width: auto; } }

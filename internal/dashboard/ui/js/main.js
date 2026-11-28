@@ -1,5 +1,7 @@
 import { client, getConfig, checkVersion, events, layoutBundle, linkStatus, getProfile, putProfile, forgetProfile } from './api.js';
-import { clockOffset, estimateNow, defaultSelection, defaultUnit, relative } from './model.js';
+import { clockOffset, estimateNow, defaultSelection, defaultUnit, relative, docsHref } from './model.js';
+import { createAlerts } from './alerts.js';
+import { createAlertBar } from './alertbar.js';
 import * as R from './range.js';
 import * as L from './layout.js';
 import { createStore } from './store.js';
@@ -22,7 +24,7 @@ const state = {
 };
 // What panels keep between renders and between boards: open tables, chosen comparisons.
 const ui = { tableOpen: false, keyOpen: false, showAll: false, compare: {} };
-let chrome = null, board = null, focus = null, painted = false, focusPushed = false, savedScroll = 0;
+let chrome = null, board = null, focus = null, alertBar = null, painted = false, focusPushed = false, savedScroll = 0;
 
 const nowMs = () => estimateNow(state.offset, Date.now());
 const currentBoard = () => L.boardById(state.layout, state.boardId);
@@ -35,10 +37,16 @@ async function refresh() {
   running = true;
   try {
     if (!state.versionOk) { await checkVersion(); state.versionOk = true; }
-    const [overview, deploys] = await Promise.all([state.api.overview(), state.api.deploys(R.query(state.range))]);
+    // Alerts do not follow the board's time range: a regression from yesterday is still open
+    // today. They read the whole history in one light call (summaries, no evidence).
+    const [overview, deploys, wide] = await Promise.all([
+      state.api.overview(), state.api.deploys(R.query(state.range)),
+      state.api.deploys({ from: `now-${R.MAX_DAYS}d` }).catch(() => null),
+    ]);
     state.offset = clockOffset(overview.generatedAt, Date.now());
     state.overview = overview;
     state.deploys = deploys;
+    if (alertBar) alertBar.update({ deploys: wide || deploys, watches: overview.watches || [], complete: !!wide });
     const ids = deploys.slice(0, 30).map((d) => d.id);
     // A case opened by its address may be older than the range; it is still read.
     if (state.selected && !ids.includes(state.selected)) ids.push(state.selected);
@@ -392,6 +400,10 @@ async function start() {
     onAdd: (type) => board.add(type),
     onReset: resetEdits,
     onExport: () => chrome.showExport(L.toYAML(state.layout, state.bundle.catalog), state.bundle.source),
+  });
+  alertBar = createAlertBar({
+    el: $('alerts'), alerts: createAlerts({ storage, docsHref }),
+    hrefFor: (id) => L.hashFor({ board: state.layout.boards.some((b) => b.id === 'case') ? 'case' : state.boardId, deploy: id }),
   });
   chrome.setSaveNote(state.store.saved ? `Your edits are saved in ${state.store.where}.` : 'Your edits are kept in this browser only.');
   chrome.setEdited(loaded.edited);
