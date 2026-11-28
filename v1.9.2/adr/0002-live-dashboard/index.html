@@ -1,0 +1,3395 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/v1.9.2/adr/0002-live-dashboard/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/brand/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>ADR-0002: A live dashboard, opened with one command - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <script>
+    (function () {
+      try {
+        var shared = localStorage.getItem("pgrr.palette");
+        if (shared) {
+          localStorage.setItem(new URL("../..", location).pathname + ".__palette", shared);
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#adr-0002-a-live-dashboard-opened-with-one-command" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are not viewing the latest version of these docs.
+  <a href="../../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ADR-0002: A live dashboard, opened with one command
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        
+          <a href="https://discord.gg/ZShn8s3mh" class="md-header__discord" title="Join the pg_regression_radar Discord" aria-label="Join the pg_regression_radar Discord" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.369A19.79 19.79 0 0 0 15.885 3a.074.074 0 0 0-.079.037c-.19.34-.405.783-.554 1.131a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.561-1.131.077.077 0 0 0-.079-.037 19.74 19.74 0 0 0-4.433 1.369.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.292a.074.074 0 0 1 .078-.01c3.927 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .079.009c.12.1.246.198.373.293a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.891.077.077 0 0 0-.04.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.029 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .031-.055c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.331c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.419 0 1.333-.956 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.419 0 1.333-.946 2.419-2.157 2.419z"/></svg>
+          </a>
+        
+        
+          <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+        
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/playground/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Playground
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/our-math/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Our math
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../lab/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/roadmap/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/contribute/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contribute
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/playground/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Playground
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/our-math/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Our math
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Docs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../lab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Try the lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate your setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: a regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/attribution-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: pausing a bad rollout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-cluster
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-abort
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../attribution-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribution engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integrations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../otel-prometheus-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prometheus / OTel source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../otlp-deploy-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OTLP deploy events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../otlp-export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OTLP export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardening (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../troubleshooting/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Troubleshooting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/where-to-look/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where to look
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup and the database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nothing is detected
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/deploy-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/enforce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enforce mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/alerts-and-dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerts and the dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/log-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/reasons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reason codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collect a report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Basic Kubernetes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/objects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Objects and namespaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/workloads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pods and Deployments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/config-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config and Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Services and networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/crds-operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDs and operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBAC and access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/helm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Helm basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting toolkit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../backporting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backporting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing guide ↗
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/contribute/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Decision">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-observe-api-in-the-manager" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Observe API (in the manager)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        History
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-reaching-it-one-command-no-new-exposure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Reaching it: one command, no new exposure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-the-ui-boards-panels-datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The UI: boards, panels, datasets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-what-the-first-board-now-shows-and-why" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. What the first board ("Now") shows, and why
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-how-it-is-tested" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. How it is tested
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-milestones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Milestones
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#amendments-as-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Amendments (as built)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequences
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alternatives-considered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternatives considered
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Open questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/adr/0002-live-dashboard.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="adr-0002-a-live-dashboard-opened-with-one-command">ADR-0002: A live dashboard, opened with one command<a class="headerlink" href="#adr-0002-a-live-dashboard-opened-with-one-command" title="Permanent link">&para;</a></h1>
+<p><strong>Status:</strong> Accepted (implemented; amended 2026-11-26, see "Amendments")
+<strong>Date:</strong> 2026-11-26
+<strong>Deciders:</strong> Joao</p>
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>The radar now decides and acts on its own: it assesses a deploy, grades the evidence (A to D), pauses or aborts a Rollout, verifies the abort and trips a circuit breaker. All of that is visible only in manager logs, a verdict endpoint and a ledger endpoint. A person watching a rollout, or arriving after one, cannot see <em>what the radar saw, what it concluded, why, and what it did</em>. The project says in its README that it "does not ship a dashboard"; that is now the biggest gap between what the engine does and what a user can trust.</p>
+<p>What the repo already has and this builds on:</p>
+<table>
+<thead>
+<tr>
+<th>Reusable</th>
+<th>Where</th>
+<th>Used for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Per-deploy assessments, decisions, action ledger, breaker state</td>
+<td><code>internal/attribution/shadow</code> (<code>Records</code>, <code>Actions</code>, <code>BreakerOpen</code>), <code>verdictapi</code></td>
+<td>the "what was decided and done" half</td>
+</tr>
+<tr>
+<td>Per-query samples and deploy events over HTTP</td>
+<td><code>internal/dashboardapi</code></td>
+<td>history and charts</td>
+</tr>
+<tr>
+<td>Log-arm source (canary vs stable)</td>
+<td><code>internal/pglog</code>, <code>attribution.arms</code></td>
+<td>the canary/stable chart and source health</td>
+</tr>
+<tr>
+<td>Chart code, design tokens, copy for the engine's concepts</td>
+<td><code>docs/assets/playground/*</code></td>
+<td>visual language; the playground already explains the engine in a browser</td>
+</tr>
+<tr>
+<td>A CLI entry point with subcommands</td>
+<td><code>cmd/pg-regression-radar</code>, <code>internal/cli</code></td>
+<td>the one command</td>
+</tr>
+</tbody>
+</table>
+<p>Decisions made with the owner before this ADR (recorded, not re-litigated):</p>
+<ul>
+<li><strong>Data origin in v1:</strong> the real cluster. Demo and direct-Postgres origins come later through the same interface.</li>
+<li><strong>First screen:</strong> "what is happening now" (live), not post-mortem or long-term trend.</li>
+<li><strong>Flexibility:</strong> editable panels, saved and loaded as a declarative file. Not a user-written query language in v1.</li>
+<li><strong>Query text:</strong> hidden by default (<code>--show-queries</code> to reveal), as proposed.</li>
+<li><strong>History:</strong> kept the way Grafana does, read here as: retention is a configurable property of the data layer, the data lives outside the UI and the process, and every board has a time-range picker (last 15 minutes to 7 days, or an absolute range). See "History" below.</li>
+<li><strong>Scope:</strong> the Observe API respects the namespace allowlist (<code>attribution.actuate.namespaces</code>). See "Scope" below.</li>
+</ul>
+<h2 id="decision">Decision<a class="headerlink" href="#decision" title="Permanent link">&para;</a></h2>
+<p>Ship a read-only, local web dashboard as <code>pg-regression-radar dashboard</code>, in three layers that can each be tested alone.</p>
+<div class="language-text highlight"><pre><span></span><code> browser (vanilla ES modules, SVG)       your laptop                      cluster
+┌───────────────────────────────┐   ┌──────────────────────┐   SPDY    ┌────────────────────────┐
+│ board = layout (grid) of      │   │ pg-regression-radar  │ port-fwd  │ manager (leader pod)   │
+│ panels; panels read named     │◀─▶│ dashboard            │──────────▶│ observe API, bound to  │
+│ datasets from the Observe API │   │  - embedded UI       │ (kube RBAC│ 127.0.0.1 in the pod   │
+│ and live events (SSE)         │   │  - port-forward      │  pods/    │  - snapshot + SSE      │
+│ layout saved in a data dir    │   │  - /api proxy        │  portfwd) │  - read-only           │
+└───────────────────────────────┘   └──────────────────────┘           └────────────────────────┘
+</code></pre></div>
+<h3 id="1-the-observe-api-in-the-manager">1. The Observe API (in the manager)<a class="headerlink" href="#1-the-observe-api-in-the-manager" title="Permanent link">&para;</a></h3>
+<p>One versioned, read-only contract, <code>/observe/v1</code>, which the UI and any other client consume. Nothing in it can change cluster state.</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /observe/v1/overview</code></td>
+<td>per watch: mode (<code>shadow</code>/<code>enforce</code>), actuation on/off, breaker state, kill-switch annotation state, allowlist; collector health (last scrape age, <code>pg_stat_statements</code> reachable, reset detected); arms health (log flowing, sample rate, settings issues)</td>
+</tr>
+<tr>
+<td><code>GET /observe/v1/deploys</code></td>
+<td>deploys the radar tracks, newest first: workload, revision, time, phase (<code>observing</code>, <code>decided</code>, <code>acted</code>, <code>verified</code>), next evaluation time, latest verdict, grade, impact, attribution, action wanted/taken</td>
+</tr>
+<tr>
+<td><code>GET /observe/v1/deploys/{id}</code></td>
+<td>the whole case: every evaluation in order, each with its decision and reasons, per-query verdicts (grade, ratio, interval, flags, cap reasons), actions and verification</td>
+</tr>
+<tr>
+<td><code>GET /observe/v1/deploys/{id}/series?unit=…</code></td>
+<td>the chart data for one query: treatment and control (canary/stable) series, the pre-deploy baseline and the engine's placebo band, the deploy marker</td>
+</tr>
+<tr>
+<td><code>GET /observe/v1/actions</code></td>
+<td>the ledger</td>
+</tr>
+<tr>
+<td><code>GET /observe/v1/events</code></td>
+<td>Server-Sent Events: <code>deploy.registered</code>, <code>evaluation</code>, <code>decision</code>, <code>action</code>, <code>verification</code>, <code>health</code> — what the live view subscribes to, so nothing polls</td>
+</tr>
+</tbody>
+</table>
+<p>Every list endpoint takes <code>from</code> and <code>to</code> (RFC 3339 or a relative <code>now-6h</code>), which is what the time-range picker sends; the case, series and ledger endpoints are addressed by id and also honour them for what they return.</p>
+<p>Rules for the contract:</p>
+<ul>
+<li><strong>Same data the engine used.</strong> A chart is drawn from the series the engine assessed, not recomputed by the UI, so the picture cannot disagree with the verdict. Each series carries its own sample counts so the UI can show how thin the evidence was.</li>
+<li><strong>Explanations are data, not UI copy.</strong> Decisions already carry <code>Reasons</code>; flags and cap reasons gain stable machine codes plus a short plain-language text, so a panel can say "capped at grade C: too few donors (7 queries)" and a user can search the docs for the code.</li>
+<li><strong>No query parameters, no SQL text by default.</strong> Queries are shown by fingerprint and table; the normalized text appears only when the dashboard is started with <code>--show-queries</code>.</li>
+<li><strong>Additive and versioned.</strong> <code>/observe/v1</code> never removes a field; the dashboard refuses to talk to a manager whose <code>GET /observe/version</code> it does not understand and says which versions it supports.</li>
+<li><strong>Bounded memory.</strong> The in-process view is bounded (the evaluator's record list, today unbounded, gets a cap) and the live series are the ones the collector window and the log store already hold.</li>
+</ul>
+<h3 id="history">History<a class="headerlink" href="#history" title="Permanent link">&para;</a></h3>
+<p>The Observe API reads history through one seam, <code>HistoryStore</code>, with a retention that is a setting and not a constant:</p>
+<ul>
+<li><strong>Memory (default).</strong> A bounded ring of deploys, evaluations, actions and verifications. It is lost on restart, and the dashboard says so in the status strip ("history since 02:14, in memory") instead of showing a short list as if it were complete.</li>
+<li><strong>Postgres (opt-in).</strong> The same optional state backend the operator already has (<code>--state-backend=postgres</code>, the <code>regression_radar</code> schema, the existing prune loop and <code>--state-retention</code>), extended with <code>attribution_deploys</code>, <code>attribution_evaluations</code> (the assessment as JSONB, versioned), <code>attribution_actions</code> and a compact <code>attribution_series</code> written at each evaluation (the points the engine used, downsampled, so a chart of a past deploy needs neither the collector window nor the log store). Retention defaults to 30 days. Writing history is best effort and never blocks or delays a decision: if the store is down the radar keeps acting and the dashboard shows "history not recorded since …".</li>
+</ul>
+<p>The time-range picker therefore means the same thing in both modes: it asks the store for a range, and the API answers with what exists, saying what is missing at either end.</p>
+<h3 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h3>
+<p>The Observe API serves only deploys in the namespaces of <code>attribution.actuate.namespaces</code> when that list is set (empty means every namespace the deploy sources report, as it does for actuation). The filter is applied inside the API, on every endpoint including the event stream and the history, not in the UI, so a client cannot ask around it. The status strip names the scope ("scoped to: checkout, payments") so a missing deploy is explained rather than mysterious. The cost is deliberate: a deploy outside the allowlist is still judged and logged by the manager but invisible here; a separate visibility list would be a different decision.</p>
+<h3 id="2-reaching-it-one-command-no-new-exposure">2. Reaching it: one command, no new exposure<a class="headerlink" href="#2-reaching-it-one-command-no-new-exposure" title="Permanent link">&para;</a></h3>
+<p><code>pg-regression-radar dashboard [--context CTX] [--namespace NS] [--port 8765] [--open] [--config FILE] [--show-queries]</code></p>
+<ul>
+<li>It finds the <strong>leader</strong> manager pod (the Lease holder, since only the leader runs the evaluators), opens a port-forward to it with the user's own kubeconfig, serves the UI on <code>127.0.0.1</code>, and proxies <code>/api</code> to the forward.</li>
+<li>The observe listener in the manager is bound to <strong>127.0.0.1 inside the pod</strong>. No Service, no Ingress, no token to mint or leak: the only way in is the Kubernetes <code>pods/portforward</code> permission the user already has or does not have. This is also why the chart needs no new Service.</li>
+<li><code>--url http://host:port</code> skips the port-forward, for tests and for a user who exposed the API some other way.</li>
+<li>If the leader changes mid-session the command re-resolves it and the UI shows a reconnecting state rather than stale data without saying so.</li>
+<li>The dashboard binds to loopback only and refuses a non-loopback <code>--listen</code> unless <code>--insecure-listen</code> is passed, because the page shows an operator's view of production.</li>
+</ul>
+<h3 id="3-the-ui-boards-panels-datasets">3. The UI: boards, panels, datasets<a class="headerlink" href="#3-the-ui-boards-panels-datasets" title="Permanent link">&para;</a></h3>
+<p>Plain ES modules and hand-written SVG, embedded in the binary with <code>go:embed</code>. No Node, no bundler, no runtime dependency, nothing downloaded at run time: the same constraint the docs playground already lives under, and the right one for a tool that runs next to production.</p>
+<p>Three concepts, kept apart so each can be changed without touching the others:</p>
+<ul>
+<li><strong>Dataset</strong>: a named, typed slice of the Observe API (<code>deploys</code>, <code>decisions</code>, <code>actions</code>, <code>source-health</code>, <code>unit-series</code>, …). Datasets are the only thing panels read; they hide transport (snapshot then SSE patches).</li>
+<li><strong>Panel</strong>: a component with a type, a small schema of options and a dataset it binds to. Types for v1: <code>deploy-cards</code>, <code>decision-feed</code>, <code>evidence-table</code>, <code>canary-chart</code>, <code>ratio-chart</code>, <code>safety</code>, <code>source-health</code>, <code>kpi</code>.</li>
+<li><strong>Board</strong>: a grid of panels. Presets ship in the binary; a board is just data.</li>
+</ul>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pgrr.io/v1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Dashboard</span>
+<span class="nt">boards</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">now</span>
+<span class="w">    </span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Now</span>
+<span class="w">    </span><span class="nt">refresh</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">live</span>
+<span class="w">    </span><span class="nt">panels</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">active</span><span class="p p-Indicator">,</span><span class="nt">   type</span><span class="p">:</span><span class="w"> </span><span class="nv">deploy-cards</span><span class="p p-Indicator">,</span><span class="nt">  at</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">8</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">],</span><span class="nt"> options</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">states</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">observing</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">decided</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">acted</span><span class="p p-Indicator">]}}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">safety</span><span class="p p-Indicator">,</span><span class="nt">   type</span><span class="p">:</span><span class="w"> </span><span class="nv">safety</span><span class="p p-Indicator">,</span><span class="nt">        at</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">8</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">]}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">feed</span><span class="p p-Indicator">,</span><span class="nt">     type</span><span class="p">:</span><span class="w"> </span><span class="nv">decision-feed</span><span class="p p-Indicator">,</span><span class="nt"> at</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">],</span><span class="nt"> options</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">limit</span><span class="p">:</span><span class="w"> </span><span class="nv">50</span><span class="p p-Indicator">}}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">evidence</span><span class="p p-Indicator">,</span><span class="nt"> type</span><span class="p">:</span><span class="w"> </span><span class="nv">evidence-table</span><span class="p p-Indicator">,</span><span class="nt"> at</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">7</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">6</span><span class="p p-Indicator">],</span><span class="nt"> options</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">follow</span><span class="p">:</span><span class="w"> </span><span class="nv">active</span><span class="p p-Indicator">}}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">id</span><span class="p">:</span><span class="w"> </span><span class="nv">health</span><span class="p p-Indicator">,</span><span class="nt">   type</span><span class="p">:</span><span class="w"> </span><span class="nv">source-health</span><span class="p p-Indicator">,</span><span class="nt"> at</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">10</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">12</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">]}</span>
+</code></pre></div>
+<p>Flexibility, in the order a user meets it: drag, resize, hide and re-add panels in the browser (saved in the command's data directory; see the amendment <em>Saved edits</em>); <em>Export</em> writes the YAML above; <code>--config</code> loads a file; <code>pg-regression-radar dashboard config validate FILE</code> checks it against the schema with line-numbered errors; <code>… config dump</code> prints the presets as files to start from. A panel's options are validated against its schema, an unknown panel type renders a clear placeholder instead of breaking the board, and a layout from an older version is migrated or reported, never silently dropped.</p>
+<h3 id="4-what-the-first-board-now-shows-and-why">4. What the first board ("Now") shows, and why<a class="headerlink" href="#4-what-the-first-board-now-shows-and-why" title="Permanent link">&para;</a></h3>
+<p>A person watching a rollout asks four questions in order, so the board is laid out in that order:</p>
+<ol>
+<li><strong>Is the radar alive and trustworthy right now?</strong> A top strip: data freshness, mode, actuation on/off, breaker, kill switch, log-arm health. If the data is stale or the arms are unusable, say so first, because everything below depends on it.</li>
+<li><strong>What deploys is it watching, and where is each?</strong> One card per active deploy: workload and revision, phase and "next evaluation in 3m", verdict, <strong>grade as a badge</strong>, impact, attribution, and the action wanted vs taken. A card is not a number: it ends with one plain sentence ("Grade A: the canary is 2.3x slower than the stable pods on 3 queries; aborted at 02:19").</li>
+<li><strong>Why?</strong> Selecting a card shows the evidence: the per-query table (grade, ratio, interval, flags) and the <strong>canary vs stable</strong> chart with the deploy marker and the pre-deploy placebo band. The grade is explained where it appears (what A/B/C/D mean here, and what caps this one).</li>
+<li><strong>What did it do, and was it right?</strong> A live feed of evaluations and actions, and the verification result of each abort ("regression persisted after abort"), because trust in an agent that acts comes from seeing its mistakes as plainly as its saves.</li>
+</ol>
+<p>Colour carries one meaning only (state: ok, watching, regressed, acted), never decoration; every colour has a text or shape twin so the board reads without colour; light and dark follow the system; the board is usable at laptop width without scrolling sideways.</p>
+<p>A second preset, <strong>Case</strong>, is the same evidence full-screen for one deploy (the investigation view), and a third, <strong>Source health</strong>, is for debugging the radar itself.</p>
+<h3 id="5-how-it-is-tested">5. How it is tested<a class="headerlink" href="#5-how-it-is-tested" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Contract:</strong> Go tests for each endpoint with golden JSON, a test that every field the UI reads exists in the golden, and an SSE test (ordering, resume after reconnect, slow-consumer drop).</li>
+<li><strong>Spec:</strong> table tests for schema validation and migration of config files, including bad files.</li>
+<li><strong>UI logic:</strong> the dataset layer and the layout engine run in Node without a DOM (the pattern <code>playground-core.js</code> already uses).</li>
+<li><strong>Visual:</strong> Playwright against a <strong>fixture source</strong> that replays recorded observe responses (from the real e2e runs in this repo, so the fixtures are real shapes, not invented ones). Screenshots at three widths in light and dark are reviewed by a person, together, before each milestone is called done.</li>
+<li><strong>End to end:</strong> the real-cluster harness already used for the arms test (real Postgres, API server, Rollout CRD, manager) with a canary regression, an A/A and an abort, checking that the dashboard shows the same verdict the ledger recorded. The port-forward itself cannot run in that harness (no kubelet), so it is tested against a recorded SPDY exchange and <code>--url</code> covers the rest; a real cluster run is a manual checklist item.</li>
+</ul>
+<h3 id="6-milestones">6. Milestones<a class="headerlink" href="#6-milestones" title="Permanent link">&para;</a></h3>
+<p>Each ends with something that runs, is tested and is looked at before the next starts.</p>
+<ol>
+<li><strong>Observe API + fixture source</strong>: contract, golden files, SSE, <code>--url</code> mode. No UI yet; <code>curl</code> shows the case.</li>
+<li><strong>Shell and "Now" board, read-only</strong>: embedded UI, datasets, <code>deploy-cards</code>, <code>decision-feed</code>, <code>safety</code>, <code>source-health</code>.</li>
+<li><strong>Evidence</strong>: <code>evidence-table</code>, <code>canary-chart</code>, <code>ratio-chart</code>, grade/flag explanations, the <strong>Case</strong> board.</li>
+<li><strong>History store</strong>: the <code>HistoryStore</code> seam, the memory ring and the Postgres backend with retention, in step with the API.</li>
+<li><strong>The command</strong>: leader discovery, port-forward, reconnect, version handshake, <code>--open</code>.</li>
+<li><strong>Flexibility</strong>: edit/drag/resize/hide, export, <code>--config</code>, <code>config validate|dump</code>, migration.</li>
+<li><strong>Hardening and docs</strong>: accessibility and width checks, loopback guard, docs page and screenshots, an "add a panel type" guide.</li>
+</ol>
+<h2 id="amendments-as-built">Amendments (as built)<a class="headerlink" href="#amendments-as-built" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Grid model.</strong> Boards are a fixed-row-height grid, as Grafana's: <code>at: [x, y, w, h]</code> in cells, 12 columns, rows 40 px, panels compacted upward. The earlier sketch (<code>refresh: live</code>, <code>follow:</code> options) is dropped: every board is live through the event stream, and panels follow the picked deploy.</li>
+<li><strong>Layout bundle.</strong> <code>GET /dashboard/layout</code> serves <code>{layout, source, catalog, grid}</code>: the layout (default preset or the <code>--config</code> file, re-read per request, 422 with line-numbered problems when invalid), the panel catalog and the grid constants, so the page and the validator cannot disagree. The UI's <em>Export</em> produces the same YAML as <code>dashboard config dump</code>; golden files pin it.</li>
+<li><strong>Preset boards</strong> are Now, Case and Source health. Panel types differ from the first list: <code>summary</code>, <code>radar-state</code>, <code>deploy-cards</code>, <code>deploy-head</code>, <code>canary-chart</code>, <code>figures</code>, <code>why</code>, <code>evidence-table</code>, <code>ratio-chart</code>, <code>evaluations</code>, <code>ledger</code>, <code>decision-feed</code>, <code>safety</code>, <code>source-health</code>.</li>
+<li><strong>History DSN.</strong> Resolves the first open question: the manager reads the Postgres DSN from a file (<code>--observe-history-dsn-file</code>), never from a flag, so it does not show in the pod spec. History is its own store (<code>--observe-history=memory|postgres</code>), independent of <code>--state-backend</code>.</li>
+<li><strong>Series.</strong> Series are recorded per evaluation for the units the engine keeps, downsampled; other units answer 404 and the UI says no series was recorded. Resolves the second open question as "only the units the engine keeps".</li>
+<li><strong>Info button.</strong> Each panel carries an info button (hover or focus shows, click pins) with a few sentences from the catalog (<code>help</code>), or the panel's own <code>description</code> from the file. It is how a board stays readable after someone else rearranged it.</li>
+<li><strong>Focus view.</strong> Clicking a panel anywhere that is not a button, a list, a link or the info button, pressing <code>V</code> over it, or its expand button opens it alone, large, with a settings pane on the right, as Grafana's <em>view panel</em> does. The address becomes <code>#/&lt;board&gt;?view=&lt;panel&gt;</code> (so it can be shared, and Back closes it); Escape and <em>Back to the board</em> leave. What we took from Grafana: the pane is organised in collapsible groups with a search box; the visualization is chosen first; each setting has a help sentence and a way back to its default; a changed setting is marked. What we did differently: a change applies at once and is kept like any other layout edit (it is the same <code>localStorage</code> entry, exported as the same YAML), with <em>Discard changes</em> back to how the panel was when the view opened, rather than Grafana's Save/Discard pair, because nothing here is saved on a server.</li>
+<li><strong>Settings are catalog data.</strong> Each option in the catalog carries <code>label</code>, <code>group</code>, <code>doc</code>, optional <code>labels</code> for enum values and an optional <code>when: "viz=table"</code> that hides it while another option has a different value. The pane is drawn from the catalog the server sends, so a new option on the Go side needs no change in the pane, only in the panel that reads it. The option named <code>viz</code> is the type's choice of visualization (deploy list as cards or compact list, canary as chart or table, evidence as table or ratio chart, activity as feed or table) and is drawn as a picker. Types that read one deploy carry <code>followsDeploy</code>, and the view then offers a deploy picker beside the panel. A panel is rebuilt when its title, description or settings change, so a panel never has to apply a change in place.</li>
+<li><strong>Panel queries.</strong> A panel in focus has a <em>Query</em> field under it (Grafana's place for it) holding a filter language, saved as <code>query:</code> in the layout. It is not SQL and cannot become it: the dashboard stays read-only over what the Observe API serves, which is what keeps <code>GET</code>-only, the allowlist and the hidden query text intact. Grammar: <code>field:value</code> terms, bare or quoted values, same field OR, different fields AND, <code>*</code> in free-text fields, at most 12 terms and 200 characters; fields <code>app</code>, <code>namespace</code>, <code>state</code>, <code>grade</code>, <code>deploy</code>, <code>query</code>, <code>statement</code>, <code>table</code>. The catalog lists which fields each panel type takes (<code>query</code> on the type, <code>queryFields</code> on the bundle carries each field's help and closed values), so the field's suggestions are drawn from the catalog and from the live view (values with counts, refreshed on every event). Go validates a layout's queries (<code>ParseQuery</code>, <code>ValidateQuery</code>, errors that name the column) and the page evaluates them; <code>testdata/query-cases.json</code> is a hand-written contract both sides run, so they cannot drift. Panels that show one deploy resolve it from the query (<code>deploy:</code> names one; other deploy fields pick the newest match) and otherwise from the board's pick; a pinned deploy fetches its own series through a small per-session cache. We chose a constrained language over free-form expressions because a card's data is already shaped by the API and the cards would otherwise each need their own interpreter; the cost is that a query cannot reach data the API does not serve, which is the intent. Radar state, safety and source health take no query because they have nothing to select.</li>
+<li><strong>Saved edits.</strong> Edits (layout, panel settings, queries, board ranges) are kept between runs in the command's own data directory, as one small JSON profile per dashboard source: <code>dashboard-default.json</code>, or <code>dashboard-file-&lt;digest of the --config path&gt;.json</code>. The directory is <code>--data-dir</code>, defaulting to <code>pg-regression-radar/dashboard</code> under the user's configuration directory (a mounted volume works), mode 0700, files 0600, written atomically. This replaces <code>localStorage</code> as the home of the profile; the browser's storage is now only the fallback (<code>--no-save</code>, or a directory that cannot be written, reported at start), and an earlier browser-only profile moves to disk once. The page reads <code>GET /dashboard/profile</code> at start and writes through <code>PUT</code>/<code>DELETE</code> about 350 ms after a change (and when the page is hidden). <strong>This is the dashboard's first write.</strong> "Read-only" now means toward the cluster and the radar; what makes the one write safe: the path is fixed and no request names a file; the Host check of the read paths applies; a write must carry <code>X-Requested-By: pgrr-dashboard</code> (a non-simple header, so a browser asks first and the server never answers the CORS question), a same-origin <code>Origin</code> and <code>Sec-Fetch-Site</code> when sent, and <code>application/json</code>; the body is at most 256 KiB and is validated as a profile (known fields, version, a layout that passes the dashboard-file validator, plain ranges) before anything is written; every other path stays <code>GET</code>/<code>HEAD</code> only. We did not write back into the <code>--config</code> file: that file is the person's, possibly in version control, and a page rewriting it would be surprising; <em>Export</em> remains the way to turn a profile into a file. A <code>--config</code> file that changed since the edits were made wins, as before (the profile stores the fingerprint of what it was edited on). With <code>--insecure-listen</code> saving is off, because with no sign-in anyone who can reach the page could rewrite the file; the page falls back to the browser. The profile holds no credentials and no Observe data, only names the user typed or picked (so topology metadata), and the file is 0600 in a 0700 directory; the threat table lives in <code>docs/security-model.md</code> (<em>What the dashboard saves</em>). Residual risks accepted: an existing directory keeps its own permissions, and anyone who can write the user's configuration directory can change what their dashboard shows.</li>
+<li><strong>Ranges.</strong> The range picker accepts 1 minute to 90 days; the page reports when history is shorter than the range.</li>
+<li><strong>Permissions of the command.</strong> <code>get leases</code>, <code>get pods</code>, <code>create pods/portforward</code>. The port-forward uses a WebSocket tunnel and falls back to SPDY.</li>
+</ul>
+<h2 id="consequences">Consequences<a class="headerlink" href="#consequences" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>A real trust surface for an agent that acts.</strong> The decision, its evidence and its consequence are one click apart, which is what makes enforce mode adoptable.</li>
+<li><strong>The manager grows a second HTTP surface</strong>, on loopback only. It is read-only and carries no query text by default, but it is new API to keep stable: hence the versioned contract and goldens.</li>
+<li><strong>Only the leader can answer</strong>, so the command depends on Lease inspection and a re-resolve on failover. A lost leader shows as "reconnecting", not as an empty board.</li>
+<li><strong>History is as long as the chosen store.</strong> In memory, a restart empties the case list and the dashboard says so; with the Postgres backend it survives restarts for the retention period, at the cost of a small write per evaluation and a schema to migrate. The manager does not yet have a state backend, so this adds its configuration.</li>
+<li><strong>Allowlist as visibility</strong> keeps the dashboard's reach equal to the radar's authority, at the price of hiding judged-but-out-of-scope deploys.</li>
+<li><strong>No JavaScript toolchain</strong>: smaller attack surface and an easy audit, at the price of writing the grid, the charts and the form controls ourselves and testing them well. The panel registry keeps that cost in one place.</li>
+<li><strong>Customisation is bounded on purpose.</strong> Users can rearrange, hide and configure panels and share the file; they cannot define new queries over the data in v1. The schema leaves room for it (a dataset can gain parameters) without breaking files written today.</li>
+</ul>
+<h2 id="alternatives-considered">Alternatives considered<a class="headerlink" href="#alternatives-considered" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Grafana dashboards over Prometheus metrics.</strong> Familiar and cheap, but the interesting objects (a deploy's case, per-query evidence, canary vs stable series, an action and its verification) are not metrics, and "one command, no infrastructure" is lost. Metrics remain useful and remain exported; they are the wrong primary surface.</li>
+<li><strong>A React/Vite single-page app.</strong> Faster to a rich UI, but it brings a build toolchain, a large dependency tree and a bundle to audit into a security-sensitive operator tool, and breaks the "embed and ship one binary" simplicity. Revisit only if the panel registry becomes the bottleneck.</li>
+<li><strong>An in-cluster dashboard behind a Service/Ingress.</strong> Convenient for teams, but it needs authentication and authorisation the project does not have, and widens the exposure of an operator's view of production. A loopback port-forward reuses Kubernetes' own authentication; a shared deployment can be a later, explicitly secured option.</li>
+<li><strong>A user-written query language for panels now.</strong> Maximum flexibility, but a large surface to design, secure and test before the built-in panels have proven what users actually need. Deferred, with the dataset parameter as the extension point.</li>
+<li><strong>Direct Postgres or a demo world as the first origin.</strong> Both are cheap to add behind the same dataset interface and are worth having (onboarding, docs); they do not show the thing this ADR exists for, the radar's own decisions, so they follow the cluster origin.</li>
+</ul>
+<h2 id="open-questions">Open questions<a class="headerlink" href="#open-questions" title="Permanent link">&para;</a></h2>
+<ul>
+<li>A shared, authenticated dashboard (in-cluster) remains a later, explicitly secured option.</li>
+<li>User-defined datasets: the dataset parameter is the extension point; nothing is designed yet.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        
+
+
+
+  
+
+
+
+
+<footer class="md-footer pgrr-footer" aria-label="Site footer">
+  <div class="pgrr-footer__inner">
+    <div class="pgrr-footer__brand">
+      <a class="pgrr-footer__lockup" href="https://joao00001.github.io/pg-regression-radar/" aria-label="pg-regression-radar, home">
+        <span class="pgrr-footer__mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg></span>
+        <span class="pgrr-footer__word">pg-regression-radar</span>
+      </a>
+      <p class="pgrr-footer__tag">Find the Postgres query that got slower, and the Kubernetes rollout behind it.</p>
+      <a class="pgrr-footer__social" href="https://github.com/joao00001/pg-regression-radar" aria-label="pg-regression-radar on GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg></a>
+    </div>
+
+    <nav class="pgrr-footer__cols" aria-label="Footer">
+      <div class="pgrr-footer__col">
+        <h2>Explore</h2>
+        <ul>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/">Home</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/playground/">Playground</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/our-math/">Our math</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/roadmap/">Roadmap</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/contribute/">Contribute</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Documentation</h2>
+        <ul>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/lab/">Try the lab</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/installation/">Install</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/getting-started/">Quickstart</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/">Detection algorithm</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/kubernetes/overview/">Basic Kubernetes</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/joao00001/pg-regression-radar">GitHub</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/releases">Releases</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">Changelog</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/issues">Issues</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/discussions">Discussions</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Community</h2>
+        <ul>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md">Contributing</a></li>
+          <li><a href="https://discord.gg/ZShn8s3mh">Discord</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/security-model/">Security model</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/LICENSE">License</a></li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+
+  <div class="pgrr-footer__bar">
+    <span>Open source under the Apache License 2.0.</span>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+  
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+        <script src="../../javascripts/version-flyout.js"></script>
+      
+        <script src="../../javascripts/code-header.js"></script>
+      
+        <script src="../../javascripts/theme-toggle.js"></script>
+      
+        <script src="../../javascripts/callouts.js"></script>
+      
+        <script src="../../javascripts/steps.js"></script>
+      
+        <script src="../../javascripts/toc-indicator.js"></script>
+      
+    
+  
+
+  </body>
+</html>

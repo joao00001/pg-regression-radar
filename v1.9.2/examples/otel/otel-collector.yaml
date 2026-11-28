@@ -1,0 +1,141 @@
+# OpenTelemetry Collector (contrib) config: pg_stat_statements -> per-query
+# Prometheus counters, as the first half of the pipeline that feeds
+# internal/telemetry/promsource (see docs/otel-prometheus-source.md).
+#
+# Validated against otel/opentelemetry-collector-contrib:0.165.0 by
+# scripts/validate-otel-example.sh. Nothing here needs a feature gate.
+#
+# Data flow:
+#
+#   PostgreSQL pg_stat_statements
+#     -> postgresqlreceiver     emits one `db.server.top_query` LOG RECORD per
+#                               (database, user, queryid) per collection
+#                               interval. The stock postgresql.query.* METRICS
+#                               carry no queryid, so logs are the only source.
+#     -> transform processor    copies postgresql.queryid / db.query.text to the
+#                               short attribute names `queryid` / `query`
+#                               (these become the Prometheus labels promsource
+#                               reads by default).
+#     -> signal_to_metrics      connector: log records -> two delta Sum metrics
+#                               (calls, exec time in seconds) keyed by queryid+query.
+#     -> delta_to_cumulative   prometheusexporter only exposes CUMULATIVE
+#                               counters, so deltas are accumulated here.
+#     -> prometheusexporter     scraped by Prometheus on :8889.
+#
+# A Prometheus recording rule (prometheus-rules.yaml) then divides the two
+# counters' rates, yielding pg_regression_radar_query_mean_exec_time_ms.
+
+receivers:
+  postgresql:
+    endpoint: ${env:PG_ENDPOINT:-postgres:5432}
+    transport: tcp
+    # A least-privilege monitoring role works: GRANT pg_monitor TO otel_monitor.
+    # pg_monitor (pg_read_all_stats) is what lets the role see other users'
+    # query text and ids in pg_stat_statements; without it the receiver gets
+    # "<insufficient privilege>" rows, which it drops.
+    username: ${env:PG_USER:-otel_monitor}
+    password: ${env:PG_PASSWORD}
+    tls:
+      insecure: true # example only; use real TLS settings in production
+    # The extension must exist in this database (pg_stat_statements itself is
+    # cluster-wide): CREATE EXTENSION pg_stat_statements; (default: postgres)
+    connect_database: postgres
+    # The receiver's scrape tick. top_query_collection.collection_interval below
+    # is only a FLOOR on top of this tick, so the real top-query cadence is the
+    # larger of the two rounded up to a multiple of this value. (Setting only
+    # the nested option to 10s while leaving this at 30s still yielded 30s.)
+    collection_interval: 10s
+    events:
+      db.server.top_query:
+        enabled: true # off by default; this is the ONLY per-query signal
+    top_query_collection:
+      # Minimum time between pg_stat_statements reads. Each read's records
+      # carry the DELTA since the previous read (the very first read carries
+      # lifetime totals since the last pg_stat_statements_reset), so this is
+      # the resolution of the resulting metric. 60s is the receiver default;
+      # 10s is used here so the validation script finishes in minutes. Any
+      # PromQL range in prometheus-rules.yaml must span several of these.
+      collection_interval: 10s
+      # The SQL first takes the `max_rows_per_query` most-CALLED statements,
+      # then the `top_n_query` with the largest exec-time delta in the
+      # interval are emitted. A query outside either set silently has no data.
+      max_rows_per_query: 1000
+      top_n_query: 200
+      # Plans are not needed for latency tracking. 0 stops the receiver from
+      # running EXPLAIN against the monitored database.
+      max_explain_each_interval: 0
+
+processors:
+  # Log-record attributes emitted by the receiver for db.server.top_query:
+  #   db.system.name, db.namespace, db.query.text (obfuscated: literals -> ?),
+  #   postgresql.queryid (string, base-10 int64, may be negative),
+  #   postgresql.userid, postgresql.rolname,
+  #   postgresql.calls (int, delta), postgresql.rows (int, delta),
+  #   postgresql.total_exec_time (double, SECONDS, delta),
+  #   postgresql.total_plan_time (double, SECONDS, delta),
+  #   postgresql.shared_blks_* / temp_blks_* (int, delta).
+  transform/promote_query_labels:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(log.attributes["queryid"], log.attributes["postgresql.queryid"])
+          - set(log.attributes["query"], log.attributes["db.query.text"])
+
+  delta_to_cumulative:
+    # Drop a stream's accumulated state after this long without updates. When
+    # a query comes back later its counter restarts at 0, which Prometheus
+    # treats as a normal counter reset.
+    max_stale: 10m
+
+connectors:
+  signal_to_metrics:
+    logs:
+      # Per-interval executions of the query. Sum over every (database, user)
+      # row sharing a queryid, because only queryid+query are kept as labels.
+      - name: pg_regression_radar.query.calls
+        description: pg_stat_statements calls per queryid
+        unit: "{call}"
+        conditions:
+          - log.event_name == "db.server.top_query"
+        attributes:
+          - key: queryid
+          - key: query
+        sum:
+          value: Int(log.attributes["postgresql.calls"])
+          monotonic: true
+      # Per-interval total execution time. CAUTION: the receiver converts
+      # pg_stat_statements' milliseconds to SECONDS in postgresql.total_exec_time,
+      # so this counter is in seconds; the recording rule multiplies by 1000.
+      - name: pg_regression_radar.query.exec_time
+        description: pg_stat_statements total_exec_time per queryid
+        unit: s
+        conditions:
+          - log.event_name == "db.server.top_query"
+        attributes:
+          - key: queryid
+          - key: query
+        sum:
+          value: Double(log.attributes["postgresql.total_exec_time"])
+          monotonic: true
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889 # reachable only inside the container network
+    # Series idle longer than this disappear from /metrics (Prometheus then
+    # marks them stale). Keep it above Prometheus' rate() window.
+    metric_expiration: 10m
+    add_metric_suffixes: true # unit s + monotonic Sum => *_seconds_total
+
+service:
+  pipelines:
+    logs/postgresql_top_query:
+      receivers: [postgresql]
+      processors: [transform/promote_query_labels]
+      exporters: [signal_to_metrics]
+    metrics/per_query:
+      receivers: [signal_to_metrics]
+      processors:
+        # signal_to_metrics emits DELTA sums; prometheusexporter needs cumulative.
+        - delta_to_cumulative
+      exporters: [prometheus]

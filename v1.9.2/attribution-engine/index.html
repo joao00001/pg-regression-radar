@@ -1,0 +1,3672 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/v1.9.2/attribution-engine/">
+      
+      
+        <link rel="prev" href="../auto-abort/">
+      
+      
+        <link rel="next" href="../dashboard/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/brand/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Attribution engine - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <script>
+    (function () {
+      try {
+        var shared = localStorage.getItem("pgrr.palette");
+        if (shared) {
+          localStorage.setItem(new URL("..", location).pathname + ".__palette", shared);
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#attribution-engine" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You are not viewing the latest version of these docs.
+  <a href="../..">
+    <strong>Click here to go to the latest version.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Attribution engine
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        
+          <a href="https://discord.gg/ZShn8s3mh" class="md-header__discord" title="Join the pg_regression_radar Discord" aria-label="Join the pg_regression_radar Discord" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.369A19.79 19.79 0 0 0 15.885 3a.074.074 0 0 0-.079.037c-.19.34-.405.783-.554 1.131a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.561-1.131.077.077 0 0 0-.079-.037 19.74 19.74 0 0 0-4.433 1.369.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.292a.074.074 0 0 1 .078-.01c3.927 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .079.009c.12.1.246.198.373.293a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.891.077.077 0 0 0-.04.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.029 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .031-.055c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.331c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.419 0 1.333-.956 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.419 0 1.333-.946 2.419-2.157 2.419z"/></svg>
+          </a>
+        
+        
+          <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+        
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/playground/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Playground
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/our-math/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Our math
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../lab/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/roadmap/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/contribute/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contribute
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/playground/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Playground
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/our-math/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Our math
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Docs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Try the lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate your setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: a regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/attribution-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: pausing a bad rollout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-cluster
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-abort
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribution engine
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribution engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acting-on-a-verdict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acting on a verdict
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#letting-the-manager-act" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Letting the manager act
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#telling-a-canary-from-the-stable-pods-grade-a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Telling a canary from the stable pods (grade A)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Telling a canary from the stable pods (grade A)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-a-real-test-showed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a real test showed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reverting-a-convicted-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reverting a convicted deploy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-test-suite-shows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the test suite shows
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integrations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../otel-prometheus-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prometheus / OTel source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../otlp-deploy-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OTLP deploy events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../otlp-export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OTLP export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardening (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../troubleshooting/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Troubleshooting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/where-to-look/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where to look
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup and the database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nothing is detected
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/deploy-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/enforce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enforce mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/alerts-and-dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerts and the dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/log-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/reasons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reason codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collect a report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Basic Kubernetes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/objects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Objects and namespaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/workloads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pods and Deployments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/config-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config and Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Services and networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/crds-operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDs and operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBAC and access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/helm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Helm basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/kubernetes/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting toolkit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backporting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backporting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing guide ↗
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/contribute/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why it exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acting-on-a-verdict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acting on a verdict
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#letting-the-manager-act" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Letting the manager act
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#telling-a-canary-from-the-stable-pods-grade-a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Telling a canary from the stable pods (grade A)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Telling a canary from the stable pods (grade A)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-a-real-test-showed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a real test showed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reverting-a-convicted-deploy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reverting a convicted deploy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-test-suite-shows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the test suite shows
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/attribution-engine.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="attribution-engine">Attribution engine<a class="headerlink" href="#attribution-engine" title="Permanent link">&para;</a></h1>
+<p><em>Decide whether a deploy caused a latency change by asking what would have happened without it, and act on how strong that evidence is.</em></p>
+<h2 id="why-it-exists">Why it exists<a class="headerlink" href="#why-it-exists" title="Permanent link">&para;</a></h2>
+<p>A latency change after a deploy is not proof the deploy caused it. A query's <code>queryid</code> changes when its text changes, the planner changes plans when statistics refresh, a cache runs cold after a restart, load moves, another deploy lands. Handling each of these with its own rule does not scale. The engine replaces the rules with one question: <strong>what would these queries have done without this deploy, and how sure are we that they did something else?</strong></p>
+<p>The engine judges every tracked deploy and, by default, only records the action it would take (<strong>shadow mode</strong>). In <strong>enforce mode</strong> it serves a verdict that your rollout controller acts on; the manager itself never writes to a Rollout. Turn it on per watch:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">radar.pgregressionradar.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PostgresWatch</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">attribution</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">shadow</span><span class="w">   </span><span class="c1"># or "enforce"</span>
+</code></pre></div>
+<p>Decisions appear in the manager log (<code>attribution (shadow): decision, not executed</code>, <code>attribution (enforce): verdict served…</code> when a decision is enforced, or <code>attribution (enforce): decision below the acting threshold…</code> for an alert or nothing in enforce mode) and in the metric <code>pg_regression_radar_attribution_shadow_decisions_total{action,grade}</code>. It requires the watch to scrape its own collector (not a Prometheus sample source).</p>
+<pre class="mermaid"><code>flowchart TB
+  A["Tracked deploy&lt;br/&gt;(evaluated at +30, +35, +40 min)"]:::radar
+  B["Identify each query by the&lt;br/&gt;fingerprint of its text"]:::radar
+  C["Build the counterfactual:&lt;br/&gt;A canary arm, B synthetic control, C own history"]:::radar
+  D["Step test per query, then&lt;br/&gt;e-BH across queries"]:::radar
+  G["Guards: persistence, table-level cap,&lt;br/&gt;overlapping deploys, global shift"]:::gate
+  P["Policy by evidence grade"]:::gate
+  R["A: roll back"]:::out
+  H["B: hold promotion"]:::out
+  L["C: alert only"]:::out
+  N["D or immaterial: none"]:::gate
+  A --&gt; B --&gt; C --&gt; D --&gt; G --&gt; P
+  P --&gt;|"A"| R
+  P --&gt;|"B"| H
+  P --&gt;|"C"| L
+  P --&gt;|"D"| N</code></pre>
+<h2 id="acting-on-a-verdict">Acting on a verdict<a class="headerlink" href="#acting-on-a-verdict" title="Permanent link">&para;</a></h2>
+<p>By default the manager does not patch Rollouts. It serves a read-only verdict and the progressive-delivery controller acts on it, which is how Argo Rollouts and Flagger are designed to take an outside signal (to have the manager act itself, see <a href="#letting-the-manager-act">Letting the manager act</a>): Argo's analysis passes, fails (aborting the rollout) or is inconclusive (pausing it at its current step), and a Flagger webhook that does not return 2xx halts promotion. On this path the manager needs no new RBAC.</p>
+<p>Start the manager with <code>--attribution-verdict-addr=:8082</code> (off by default; only the leader serves it) and expose that port with a Service. The endpoint is <code>GET /api/v1/attribution/verdict?namespace=&lt;ns&gt;&amp;app=&lt;name&gt;[&amp;revision=&lt;rev&gt;]</code>:</p>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"verdict"</span><span class="p">:</span><span class="s2">"inconclusive"</span><span class="p">,</span><span class="nt">"enforced"</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="nt">"wouldBe"</span><span class="p">:</span><span class="s2">"inconclusive"</span><span class="p">,</span><span class="nt">"action"</span><span class="p">:</span><span class="s2">"hold"</span><span class="p">,</span><span class="nt">"grade"</span><span class="p">:</span><span class="s2">"B"</span><span class="p">,</span><span class="nt">"impact"</span><span class="p">:</span><span class="mf">0.12</span><span class="p">,</span><span class="nt">"attribution"</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span><span class="nt">"reasons"</span><span class="p">:[</span><span class="s2">"grade B evidence supports 12.0% added database time"</span><span class="p">]}</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th><code>verdict</code></th>
+<th>Meaning</th>
+<th>Argo Rollouts effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pass</code></td>
+<td>Nothing to act on, no evaluation yet, unknown deploy, shadow mode, or an alert-only grade</td>
+<td>Rollout continues</td>
+</tr>
+<tr>
+<td><code>inconclusive</code></td>
+<td>Grade B evidence of a material regression, confirmed twice</td>
+<td>Rollout pauses at its step</td>
+</tr>
+<tr>
+<td><code>fail</code></td>
+<td>Grade A evidence (a concurrent control arm), confirmed twice</td>
+<td>Rollout aborts</td>
+</tr>
+</tbody>
+</table>
+<p>Anything that cannot be decided is <code>pass</code>: the engine never blocks a release for lack of data. In shadow mode <code>verdict</code> is always <code>pass</code>, and <code>wouldBe</code> shows what enforce mode would have said.</p>
+<p>An Argo Rollouts analysis that uses it:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">apiVersion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">argoproj.io/v1alpha1</span>
+<span class="nt">kind</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">AnalysisTemplate</span>
+<span class="nt">metadata</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pgrr-attribution</span>
+<span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">args</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">namespace</span><span class="p p-Indicator">},</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">app</span><span class="p p-Indicator">}]</span>
+<span class="w">  </span><span class="nt">metrics</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">attribution</span>
+<span class="w">      </span><span class="nt">interval</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5m</span>
+<span class="w">      </span><span class="nt">successCondition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">result == 'pass'</span>
+<span class="w">      </span><span class="nt">failureCondition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">result == 'fail'</span><span class="w">   </span><span class="c1"># neither condition met = inconclusive = pause</span>
+<span class="w">      </span><span class="nt">provider</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">web</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="s">"http://pg-regression-radar.&lt;manager-namespace&gt;.svc:8082/api/v1/attribution/verdict?namespace={{args.namespace}}&amp;app={{args.app}}"</span>
+<span class="w">          </span><span class="nt">jsonPath</span><span class="p">:</span><span class="w"> </span><span class="s">"{$.verdict}"</span>
+</code></pre></div>
+<p><strong>Timing matters.</strong> On simulated workloads the engine cannot convict before about 15 minutes after a deploy, because its persistence check needs a late window (transients, such as a cold cache, must have decayed). A canary that is fully promoted in five minutes is out of reach: give the Rollout a pause step of at least 20 minutes, or the verdict arrives after the release is done and can only alert. Compare Flagger, whose rollback time is the analysis interval times its failure threshold, and the Google and Waze advice to run a canary long enough for a meaningful number of data points.</p>
+<p>The ladder is the one Google and Waze describe for a new canary analysis: begin with a non-blocking stage, then a manual judgement, and automate only once the analysis has proved reliable. Run shadow mode, compare <code>wouldBe</code> with what happened, then set <code>mode: enforce</code>. With enforce, the first action you will see is a pause, which one click resumes; an abort needs grade A.</p>
+<p>A copy-and-adapt walk-through is in <a href="../examples/attribution-rollout/">Example: pausing a bad rollout</a>, and <a href="../troubleshooting/enforce/#the-engine-only-alerts-and-does-not-act">Enforce mode</a> explains why a deploy might only alert.</p>
+<h2 id="letting-the-manager-act">Letting the manager act<a class="headerlink" href="#letting-the-manager-act" title="Permanent link">&para;</a></h2>
+<p>The verdict endpoint needs a rollout controller that asks. When you want the radar to act on its own, with no <code>AnalysisTemplate</code> in between, turn on actuation:</p>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">attribution</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enforce</span>
+<span class="w">    </span><span class="nt">actuate</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">namespaces</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">shop</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">payments</span><span class="p p-Indicator">]</span><span class="w">   </span><span class="c1"># optional; empty means any</span>
+</code></pre></div>
+<p>It follows the same ladder as the verdict, and only for a deploy that a <a href="../webhooks/"><code>DeploySource</code></a> of type <code>argo-rollouts</code> reported:</p>
+<table>
+<thead>
+<tr>
+<th>Engine action</th>
+<th>What the manager does</th>
+<th>Same as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hold</code> (grade B, confirmed twice, material)</td>
+<td>sets <code>spec.paused: true</code> on the Rollout</td>
+<td><code>kubectl argo rollouts pause</code></td>
+</tr>
+<tr>
+<td><code>rollback</code> (grade A, confirmed twice)</td>
+<td>sets <code>status.abort: true</code> on the Rollout</td>
+<td><code>kubectl argo rollouts abort</code></td>
+</tr>
+<tr>
+<td>anything else</td>
+<td>nothing</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>It never resumes, rolls back to a revision, scales, or deletes: a pause or an abort stops a bad rollout where it is, and a person decides what comes next. Each action is taken at most once per deploy, a pause can escalate to an abort if later evidence is stronger, and a failed call is retried at the next evaluation. Every attempt is counted in <code>pg_regression_radar_attribution_actions_total{action,result}</code> (<code>result</code> is <code>done</code>, <code>failed</code> or <code>skipped</code>) and logged with the grade, the impact and the reasons.</p>
+<p>Every attempt is also written to an in-memory ledger, served newest first at <code>GET /api/v1/attribution/actions</code> (same port as the verdict endpoint; filter with <code>?namespace=</code> and <code>?app=</code>): the time, the deploy, <code>pause</code> or <code>abort</code>, the result, and the <code>reason</code> code of the log line for the same event (see <a href="../troubleshooting/reasons/">Reason codes</a>). It also reports <code>breakerOpen</code>. The ledger keeps the last 200 entries and is lost on a restart; the metrics and the logs are the durable record.</p>
+<div class="language-json highlight"><pre><span></span><code><span class="p">{</span><span class="nt">"breakerOpen"</span><span class="p">:</span><span class="kc">false</span><span class="p">,</span><span class="nt">"actions"</span><span class="p">:[</span>
+<span class="w"> </span><span class="p">{</span><span class="nt">"at"</span><span class="p">:</span><span class="s2">"2026-11-24T14:41:00Z"</span><span class="p">,</span><span class="nt">"deployId"</span><span class="p">:</span><span class="s2">"d1"</span><span class="p">,</span><span class="nt">"namespace"</span><span class="p">:</span><span class="s2">"shop"</span><span class="p">,</span><span class="nt">"app"</span><span class="p">:</span><span class="s2">"checkout"</span><span class="p">,</span><span class="nt">"action"</span><span class="p">:</span><span class="s2">"abort"</span><span class="p">,</span><span class="nt">"result"</span><span class="p">:</span><span class="s2">"recovered"</span><span class="p">,</span><span class="nt">"detail"</span><span class="p">:</span><span class="s2">"regression no longer supported after the action"</span><span class="p">},</span>
+<span class="w"> </span><span class="p">{</span><span class="nt">"at"</span><span class="p">:</span><span class="s2">"2026-11-24T14:26:00Z"</span><span class="p">,</span><span class="nt">"deployId"</span><span class="p">:</span><span class="s2">"d1"</span><span class="p">,</span><span class="nt">"namespace"</span><span class="p">:</span><span class="s2">"shop"</span><span class="p">,</span><span class="nt">"app"</span><span class="p">:</span><span class="s2">"checkout"</span><span class="p">,</span><span class="nt">"action"</span><span class="p">:</span><span class="s2">"abort"</span><span class="p">,</span><span class="nt">"result"</span><span class="p">:</span><span class="s2">"done"</span><span class="p">,</span><span class="nt">"detail"</span><span class="p">:</span><span class="s2">"grade A evidence supports 12.0% added database time"</span><span class="p">}]}</span>
+</code></pre></div>
+<p><strong>Checking that it helped.</strong> Fifteen minutes after an abort the engine reads the deploy again. It leaves out what the deploy did until the abort (and three minutes more for the canary's pods to drain) and reads what came after, so a canary that ran slow before it was stopped does not count against the abort; a canary that is still serving does. If the regression is gone the result is <code>recovered</code>. If it is still supported at grade B or better, the abort did not help (the deploy was not the cause, or the abort did not take) and the result is <code>persisted</code>. When there is too little data after the abort to judge by, no check is made and nothing counts. Each <code>persisted</code> counts as a failure for the policy; after two in a row (<code>BreakerLimit</code>) the circuit breaker opens and the engine only alerts, until you close it with <code>kubectl annotate postgreswatch &lt;name&gt; pg-regression-radar.io/reset-breaker="$(date +%s)" --overwrite</code> (a change of the annotation's value; a value already on the object when the manager started is ignored) or the manager restarts. <code>pg_regression_radar_attribution_breaker_open</code> is <code>1</code> while it is open, and <code>pg_regression_radar_attribution_verifications_total{result}</code> counts the checks. A pause is not checked: a held canary keeps serving traffic, so its regression persists by design.</p>
+<p>The <code>Actuating</code> condition of the <code>PostgresWatch</code> says whether the manager may act right now, and if not, which of the cases below applies: the breaker is open, the watch is in shadow mode, <code>actuate</code> is not enabled, there is no Rollout RBAC, or the kill switch is set. <a href="../troubleshooting/enforce/">Enforce mode</a> walks through each.</p>
+<p>Four rules keep it safe to turn on:</p>
+<ul>
+<li><strong>Enforce mode only.</strong> In shadow mode nothing is written; the log says what would have been done.</li>
+<li><strong>One detector acts.</strong> While <code>actuate</code> is on, the older <code>spec.autoAbort</code> trigger is ignored for that watch, so one regression is never acted on twice by two detectors that disagree. The engine's guards (material impact, two consecutive confirmations, attribution of at least 0.8, a cooldown) apply to every action.</li>
+<li><strong>You can bound it and stop it.</strong> <code>actuate.namespaces</code> limits it to Rollouts in the listed namespaces (empty means any); a deploy elsewhere is still judged and logged, and the ledger records it as <code>skipped</code>. To stop all pausing and aborting at once, with no restart and no spec change, annotate the watch: <code>kubectl annotate postgreswatch &lt;name&gt; pg-regression-radar.io/actuation-paused=true</code> (remove the annotation to resume). If the watch cannot be read at that moment, the manager assumes it is paused.</li>
+<li><strong>It needs the Rollout RBAC.</strong> Set <code>manager.autoAbort.rbacEnabled: true</code> in the Helm chart (it grants <code>patch</code> on <code>rollouts</code> and <code>rollouts/status</code>). Without it, or without <code>mode: enforce</code>, <code>actuate</code> is ignored and the log says why.</li>
+</ul>
+<p>Through the collector alone the best evidence is grade B, because <code>pg_stat_statements</code> carries no label saying which release served a call, so the manager pauses and a person aborts; an abort needs grade A evidence, which <a href="#telling-a-canary-from-the-stable-pods-grade-a"><code>attribution.arms</code></a> provides. The <a href="#acting-on-a-verdict">timing note</a> applies here too: the engine cannot convict before about 15 minutes, so the Rollout needs a pause step of at least 20 minutes for the action to land in time.</p>
+<h2 id="telling-a-canary-from-the-stable-pods-grade-a">Telling a canary from the stable pods (grade A)<a class="headerlink" href="#telling-a-canary-from-the-stable-pods-grade-a" title="Permanent link">&para;</a></h2>
+<p><code>pg_stat_statements</code> mixes every client together, so through the collector alone the best evidence is grade B and the strongest action is a pause. To abort, the engine needs to see the canary and the stable pods <strong>at the same time</strong>. It gets that from the Postgres log, which records for each statement the <code>application_name</code> of the session that ran it. Nothing is installed on the server: it takes core settings, and no extension.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">attribution</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enforce</span>
+<span class="w">    </span><span class="nt">actuate</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="nv">true</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">arms</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">podLogs</span><span class="p">:</span><span class="w">                       </span><span class="c1"># Postgres in the cluster (CloudNativePG, a StatefulSet)</span>
+<span class="w">        </span><span class="nt">namespace</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">db</span>
+<span class="w">        </span><span class="nt">selector</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">cnpg.io/cluster=pg</span>
+<span class="w">      </span><span class="c1"># file: /var/log/postgresql/postgresql.json   # or a log file the manager can open</span>
+</code></pre></div>
+<p>What you set up:</p>
+<ol>
+<li><strong>The server.</strong> <code>compute_query_id = on</code>, <code>log_destination = 'jsonlog'</code> (PostgreSQL 15 or newer), <code>log_min_duration_sample = 0</code>, <code>log_min_duration_statement = -1</code> (or leave a slow-query log on: the engine weights for it), and a small <code>log_statement_sample_rate</code>, for example <code>0.05</code>. The manager reads these settings itself every five minutes and logs exactly which one is wrong. The log is not used until they pass. A rate above 0.25 only draws a warning, because it costs the database and the log pipeline.</li>
+<li><strong>The application.</strong> Every pod must report an <code>application_name</code> that <strong>begins with the pod's name</strong> (<code>&lt;rollout&gt;-&lt;pod-template-hash&gt;-&lt;suffix&gt;</code>), which is the hostname. With an Argo Rollouts workload, set <code>PGAPPNAME</code> from the pod's own name:</li>
+</ol>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">env</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PGAPPNAME</span>
+<span class="w">  </span><span class="nt">valueFrom</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">fieldRef</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">fieldPath</span><span class="p">:</span><span class="w"> </span><span class="nv">metadata.name</span><span class="p p-Indicator">}}</span>
+</code></pre></div>
+<p>The manager reads the Rollout's <code>status.stableRS</code> and <code>status.currentPodHash</code>, so the pods of the new version are the treatment and the pods of the old version the control. A pod that does not follow the naming is simply not counted; if none do, the engine behaves as it does without <code>arms</code>.
+3. <strong>The manager.</strong> <code>podLogs</code> needs <code>manager.arms.rbacEnabled: true</code> in the chart (get and list on pods, get on <code>pods/log</code>). <code>file</code> needs nothing. Reading Rollouts needs <code>manager.autoAbort.rbacEnabled</code>, as for <code>actuate</code>.</p>
+<p>How the evidence is built:</p>
+<ul>
+<li>The manager keeps, per <code>application_name</code> and <code>query_id</code>, the number of sampled executions and their mean duration in each scrape interval. It joins a log line to a collected query by <code>query_id</code>. It never keeps the statement text or the bind parameters, which can hold personal data, and a line longer than 1 MiB is skipped.</li>
+<li>Each sampled execution is weighted by the inverse of its chance of being logged, so the mean stays unbiased when slow statements are always logged (a slow-query log) and fast ones only sampled. The weight of a mean is the number of samples behind it, not the number of calls they stand for.</li>
+<li><strong>Before the deploy there is no canary</strong>, so the old version's pods are split in two alternating halves and one half stands in for the canary. The ratio of treatment to control is therefore flat by construction before the deploy; after it, the canary pods are the treatment and the old pods the control. A step in that ratio at the deploy time, which also passes the engine's placebo tests at fake deploy times, is grade A.</li>
+<li>When the log is not flowing (no line for five minutes), its settings fail, the Rollout is already promoted (stable and current hash are equal), or the Rollout cannot be read, the evaluation falls back to what <code>pg_stat_statements</code> supports.</li>
+</ul>
+<p>Two things decide how much a canary check can see: the traffic the canary receives and the sample rate. The number that matters is the sampled executions per minute the canary produces for a query: with only a handful, the engine cannot tell a regression from noise and says nothing, which is safe but silent. The Prometheus metrics <code>pg_regression_radar_attribution_arms_usable</code>, <code>..._arms_records_total</code> and <code>..._arms_dropped_total</code> say whether the log is usable and flowing.</p>
+<h3 id="what-a-real-test-showed">What a real test showed<a class="headerlink" href="#what-a-real-test-showed" title="Permanent link">&para;</a></h3>
+<p>The arm reader was run twice against seven PostgreSQL 16 servers (four stable pods and one canary pod per server, a real Kubernetes API server with the Argo Rollouts CRD, the manager in <code>enforce</code> mode with <code>actuate</code>, a canary at about 15% of the traffic, evaluations from 10 minutes after the deploy). The canary regression was a query that runs without its index in the canary only.</p>
+<table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Round 1</th>
+<th>Round 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Canary regression, every statement logged (about 26 sampled executions a minute for the query)</td>
+<td>grade A at +15 min</td>
+<td>grade A at +15 min, <strong>abort</strong> at +20 min</td>
+</tr>
+<tr>
+<td>Canary regression, sample rate 0.2 (about 5 a minute)</td>
+<td>grade A at +15 min</td>
+<td>grade A at +15 min, <strong>abort</strong> at +20 min</td>
+</tr>
+<tr>
+<td>Canary regression, sample rate 0.05 (about 1 a minute)</td>
+<td>grade A at +15 min</td>
+<td><strong>missed</strong>: stayed at grade C, alert only</td>
+</tr>
+<tr>
+<td>Canary identical to stable (A/A)</td>
+<td>no action</td>
+<td>no action</td>
+</tr>
+<tr>
+<td>A/A while a shared load shock hit both arms</td>
+<td>no action</td>
+<td>no action</td>
+</tr>
+<tr>
+<td>One stable pod degraded, canary healthy</td>
+<td>no action</td>
+<td>no action</td>
+</tr>
+<tr>
+<td><code>application_name</code> not following the pod name</td>
+<td>alert only (grade C)</td>
+<td>alert only (grade C)</td>
+</tr>
+</tbody>
+</table>
+<p>Read it for what it is: two rounds of seven scenarios, one workload, a 2-core machine. It shows that the mechanism works end to end and that no control case acted; it is not a rate. The one miss is the expected limit: at about one sampled execution a minute the canary leaves too little to tell a regression from noise, so choose a sample rate that gives the canary at least a handful of sampled executions a minute for the queries you care about (rate x canary traffic x the query's share). Round 1 also paused instead of aborting because the test had registered no earlier deploy, and the engine never aborts a first deploy. In round 2 the verification 15 minutes after each abort recorded <code>persisted</code> (the regression was still there), because nothing in the test acts on an abort: no rollout controller scales the canary down. The engine kept judging the deploy a rollback but did not patch the Rollout a second time, and the persisted check counts toward the circuit breaker, as designed.</p>
+<h2 id="reverting-a-convicted-deploy">Reverting a convicted deploy<a class="headerlink" href="#reverting-a-convicted-deploy" title="Permanent link">&para;</a></h2>
+<p>Pausing a rollout only helps while it is running. For a release that is already promoted, the durable fix is a revert in git: with Argo CD's automated sync on, Argo CD cannot roll the application back ("Rollback cannot be performed against an application with automated sync enabled"), and anything changed directly in the cluster is undone by the next sync. So in enforce mode the radar can open a <strong>draft pull request that reverts the change</strong>, and leave the decision to a person.</p>
+<div class="language-yaml highlight"><pre><span></span><code><span class="nt">spec</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">attribution</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">mode</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">enforce</span>
+<span class="w">    </span><span class="nt">revert</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">repository</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-org/my-deploy-repo</span>
+<span class="w">      </span><span class="nt">tokenSecretRef</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="nv">github-token</span><span class="p p-Indicator">,</span><span class="nt"> key</span><span class="p">:</span><span class="w"> </span><span class="nv">token</span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">maxPerDay</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
+<span class="w">      </span><span class="nt">includeQueryText</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<p>It acts when the policy holds at hold or above (grade B or better, confirmed twice, material, attributed to this deploy). It then:</p>
+<ol>
+<li>Takes the deploy's revision, which must be a full 40-character commit SHA. An Argo CD source reports one; an Argo Rollouts source reports a pod hash and a tag is not a commit, so those are refused, not guessed at.</li>
+<li>Checks that no pull request for this deploy exists yet (a marker line <code>pgrr-revert-id: &lt;deploy id&gt;</code> is searched for, so a restart or a leader change does not open a second one).</li>
+<li>Finds the pull request whose merge commit is that SHA, merged into the default branch. A direct push, or a commit that is not the merge commit of a pull request, is refused.</li>
+<li>Asks GitHub to create the revert (the GraphQL <code>revertPullRequest</code> mutation, which "creates a pull request that reverts the changes from a merged pull request"), as a draft, with a body that gives the grade, the lower-bound added database time, the attribution, the most affected queries, and what to check before merging: database migrations, other changes in the same commit, and a warning if the radar has not seen an earlier deploy of the app.</li>
+</ol>
+<p>What keeps this safe:</p>
+<ul>
+<li><strong>It never merges.</strong> The pull request is always a draft and a person reviews it. That is the one safeguard that does not depend on the statistics being right.</li>
+<li><strong>Once per deploy, and at most <code>maxPerDay</code> (default 3) per watch</strong>, so a bad day cannot bury a repository.</li>
+<li><strong>Query text is off by default.</strong> The body shows fingerprints and ratios. Turn on <code>includeQueryText</code> only if the repository is private, since a query's text names tables and columns. Everything written into the body is stripped of markdown, mentions and issue references.</li>
+<li><strong>The token</strong> comes from a Secret that carries the same consent label as every other Secret a PostgresWatch references (<code>pg-regression-radar.io/allow-postgreswatch-access=true</code>). It is read for each use and not kept, it is only sent to the configured API host, which must be https, and a redirect is never followed with it attached. Use a fine-grained token limited to that one repository. The documentation I read does not state which permissions <code>revertPullRequest</code> needs; start with Pull requests and Contents, both read and write, and check that against your GitHub.</li>
+<li><strong>In shadow mode nothing is called.</strong> The log says which pull request would have been opened.</li>
+</ul>
+<p>Metric: <code>pg_regression_radar_attribution_revert_proposals_total{result}</code> with <code>opened</code>, <code>already-proposed</code>, <code>skipped</code> and <code>failed</code>.</p>
+<p>Limits: a failed attempt is retried at the next evaluation, and the search that finds an earlier pull request lags by a short while after one is opened, so a restart within that window can, rarely, open a second draft. A revert does not undo a database migration that shipped with the change.</p>
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>Identity.</strong> A query is identified by the fingerprint of its normalised text, never by <code>queryid</code>. A rewritten query is a new unit with no history, so it is never judged against a baseline.</li>
+<li>
+<p><strong>Counterfactual.</strong> For each query the engine builds the series it would have had without the deploy, from the best control available, and measures the difference after the deploy.</p>
+<table>
+<thead>
+<tr>
+<th>Grade</th>
+<th>Control</th>
+<th>Needs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>The same query on the arm the deploy did not reach (canary vs stable), with parallel pre-deploy trends</td>
+<td>Samples labelled by arm</td>
+</tr>
+<tr>
+<td>B</td>
+<td>A synthetic control from queries the deploy did not touch, validated by in-time placebos</td>
+<td>At least 5 untouched queries with history</td>
+</tr>
+<tr>
+<td>C</td>
+<td>The query's own history</td>
+<td>Nothing; cannot separate the deploy from anything else</td>
+</tr>
+<tr>
+<td>D</td>
+<td>Nothing</td>
+<td>Not enough data; never blocks</td>
+</tr>
+</tbody>
+</table>
+<p>A control query must have data for at least half of the pre-deploy window (45 of the 90 minutes), so after a manager restart the evidence stays at grade C, an alert, until about 45 minutes of history have been collected. Hold and pause are not available before then.</p>
+</li>
+<li>
+<p><strong>Inference.</strong> A local-level state-space model with the step estimated inside the Kalman filter, ridge-regressed on the control series. Evidence is an e-process against "no regression beyond the margin" (default 20%), so it is valid at any stopping time, and the false-discovery rate across queries is controlled with e-BH, valid under arbitrary dependence.</p>
+</li>
+<li>
+<p><strong>Guards.</strong> A persistence test (the shift must still be there after the grace period, so warm-ups do not count), a table-level cap (a shift concentrated on one table that the deploy did not declare is capped at grade C), attribution among overlapping deploys, and a global-shift flag. The global-shift flag only counts untouched units that moved the same way as the unit under test: a slow query that throttles a closed-loop workload makes the other queries faster, and that is not a cause shared with the regression.</p>
+<p>When the evidence stops at grade C, the decision says why (<code>evidence is capped at grade C by: global-shift (3), few-donors (1)</code>), in the log and in the verdict's reasons.
+5. <strong>Policy.</strong> The action depends on the strongest grade whose supported lower-bound impact reaches the materiality threshold (5% of database time):</p>
+<table>
+<thead>
+<tr>
+<th>Evidence</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>Roll back</td>
+</tr>
+<tr>
+<td>B</td>
+<td>Hold promotion</td>
+</tr>
+<tr>
+<td>C</td>
+<td>Alert</td>
+</tr>
+<tr>
+<td>D or immaterial</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>Rollback and hold need two consecutive agreeing evaluations, attribution of at least 0.8, a reversible deploy with a rollback target (a first deploy is held, not rolled back), a cooldown between actions, and a closed circuit breaker. Two actions that did not help open the breaker and the policy only alerts.</p>
+</li>
+</ol>
+<h2 id="what-the-test-suite-shows">What the test suite shows<a class="headerlink" href="#what-the-test-suite-shows" title="Permanent link">&para;</a></h2>
+<p>Simulated workloads (120 queries, 90 minutes before and 30 after, with load shocks, statistics refreshes, cold caches, rewrites and concurrent deploys), 20 to 60 runs per scenario:</p>
+<ul>
+<li>No change: at most the nominal share of runs flag anything, and none at grade A or B.</li>
+<li>Load shock, statistics refresh, cold cache, rewritten queries, concurrent deploy, below-margin change: no conviction at grade A or B.</li>
+<li>Real regression with a canary arm: about 98% of the affected database time found, no false positives.</li>
+<li>Real regression with synthetic control only: about 94% of the affected database time found, no false positives.</li>
+<li>A first deploy is <code>InsufficientData</code>; the policy never blocks on it.</li>
+</ul>
+<h2 id="limits">Limits<a class="headerlink" href="#limits" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>pg_stat_statements</code> cannot split canary and stable. Grade A needs arm-labelled data, which <code>attribution.arms</code> reads from the Postgres log; without it the best grade is B.</li>
+<li>A shift shared by every query, with no control arm, is capped at grade C: the engine cannot tell a slower deploy from slower hardware.</li>
+<li>A real regression concentrated on one table, when the deploy does not declare that table, is capped at grade C.</li>
+<li>Table extraction from query text is lexical. A mistake makes queries look related, never invents evidence.</li>
+<li>A pause or abort only helps while the Rollout is still in progress. After a full promotion the verdict can only inform an alert; reverting a promoted release belongs to your GitOps flow.</li>
+<li>Without <code>attribution.arms</code> the samples from <code>pg_stat_statements</code> carry no arm label, so the best grade is B and the strongest verdict is <code>inconclusive</code> (a pause). A <code>fail</code> needs the arms.</li>
+<li><code>attribution.arms</code> assumes the pod name is the <code>application_name</code>, a Postgres 15 or newer JSON log, and a canary that receives enough traffic to leave samples; it was tested against PostgreSQL 16 logs read from a file, and the CloudNativePG log wrapper is unwrapped as documented but has not been run against a live CloudNativePG cluster.</li>
+<li>The revert proposal needs the deploy's revision to be a git commit SHA: Argo CD sources qualify, Argo Rollouts sources (a pod hash) do not.</li>
+<li>The circuit breaker is fed only by the check after an abort. A pause cannot be checked (a held canary keeps serving traffic, so its regression persists by design) and a revert pull request is not checked yet, so neither can open it.</li>
+</ul>
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Argo Rollouts documentation: <a href="https://argo-rollouts.readthedocs.io/en/stable/features/analysis">Analysis &amp; Progressive Delivery</a> and <a href="https://argo-rollouts.readthedocs.io/en/stable/features/specification/">Rollout specification</a>.</li>
+<li>Flagger documentation: <a href="https://docs.flagger.app/main/usage/deployment-strategies">Deployment strategies and webhooks</a>.</li>
+<li>Argo CD documentation: <a href="https://argo-cd.readthedocs.io/en/release-3.0/user-guide/auto_sync/">Automated sync policy</a>. GitHub documentation: <a href="https://docs.github.com/en/graphql/reference/pulls">GraphQL pull request mutations</a> and <a href="https://docs.github.com/en/rest/commits/commits">REST: list pull requests associated with a commit</a>.</li>
+<li>Google Cloud, <a href="https://cloud.google.com/blog/products/devops-sre/canary-analysis-lessons-learned-and-best-practices-from-google-and-waze">Canary analysis: lessons learned and best practices from Google and Waze</a>.</li>
+<li>Brodersen et al., <em>Inferring causal impact using Bayesian structural time-series models</em>, Annals of Applied Statistics 2015.</li>
+<li>Abadie, Diamond, Hainmueller, <em>Synthetic control methods for comparative case studies</em>, JASA 2010.</li>
+<li>Durbin, Koopman, <em>Time Series Analysis by State Space Methods</em>, 2nd ed., section 6.2.4.</li>
+<li>Ramdas, Grünwald, Vovk, Shafer, <em>Game-theoretic statistics and safe anytime-valid inference</em>, Statistical Science 2023.</li>
+<li>Wang, Ramdas, <em>False discovery rate control with e-values</em>, JRSSB 2022.</li>
+<li>Johari, Koomen, Pekelis, Walsh, <em>Always valid inference</em>, Operations Research 2022.</li>
+<li>Howard, Ramdas, McAuliffe, Sekhon, <em>Time-uniform, nonparametric, nonasymptotic confidence sequences</em>, Annals of Statistics 2021.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        
+
+
+
+  
+
+
+
+
+<footer class="md-footer pgrr-footer" aria-label="Site footer">
+  <div class="pgrr-footer__inner">
+    <div class="pgrr-footer__brand">
+      <a class="pgrr-footer__lockup" href="https://joao00001.github.io/pg-regression-radar/" aria-label="pg-regression-radar, home">
+        <span class="pgrr-footer__mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg></span>
+        <span class="pgrr-footer__word">pg-regression-radar</span>
+      </a>
+      <p class="pgrr-footer__tag">Find the Postgres query that got slower, and the Kubernetes rollout behind it.</p>
+      <a class="pgrr-footer__social" href="https://github.com/joao00001/pg-regression-radar" aria-label="pg-regression-radar on GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg></a>
+    </div>
+
+    <nav class="pgrr-footer__cols" aria-label="Footer">
+      <div class="pgrr-footer__col">
+        <h2>Explore</h2>
+        <ul>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/">Home</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/playground/">Playground</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/our-math/">Our math</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/roadmap/">Roadmap</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/contribute/">Contribute</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Documentation</h2>
+        <ul>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/lab/">Try the lab</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/installation/">Install</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/getting-started/">Quickstart</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/">Detection algorithm</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/kubernetes/overview/">Basic Kubernetes</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/joao00001/pg-regression-radar">GitHub</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/releases">Releases</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">Changelog</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/issues">Issues</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/discussions">Discussions</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Community</h2>
+        <ul>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md">Contributing</a></li>
+          <li><a href="https://discord.gg/ZShn8s3mh">Discord</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/security-model/">Security model</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/LICENSE">License</a></li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+
+  <div class="pgrr-footer__bar">
+    <span>Open source under the Apache License 2.0.</span>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"alias": true, "provider": "mike"}}</script>
+    
+    
+  
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+        <script src="../javascripts/version-flyout.js"></script>
+      
+        <script src="../javascripts/code-header.js"></script>
+      
+        <script src="../javascripts/theme-toggle.js"></script>
+      
+        <script src="../javascripts/callouts.js"></script>
+      
+        <script src="../javascripts/steps.js"></script>
+      
+        <script src="../javascripts/toc-indicator.js"></script>
+      
+    
+  
+    <script src="../javascripts/vendor/mermaid.min.js"></script>
+    <script src="../javascripts/mermaid-theme.js"></script>
+  
+
+  </body>
+</html>
