@@ -20,6 +20,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -915,5 +916,35 @@ func TestHandler_AppNameFilterLeavesATrace(t *testing.T) {
 	}
 	if line["app"] != "other-app" || line["configuredApp"] != "allowed-app" || line["level"] != "DEBUG" {
 		t.Errorf("log line = %v, want app=other-app configuredApp=allowed-app at DEBUG", line)
+	}
+}
+
+// What a sender puts in a webhook cannot become a line of its own in the log, and cannot
+// make a line as long as it likes.
+func TestHandler_LogLinesCarryTheSendersValuesSafely(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	src := v1alpha1.DeploySource{Name: "s", SourceType: "generic", AppName: "payments"}
+	h := ingester.NewHandler(&ingester.Store{}, src, logger)
+
+	hostile := "x\nlevel=ERROR msg=forged " + string(bytes.Repeat([]byte("A"), 5000))
+	payload, _ := json.Marshal(v1alpha1.DeployEvent{ID: "id\r\nlevel=ERROR", App: hostile, Timestamp: time.Now()})
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(payload)))
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("the sender still gets 204, got %d", rr.Code)
+	}
+
+	out := buf.String()
+	if n := len(strings.Split(strings.TrimRight(out, "\n"), "\n")); n != 1 {
+		t.Errorf("expected one log line, got %d:\n%s", n, out)
+	}
+	if !strings.Contains(out, "deploy event ignored") {
+		t.Errorf("the drop leaves no trace:\n%s", out)
+	}
+	if len(out) > 1000 {
+		t.Errorf("the line is as long as the sender made it: %d bytes", len(out))
 	}
 }
