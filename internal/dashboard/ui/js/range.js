@@ -1,6 +1,8 @@
 // The time range of a board: a preset ("last 6 hours") or an absolute from/to.
 // Pure, so the rules (what is allowed, what the API is asked) are tested.
 
+import { parts, fromWall } from './time.js';
+
 export const PRESETS = [
   { id: '15m', label: 'Last 15 minutes' },
   { id: '1h', label: 'Last hour' },
@@ -49,18 +51,18 @@ export function validateCustom(fromMs, toMs, nowMs) {
 
 const p2 = (n) => String(n).padStart(2, '0');
 
-// <input type="datetime-local"> speaks local time without a zone.
+// <input type="datetime-local"> speaks a wall clock without a zone: here, the zone the page shows.
 export const toLocalInput = (ms) => {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  const d = parts(ms);
+  return `${d.y}-${p2(d.mo)}-${p2(d.d)}T${p2(d.h)}:${p2(d.mi)}`;
 };
 export function parseLocalInput(v) {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(v || '');
-  return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime() : NaN;
+  return m ? fromWall(+m[1], +m[2], +m[3], +m[4], +m[5]) : NaN;
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const stamp = (ms) => { const d = new Date(ms); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const stamp = (ms) => { const d = parts(ms); return `${d.d} ${MONTHS[d.mo - 1]} ${p2(d.h)}:${p2(d.mi)}`; };
 
 export function label(r) {
   if (r.kind === 'abs') return `${stamp(r.from)} to ${stamp(r.to)}`;

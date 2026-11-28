@@ -69,12 +69,14 @@ The few situations that need a person stay at the top right of every board, whic
 A few rules keep this quiet enough to trust:
 
 - **It stays until it is over.** An alert is not a toast that fades. It is removed on its own only when the engine reads the deploy as healthy; an inconclusive reading is not an all-clear, so the alert stays.
-- **Dismissing is yours.** The × removes one alert, *Dismiss all* removes those shown. A dismissed alert does not come back on the next refresh or after a reload (the browser remembers it for 30 days). It does come back if things get worse, for example *Still regressed after the abort* after you dismissed *Regressed, rollout aborted*, and if the same deploy regresses again after it had recovered.
+- **Dismissing is yours.** The × removes one alert, *Clear all* removes those shown. By default a dismissed alert does not come back on the next refresh or after a reload (the browser remembers it for 30 days; [Settings](#settings) can make it come back on reload). It does come back if things get worse, for example *Still regressed after the abort* after you dismissed *Regressed, rollout aborted*, and if the same deploy regresses again after it had recovered.
 - **Silence is not an all-clear.** If the manager stops reporting a deploy (it restarted, and the history is kept in memory by default), its alert stays and says so, until you dismiss it.
-- **A long list is folded.** Three are shown on a wide screen and one on a phone, the worst first and then the newest; the rest is behind *N more alerts*.
+- **A long list is folded.** Three are shown on a wide screen by default (you can choose 1, 2, 3 or 5) and one on a phone, the worst first and then the newest; the rest is behind *N more alerts*.
 - **Screen readers** are told, politely, when an alert appears and when one is removed because the deploy recovered.
 
 The page behind the alerts is blurred, more strongly towards the cards and fading to nothing at their edges, instead of the cards casting a shadow. With *reduce transparency* set in the system, or without support for backdrop blur in the browser, the page is not blurred and the cards get a plain shadow.
+
+Each card names how bad it is (*Alert* or *Critical*) in the colour of its shape, then what happened, where, and what the radar did. When trouble clears by itself the card does not just vanish: its shape turns into a teal circle, the text changes to *Healthy*, and after a moment it slides away. Where the system asks for reduced motion the same happens without the movement.
 
 Each alert links to the deploy's case and, when the radar acted, shows the [reason code](troubleshooting/reasons.md) of the action. Alerts are read from the Observe API for the last 90 days, so they do not depend on the time range of the board.
 
@@ -143,6 +145,26 @@ The manager keeps history behind `--observe-history`:
 | `postgres` | Survives restarts. Needs `--observe-history-dsn-file` (a mounted Secret holding the DSN; a DSN on the command line would show in the pod spec). |
 
 `--observe-history-retention` (default 30 days) applies to both. Writing history never delays a decision: if the store is down the radar keeps acting and the dashboard says history is not being recorded. Only deploys in `attribution.actuate.namespaces` are served, on every endpoint including the event stream.
+
+## Settings
+
+The gear at the top right opens a page of settings, laid out like the other boards (it is not a tab: the tabs are the boards of the dashboard file). They belong to the person looking, not to the dashboard file, so they are kept in the browser's local storage only and are never sent anywhere. Each setting that is not at its default shows the accent bar and a *Reset* link, as the settings of a panel do.
+
+| Panel | Setting | Choices |
+|---|---|---|
+| Appearance | Theme | System (the default), Light, Dark. This replaces the sun and moon button that used to sit in the header |
+| Time | Time zone | *Browser time* (the default, as before), UTC, or one of fourteen cities from Los Angeles to Auckland, each with its current offset |
+| Alerts | When an alert clears by itself | *Say so, then remove it* (default), *Remove it quietly*, or *Keep it until I dismiss it*, which turns the card to healthy and leaves it so you can see what cleared while you were away |
+| Alerts | Alerts to show | All (default), or Critical only |
+| Alerts | Most at once | 1, 2, 3 (default) or 5; a phone always shows one |
+| Alerts | An alert you dismissed | *Stays hidden* for 30 days (default), or *Comes back on reload*. An alert that gets worse is shown again either way |
+| Sound | Play a sound with alerts | Off by default. When on: a volume, and a switch and a *Play* button for each of three sounds: a new alert, a critical one (also when an alert gets worse), and an alert that is healthy again |
+
+The time zone applies to every clock time on the page: the cards, the charts and their tooltips, the alerts, the case view and the custom time range (what you type in it is read in that zone). Times such as *3m ago* do not depend on it. The zone in use is written next to the *Live* indicator (for example `UTC` or `UTC−03:00`); click it to change it.
+
+The sounds are generated in the browser, so there is nothing to download. They go with the card: the sound for a new alert plays as it appears, and the one for healthy plays as the card turns. When several happen at once only the most important is played. Browsers keep a page silent until you have clicked on it once, and the page says so when that is why nothing plays. Nothing is played when the page first loads, only for what changes while it is open.
+
+Where they are kept: in the browser's local storage, under `pgrr-dashboard-settings-v1` (everything but the theme), `pgrr-theme` (the theme, in its own key so it is applied before the page is first drawn) and `pgrr-dashboard-dismissed-v1` (dismissed alerts, only while they are set to stay hidden). Local storage belongs to one browser and one address, port included, so another browser, another computer or a private window starts from the defaults, and clearing the site's data resets them. If the browser blocks storage the page works and simply forgets on reload. They are not part of the dashboard file and not saved by `pgrr dashboard`, so `--no-save` does not affect them.
 
 ## Make it yours
 

@@ -27,11 +27,8 @@ export function relative(thenMs, nowMs) {
   return d < 0 ? `${duration(d)} ago` : `in ${duration(d)}`;
 }
 
-export function clock(ms, withSeconds = false) {
-  const d = new Date(ms);
-  const p = (n) => String(n).padStart(2, '0');
-  return `${p(d.getHours())}:${p(d.getMinutes())}${withSeconds ? ':' + p(d.getSeconds()) : ''}`;
-}
+// Times are shown in the zone the person chose (see time.js).
+export { clock } from './time.js';
 
 // ---- numbers ----------------------------------------------------------------
 
