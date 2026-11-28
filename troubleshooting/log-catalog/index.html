@@ -1,0 +1,4373 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Detects PostgreSQL query performance regressions and pinpoints which Kubernetes deployment caused them.">
+      
+      
+      
+        <link rel="canonical" href="https://joao00001.github.io/pg-regression-radar/troubleshooting/log-catalog/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/brand/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Log catalog - pg-regression-radar</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/roadmap.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/home.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/contribute.css">
+    
+      <link rel="stylesheet" href="../../assets/math/math.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <script>
+    (function () {
+      try {
+        var shared = localStorage.getItem("pgrr.palette");
+        if (shared) {
+          localStorage.setItem(new URL("../..", location).pathname + ".__palette", shared);
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#log-catalog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="pg-regression-radar" class="md-header__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pg-regression-radar
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Log catalog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        
+          <a href="https://discord.gg/ZShn8s3mh" class="md-header__discord" title="Join the pg_regression_radar Discord" aria-label="Join the pg_regression_radar Discord" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.317 4.369A19.79 19.79 0 0 0 15.885 3a.074.074 0 0 0-.079.037c-.19.34-.405.783-.554 1.131a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.561-1.131.077.077 0 0 0-.079-.037 19.74 19.74 0 0 0-4.433 1.369.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.292a.074.074 0 0 1 .078-.01c3.927 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .079.009c.12.1.246.198.373.293a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.891.077.077 0 0 0-.04.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.029 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .031-.055c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.331c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.419 0 1.333-.956 2.419-2.157 2.419zm7.975 0c-1.183 0-2.157-1.086-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.095 2.157 2.419 0 1.333-.946 2.419-2.157 2.419z"/></svg>
+          </a>
+        
+        
+          <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+        
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../playground/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Playground
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../our-math/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Our math
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="https://joao00001.github.io/pg-regression-radar/latest/lab/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Docs
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../roadmap/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Roadmap
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../contribute/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Contribute
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="pg-regression-radar" class="md-nav__button md-logo" aria-label="pg-regression-radar" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg>
+
+    </a>
+    pg-regression-radar
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/joao00001/pg-regression-radar" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    joao00001/pg-regression-radar
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../playground/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Playground
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../our-math/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Our math
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Docs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_1" id="__nav_4_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/lab/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Try the lab
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/quickstart-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validate your setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/examples/regression-scenario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: a regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/examples/alerting-example/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/examples/attribution-rollout/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Example: pausing a bad rollout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Detection algorithm
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/collector-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collector internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/periodic-detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Periodic detection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/multi-cluster/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-cluster
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/auto-abort/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auto-abort
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/attribution-engine/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Attribution engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integrations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integrations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/webhooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/alerting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/otel-prometheus-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prometheus / OTel source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/otlp-deploy-events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OTLP deploy events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/otlp-export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OTLP export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/security-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/deployment-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hardening (Helm)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/supply-chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supply chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/api-versioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API versioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/support-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Support matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Troubleshooting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/where-to-look/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where to look
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup and the database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/detection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nothing is detected
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/deploy-sources/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deploy sources
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/enforce/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enforce mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/alerts-and-dashboard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alerts and the dashboard
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/logs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/log-catalog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Log catalog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reason codes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/report/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Collect a report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic Kubernetes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Basic Kubernetes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../kubernetes/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../kubernetes/objects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Objects and namespaces
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../kubernetes/workloads/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pods and Deployments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../kubernetes/config-secrets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config and Secrets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../kubernetes/networking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Services and networking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../kubernetes/crds-operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CRDs and operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../kubernetes/rbac/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RBAC and access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../kubernetes/helm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Helm basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../kubernetes/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting toolkit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/ci-cd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/backporting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backporting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/branch-protection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Branch protection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/TEMPLATE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Page template
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing guide ↗
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contribute/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contribute
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manager-start-up-and-shutdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manager: start-up and shutdown
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#postgreswatch-deploysource-and-workloads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PostgresWatch, DeploySource and workloads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#attribution-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attribution engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard history
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#collector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Collector
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#correlation-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correlation engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deploy-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploy events
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#alerting-otlp-export-prometheus-and-storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alerting, OTLP export, Prometheus and storage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#operator-all-in-one-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Operator (all-in-one mode)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard-api-and-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard API and command
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/joao00001/pg-regression-radar/edit/main/docs/troubleshooting/log-catalog.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="log-catalog">Log catalog<a class="headerlink" href="#log-catalog" title="Permanent link">&para;</a></h1>
+<p><em>Every message the radar writes, with its level, the fields it carries, and what it means.</em></p>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>This page lists each log message by the part of the radar that writes it. Find a message you saw with your browser's search, read what it means, and follow the link when it has a <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/">reason code</a>. A message is free text and can be reworded between releases; the <code>reason</code> code is the part that stays. How to read the log and how to turn on more detail is on the <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/logs/">Logs</a> page.</p>
+<p>A test compares this page with the source on every build: a message that is logged and is not here, or listed here and not logged, or a field that does not match, fails it. A message that ends in <code>…</code> is built at run time and the text after it varies.</p>
+<p>Fields that controller-runtime adds to every line written while it reconciles an object (<code>controller</code>, <code>controllerKind</code>, <code>name</code>, <code>namespace</code>, <code>reconcileID</code>) are described on <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/logs/#fields-you-can-rely-on">Logs</a>, and are not repeated in the rows.</p>
+<h2 id="manager-start-up-and-shutdown">Manager: start-up and shutdown<a class="headerlink" href="#manager-start-up-and-shutdown" title="Permanent link">&para;</a></h2>
+<p>What <code>manager</code> writes while it starts. Almost every error here ends the process, and the pod restarts.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>info</td>
+<td><code>http server listening</code></td>
+<td><code>server</code> <code>addr</code></td>
+<td>One of the manager's HTTP servers is up. <code>server</code> names it (<code>webhook</code>, <code>pg-metrics</code>, <code>dashboard-api</code>, <code>attribution-verdict</code>, <code>observe</code>) and <code>addr</code> is where it listens. Every manager pod serves <code>dashboard-api</code>; the others start only on the leader, so a follower does not log them.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid --alerting-allowed-destinations</code></td>
+<td><code>err</code></td>
+<td>The allowlist could not be parsed. The manager exits. Use comma-separated hostnames, IPs or CIDRs.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid --cluster-health-check-interval value: must be positive</code></td>
+<td><code>value</code></td>
+<td>The interval must be positive. The manager exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid --security-profile value</code></td>
+<td><code>value</code> <code>allowed</code></td>
+<td><code>--security-profile</code> is not <code>controlled</code> or <code>hardened</code>. The manager exits; <code>allowed</code> lists the choices.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid alerting destination policy configuration</code></td>
+<td><code>err</code></td>
+<td>The policy and the allowlist or relay URL do not fit (for example <code>allowlist</code> with no list, or <code>relay-only</code> with no URL). The manager exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid logging flag</code></td>
+<td><code>err</code></td>
+<td><code>--log-level</code> or <code>--log-format</code> has a value that is not accepted. The process exits with a non-zero code. Use <code>debug</code>, <code>info</code>, <code>warn</code> or <code>error</code>, and <code>json</code> or <code>text</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid or unreachable observe history</code></td>
+<td><code>err</code></td>
+<td><code>--observe-history</code> is <code>postgres</code> and the store could not be opened with the DSN in <code>--observe-history-dsn-file</code>. The manager exits. Fix the DSN, or use <code>memory</code>.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>logging: …</code></td>
+<td></td>
+<td>A deprecated <code>--zap-*</code> flag was passed and was mapped to <code>--log-level</code> or <code>--log-format</code> (or ignored). Replace it with the new flag; the line says which.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>problem running manager</code></td>
+<td><code>err</code></td>
+<td>The manager stopped with an error after it had started. The pod restarts. Read <code>err</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>starting manager</code></td>
+<td><code>leaderElection</code></td>
+<td>Everything is registered and the manager is starting. <code>leaderElection</code> says whether it will wait for the lease. After it, the leader logs <code>postgreswatch worker started</code> for each watch.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to add attribution verdict server</code></td>
+<td><code>err</code></td>
+<td>The verdict endpoint could not be added (<code>--attribution-verdict-addr</code>). The manager exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to add dashboard API server</code></td>
+<td><code>err</code></td>
+<td>The read-only dashboard API could not be added (<code>--dashboard-addr</code>). The manager exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to add observe history recorder</code></td>
+<td><code>err</code></td>
+<td>The recorder that writes the dashboard's history could not be added. The manager exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to add observe server</code></td>
+<td><code>err</code></td>
+<td>The Observe API the live dashboard reads (<code>--observe-addr</code>) could not be added. The manager exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to add pg-metrics server</code></td>
+<td><code>err</code></td>
+<td>The Postgres query metrics listener could not be added (<code>--pg-metrics-bind-address</code>). The manager exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to add webhook server</code></td>
+<td><code>err</code></td>
+<td>The deploy-event webhook listener could not be added (<code>--webhook-bind-address</code>). The manager exits; check for an address already in use.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to build Kubernetes client; attribution.arms.podLogs will have no effect</code></td>
+<td><code>err</code></td>
+<td>The client used to read Postgres pod logs could not be built, so <code>attribution.arms.podLogs</code> does nothing (reason <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#armsdisabled"><code>ArmsDisabled</code></a>).</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to build direct Kubernetes client for startup failure reporting</code></td>
+<td><code>err</code></td>
+<td>The manager could not build the client it uses to write a startup failure into the status of its custom resources. A startup failure will still be logged, but not shown in <code>kubectl get postgreswatch</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to build dynamic client; PostgresWatch.spec.autoAbort will have no effect</code></td>
+<td><code>err</code></td>
+<td>The client used to patch Rollouts could not be built, so <code>spec.autoAbort</code> does nothing. Fix the in-cluster configuration.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to create controller</code></td>
+<td><code>err</code> <code>controller</code></td>
+<td>A controller could not be registered. The manager exits. <code>controller</code> says which (<code>PostgresWatch</code>, <code>DeploySource</code>, <code>WorkloadWatch</code>, <code>PostgresRadarCluster</code>); the usual cause is a missing CRD, so check <code>kubectl get crd | grep radar</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to report manager startup failure in custom resource status</code></td>
+<td><code>err</code></td>
+<td>The manager failed to start and then also failed to write the failure into the custom resources' status. Read the line before this one: that is the real failure.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to resolve Kubernetes API server config</code></td>
+<td><code>err</code></td>
+<td>The manager found neither an in-cluster configuration nor a kubeconfig. Outside a cluster, set <code>KUBECONFIG</code>; inside one, check that the pod has its service account token.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to set up health check</code></td>
+<td><code>err</code></td>
+<td>The <code>/healthz</code> endpoint could not be registered. The manager exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to set up ready check</code></td>
+<td><code>err</code></td>
+<td>The <code>/readyz</code> endpoint could not be registered. The manager exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to start manager</code></td>
+<td><code>err</code></td>
+<td>controller-runtime could not start (the API server is unreachable, or the cache could not sync). The manager exits and the pod restarts. Read <code>err</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="postgreswatch-deploysource-and-workloads">PostgresWatch, DeploySource and workloads<a class="headerlink" href="#postgreswatch-deploysource-and-workloads" title="Permanent link">&para;</a></h2>
+<p>The controllers. They run on the leader only.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>warn</td>
+<td><code>attribution: circuit breaker closed by the reset-breaker annotation, the engine may act again</code></td>
+<td><code>reason</code> <code>watch</code> <code>token</code></td>
+<td>An operator closed the circuit breaker: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#breakerreset"><code>BreakerReset</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution: reset-breaker annotation changed, but the circuit breaker was already closed</code></td>
+<td><code>watch</code> <code>token</code></td>
+<td>Someone set <code>pg-regression-radar.io/reset-breaker</code> while the breaker was closed. Nothing changed.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>deploysource deleted, webhook route removed</code></td>
+<td></td>
+<td>The DeploySource was deleted and its webhook route removed. Events sent to that path now get <code>404</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>deploysource has an invalid spec, route not registered</code></td>
+<td><code>reason</code> <code>err</code></td>
+<td>The DeploySource's spec was rejected and no route is registered: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#invalidspec"><code>InvalidSpec</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>deploysource watched natively, no webhook route registered</code></td>
+<td><code>reason</code> <code>sourceType</code> <code>appName</code></td>
+<td>A <code>kubernetes</code> or <code>argo-rollouts</code> source is watched through the API, so it has no webhook route: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#nativewatchactive"><code>NativeWatchActive</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>deploysource webhook route registered</code></td>
+<td><code>reason</code> <code>path</code> <code>sourceType</code></td>
+<td>The webhook route is live at <code>path</code>: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#routeregistered"><code>RouteRegistered</code></a>.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>ignoring unknown spec.multipleTesting</code></td>
+<td><code>reason</code> <code>watch</code> <code>value</code> <code>err</code></td>
+<td>The value is not one the radar knows, and was ignored: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#multipletestingunknown"><code>MultipleTestingUnknown</code></a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>list postgresradarclusters for secret-triggered health check</code></td>
+<td><code>err</code></td>
+<td>The manager could not list PostgresRadarClusters after a kubeconfig Secret changed, so the immediate re-check was skipped. The next scheduled check still runs. Usually a transient API error.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>postgresradarcluster health check failed</code></td>
+<td><code>reason</code> <code>cluster</code> <code>err</code></td>
+<td>A remote cluster's kubeconfig does not work: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#clusterhealthcheckfailed"><code>ClusterHealthCheckFailed</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>postgreswatch deleted, worker stopped</code></td>
+<td></td>
+<td>The PostgresWatch was deleted and its collector and engine were stopped. Its in-memory samples and action ledger went with it.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>postgreswatch worker started</code></td>
+<td><code>reason</code> <code>cluster</code></td>
+<td>The watch's collector and engine are running: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#workerstarted"><code>WorkerStarted</code></a>. It is logged again whenever the spec changes, because the worker is replaced.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>postgreswatch: alert notify failed</code></td>
+<td><code>reason</code> <code>watch</code> <code>regression</code> <code>err</code></td>
+<td>An alert for a regression tied to a deploy was not delivered: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#alertnotifyfailed"><code>AlertNotifyFailed</code></a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>postgreswatch: attribution revert disabled by invalid configuration</code></td>
+<td><code>reason</code> <code>watch</code> <code>err</code></td>
+<td>Draft revert pull requests are off because <code>attribution.revert</code> is wrong: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#revertdisabled"><code>RevertDisabled</code></a>. The engine keeps working.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>postgreswatch: attribution.actuate ignored, it only acts in enforce mode</code></td>
+<td><code>reason</code> <code>watch</code></td>
+<td><code>attribution.actuate</code> is set but the watch is in shadow mode, so nothing will be paused or aborted: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#shadowmode"><code>ShadowMode</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>postgreswatch: attribution.actuate ignored, no Argo Rollouts actuator is available (enable manager.autoAbort.rbacEnabled)</code></td>
+<td><code>reason</code> <code>watch</code></td>
+<td><code>attribution.actuate</code> is set but the manager has no Argo Rollouts RBAC: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#noactuator"><code>NoActuator</code></a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>postgreswatch: auto-abort failed</code></td>
+<td><code>reason</code> <code>watch</code> <code>rollout</code> <code>confidence</code> <code>err</code></td>
+<td>The p-value auto-abort tried to abort a Rollout and failed: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#autoabortfailed"><code>AutoAbortFailed</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>postgreswatch: auto-abort skipped, deploysource not found</code></td>
+<td><code>reason</code> <code>watch</code> <code>source</code> <code>err</code></td>
+<td>The p-value auto-abort found a regression and no DeploySource to act through: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#autoabortskipped"><code>AutoAbortSkipped</code></a>. Normal for sources that have no abort action.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>postgreswatch: auto-abort triggered</code></td>
+<td><code>reason</code> <code>watch</code> <code>rollout</code> <code>confidence</code> <code>query</code></td>
+<td>The p-value auto-abort aborted a Rollout: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#autoaborttriggered"><code>AutoAbortTriggered</code></a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>postgreswatch: collector exited unexpectedly</code></td>
+<td><code>reason</code> <code>watch</code> <code>err</code></td>
+<td>The collector stopped on its own: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#collectorexited"><code>CollectorExited</code></a>. The watch stops scraping until its worker is replaced.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>postgreswatch: failed to persist PerformanceRegression CR</code></td>
+<td><code>reason</code> <code>watch</code> <code>regression</code> <code>err</code></td>
+<td>The regression was detected and alerted but could not be saved as a <code>PerformanceRegression</code>: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#regressionpersistfailed"><code>RegressionPersistFailed</code></a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>postgreswatch: failed to persist periodic PerformanceRegression CR</code></td>
+<td><code>reason</code> <code>watch</code> <code>regression</code> <code>err</code></td>
+<td>A periodic regression could not be saved as a <code>PerformanceRegression</code>: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#regressionpersistfailed"><code>RegressionPersistFailed</code></a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>postgreswatch: periodic alert notify failed</code></td>
+<td><code>reason</code> <code>watch</code> <code>regression</code> <code>err</code></td>
+<td>An alert for a periodic regression (not tied to a deploy) was not delivered: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#alertnotifyfailed"><code>AlertNotifyFailed</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>postgreswatch: spec.autoAbort ignored, attribution.actuate decides instead</code></td>
+<td><code>reason</code> <code>watch</code></td>
+<td>The older p-value auto-abort stands down because <code>attribution.actuate</code> decides: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#autoabortignored"><code>AutoAbortIgnored</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>remoteClusterSecretRef is deprecated; register the cluster as a PostgresRadarCluster and use remoteClusterRef instead</code></td>
+<td><code>watch</code> <code>namespace</code> <code>see</code></td>
+<td>The watch uses the deprecated <code>remoteClusterSecretRef</code>. It still works. Register the cluster as a PostgresRadarCluster and use <code>remoteClusterRef</code>; <code>see</code> points to the page.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to resolve DSN</code></td>
+<td><code>err</code> <code>reason</code></td>
+<td>The watch's connection string could not be read from its Secret: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#dsnunresolved"><code>DSNUnresolved</code></a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to resolve referenced secrets</code></td>
+<td><code>err</code> <code>reason</code></td>
+<td>A Secret the watch refers to besides the DSN could not be read: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#secretsunresolved"><code>SecretsUnresolved</code></a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unable to start watch worker</code></td>
+<td><code>err</code> <code>reason</code></td>
+<td>The watch's worker could not be built: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#workerstartfailed"><code>WorkerStartFailed</code></a>. The watch shows <code>Phase: Failed</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>workloadwatch: deploy event synthesised from native rollout</code></td>
+<td><code>reason</code> <code>kind</code> <code>workload</code> <code>revision</code> <code>deploySource</code></td>
+<td>A Rollout or Deployment finished a new revision and the manager made a deploy event from it: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#deployeventsynthesised"><code>DeployEventSynthesised</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>workloadwatch: postgresWatchRef not ready yet, will retry</code></td>
+<td><code>reason</code> <code>deploySource</code> <code>workload</code> <code>kind</code></td>
+<td>A deploy was seen but its PostgresWatch is not running yet, so it will be retried rather than lost: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#postgreswatchnotready"><code>PostgresWatchNotReady</code></a>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="attribution-engine">Attribution engine<a class="headerlink" href="#attribution-engine" title="Permanent link">&para;</a></h2>
+<p>Judging deploys, acting on Rollouts and reading the Postgres log. These lines carry a <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/">reason code</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>info</td>
+<td><code>attribution (enforce): decision below the acting threshold, nothing to execute</code></td>
+<td></td>
+<td>Enforce mode, and the decision is <code>none</code> or <code>alert</code>: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#belowactingthreshold"><code>BelowActingThreshold</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution (enforce): verdict served to the rollout controller</code></td>
+<td></td>
+<td>A <code>hold</code> or <code>rollback</code> decision, enforced and now served at the verdict endpoint: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#verdictserved"><code>VerdictServed</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution (shadow): decision, not executed</code></td>
+<td></td>
+<td>The engine judged a deploy and the watch is in shadow mode, so nothing was done: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#shadowmode"><code>ShadowMode</code></a>. <code>action</code> is what it would have done; <code>reasons</code> says why.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution (shadow): would open a draft revert pull request, not opened</code></td>
+<td><code>deploy</code> <code>revision</code> <code>grade</code></td>
+<td>Shadow mode, and a deploy was convicted at <code>hold</code> or above: this is the pull request the radar would open in enforce mode. Nothing was sent to GitHub.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>attribution.arms: cannot read the server's settings</code></td>
+<td><code>reason</code> <code>watch</code> <code>err</code></td>
+<td>The Postgres settings could not be read, retried every 30 seconds: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#armssettingsunread"><code>ArmsSettingsUnread</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution.arms: the Postgres log can serve as an arm-labelled source</code></td>
+<td><code>reason</code> <code>watch</code> <code>sampleRate</code></td>
+<td>The log is usable: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#armsusable"><code>ArmsUsable</code></a>.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>attribution.arms: the Postgres log cannot be used yet</code></td>
+<td></td>
+<td>One Postgres setting stops the log from being used: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#armssettingsrejected"><code>ArmsSettingsRejected</code></a>. <code>setting</code>, <code>value</code>, <code>problem</code> and <code>fix</code> name it and say what to set.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>attribution.arms: the Postgres log setting costs more than it needs to</code></td>
+<td></td>
+<td>The log works, but a setting makes it cost more than it needs to. <code>setting</code>, <code>problem</code> and <code>fix</code> say which; this line has no reason code because nothing is wrong.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution: acted on the rollout</code></td>
+<td><code>reason</code> <code>deploy</code> <code>rollout</code> <code>action</code> <code>grade</code> <code>impact</code> <code>reasons</code></td>
+<td>The Rollout was paused or aborted: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#acted"><code>Acted</code></a>.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>attribution: actuation paused by annotation, nothing paused or aborted</code></td>
+<td><code>reason</code> <code>deploy</code> <code>action</code></td>
+<td>The engine wanted to act but the kill switch is on: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#actuationpaused"><code>ActuationPaused</code></a>.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>attribution: cannot tell the arms of a deploy apart</code></td>
+<td><code>reason</code> <code>deploy</code> <code>err</code></td>
+<td>The pods of the canary and the stable arm could not be told apart for this evaluation, which falls back to grade B at best: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#armsundistinguished"><code>ArmsUndistinguished</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution: checked the abort</code></td>
+<td><code>reason</code> <code>deploy</code> <code>result</code> <code>detail</code></td>
+<td>The check after an abort: <code>result</code> is <code>recovered</code> (<a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#abortrecovered"><code>AbortRecovered</code></a>) or <code>persisted</code> (<a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#abortpersisted"><code>AbortPersisted</code></a>).</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>attribution: circuit breaker open, the engine will only alert until it is reset</code></td>
+<td><code>reason</code> <code>deploy</code> <code>result</code> <code>detail</code> <code>howToReset</code></td>
+<td>Two aborts in a row did not help and the engine now only alerts: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#breakeropen"><code>BreakerOpen</code></a>. <code>howToReset</code> says how to close it.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>attribution: could not act on the rollout, will retry at the next evaluation</code></td>
+<td><code>reason</code> <code>deploy</code> <code>rollout</code> <code>action</code> <code>err</code></td>
+<td>The pause or abort call failed: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#actuationfailed"><code>ActuationFailed</code></a>. It is retried at the next evaluation.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution: could not check the abort, too little data after it</code></td>
+<td><code>reason</code> <code>deploy</code></td>
+<td>The check 15 minutes after an abort had too little data: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#abortunverifiable"><code>AbortUnverifiable</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution: deploy registered, it will be judged from 10 to 45 minutes after it</code></td>
+<td><code>reason</code> <code>deploy</code> <code>namespace</code> <code>app</code> <code>revision</code> <code>source</code> <code>firstEvaluation</code> <code>lastEvaluation</code></td>
+<td>The engine tracks this deploy: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#deployregistered"><code>DeployRegistered</code></a>. <code>firstEvaluation</code> and <code>lastEvaluation</code> bound when it is judged.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution: draft revert pull request</code></td>
+<td><code>deploy</code> <code>outcome</code> <code>detail</code> <code>url</code></td>
+<td>The result of an attempt to open a draft revert pull request. <code>outcome</code> is <code>opened</code>, <code>already-proposed</code>, <code>skipped</code> (a guard declined) or <code>failed</code>, and <code>detail</code> explains it.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution: namespace not allowed for actuation, nothing paused or aborted</code></td>
+<td><code>reason</code> <code>deploy</code> <code>namespace</code> <code>action</code></td>
+<td>The engine wanted to act but the namespace is not allowed: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#namespacenotallowed"><code>NamespaceNotAllowed</code></a>.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>attribution: no query samples to judge the deploy by, evaluation skipped</code></td>
+<td><code>reason</code> <code>deploy</code> <code>namespace</code> <code>app</code></td>
+<td>An evaluation was skipped because there is nothing to read: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#nosamples"><code>NoSamples</code></a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>attribution: not an Argo Rollouts deploy, nothing to pause or abort</code></td>
+<td><code>reason</code> <code>deploy</code> <code>source</code> <code>action</code></td>
+<td>The engine wanted to act but the deploy is not a Rollout from an <code>argo-rollouts</code> source: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#notargorollout"><code>NotArgoRollout</code></a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>postgreswatch: attribution.arms disabled, …</code></td>
+<td><code>reason</code> <code>watch</code></td>
+<td><code>attribution.arms</code> is configured but cannot work, so grade A evidence is off: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#armsdisabled"><code>ArmsDisabled</code></a>. The text after the comma says why.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dashboard-history">Dashboard history<a class="headerlink" href="#dashboard-history" title="Permanent link">&para;</a></h2>
+<p>The record behind the live dashboard.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>warn</td>
+<td><code>observe history: cannot record; the radar keeps acting, history will have a gap</code></td>
+<td><code>reason</code> <code>err</code></td>
+<td>The dashboard's history store could not be written: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#historynotrecording"><code>HistoryNotRecording</code></a>. Decisions are not affected.</td>
+</tr>
+<tr>
+<td>debug</td>
+<td><code>observe history: series not stored</code></td>
+<td><code>deploy</code> <code>err</code></td>
+<td>Debug. A deploy's query series could not be saved to the history. Only seen with <code>--log-level=debug</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="collector">Collector<a class="headerlink" href="#collector" title="Permanent link">&para;</a></h2>
+<p>Reading <code>pg_stat_statements</code>. The standalone <code>collector</code> command writes the same lines.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>error</td>
+<td><code>collector exited with error</code></td>
+<td><code>err</code></td>
+<td>The collector stopped with an error and the process exits. Read <code>err</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>collector: detected PostgreSQL older than 13; using legacy pg_stat_statements column names (total_time/mean_time)</code></td>
+<td><code>server_version_num</code></td>
+<td>The server is older than 13, so the collector reads the legacy column names (<code>total_time</code>, <code>mean_time</code>). Informational.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>collector: metrics server listening</code></td>
+<td><code>addr</code></td>
+<td>The standalone collector's metrics endpoint is up on <code>addr</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>collector: pg_stat_statements counters restarted for query; using activity since the reset</code></td>
+<td><code>query_id</code> <code>calls</code> <code>stats_since</code></td>
+<td>A query's counters went backwards: a <code>pg_stat_statements_reset()</code>, an eviction or a crash. The collector uses only the activity since the reset. If this is frequent for many queries, something is resetting the statistics.</td>
+</tr>
+<tr>
+<td>debug</td>
+<td><code>collector: plan capture failed for query, skipping</code></td>
+<td><code>query_id</code> <code>err</code></td>
+<td>Debug. A plan could not be captured for one query and was skipped.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>collector: plan-diff capture unavailable (requires PostgreSQL 16+ for EXPLAIN GENERIC_PLAN); continuing without it</code></td>
+<td><code>err</code></td>
+<td><code>spec.capturePlans</code> is on and the server cannot run <code>EXPLAIN (GENERIC_PLAN)</code>, which needs PostgreSQL 16 or newer. Detection continues without plan diffs.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>collector: scrape failed</code></td>
+<td><code>err</code></td>
+<td>One scrape of <code>pg_stat_statements</code> failed. Read <code>err</code>: <code>relation "pg_stat_statements" does not exist</code> and <code>permission denied</code> are covered in <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/setup/">Setup</a>. The next scrape tries again; the <code>Collecting</code> condition turns <code>False</code> after three missed intervals.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>collector: starting scrape loop</code></td>
+<td><code>interval</code> <code>retention</code> <code>cluster</code></td>
+<td>The collector started. <code>interval</code> is the scrape interval and <code>retention</code> how long samples stay in memory.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>collector: stopping</code></td>
+<td></td>
+<td>The collector's context was cancelled: the watch was deleted or its spec changed, or the process is shutting down.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--dry-run: collector ping failed</code></td>
+<td><code>err</code></td>
+<td><code>--dry-run</code> could not reach the database. Read <code>err</code>, and see <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/setup/">Setup</a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>--dry-run: configuration and connectivity OK</code></td>
+<td><code>version</code></td>
+<td><code>--dry-run</code> connected to the database and exits with code 0.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--dsn is required</code></td>
+<td></td>
+<td>No <code>--dsn</code> was given. The process exits with code 1.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>failed to create collector</code></td>
+<td><code>err</code></td>
+<td>The collector could not be built from the flags, usually a malformed <code>--dsn</code>. The process exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--max-query-text-len must be positive</code></td>
+<td><code>value</code></td>
+<td>The flag must be above zero. The process exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>metrics server error</code></td>
+<td><code>err</code></td>
+<td>The metrics server stopped with an error, usually because the address is in use (<code>--listen</code>).</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>metrics server shutdown error</code></td>
+<td><code>err</code></td>
+<td>The metrics server did not shut down cleanly. Informational.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="correlation-engine">Correlation engine<a class="headerlink" href="#correlation-engine" title="Permanent link">&para;</a></h2>
+<p>Detecting regressions. Lines marked <code>debug</code> only appear with <code>--log-level=debug</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>info</td>
+<td><code>correlation: analysing deploy</code></td>
+<td><code>event_id</code> <code>query_count</code> <code>window_minutes</code></td>
+<td>The correlation engine started comparing the queries before and after a deploy. <code>query_count</code> is how many it looks at.</td>
+</tr>
+<tr>
+<td>debug</td>
+<td><code>correlation: change point too far from deploy, rejecting</code></td>
+<td><code>query_id</code> <code>change_at</code> <code>deploy_at</code> <code>distance</code> <code>tolerance</code></td>
+<td>Debug. A change was found, but too far from the deploy time to be blamed on it.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>correlation: deploy event registered for retry</code></td>
+<td><code>event_id</code> <code>deploy_at</code> <code>retry_until</code></td>
+<td>A deploy arrived before the radar had enough history. It is retried until <code>retry_until</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>correlation: deploy event's analysis window elapsed</code></td>
+<td><code>event_id</code> <code>queries_detected</code></td>
+<td>The retry window ended. <code>queries_detected</code> is how many regressions were found for the deploy in total.</td>
+</tr>
+<tr>
+<td>debug</td>
+<td><code>correlation: detection did not survive multiple-testing control</code></td>
+<td><code>query_id</code> <code>p_value</code> <code>mode</code> <code>queries_tested</code></td>
+<td>Debug. A detection was dropped by the multiple-testing control (<code>mode</code>) because many queries were tested at once.</td>
+</tr>
+<tr>
+<td>debug</td>
+<td><code>correlation: insufficient data, not yet ready to evaluate</code></td>
+<td><code>query_id</code> <code>pre_samples</code> <code>post_samples</code> <code>min_samples</code> <code>pre_executions</code> <code>post_executions</code> <code>min_executions</code> <code>executions_checked</code></td>
+<td>Debug. A query does not have enough samples or executions yet before and after the deploy; the engine waits and tries again.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>correlation: multiple-testing control removed detections</code></td>
+<td><code>mode</code> <code>queries_tested</code> <code>detected_before</code> <code>removed</code> <code>level</code></td>
+<td>The multiple-testing control removed <code>removed</code> of <code>detected_before</code> detections. Informational; set <code>spec.multipleTesting: none</code> to turn it off.</td>
+</tr>
+<tr>
+<td>debug</td>
+<td><code>correlation: no change point found, rejecting naive mean shift</code></td>
+<td><code>query_id</code> <code>change_factor</code></td>
+<td>Debug. The mean shifted but no change point was found in the series, so the naive shift was rejected as noise.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>correlation: periodic analysis</code></td>
+<td><code>query_count</code> <code>window_minutes</code> <code>now</code></td>
+<td>The scheduled analysis, which looks for regressions not tied to a deploy, ran over the retained window.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>correlation: periodic regression detected</code></td>
+<td><code>query_id</code> <code>change_factor</code> <code>confidence</code> <code>change_at</code></td>
+<td>A query regressed with no deploy to blame, and passed every test.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>correlation: periodic regression newly detected, suppressing until recovery</code></td>
+<td><code>query_id</code> <code>confidence</code></td>
+<td>A periodic regression was reported once and is now suppressed until the query recovers, so it does not alert again.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>correlation: periodic regression recovered, re-arming</code></td>
+<td><code>query_id</code> <code>status</code></td>
+<td>A suppressed periodic regression recovered and is armed again.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>correlation: regression detected</code></td>
+<td><code>query_id</code> <code>change_factor</code> <code>confidence</code> <code>change_at</code></td>
+<td>A query regressed after a deploy and passed every test. A <code>PerformanceRegression</code> and an alert follow. <code>change_factor</code> is the new latency over the old.</td>
+</tr>
+<tr>
+<td>debug</td>
+<td><code>correlation: t-test result</code></td>
+<td><code>query_id</code> <code>p_value</code> <code>change_factor</code> <code>change_at</code></td>
+<td>Debug. The significance test of one query: <code>p_value</code>, <code>change_factor</code> and the <code>change_at</code> it found.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="deploy-events">Deploy events<a class="headerlink" href="#deploy-events" title="Permanent link">&para;</a></h2>
+<p>Receiving deploy events. The standalone <code>ingester</code> command writes the same lines.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>info</td>
+<td><code>--dry-run: configuration OK</code></td>
+<td><code>version</code> <code>listen</code> <code>apiServerHost</code></td>
+<td><code>--dry-run</code> found the configuration valid and exits with code 0.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--dry-run: invalid --listen address</code></td>
+<td><code>value</code> <code>err</code></td>
+<td><code>--listen</code> is not a valid address. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--dry-run: unknown --source-type</code></td>
+<td><code>value</code></td>
+<td><code>--source-type</code> is not one the ingester knows. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>events handler: encode</code></td>
+<td><code>err</code></td>
+<td>The response for <code>/events</code> could not be encoded. Informational.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>ingester: OTLP spans matched but were rejected</code></td>
+<td><code>rejected</code> <code>detail</code></td>
+<td>Spans matched the mapping and were rejected. <code>detail</code> says why (for example a missing app name or revision attribute).</td>
+</tr>
+<tr>
+<td>debug</td>
+<td><code>ingester: deploy event ignored, its app is not the one this source is configured for</code></td>
+<td><code>id</code> <code>app</code> <code>configuredApp</code></td>
+<td>Debug. The event is for an app other than the DeploySource's <code>appName</code>, so it was dropped and the sender still got <code>204</code>. If you expected this deploy to be judged, <code>app</code> and <code>configuredApp</code> show the mismatch.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>ingester: deploy event not stored, the watch this source feeds is not running</code></td>
+<td><code>source</code></td>
+<td>A webhook arrived for a DeploySource whose PostgresWatch is not running, so the event was not stored. The sender gets <code>503</code> with <code>Retry-After: 10</code> and can send it again; start the watch (see <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#postgreswatchnotready"><code>PostgresWatchNotReady</code></a>).</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>ingester: deploy event stored</code></td>
+<td><code>id</code> <code>app</code> <code>revision</code> <code>timestamp</code></td>
+<td>A deploy event was received and stored for the watch. It is followed by <code>attribution: deploy registered</code>. If you do not see this line for a deploy, the event never arrived: see <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/deploy-sources/#a-deploy-never-shows-up">A deploy never shows up</a>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>ingester: failed to decode OTLP request</code></td>
+<td><code>err</code></td>
+<td>The OTLP request body could not be decoded. Check the exporter's protocol and content type.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>ingester: failed to parse webhook</code></td>
+<td><code>source_type</code> <code>err</code></td>
+<td>The body is not the format <code>source_type</code> expects. Check the sender's payload against <a href="https://joao00001.github.io/pg-regression-radar/latest/webhooks/">Deploy sources</a>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>ingester: listening</code></td>
+<td><code>addr</code> <code>source_type</code></td>
+<td>The standalone ingester is up on <code>addr</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>ingester: otlp source is misconfigured</code></td>
+<td><code>err</code></td>
+<td>An <code>otlp</code> source has no usable span mapping, so every request is answered with <code>500</code>. <code>err</code> says what is wrong with the mapping; fix it in the DeploySource or the ingester flags.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>ingester: rejected /events request with invalid or missing token</code></td>
+<td><code>remote_addr</code></td>
+<td>A read of <code>/events</code> had an invalid or missing token and was refused.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>ingester: rejected webhook request with invalid or missing token</code></td>
+<td><code>source_type</code> <code>remote_addr</code></td>
+<td>A webhook arrived with an invalid or missing token and was refused with <code>401</code>. Send <code>X-Webhook-Token</code>, or check <code>remote_addr</code> if you do not recognise the sender.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid OTLP flags</code></td>
+<td><code>err</code></td>
+<td>The OTLP flags do not fit the <code>--source-type</code>. The process exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid deploy source configuration</code></td>
+<td><code>err</code></td>
+<td>The deploy source configuration is unusable (an <code>otlp</code> source without a mapping). The process exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>server error</code></td>
+<td><code>err</code></td>
+<td>The ingester's HTTP server stopped with an error, usually an address already in use.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="alerting-otlp-export-prometheus-and-storage">Alerting, OTLP export, Prometheus and storage<a class="headerlink" href="#alerting-otlp-export-prometheus-and-storage" title="Permanent link">&para;</a></h2>
+<p>Everything that leaves the radar or is stored by it.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>info</td>
+<td><code>alerting: notification sent</code></td>
+<td><code>regression</code> <code>status_code</code></td>
+<td>An alert was delivered. <code>status_code</code> is the destination's answer.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>alerting: notification skipped; webhook url is not configured</code></td>
+<td><code>regression</code></td>
+<td>A regression was detected but the watch has no alert URL, so nothing was sent.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>otlpexport: delivery failed, will retry</code></td>
+<td><code>attempt</code> <code>in</code> <code>err</code></td>
+<td>One delivery attempt failed. It is retried after <code>in</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>otlpexport: giving up on regression</code></td>
+<td><code>regression</code> <code>endpoint</code> <code>err</code></td>
+<td>Delivery failed after every retry and the regression was not exported. <code>err</code> is the last failure.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>otlpexport: queue full, dropping regression</code></td>
+<td><code>regression</code> <code>endpoint</code></td>
+<td>Regressions are produced faster than the OTLP exporter delivers them, and one was dropped. Check the collector endpoint's health.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>promsource: query failed; the engine will see no samples until this is fixed</code></td>
+<td><code>operation</code> <code>err</code></td>
+<td>A query against Prometheus failed. Until it is fixed the engine sees no samples, which shows up as <code>NoSamples</code>: <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#nosamples"><code>NoSamples</code></a>. <code>operation</code> is <code>samples_in_range</code> or <code>all_query_ids</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>storage: prune failed</code></td>
+<td><code>store</code> <code>err</code></td>
+<td>A prune sweep failed. Read <code>err</code>; it is retried at the next interval.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>storage: prune loop started</code></td>
+<td><code>store</code> <code>interval</code> <code>retention</code></td>
+<td>The state store's prune loop started.</td>
+</tr>
+<tr>
+<td>debug</td>
+<td><code>storage: prune swept</code></td>
+<td><code>store</code> <code>cutoff</code></td>
+<td>Debug. A prune sweep finished; rows older than <code>cutoff</code> were removed.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>storage: retention &lt;= 0, disabling prune loop</code></td>
+<td><code>store</code></td>
+<td>The retention is zero or negative, so the prune loop is off and the state store grows without bound.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="operator-all-in-one-mode">Operator (all-in-one mode)<a class="headerlink" href="#operator-all-in-one-mode" title="Permanent link">&para;</a></h2>
+<p>What the <code>operator</code> command writes. It shares the collector, correlation and ingester lines above.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>error</td>
+<td><code>dashboard API server error</code></td>
+<td><code>err</code></td>
+<td>The dashboard API stopped with an error.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--dry-run: --periodic-interval-minutes must be positive</code></td>
+<td><code>value</code></td>
+<td>The interval must be positive. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--dry-run: --periodic-window-minutes must be positive</code></td>
+<td><code>value</code></td>
+<td>The window must be positive. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--dry-run: invalid alerting configuration</code></td>
+<td><code>err</code></td>
+<td><code>--dry-run</code> found invalid alerting settings. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--dry-run: postgres state backend connection failed</code></td>
+<td><code>err</code></td>
+<td><code>--dry-run</code> could not reach the state backend. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>--dry-run: unknown --state-backend (want memory or postgres)</code></td>
+<td><code>value</code></td>
+<td><code>--state-backend</code> is not <code>memory</code> or <code>postgres</code>. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>failed to configure OTLP export</code></td>
+<td><code>err</code></td>
+<td>The OTLP exporter could not be built. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>failed to configure alerting</code></td>
+<td><code>err</code></td>
+<td>The alerting flags are invalid. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>failed to initialise postgres state backend</code></td>
+<td><code>err</code></td>
+<td><code>--state-backend=postgres</code> could not connect or create its schema. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>failed to read --alert-template-file</code></td>
+<td><code>err</code></td>
+<td>The alert template file could not be read. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid --dsn</code></td>
+<td><code>err</code></td>
+<td>The connection string is malformed. The process exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid --multiple-testing</code></td>
+<td><code>err</code></td>
+<td><code>--multiple-testing</code> is not an allowed value. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid --state-dsn</code></td>
+<td><code>err</code></td>
+<td>The state backend's DSN is malformed. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>invalid OTLP export configuration</code></td>
+<td><code>err</code></td>
+<td>The OTLP export flags are invalid. Exits.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>operator: backfill: list query ids failed, starting with cold sample history</code></td>
+<td><code>err</code></td>
+<td>On start the operator could not read the stored query ids, so it starts with an empty sample history.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>operator: backfill: load events failed, starting with cold event history</code></td>
+<td><code>err</code></td>
+<td>The stored deploy events could not be read, so it starts with no event history.</td>
+</tr>
+<tr>
+<td>warn</td>
+<td><code>operator: backfill: load samples failed</code></td>
+<td><code>query_id</code> <code>err</code></td>
+<td>The stored samples of one query could not be loaded; that query starts cold.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>operator: backfilled collector sample history</code></td>
+<td><code>samples</code> <code>query_ids</code></td>
+<td>Stored samples were loaded back after a restart.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>operator: backfilled event history</code></td>
+<td><code>events</code> <code>cursor</code></td>
+<td>Stored deploy events were loaded back after a restart.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>operator: dashboard API server listening</code></td>
+<td><code>addr</code></td>
+<td>The dashboard API is up on <code>addr</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>operator: exporting regressions as OTLP logs</code></td>
+<td><code>url</code></td>
+<td>OTLP export is on and sends to <code>url</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>operator: metrics server listening</code></td>
+<td><code>addr</code></td>
+<td>The metrics listener is up on <code>addr</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>operator: notify failed</code></td>
+<td><code>err</code> <code>regression</code></td>
+<td>An alert was not delivered (the operator's counterpart of <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#alertnotifyfailed"><code>AlertNotifyFailed</code></a>).</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>operator: periodic notify failed</code></td>
+<td><code>err</code> <code>regression</code></td>
+<td>A periodic alert was not delivered (the operator's counterpart of <a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/#alertnotifyfailed"><code>AlertNotifyFailed</code></a>).</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>operator: persist event failed</code></td>
+<td><code>err</code> <code>event_id</code></td>
+<td>A deploy event could not be written to the state backend.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>operator: persist sample failed</code></td>
+<td><code>err</code> <code>query_id</code></td>
+<td>A sample could not be written to the state backend. The radar keeps running from memory; history will have a gap after a restart.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>operator: postgres state backend enabled</code></td>
+<td><code>schema</code> <code>retention</code> <code>prune_interval</code> <code>separate_state_dsn</code></td>
+<td>Samples and events are persisted to Postgres and survive a restart. <code>separate_state_dsn</code> is whether it is a different database from the monitored one.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>operator: webhook server listening</code></td>
+<td><code>addr</code></td>
+<td>The webhook listener is up on <code>addr</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>security profile</code></td>
+<td><code>security-profile</code></td>
+<td>The operator started with this <code>--security-profile</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>unknown --state-backend (want memory or postgres)</code></td>
+<td><code>value</code></td>
+<td><code>--state-backend</code> is not <code>memory</code> or <code>postgres</code>. Exits.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>webhook server error</code></td>
+<td><code>err</code></td>
+<td>The webhook listener stopped with an error, usually an address in use.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="dashboard-api-and-command">Dashboard API and command<a class="headerlink" href="#dashboard-api-and-command" title="Permanent link">&para;</a></h2>
+<p>The read-only API and the <code>pg-regression-radar dashboard</code> command.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Message</th>
+<th>Fields</th>
+<th>What it means and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>warn</td>
+<td><code>dashboard: cannot reach the manager</code></td>
+<td><code>err</code></td>
+<td><code>pg-regression-radar dashboard</code> lost its port-forward to the manager. It retries. Check that the manager pod runs and that you may <code>get pods</code> and port-forward.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>dashboard: connected to the manager</code></td>
+<td><code>pod</code></td>
+<td>The dashboard is connected to the manager pod <code>pod</code>.</td>
+</tr>
+<tr>
+<td>info</td>
+<td><code>dashboard: the leader changed</code></td>
+<td><code>from</code> <code>to</code></td>
+<td>The leader moved from one manager pod to another and the dashboard followed it.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>dashboardapi: list deploys failed</code></td>
+<td><code>err</code></td>
+<td>The dashboard API could not read deploys from its store. The request gets <code>500</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>dashboardapi: list query ids failed</code></td>
+<td><code>err</code></td>
+<td>The dashboard API could not list query ids. The request gets <code>500</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>dashboardapi: list regressions failed</code></td>
+<td><code>err</code></td>
+<td>The dashboard API could not list <code>PerformanceRegression</code> objects (usually RBAC or an API error). The request gets <code>500</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>dashboardapi: list watches failed</code></td>
+<td><code>err</code></td>
+<td>The dashboard API could not list <code>PostgresWatch</code> objects. The request gets <code>500</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>dashboardapi: load query samples failed</code></td>
+<td><code>query_id</code> <code>err</code></td>
+<td>The dashboard API could not load the samples of one query. The request gets <code>500</code>.</td>
+</tr>
+<tr>
+<td>error</td>
+<td><code>dashboardapi: load samples failed</code></td>
+<td><code>query_id</code> <code>err</code></td>
+<td>The dashboard API could not load samples. The request gets <code>500</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/logs/">Logs</a>: format, levels and how to filter.</li>
+<li><a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/reasons/">Reason codes</a>: the causes behind the lines that carry a <code>reason</code>.</li>
+<li><a href="https://joao00001.github.io/pg-regression-radar/latest/troubleshooting/where-to-look/">Where to look</a>: which signal answers which question.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        
+
+
+
+
+
+
+<footer class="md-footer pgrr-footer" aria-label="Site footer">
+  <div class="pgrr-footer__inner">
+    <div class="pgrr-footer__brand">
+      <a class="pgrr-footer__lockup" href="https://joao00001.github.io/pg-regression-radar/" aria-label="pg-regression-radar, home">
+        <span class="pgrr-footer__mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="4.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="15.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="15.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="26.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="15.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="26.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="37.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="26.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="37.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="37.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="37.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/><rect x="48.5" y="4.5" width="8" height="8" rx="1.6" fill="currentColor" opacity=".15"/><rect x="48.5" y="15.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="26.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="37.5" width="8" height="8" rx="1.6" fill="#f2431f"/><rect x="48.5" y="48.5" width="8" height="8" rx="1.6" fill="currentColor"/></svg></span>
+        <span class="pgrr-footer__word">pg-regression-radar</span>
+      </a>
+      <p class="pgrr-footer__tag">Find the Postgres query that got slower, and the Kubernetes rollout behind it.</p>
+      <a class="pgrr-footer__social" href="https://github.com/joao00001/pg-regression-radar" aria-label="pg-regression-radar on GitHub"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg></a>
+    </div>
+
+    <nav class="pgrr-footer__cols" aria-label="Footer">
+      <div class="pgrr-footer__col">
+        <h2>Explore</h2>
+        <ul>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/">Home</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/playground/">Playground</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/our-math/">Our math</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/roadmap/">Roadmap</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/contribute/">Contribute</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Documentation</h2>
+        <ul>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/lab/">Try the lab</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/installation/">Install</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/getting-started/">Quickstart</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/detection-algorithm/">Detection algorithm</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/kubernetes/overview/">Basic Kubernetes</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/joao00001/pg-regression-radar">GitHub</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/releases">Releases</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/changelog/">Changelog</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/issues">Issues</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/discussions">Discussions</a></li>
+        </ul>
+      </div>
+      <div class="pgrr-footer__col">
+        <h2>Community</h2>
+        <ul>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/CONTRIBUTING.md">Contributing</a></li>
+          <li><a href="https://discord.gg/ZShn8s3mh">Discord</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/CODE_OF_CONDUCT.md">Code of conduct</a></li>
+          <li><a href="https://joao00001.github.io/pg-regression-radar/latest/security-model/">Security model</a></li>
+          <li><a href="https://github.com/joao00001/pg-regression-radar/blob/main/LICENSE">License</a></li>
+        </ul>
+      </div>
+    </nav>
+  </div>
+
+  <div class="pgrr-footer__bar">
+    <span>Open source under the Apache License 2.0.</span>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.indexes", "content.code.copy", "content.action.edit", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+  
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+        <script src="../../javascripts/roadmap.js"></script>
+      
+        <script src="../../javascripts/docs-version.js"></script>
+      
+        <script src="../../javascripts/contribute.js"></script>
+      
+        <script src="../../javascripts/code-header.js"></script>
+      
+        <script src="../../javascripts/theme-toggle.js"></script>
+      
+        <script src="../../javascripts/callouts.js"></script>
+      
+        <script src="../../javascripts/steps.js"></script>
+      
+        <script src="../../javascripts/toc-indicator.js"></script>
+      
+        <script src="../../javascripts/home-radar.js"></script>
+      
+        <script src="../../javascripts/home-demo.js"></script>
+      
+        <script src="../../javascripts/home-ascii.js"></script>
+      
+        <script src="../../javascripts/home-flow.js"></script>
+      
+        <script src="../../assets/math/math-core.js"></script>
+      
+        <script src="../../assets/math/math.js"></script>
+      
+        <script src="../../assets/math/math-bg.js"></script>
+      
+    
+  
+
+  </body>
+</html>
