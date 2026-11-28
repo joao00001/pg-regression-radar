@@ -24,8 +24,11 @@ import (
 	"log/slog"
 	"net/http"
 	"sort"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/joao00001/pg-regression-radar/internal/telemetry/otlpdeploy"
 	"github.com/joao00001/pg-regression-radar/pkg/apis/v1alpha1"
@@ -54,6 +57,32 @@ var ValidSourceTypes = map[string]bool{
 // never ends) can't force unbounded memory growth via json.Decode, which
 // otherwise reads its io.Reader to completion with no size cap of its own.
 const maxWebhookBodyBytes = 1 << 20 // 1 MiB
+
+// maxLoggedValueBytes bounds how much of a value taken from a webhook is written
+// to the log, so one request cannot fill the log with a megabyte of its own choosing.
+const maxLoggedValueBytes = 200
+
+// logValue makes a string that came in a webhook safe to write to the log: line breaks and
+// other control characters become spaces, so it cannot pass for a log line of its own
+// whatever the handler does with it, and a long one is cut (with "…" to say so).
+func logValue(s string) string {
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "\r", " ")
+	s = strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) {
+			return ' '
+		}
+		return r
+	}, s)
+	if len(s) <= maxLoggedValueBytes {
+		return s
+	}
+	cut := maxLoggedValueBytes
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut-- // never cut a character in half
+	}
+	return s[:cut] + "…"
+}
 
 // Store keeps an in-memory ordered list of deploy events.
 type Store struct {
@@ -327,7 +356,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.source.AppName != "" && ev.App != h.source.AppName {
 		// The sender still gets 204, so this line is the only trace of the drop.
 		h.logger.Debug("ingester: deploy event ignored, its app is not the one this source is configured for",
-			"id", ev.ID, "app", ev.App, "configuredApp", h.source.AppName)
+			"id", logValue(ev.ID), "app", logValue(ev.App), "configuredApp", h.source.AppName)
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -338,9 +367,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	store.Add(ev)
 	h.logger.Info("ingester: deploy event stored",
-		"id", ev.ID,
-		"app", ev.App,
-		"revision", ev.Revision,
+		"id", logValue(ev.ID),
+		"app", logValue(ev.App),
+		"revision", logValue(ev.Revision),
 		"timestamp", ev.Timestamp)
 
 	w.WriteHeader(http.StatusNoContent)

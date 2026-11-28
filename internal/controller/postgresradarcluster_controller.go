@@ -139,22 +139,23 @@ func (r *PostgresRadarClusterReconciler) Reconcile(ctx context.Context, req ctrl
 // the first thing that went wrong, or nil when the cluster is healthy.
 func (r *PostgresRadarClusterReconciler) probe(ctx context.Context, cluster *radarv1alpha1.PostgresRadarCluster) error {
 	sel := cluster.Spec.KubeconfigSecretRef
-	secretKey := types.NamespacedName{Namespace: sel.Namespace, Name: sel.Name}
+	// secretRef is where the Secret is (namespace and name), not anything it holds.
+	secretRef := types.NamespacedName{Namespace: sel.Namespace, Name: sel.Name}
 	var secret corev1.Secret
-	if err := r.Get(ctx, secretKey, &secret); err != nil {
-		return fmt.Errorf("fetch kubeconfig secret %s: %w", secretKey, err)
+	if err := r.Get(ctx, secretRef, &secret); err != nil {
+		return fmt.Errorf("fetch kubeconfig secret %s: %w", secretRef, err)
 	}
 	if err := checkSecretConsent(&secret, "registered cluster kubeconfig secret"); err != nil {
 		return err
 	}
 	kubeconfig, ok := secret.Data[sel.Key]
 	if !ok {
-		return fmt.Errorf("kubeconfig secret %s has no key %q", secretKey, sel.Key)
+		return fmt.Errorf("kubeconfig secret %s has no key %q", secretRef, sel.Key)
 	}
 
 	restConfig, err := buildRemoteRESTConfig(kubeconfig)
 	if err != nil {
-		return fmt.Errorf("build rest config from kubeconfig secret %s: %w", secretKey, err)
+		return fmt.Errorf("build rest config from kubeconfig secret %s: %w", secretRef, err)
 	}
 
 	disco, err := discovery.NewDiscoveryClientForConfig(restConfig)
