@@ -757,12 +757,12 @@ table.feedtab tr.bad td:nth-child(3) { color: var(--accent); }
 @media (prefers-reduced-motion: no-preference) { .qlist:not([hidden]) { animation: fade 0.12s var(--ease) both; } }
 
 /* ---- Alerts: the few things that stay until somebody has dealt with them ------------- */
-.alerts { position: fixed; z-index: 35; top: var(--alerts-top, 108px); right: 16px; width: min(380px, calc(100vw - 24px)); max-height: calc(100vh - var(--alerts-top, 108px) - 12px); overflow-y: auto; overscroll-behavior: contain; pointer-events: none; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.alerts { position: fixed; z-index: 35; top: var(--alerts-top, 48px); right: 16px; width: min(380px, calc(100vw - 24px)); pointer-events: none; }
+.alert-scroll { max-height: calc(100vh - var(--alerts-top, 48px) - 16px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .alerts[hidden] { display: none; }
 .alert-list { display: grid; gap: 8px; }
 .alert-list > * { pointer-events: auto; }
-.alert { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; padding: 12px 8px 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--amber); background: var(--panel); color: var(--fg); box-shadow: 0 10px 28px rgb(0 0 0 / 0.28); }
-:root[data-theme="light"] .alert { box-shadow: 0 8px 22px rgb(0 0 0 / 0.12); }
+.alert { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; padding: 12px 8px 12px 14px; border: 1px solid var(--line); border-left: 3px solid var(--amber); background: var(--panel); color: var(--fg); }
 .alert-critical { border-color: var(--accent-border); border-left-color: var(--accent-solid); background: var(--accent-bg); }
 .alert-mark { padding-top: 5px; }
 .alert-body { min-width: 0; }
@@ -777,13 +777,49 @@ table.feedtab tr.bad td:nth-child(3) { color: var(--accent); }
 .alert-x { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; cursor: pointer; }
 .alert-x:hover { color: var(--fg); background: var(--card); }
 .alert-more, .alert-link { padding: 7px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); font-size: 12.5px; cursor: pointer; }
-.alert-more { text-align: left; box-shadow: 0 10px 28px rgb(0 0 0 / 0.2); }
+.alert-more { text-align: left; }
 .alert-tools { display: flex; justify-content: flex-end; gap: 6px; pointer-events: none; }
 .alert-tools > * { pointer-events: auto; }
-.alert-link { padding: 5px 10px; border-color: var(--line); background: var(--panel); color: var(--muted); font-size: 12px; box-shadow: 0 6px 16px rgb(0 0 0 / 0.18); }
+.alert-link { padding: 5px 10px; border-color: var(--line); background: var(--panel); color: var(--muted); font-size: 12px; }
 .alert-link:hover, .alert-more:hover { color: var(--fg); background: var(--card); }
 @media (prefers-reduced-motion: no-preference) {
   .alert-new { animation: alert-in 0.22s ease-out; }
   @keyframes alert-in { from { opacity: 0; transform: translateX(14px); } }
 }
-@media (max-width: 560px) { .alerts { left: 12px; right: 12px; width: auto; } }
+@media (max-width: 560px) { .alerts { left: 12px; right: 12px; width: auto; --veil-x: 12px; } }
+
+/* The blur behind the alerts. Six layers of backdrop blur, 0.5 px up to 12 px. Each is cut
+   by a mask that fades to nothing at the edge of the veil, and the stronger the blur the
+   later it reaches full strength, so the blur grows from the edge towards the cards
+   the way the Control Center panel does it. The cards cover the strongest part. The right
+   side does not fade: it ends at the window, as the panel does at the edge of the screen. */
+.alerts { --veil-x: 72px; --veil-t: 36px; --veil-b: 72px; }
+.alerts-veil { position: absolute; z-index: -1; inset: calc(var(--veil-t) * -1) -16px calc(var(--veil-b) * -1) calc(var(--veil-x) * -1); pointer-events: none; }
+.alerts-veil i {
+  --f: calc(var(--veil-x) * var(--k) / 6);   /* how far in from the left and bottom this layer reaches full strength */
+  --ft: calc(var(--veil-t) * var(--k) / 6);  /* the same, at the top, where there is less room */
+  --fb: calc(var(--veil-b) * var(--k) / 6);
+  position: absolute; inset: 0;
+  -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur));
+  /* an eased ramp (smoothstep), not a straight one, so no edge shows */
+  --ramp-x: linear-gradient(to right, transparent 0, rgb(0 0 0 / 0.16) calc(var(--f) * 0.25), rgb(0 0 0 / 0.5) calc(var(--f) * 0.5), rgb(0 0 0 / 0.84) calc(var(--f) * 0.75), #000 var(--f));
+  --ramp-y: linear-gradient(to bottom, transparent 0, rgb(0 0 0 / 0.16) calc(var(--ft) * 0.25), rgb(0 0 0 / 0.5) calc(var(--ft) * 0.5), rgb(0 0 0 / 0.84) calc(var(--ft) * 0.75), #000 var(--ft), #000 calc(100% - var(--fb)), rgb(0 0 0 / 0.84) calc(100% - var(--fb) * 0.75), rgb(0 0 0 / 0.5) calc(100% - var(--fb) * 0.5), rgb(0 0 0 / 0.16) calc(100% - var(--fb) * 0.25), transparent 100%);
+  -webkit-mask-image: var(--ramp-x), var(--ramp-y); -webkit-mask-composite: source-in;
+  mask-image: var(--ramp-x), var(--ramp-y); mask-composite: intersect;
+}
+.alerts-veil i:nth-child(1) { --k: 1; --blur: 0.5px; }
+.alerts-veil i:nth-child(2) { --k: 2; --blur: 1px; }
+.alerts-veil i:nth-child(3) { --k: 3; --blur: 2px; }
+.alerts-veil i:nth-child(4) { --k: 4; --blur: 4px; }
+.alerts-veil i:nth-child(5) { --k: 5; --blur: 8px; }
+.alerts-veil i:nth-child(6) { --k: 6; --blur: 12px; }
+/* Without backdrop blur, or for a person who asked for less transparency, the page is not
+   blurred; the cards get a plain shadow to lift them instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .alerts-veil { display: none; }
+  .alert, .alert-more, .alert-link { box-shadow: 0 8px 22px rgb(0 0 0 / 0.3); }
+}
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) {
+  .alerts-veil { display: none; }
+  .alert, .alert-more, .alert-link { box-shadow: 0 8px 22px rgb(0 0 0 / 0.3); }
+}
