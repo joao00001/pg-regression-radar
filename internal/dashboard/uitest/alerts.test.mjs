@@ -195,3 +195,28 @@ test('dismissals that are not to outlive the page are not kept, and switching it
   b.update({ deploys: [dep('shop/a/1')] });
   assert.deepEqual(ids(b), ['deploy:shop/a/1'], 'old dismissals are not read when they are not to be remembered');
 });
+
+test('a resolved card is teal in every theme that recolours severity', async () => {
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync(new URL('../ui/app.css', import.meta.url), 'utf8');
+  const themed = [...css.matchAll(/^:root\[data-theme="(\w+)"\] \.alert-(?:warn|critical) \{[^}]*--hue:/gm)].map((m) => m[1]);
+  assert.ok(themed.length > 0, 'the light theme recolours warn and critical');
+  for (const theme of new Set(themed)) {
+    const rule = new RegExp(`^:root\\[data-theme="${theme}"\\] \\.alert\\[data-tone="ok"\\] \\{[^}]*--hue: var\\(--teal\\)`, 'm');
+    assert.match(css, rule, `a resolved card keeps the severity colour in the ${theme} theme`);
+  }
+});
+
+test('an alert card does not grow under the pointer, and its close button can blur the page', async () => {
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync(new URL('../ui/app.css', import.meta.url), 'utf8');
+  const js = readFileSync(new URL('../ui/js/alertbar.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(css, /alert-extras|alert-go/, 'no row appears on hover');
+  assert.doesNotMatch(js, /alert-extras|Open case/, 'no row is built');
+  // The close button sits inside the card. A backdrop blur on the card itself would be the floor
+  // that the button sees, so it would blur nothing but the card. The sheet is a layer behind it.
+  const card = css.match(/^\.alert \{[^}]*\}/m)[0];
+  assert.doesNotMatch(card, /backdrop-filter/, 'the card itself has no backdrop blur');
+  assert.match(css, /^\.alert::after \{[^}]*backdrop-filter: blur\(28px\)/m, 'the sheet behind the card is the blurred layer');
+  assert.match(css, /^\.alert-x \{[^}]*backdrop-filter: blur\(/m, 'the close button blurs what is behind it');
+});

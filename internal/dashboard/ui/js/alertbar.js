@@ -8,7 +8,7 @@
 // the healthy circle, and then it slides away while the stack closes up underneath.
 import { h, s } from './dom.js';
 import { clock } from './model.js';
-import { glyph, reasonTag } from './panels/common.js';
+import { glyph } from './panels/common.js';
 import { dismissKey } from './alerts.js';
 
 // More than this is a wall; the rest is one click away. A phone has room for one.
@@ -83,6 +83,9 @@ export function createAlertBar({ el, alerts, hrefFor, settings, sound }) {
     const critical = a.level === 'critical';
     const key = dismissKey(a);
     const href = a.deployId ? hrefFor(a.deployId) : '';
+    // The whole card is one link: to the case when there is one, otherwise to the page that
+    // explains its reason code (the breaker has no deploy to open). Nothing else is on the card.
+    const go = href || a.docs || '';
     const article = h('article', { class: `alert ${critical ? 'alert-critical' : 'alert-warn'}${fresh ? ' alert-new' : ''}`, 'data-key': key },
       h('div', { class: 'alert-main' },
         h('div', { class: 'alert-head alert-kicker' },
@@ -92,13 +95,10 @@ export function createAlertBar({ el, alerts, hrefFor, settings, sound }) {
               h('span', { class: 'mark-new' }, glyph('ok'))),
             swap(critical ? 'Critical' : 'Needs attention', 'kind-swap')),
           a.at ? h('time', { class: 'alert-time', 'data-at': a.at, datetime: new Date(a.at).toISOString(), text: clock(a.at) }) : null),
-        h('p', { class: 'alert-title' }, href ? h('a', { class: 'alert-hit', href }, swap(a.title)) : swap(a.title)),
+        h('p', { class: 'alert-title' }, go ? h('a', Object.assign({ class: 'alert-hit', href: go }, href ? {} : { target: '_blank', rel: 'noopener noreferrer' }), swap(a.title)) : swap(a.title)),
         h('p', { class: 'alert-sub' }, h('b', { text: a.app }), ` in ${a.namespace}`),
         a.text ? h('p', { class: 'alert-text' }, swap(a.text)) : null,
-        a.missing ? h('p', { class: 'alert-missing', text: 'The manager no longer reports this. It may have restarted. Dismiss it once you have checked.' }) : null,
-        (a.reason || href) ? h('div', { class: 'alert-extras' },
-          a.reason ? reasonTag(a.reason, a.docs) : null,
-          href ? h('span', { class: 'alert-go', 'aria-hidden': 'true', text: 'Open case ›' }) : null) : null),
+        a.missing ? h('p', { class: 'alert-missing', text: 'The manager no longer reports this. It may have restarted. Dismiss it once you have checked.' }) : null),
       h('button', {
         class: 'alert-x', type: 'button', 'aria-label': `Dismiss: ${a.title}, ${a.app}`, title: 'Dismiss',
         onclick: () => {
@@ -279,7 +279,6 @@ export function createAlertBar({ el, alerts, hrefFor, settings, sound }) {
       next.textContent = text; next.style.opacity = '1'; old.style.display = 'none';
     };
     set('.kind-swap', say.kind); set('.alert-title', say.title); set('.alert-text', say.text);
-    art.querySelectorAll('.alert-extras .reason').forEach((x) => { x.style.visibility = 'hidden'; });
     art.querySelector('.mark-old').style.display = 'none';
     art.querySelector('.mark-new').style.opacity = '1';
   }
@@ -312,9 +311,6 @@ export function createAlertBar({ el, alerts, hrefFor, settings, sound }) {
       art.querySelector('.mark-old').animate([{ opacity: 1, transform: 'rotate(0) scale(1)', filter: 'blur(0px)' }, { opacity: 0, transform: 'rotate(90deg) scale(0.4)', filter: 'blur(3px)' }], { duration: 300, delay: 40, easing: 'ease-in', fill: 'both' }),
       art.querySelector('.mark-new').animate([{ opacity: 0, transform: 'rotate(-90deg) scale(0.3)', filter: 'blur(3px)' }, { opacity: 1, transform: 'rotate(0) scale(1)', filter: 'blur(0px)' }], { duration: 520, delay: 160, easing: SPRING, fill: 'both' }),
     );
-
-    // The reason code no longer applies: it dissolves too.
-    art.querySelectorAll('.alert-extras .reason').forEach((x) => anims.push(x.animate([{ opacity: 1, filter: 'blur(0px)' }, { opacity: 0, filter: 'blur(4px)' }], { duration: 300, delay: 100, fill: 'both' })));
 
     // The new words may need less (or more) room than the old ones. Measure the height they
     // will have, then let the card grow or shrink to it while the words change, so the height
