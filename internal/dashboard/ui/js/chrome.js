@@ -3,6 +3,7 @@
 // what that means.
 import { h } from './dom.js';
 import * as R from './range.js';
+import { offsetLabel } from './time.js';
 
 export function createChrome({ catalog, onRange, onEdit, onAdd, onReset, onExport, onDone, now }) {
   const $ = (id) => document.getElementById(id);
@@ -46,7 +47,7 @@ export function createChrome({ catalog, onRange, onEdit, onAdd, onReset, onExpor
         onclick: () => { closePop(); onRange(R.relative(p.id)); },
       })))),
       h('form', { class: 'custom', onsubmit: (e) => { e.preventDefault(); apply(); } },
-        h('p', { class: 'label', text: 'Custom range' }),
+        h('p', { class: 'label', text: `Custom range, in ${offsetLabel(now())}` }),
         h('label', null, h('span', { text: 'From' }), from),
         h('label', null, h('span', { text: 'To' }), to),
         err,
@@ -85,6 +86,8 @@ export function createChrome({ catalog, onRange, onEdit, onAdd, onReset, onExpor
   }
 
   return {
+    // The page of settings has no time range and no layout to edit.
+    setPlain(on) { tools.hidden = on; },
     setBoards(boards, active) {
       tabs.replaceChildren(...boards.map((b) => h('a', { class: 'tab', href: `#/${b.id}`, 'aria-current': b.id === active ? 'page' : null, text: b.title })));
     },

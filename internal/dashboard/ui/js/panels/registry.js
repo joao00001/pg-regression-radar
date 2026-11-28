@@ -10,6 +10,7 @@ import { ratioChartPanel } from './ratio.js';
 import { evaluationsPanel } from './evaluations.js';
 import { decisionFeedPanel } from './feed.js';
 import { safetyPanel, sourceHealthPanel } from './health.js';
+import { appearancePanel, timePanel, alertsPanel, soundPanel } from './settings.js';
 import { h } from '../dom.js';
 
 export const PANELS = {
@@ -27,6 +28,10 @@ export const PANELS = {
   'decision-feed': decisionFeedPanel,
   'safety': safetyPanel,
   'source-health': sourceHealthPanel,
+  'settings-appearance': appearancePanel,
+  'settings-time': timePanel,
+  'settings-alerts': alertsPanel,
+  'settings-sound': soundPanel,
 };
 
 export function build(type, host, ctx) {

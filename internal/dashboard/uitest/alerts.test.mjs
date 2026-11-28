@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAlerts, stageOf, recovered, dismissKey, DISMISS_KEY } from '../ui/js/alerts.js';
 
-const mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), raw: m }; };
+const mem = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), raw: m }; };
 const dep = (id, extra = {}) => {
   const [namespace, app] = id.split('/');
   return { id, namespace, app, at: '2026-03-10T09:00:00Z', phase: 'decided', health: 'Regressed', sentence: `${app} regressed`, latest: { at: '2026-03-10T09:12:00Z' }, ...extra };
@@ -175,4 +175,23 @@ test('blocked, full or corrupt storage never breaks it, and old dismissals are d
   const b = createAlerts({ storage: old, now: () => t });
   b.update({ deploys: [dep('shop/a/1'), dep('shop/b/1')] });
   assert.deepEqual(ids(b), ['deploy:shop/a/1'], 'a month-old dismissal has expired, a fresh one holds');
+});
+
+test('dismissals that are not to outlive the page are not kept, and switching it on or off follows', () => {
+  const storage = mem();
+  let remember = false;
+  const a = createAlerts({ storage, remember: () => remember });
+  a.update({ deploys: [dep('shop/a/1')] });
+  a.dismiss(dismissKey(a.visible()[0]));
+  assert.deepEqual(ids(a), [], 'dismissed for this page');
+  assert.equal(storage.getItem(DISMISS_KEY), null, 'but not kept for the next one');
+  assert.deepEqual(ids(createAlerts({ storage, remember: () => false })), [], 'a new page starts with none dismissed');
+  remember = true; a.remembering(true);
+  assert.equal(Object.keys(JSON.parse(storage.getItem(DISMISS_KEY))).length, 1, 'what was dismissed is kept from now on');
+  remember = false; a.remembering(false);
+  assert.equal(storage.getItem(DISMISS_KEY), null, 'and let go of when the person turns it off');
+  const stored = mem(); stored.setItem(DISMISS_KEY, JSON.stringify({ 'deploy:shop/a/1#alert': Date.now() }));
+  const b = createAlerts({ storage: stored, remember: () => false });
+  b.update({ deploys: [dep('shop/a/1')] });
+  assert.deepEqual(ids(b), ['deploy:shop/a/1'], 'old dismissals are not read when they are not to be remembered');
 });

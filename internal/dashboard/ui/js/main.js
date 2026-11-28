@@ -2,6 +2,10 @@ import { client, getConfig, checkVersion, events, layoutBundle, linkStatus, getP
 import { clockOffset, estimateNow, defaultSelection, defaultUnit, relative, docsHref } from './model.js';
 import { createAlerts } from './alerts.js';
 import { createAlertBar } from './alertbar.js';
+import { createSettings, resolveTheme } from './settings.js';
+import { setZone, offsetLabel } from './time.js';
+import { createSound } from './sound.js';
+import { bindSettings, gearIcon, SETTINGS_BOARD, SETTINGS_CATALOG } from './panels/settings.js';
 import * as R from './range.js';
 import * as L from './layout.js';
 import { createStore } from './store.js';
@@ -27,7 +31,10 @@ const ui = { tableOpen: false, keyOpen: false, showAll: false, compare: {} };
 let chrome = null, board = null, focus = null, alertBar = null, painted = false, focusPushed = false, savedScroll = 0;
 
 const nowMs = () => estimateNow(state.offset, Date.now());
-const currentBoard = () => L.boardById(state.layout, state.boardId);
+// The Settings page is not in the dashboard file: what it holds is the person's own.
+const currentBoard = () => (state.boardId === 'settings' ? SETTINGS_BOARD : L.boardById(state.layout, state.boardId));
+// The tabs are the boards of the layout file. Settings is the person's own, so it is opened from the gear.
+const tabs = () => state.layout.boards;
 
 // ---- reading ------------------------------------------------------------------
 
@@ -198,7 +205,7 @@ function tick() {
 
 function route() {
   const r = L.parseHash(location.hash);
-  const want = r.board && L.boardById(state.layout, r.board) ? r.board : state.layout.boards[0].id;
+  const want = r.board === 'settings' || (r.board && L.boardById(state.layout, r.board)) ? r.board : state.layout.boards[0].id;
   const changed = want !== state.boardId;
   if (r.deploy && r.deploy !== state.selected) { state.selected = r.deploy; state.unit = null; }
   if (changed) { leaveFocusNow(); showBoard(want); } else if (r.deploy) refresh();
@@ -270,8 +277,11 @@ function showBoard(id) {
   state.boardId = id;
   const b = currentBoard();
   board.show(b);
-  chrome.setBoards(state.layout.boards, id);
-  state.range = state.store.loadRange(state.bundle.source, id) || R.fromBoard(b.range);
+  chrome.setBoards(tabs(), id);
+  chrome.setPlain(id === 'settings');
+  const gear = $('settings-link');
+  if (id === 'settings') gear.setAttribute('aria-current', 'page'); else gear.removeAttribute('aria-current');
+  if (id !== 'settings') state.range = state.store.loadRange(state.bundle.source, id) || R.fromBoard(b.range); // the page of settings has no time range
   document.title = `${b.title} · Deploy radar`;
   state.signature = '';
   refresh();
@@ -286,6 +296,7 @@ function setRange(r) {
 }
 
 function setEditing(on) {
+  if (on && state.boardId === 'settings') return;
   if (on && window.matchMedia('(max-width: 900px)').matches) {
     chrome.notice('Editing the layout needs a wider window: on a narrow screen the panels stack in one column.', 'info');
     return;
@@ -316,36 +327,41 @@ function resetEdits() {
   state.store.resetLayout(state.bundle.source);
   state.layout = state.bundle.layout;
   chrome.setEdited(false);
-  chrome.setBoards(state.layout.boards, state.boardId);
+  chrome.setBoards(tabs(), state.boardId);
   board.replace(currentBoard().panels);
   chrome.notice(null);
 }
 
 // ---- theme --------------------------------------------------------------------
 
-const SUN = () => svgEl('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'aria-hidden': 'true' },
-  svgEl('circle', { cx: 12, cy: 12, r: 4 }), svgEl('path', { d: 'M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4' }));
-const MOON = () => svgEl('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' },
-  svgEl('path', { d: 'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z' }));
-
-function initTheme() {
-  const btn = $('theme'), root = document.documentElement;
-  const paint = () => {
-    const light = root.getAttribute('data-theme') === 'light';
-    btn.replaceChildren(light ? MOON() : SUN());
-    const next = light ? 'dark' : 'light';
-    btn.setAttribute('aria-label', `Switch to the ${next} theme`);
-    btn.title = `Switch to the ${next} theme`;
-  };
-  btn.addEventListener('click', () => {
-    const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-    root.classList.add('theming'); // colours cross-fade for a moment
-    root.setAttribute('data-theme', next);
-    try { localStorage.setItem('pgrr-theme', next); } catch (_) { /* storage may be blocked */ }
-    paint();
-    setTimeout(() => root.classList.remove('theming'), 450);
+// The theme follows what the person chose in the settings: light, dark, or the system's,
+// which is then followed as it changes. theme.js has already set it before the first paint.
+// The zone every time is shown in: set before anything is drawn, and drawn again when it changes.
+// It is registered before the alert bar, so the bar finds the new zone when it hears of the change.
+function initZone(settings) {
+  const tag = () => { $('tz').textContent = offsetLabel(Date.now()); };
+  setZone(settings.get().timezone);
+  tag();
+  settings.subscribe((now, before) => {
+    if (now.timezone === before.timezone) return;
+    setZone(now.timezone);
+    tag();
+    render();
   });
-  paint();
+}
+
+function initTheme(settings) {
+  const root = document.documentElement;
+  const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+  const apply = (animate) => {
+    const want = resolveTheme(settings.get().theme, !!(mq && mq.matches));
+    if (root.getAttribute('data-theme') === want) return;
+    if (animate) { root.classList.add('theming'); setTimeout(() => root.classList.remove('theming'), 450); } // colours cross-fade for a moment
+    root.setAttribute('data-theme', want);
+  };
+  settings.subscribe((now, before) => { if (now.theme !== before.theme) apply(true); });
+  if (mq && mq.addEventListener) mq.addEventListener('change', () => apply(true));
+  apply(false);
 }
 
 // ---- the link to the manager (cluster only) ---------------------------------------
@@ -370,7 +386,13 @@ async function pollLink() {
 // ---- start --------------------------------------------------------------------
 
 async function start() {
-  initTheme();
+  const storage = (() => { try { return window.localStorage; } catch (_) { return { getItem: () => null, setItem() { throw new Error('blocked'); }, removeItem() {} }; } })();
+  const settings = createSettings({ storage });
+  const sound = createSound({ settings });
+  initTheme(settings);
+  initZone(settings);
+  bindSettings(settings, sound);
+  $('settings-link').append(gearIcon());
   try {
     state.config = await getConfig();
     state.api = client(state.config);
@@ -379,14 +401,13 @@ async function start() {
     showError(e.message, e.problems);
     return;
   }
-  const storage = (() => { try { return window.localStorage; } catch (_) { return { getItem: () => null, setItem() { throw new Error('blocked'); }, removeItem() {} }; } })();
   const profile = await getProfile();
   state.store = createStore(storage, profile.saved ? { ...profile, put: putProfile, forget: forgetProfile } : null, onSaveProblem);
   const loaded = state.store.loadLayout(state.bundle.source, state.bundle.layout, state.bundle.catalog);
   state.layout = loaded.layout;
 
   board = createBoard($('board'), {
-    catalog: state.bundle.catalog, grid: state.bundle.grid,
+    catalog: [...state.bundle.catalog, ...SETTINGS_CATALOG], grid: state.bundle.grid,
     env: { ui, actions: { select, pickUnit, rerender } },
     onEdit: onBoardEdit,
     onFocus: openFocus,
@@ -402,8 +423,8 @@ async function start() {
     onExport: () => chrome.showExport(L.toYAML(state.layout, state.bundle.catalog), state.bundle.source),
   });
   alertBar = createAlertBar({
-    el: $('alerts'), alerts: createAlerts({ storage, docsHref }),
-    hrefFor: (id) => L.hashFor({ board: state.layout.boards.some((b) => b.id === 'case') ? 'case' : state.boardId, deploy: id }),
+    el: $('alerts'), alerts: createAlerts({ storage, docsHref, remember: () => settings.get().dismissal === 'persist' }), settings, sound,
+    hrefFor: (id) => L.hashFor({ board: state.layout.boards.some((b) => b.id === 'case') ? 'case' : (state.boardId === 'settings' ? state.layout.boards[0].id : state.boardId), deploy: id }),
   });
   chrome.setSaveNote(state.store.saved ? `Your edits are saved in ${state.store.where}.` : 'Your edits are kept in this browser only.');
   chrome.setEdited(loaded.edited);

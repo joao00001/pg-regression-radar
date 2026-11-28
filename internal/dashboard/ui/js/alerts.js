@@ -82,9 +82,11 @@ function breakerAlert(w, docsHref) {
 // getting worse is news and staying the same is not.
 export const dismissKey = (a) => `${a.id}#${a.level}`;
 
-export function createAlerts({ storage, now = Date.now, docsHref = (u) => u } = {}) {
+// remember: whether a dismissal outlives the page (the person's choice, and it can change
+// while the page is open). When it does not, dismissals are kept in memory only.
+export function createAlerts({ storage, now = Date.now, docsHref = (u) => u, remember = () => true } = {}) {
   const active = new Map();   // alert id -> alert, in the order it was first raised
-  let dismissed = load();
+  let dismissed = remember() ? load() : {};
 
   function load() {
     try {
@@ -97,6 +99,7 @@ export function createAlerts({ storage, now = Date.now, docsHref = (u) => u } = 
     } catch (_) { return {}; }
   }
   function save() {
+    if (!remember()) return;
     try { storage.setItem(DISMISS_KEY, JSON.stringify(dismissed)); } catch (_) { /* the page still works; it just forgets */ }
   }
   function forget(id) {
@@ -164,5 +167,12 @@ export function createAlerts({ storage, now = Date.now, docsHref = (u) => u } = 
     save();
   }
 
-  return { update, visible, dismiss, dismissAll, size: () => active.size };
+  // The person changed whether dismissals outlive the page: keep them from now on, or
+  // let go of what was kept (what is dismissed on this page stays dismissed until it is closed).
+  function remembering(on) {
+    if (on) save();
+    else { try { storage.removeItem(DISMISS_KEY); } catch (_) { /* nothing to forget */ } }
+  }
+
+  return { update, visible, dismiss, dismissAll, remembering, size: () => active.size };
 }

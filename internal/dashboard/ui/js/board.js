@@ -136,10 +136,11 @@ export function createBoard(root, { catalog, grid, env, onEdit, onFocus }) {
     watchEdges(body);
     const tools = [];
     if (about().text) tools.push(infoButton(about));
-    tools.push(expandButton(title, () => onFocus && onFocus(p.id)));
+    // A plain panel (the settings) has no expanded view: what it holds is already all there is.
+    if (!(pt && pt.plain)) tools.push(expandButton(title, () => onFocus && onFocus(p.id)));
     el.append(...tools);
     Object.assign(rec, instantiate(p, body, { types, boardId: board.id, env }));
-    el.addEventListener('click', (e) => { if (wantsFocus(e, rec)) onFocus && onFocus(rec.panel.id); });
+    if (!(pt && pt.plain)) el.addEventListener('click', (e) => { if (wantsFocus(e, rec)) onFocus && onFocus(rec.panel.id); });
     inst.set(p.id, rec);
     wireDrag(rec, mover, 'move');
     wireDrag(rec, handle, 'resize');
