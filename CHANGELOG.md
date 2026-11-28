@@ -32,6 +32,13 @@ build` as described above.
 
 <!-- towncrier release notes start -->
 
+## v1.9.2 - 2026-11-28
+
+### Fixes
+
+- Made the radar easier to troubleshoot: logs share one format with a level switch, decisions and faults carry stable reason codes, a PostgresWatch reports Collecting, ArmsLog and Actuating conditions, an open breaker can be closed with an annotation, and the dashboard shows the codes, keeps alert cards until the trouble is over, and gains a Settings page for theme, time zone and sound. (#266)
+
+
 ## v1.9.1 - 2026-11-27
 
 ### Fixes
