@@ -13,12 +13,23 @@ export function createAlertBar({ el, alerts, hrefFor }) {
   let expanded = false, drawn = '', announced = new Set(), first = true, drawnKeys = new Set();
   const live = h('div', { class: 'sr-only', role: 'status', 'aria-live': 'polite' });
   const list = h('div', { class: 'alert-list' });
-  el.append(live, list);
+  const scroll = h('div', { class: 'alert-scroll' }, list);
+  // The backdrop behind the cards: a stack of blurs, each wider and fainter than the
+  // one above it, so the page loses focus gradually towards the cards instead of at an edge.
+  const veil = h('div', { class: 'alerts-veil', 'aria-hidden': 'true' }, [0, 1, 2, 3, 4, 5].map((n) => {
+    const layer = h('i');
+    layer.style.setProperty('--n', String(n));
+    return layer;
+  }));
+  el.append(live, veil, scroll);
 
   // Under the sticky header, wherever it is tall enough to reach (the edit bar adds a row).
   const header = document.querySelector('header.top');
   function place() {
-    const top = header ? Math.max(0, header.getBoundingClientRect().bottom) + 12 : 12;
+    // The blur reaches --veil-t above the cards; they start that far below the header so the
+    // blur begins at the header's edge and never touches the header itself.
+    const reach = parseFloat(getComputedStyle(el).getPropertyValue('--veil-t')) || 0;
+    const top = (header ? Math.max(0, header.getBoundingClientRect().bottom) : 0) + reach;
     el.style.setProperty('--alerts-top', `${Math.round(top)}px`);
   }
   window.addEventListener('resize', place);

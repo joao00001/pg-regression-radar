@@ -74,6 +74,8 @@ A few rules keep this quiet enough to trust:
 - **A long list is folded.** Three are shown on a wide screen and one on a phone, the worst first and then the newest; the rest is behind *N more alerts*.
 - **Screen readers** are told, politely, when an alert appears and when one is removed because the deploy recovered.
 
+The page behind the alerts is blurred, more strongly towards the cards and fading to nothing at their edges, instead of the cards casting a shadow. With *reduce transparency* set in the system, or without support for backdrop blur in the browser, the page is not blurred and the cards get a plain shadow.
+
 Each alert links to the deploy's case and, when the radar acted, shows the [reason code](troubleshooting/reasons.md) of the action. Alerts are read from the Observe API for the last 90 days, so they do not depend on the time range of the board.
 
 Every panel has an **info button** at its top right. Hover it, or focus it with the keyboard, to read what the panel shows and how to read it; click to keep the text open (Escape or a click elsewhere closes it). A panel's own `description` in the file replaces the built-in text.
